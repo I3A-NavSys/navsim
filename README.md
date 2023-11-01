@@ -1,6 +1,14 @@
 # utrafman_ros2
 Repositorio para migrar el simulador de ROS1 a ROS2
 
+
+
+En esta [página](https://gazebosim.org/docs/fortress/ros_installation) se indican las versiones ROS Gazebo compatibles:
+
+Optamos por la combinación ROS 2 Humble (LTS) / GZ Fortress (LTS)
+
+
+
 # Configuración de máquina
 
 Instalar la plataforma VMware Workstation 17.0.2 Player
