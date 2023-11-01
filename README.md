@@ -45,10 +45,9 @@ echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
 
 # Instalar Gazebo
 
-Se debe usar Gazebo Fortress (LTS) con ROS2 Humble. Seguir los pasos de este tutorial:
-`https://gazebosim.org/docs/fortress/install_ubuntu`
+Instalar Gazebo Fortress (LTS) siguiendo los pasos de este [tutorial](https://gazebosim.org/docs/fortress/install_ubuntu).
 
-Probar el comando `ign gazebo`
+Probar el comando `ign gazebo`.
 
 # Probar los tutoriales básicos:
 
