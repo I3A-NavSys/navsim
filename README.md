@@ -14,22 +14,24 @@ Optamos por la combinación ROS 2 Humble (LTS) / GZ Fortress (LTS)
 Instalar la plataforma VMware Workstation 17.0.2 Player
 
 Crear una máquina virtual con
--	8 procesadores (que ejecutarán Gazebo)
--	32MB RAM
--	HD de 50GB
--	Activar aceleración 3D (asignando 8GB)
--	Conectar con un DVD incluyendo la ISO de UBUNTU 22.04.3 LTS (Jammy Jellyfish)
+- 8 procesadores (que ejecutarán Gazebo)
+- 32MB RAM
+- HD de 50GB
+- Activar aceleración 3D (asignando 8GB)
+- Conectar con un DVD incluyendo la ISO Desktop Image UBUNTU 22.04.3 LTS (Jammy Jellyfish)
 
 # Instalación de UBUNTU
-1.	Configurar teclado en español Windows
-2.	Instalar la versión Desktop Image
-  -	Instalación normal
-  - Descargar actualizaciones mientras se instala
-  - Instalar contenido de terceros (video drivers…)
-3.	Configurar en español (renombrar carpetas)
-4.	Dejar que el sistema se actualice y reinicie
-5.	Dejar que las aplicaciones se actualicen y reiniciar
-  -	Abrir “Ubuntu software” e ir a la lengüeta de actualizaciones. Actualizar todo.
+1. Configurar teclado en español Windows
+2. Instalar
+	- La versión normal
+	- Descargar actualizaciones mientras se instala
+	- No instalar contenido de terceros
+3. Configurar en español (renombrar carpetas)
+4. Dejar que el sistema se actualice y reinicie
+5. Abrir “Ubuntu software”
+	- En la lengüeta de **Actualizaciones**, actualizar todo.
+ 	- Instalar Visual Studio Code
+ 	- Reiniciar
 
 # Instalar ROS 2 Humble Hawksbill (LTS)
 Seguir los pasos de este tutorial:
