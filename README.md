@@ -72,6 +72,19 @@ Probar los tutoriales básicos:
 
 [moving_robot](https://gazebosim.org/docs/fortress/moving_robot)
 
+# Instalar Git
 
-	
+```bash
+sudo apt update
+sudo apt install git
+git --version
+```
+
+Instalar GitHub Desktop
+
+```bash
+sudo wget https://github.com/shiftkey/desktop/releases/download/release-3.3.3-linux1/GitHubDesktop-linux-amd64-3.3.3-linux1.deb
+sudo apt install ./GitHubDesktop-linux-amd64-3.3.3-linux1.deb -y
+```
+Abrir GitHub Desktop desde el menú de aplicaciones.
 
