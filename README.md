@@ -88,3 +88,8 @@ sudo apt install ./GitHubDesktop-linux-amd64-3.3.3-linux1.deb -y
 ```
 Abrir GitHub Desktop desde el menú de aplicaciones.
 
+No funciona porque pide autentificación a través del navegador.
+
+Con Mozilla no interactua. Instalar Chrome a ver que pasa.
+
+
