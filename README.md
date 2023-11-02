@@ -59,7 +59,7 @@ En la máquina virtual puede que no se reproduzca bien. En tal caso ejecutarlo r
 ign gazebo lights.sdf --render-engine ogre
 ```
 
-# Probar los tutoriales básicos:
+Probar los tutoriales básicos:
 
 [building_robot](https://gazebosim.org/docs/fortress/building_robot)
 
