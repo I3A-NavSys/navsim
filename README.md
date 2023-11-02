@@ -17,7 +17,7 @@ Crear una máquina virtual con
 -	8 procesadores (que ejecutarán Gazebo)
 -	32MB RAM
 -	HD de 50GB
--	Activar aceleración 3D (asignar 8GB)
+-	Activar aceleración 3D (asignando 8GB)
 -	Conectar con un DVD incluyendo la ISO de UBUNTU 22.04.3 LTS (Jammy Jellyfish)
 
 # Instalación de UBUNTU
@@ -47,7 +47,32 @@ echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
 
 Instalar Gazebo Fortress (LTS) siguiendo los pasos de este [tutorial](https://gazebosim.org/docs/fortress/install_ubuntu).
 
-Probar el comando `ign gazebo`.
+Probar el comando `ign gazebo lights.sdf`.
+
+En la máquina virtual puede que no se reproduzca bien. 
+En tal caso ejecutarlo con ogre (en lugar de ogre2)
+`ign gazebo lights.sdf --render-engine ogre`
+
+
+Si Gazebo no se reproduce bien, introducir este codigo en bashrc
+
+```bash
+# Configure the Mesa Environment
+# https://docs.mesa3d.org/envvars.html
+
+# Core Mesa environment variables
+export MESA_DEBUG=1
+export MESA_GL_VERSION_OVERRIDE=4.1
+export MESA_GLSL_VERSION_OVERRIDE=410
+export MESA_EXTENSION_OVERRIDE="\
+  -GL_ARB_buffer_storage \
+  -GL_ARB_multi_draw_indirect \
+  -GL_ARB_texture_buffer_range \
+  -GL_ARB_compute_shader \
+  -GL_ARB_ES3_compatibility \
+  "
+```
+
 
 # Probar los tutoriales básicos:
 
