@@ -11,7 +11,8 @@ Optamos por la combinación ROS 2 Humble (LTS) / GZ Fortress (LTS)
 
 # Configuración de máquina
 
-Instalar la plataforma VMware Workstation 17.0.2 Player
+Instalar la plataforma VMware Workstation 17.0.2 Player.
+Instalar el teclado
 
 Crear una máquina virtual con
 - 8 procesadores (que ejecutarán Gazebo)
@@ -58,6 +59,12 @@ En la máquina virtual puede que no se reproduzca bien. En tal caso ejecutarlo r
 ```bash
 ign gazebo lights.sdf --render-engine ogre
 ```
+
+Instalar puente ROS-Gazebo
+```bash
+sudo apt-get install ros-humble-ros-ign-bridge
+```
+
 
 Probar los tutoriales básicos:
 
