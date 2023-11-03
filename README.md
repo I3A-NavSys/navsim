@@ -100,7 +100,7 @@ Probar un mundo de ejemplo
 
 ```bash
 cd utrafman_ros2/worlds/
-ign gazebo  round1.world --render-engine ogre
+ign gazebo -v 0 tatami.world --render-engine ogre
 ```
 
 
