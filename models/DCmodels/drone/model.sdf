@@ -1,5 +1,7 @@
 <?xml version="1.0" ?>
 <sdf version="1.5">
+
+
 <model name="drone">
 
 <static>false</static>
@@ -74,9 +76,12 @@
           </friction>
         </surface>
     </collision>
-    
+
+
+
+<!--
 	<sensor name='camera' type='camera'>
-<!-- <plugin name="onboard_camera" filename="/opt/ros/kinetic/share/drone_ros/plugins/build/libonboard_camera.so"> </plugin> -->
+<!- <plugin name="onboard_camera" filename="/opt/ros/kinetic/share/drone_ros/plugins/build/libonboard_camera.so"> </plugin> ->
 		<plugin name="camera_controller" filename="libgazebo_ros_camera.so">
 			<alwaysOn>true</alwaysOn>
 			<updateRate>0.0</updateRate>
@@ -99,7 +104,7 @@
         <update_rate>10</update_rate>
         <visualize>0</visualize>
     </sensor>   
-
+-->
 
     <visual name='brazo_NE'>
         <pose>0.0550 -0.0346 0 0 0 -1.0472</pose>
