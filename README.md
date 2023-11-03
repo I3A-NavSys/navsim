@@ -88,10 +88,20 @@ git --version
 	- En Accounts (abajo a la izquierda, encima de la rueda dentada) pulsar _Authorize GitHub for VS Code_
 
 
-## Clonar repositorio UTRAFMAN2
+# Repositorio UTRAFMAN2
+
+Clonar el repositorio desde GitHub. Utilizar VS Code, o directamente en consola:
 
 ```bash
 git clone https://github.com/I3A-NavSys/utrafman_ros2
 ```
+
+Probar un mundo de ejemplo
+
+```bash
+cd utrafman_ros2/worlds/
+ign gazebo  round1.world --render-engine ogre
+```
+
 
 
