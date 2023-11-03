@@ -19,7 +19,7 @@ Crear una máquina virtual con
 - 32MB RAM
 - HD de 50GB
 - Activar aceleración 3D (asignando 8GB)
-- Conectar con un DVD incluyendo la ISO Desktop Image UBUNTU 22.04.3 LTS (Jammy Jellyfish)
+- Conectar con un DVD incluyendo la ISO Desktop Image UBUNTU 22.04.3 LTS (Jammy Jellyfish). Descargarla de [aquí](https://releases.ubuntu.com/jammy/).
 
 # Instalación de UBUNTU
 1. Configurar teclado en español Windows
