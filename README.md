@@ -29,10 +29,9 @@ Crear una máquina virtual con
 	- No instalar contenido de terceros
 3. Configurar en español (renombrar carpetas)
 4. Dejar que el sistema se actualice y reinicie
-5. Abrir “Ubuntu software”
-	- En la lengüeta de **Actualizaciones**, actualizar todo.
- 	- Instalar Visual Studio Code
- 	- Reiniciar
+5. Abrir “Ubuntu software”. En la lengüeta de **Actualizaciones**, actualizar todo y reiniciar.
+
+
 
 # Instalar ROS 2 Humble Hawksbill (LTS)
 Seguir los pasos de este tutorial:
@@ -65,12 +64,12 @@ Instalar puente ROS-Gazebo
 sudo apt-get install ros-humble-ros-ign-bridge
 ```
 
-
 Probar los tutoriales básicos:
 
 [building_robot](https://gazebosim.org/docs/fortress/building_robot)
 
 [moving_robot](https://gazebosim.org/docs/fortress/moving_robot)
+
 
 # Instalar Git
 
@@ -80,16 +79,18 @@ sudo apt install git
 git --version
 ```
 
-Instalar GitHub Desktop
 
-```bash
-sudo wget https://github.com/shiftkey/desktop/releases/download/release-3.3.3-linux1/GitHubDesktop-linux-amd64-3.3.3-linux1.deb
-sudo apt install ./GitHubDesktop-linux-amd64-3.3.3-linux1.deb -y
-```
-Abrir GitHub Desktop desde el menú de aplicaciones.
+# Instalar Visual Studio Code
+1. Abrir _Ubuntu software_ e instalar **Visual Studio Code**
+2. Instalar extensión **Spanish Language Pack for Visual Studio Code**
+3. Instalar extensión **markdownlint**
+4. Instalar extensión **GitHub Pull Request and Issues**
+	- En Accounts (abajo a la izquierda, encima de la rueda dentada) pulsar _Authorize GitHub for VS Code_
 
-No funciona porque pide autentificación a través del navegador.
 
-Con Mozilla no interactua. Instalar Chrome a ver que pasa.
+## Clonar repositorio UTRAFMAN2
+
+
+
 
 
