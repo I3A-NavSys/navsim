@@ -4,10 +4,10 @@ Actualización 23/11/2023
 
 # Versiones
 
-Según esta [página](https://es.mathworks.com/help/ros/gs/ros-system-requirements.html), 
-Matlab R2023b necesita la versión Humble Hawksbill de ROS2.
-
-Según esta [página](https://gazebosim.org/docs/fortress/ros_installation) la versión de Gazebo compatible con ROS2 Humble (LTS) es GZ Fortress (LTS).
+Matlab R2023b [es compatible](https://es.mathworks.com/help/ros/gs/ros-system-requirements.html) 
+con ROS2 versión Humble Hawksbill (LTS), 
+que [es compatible](https://gazebosim.org/docs/fortress/ros_installation) 
+con Gazebo versión GZ Fortress (LTS).
 
 
 # Configuración de máquina
