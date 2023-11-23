@@ -28,9 +28,11 @@ Crear una máquina virtual con
 	- La versión normal
 	- Descargar actualizaciones mientras se instala
 	- No instalar contenido de terceros
-3. Configurar en español (renombrar carpetas)
-4. Dejar que el sistema se actualice y reinicie
-5. Abrir “Ubuntu software”. En la lengüeta de **Actualizaciones**, actualizar todo y reiniciar.
+3. Configurar en español
+	- Inicio/Settings/Region & Language
+ 	- Renombrar carpetas
+5. Dejar que el sistema se actualice y reinicie
+6. Abrir “Ubuntu software”. En la lengüeta de **Actualizaciones**, actualizar todo y reiniciar.
 
 
 
