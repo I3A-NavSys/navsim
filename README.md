@@ -1,17 +1,18 @@
 # utrafman_ros2
-Repositorio para migrar el simulador de ROS1 a ROS2
+Repositorio para migrar el simulador de ROS1 a ROS2.
+Actualización 23/11/2023
 
 # Versiones
 
-En esta [página](https://gazebosim.org/docs/fortress/ros_installation) se indican las versiones ROS Gazebo compatibles:
+Según esta [página](https://es.mathworks.com/help/ros/gs/ros-system-requirements.html), 
+Matlab R2023b necesita la versión Humble Hawksbill de ROS2.
 
-Optamos por la combinación ROS 2 Humble (LTS) / GZ Fortress (LTS)
-
+Según esta [página](https://gazebosim.org/docs/fortress/ros_installation) la versión de Gazebo compatible con ROS2 Humble (LTS) es GZ Fortress (LTS).
 
 
 # Configuración de máquina
 
-Instalar la plataforma VMware Workstation 17.0.2 Player.
+Instalar la plataforma VMware Workstation 17.5.0 Player.
 Instalar el teclado
 
 Crear una máquina virtual con
@@ -33,12 +34,10 @@ Crear una máquina virtual con
 
 
 
-# Instalar ROS 2 Humble Hawksbill (LTS)
-Seguir los pasos de este tutorial:
+# Instalar ROS2 Humble Hawksbill (LTS)
 
-https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debians.html
-
-en el paso de asignar la fuente, podemos agregarla al bash:
+Seguir los pasos de este [tutorial](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debians.html).
+En el paso de asignar la fuente, podemos agregarla al bash:
 
 ```bash
 source /opt/ros/humble/setup.bash
