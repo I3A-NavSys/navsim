@@ -10,8 +10,9 @@ que [es compatible](https://gazebosim.org/docs/fortress/ros_installation)
 con Gazebo versión GZ Fortress (LTS). 
 Sin embargo, esta versión está resultando muy inestable (en una máquina virtual). 
 
-Mathworks [recomienda](https://www.mathworks.com/support/product/robotics/ros2-vm-installation-instructions-v9.html)
-usar Gazebo 11 incluso con ROS2. Vamos a intentarlo.
+Mathworks recomienda usar Gazebo 11 incluso con ROS2. Tiene una máquina virtual con todo instalado: ROS Noetic/Humble Gazebo 11
+[ROS Noetic and ROS 2 Humble and Gazebo](https://www.mathworks.com/support/product/robotics/ros2-vm-installation-instructions-v9.html)
+
 
 # Configuración de máquina
 
@@ -25,7 +26,9 @@ Crear una máquina virtual con
 - Activar aceleración 3D (asignando 8GB)
 - Conectar con un DVD incluyendo la ISO Desktop Image UBUNTU 22.04.3 LTS (Jammy Jellyfish). Descargarla de [aquí](https://releases.ubuntu.com/jammy/).
 
+
 # Instalación de UBUNTU
+
 1. Configurar teclado en español Windows
 2. Instalar
 	- La versión normal
@@ -48,6 +51,8 @@ En el paso de asignar la fuente, podemos agregarla al bash:
 source /opt/ros/humble/setup.bash
 echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
 ```
+
+Comprobar la instalación con el comando `ros2`.ros
 
 # Instalar Gazebo
 
@@ -77,13 +82,21 @@ Probar los tutoriales básicos:
 [moving_robot](https://gazebosim.org/docs/fortress/moving_robot)
 
 
-# Gazebo 11 (classic Gazebo)
+## Gazebo 11 (classic Gazebo)
 
+Se puede instalar directamente desde **Inicio/Ubuntu Software**.
+Comprobar la instalación ejecutando el comando `gazebo` en un terminal.
 
-```
+Instalar puente ROS-Gazebo
+```bash
 sudo apt install ros-humble-gazebo-ros-pkgs
-source /usr/share/gazebo/setup.sh
+```
+
+Comprobar que enlaza con ROS2 ejecutando
+```
 ros2 launch gazebo_ros gazebo.launch.py
+ros2 node list
+ros2 topic list
 ```
 
 # Instalar Git
@@ -119,8 +132,5 @@ ign gazebo -v 0 tatami.world --render-engine ogre
 ```
 
 # MATLAB
-
-Matlab tiene una máquina virtual con todo instalado: ROS Noetic/Humble Gazebo 11
-[ROS Noetic and ROS 2 Humble and Gazebo](https://www.mathworks.com/support/product/robotics/ros2-vm-installation-instructions-v9.html)
 
 
