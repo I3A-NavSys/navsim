@@ -7,8 +7,11 @@ Actualización 23/11/2023
 Matlab R2023b [es compatible](https://es.mathworks.com/help/ros/gs/ros-system-requirements.html) 
 con ROS2 versión Humble Hawksbill (LTS), 
 que [es compatible](https://gazebosim.org/docs/fortress/ros_installation) 
-con Gazebo versión GZ Fortress (LTS).
+con Gazebo versión GZ Fortress (LTS). 
+Sin embargo, esta versión está resultando muy inestable (en una máquina virtual). 
 
+Mathworks [recomienda](https://www.mathworks.com/support/product/robotics/ros2-vm-installation-instructions-v9.html)
+usar Gazebo 11 incluso con ROS2. Vamos a intentarlo.
 
 # Configuración de máquina
 
@@ -55,7 +58,7 @@ Lanzar un ejemplo
 ign gazebo lights.sdf
 ```
 
-En la máquina virtual puede que no se reproduzca bien. En tal caso ejecutarlo renderizando con ogre (en lugar de ogre2)
+En la máquina virtual puede que no se reproduzca bien (la imagen parpadea y no se muestran los objetos). En tal caso ejecutarlo renderizando con ogre (en lugar de ogre2)
 ```bash
 ign gazebo lights.sdf --render-engine ogre
 ```
