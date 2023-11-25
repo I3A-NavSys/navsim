@@ -92,8 +92,8 @@ Instalar puente ROS-Gazebo
 sudo apt install ros-humble-gazebo-ros-pkgs
 ```
 
-Comprobar que enlaza con ROS2 ejecutando
-```
+Comprobar que enlaza con ROS2 ejecutando un escenario vacio:
+```bash
 ros2 launch gazebo_ros gazebo.launch.py
 ros2 node list
 ros2 topic list
@@ -105,6 +105,14 @@ ros2 topic list
 sudo apt update
 sudo apt install git
 git --version
+```
+
+Opcionalmente, instalar GitHub Desktop:
+```bash
+wget -qO - https://apt.packages.shiftkey.dev/gpg.key | gpg --dearmor | sudo tee /usr/share/keyrings/shiftkey-packages.gpg > /dev/null
+sudo sh -c 'echo "deb [arch=amd64 signed-by=/usr/share/keyrings/shiftkey-packages.gpg] https://apt.packages.shiftkey.dev/ubuntu/ any main" > /etc/apt/sources.list.d/shiftkey-packages.list'
+sudo apt update
+sudo apt install github-desktop
 ```
 
 
