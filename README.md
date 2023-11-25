@@ -51,6 +51,8 @@ echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
 
 # Instalar Gazebo
 
+## Gazebo Fortress
+
 Instalar Gazebo Fortress (LTS) siguiendo los pasos de este [tutorial](https://gazebosim.org/docs/fortress/install_ubuntu).
 
 Lanzar un ejemplo
@@ -74,6 +76,15 @@ Probar los tutoriales básicos:
 
 [moving_robot](https://gazebosim.org/docs/fortress/moving_robot)
 
+
+# Gazebo 11 (classic Gazebo)
+
+
+```
+sudo apt install ros-humble-gazebo-ros-pkgs
+source /usr/share/gazebo/setup.sh
+ros2 launch gazebo_ros gazebo.launch.py
+```
 
 # Instalar Git
 
