@@ -45,7 +45,10 @@ Crear una máquina virtual con
 # Instalar ROS2 Humble Hawksbill (LTS)
 
 Seguir los pasos de este [tutorial](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debians.html).
-En el paso de asignar la fuente, podemos agregarla al bash:
+
+
+- No olvidar instalar las _Development tools_.
+- En el paso de asignar la fuente, podemos agregarla al bash:
 
 ```bash
 source /opt/ros/humble/setup.bash
