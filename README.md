@@ -59,7 +59,24 @@ Comprobar la instalación con el comando `ros2`.ros
 
 # Instalar Gazebo
 
-## Gazebo Fortress
+## Gazebo 11 (classic Gazebo)
+
+Se puede instalar directamente desde **Inicio/Ubuntu Software**.
+Comprobar la instalación ejecutando el comando `gazebo` en un terminal.
+
+Instalar puente ROS-Gazebo
+```bash
+sudo apt install ros-humble-gazebo-ros-pkgs
+```
+
+Comprobar que enlaza con ROS2 ejecutando un escenario vacio:
+```bash
+ros2 launch gazebo_ros gazebo.launch.py
+ros2 node list
+ros2 topic list
+```
+
+## Gazebo Fortress (omitir este paso)
 
 Instalar Gazebo Fortress (LTS) siguiendo los pasos de este [tutorial](https://gazebosim.org/docs/fortress/install_ubuntu).
 
@@ -85,22 +102,6 @@ Probar los tutoriales básicos:
 [moving_robot](https://gazebosim.org/docs/fortress/moving_robot)
 
 
-## Gazebo 11 (classic Gazebo)
-
-Se puede instalar directamente desde **Inicio/Ubuntu Software**.
-Comprobar la instalación ejecutando el comando `gazebo` en un terminal.
-
-Instalar puente ROS-Gazebo
-```bash
-sudo apt install ros-humble-gazebo-ros-pkgs
-```
-
-Comprobar que enlaza con ROS2 ejecutando un escenario vacio:
-```bash
-ros2 launch gazebo_ros gazebo.launch.py
-ros2 node list
-ros2 topic list
-```
 
 # Instalar Git
 
@@ -132,6 +133,8 @@ sudo apt install github-desktop
 Clonar el repositorio desde GitHub. Utilizar VS Code, o directamente en consola:
 
 ```bash
+mkdir -p ~/code/
+cd ~/code/
 git clone https://github.com/I3A-NavSys/utrafman_ros2
 ```
 
@@ -144,4 +147,4 @@ ign gazebo -v 0 tatami.world --render-engine ogre
 
 # MATLAB
 
-
+Instalar Matlab R2023b
