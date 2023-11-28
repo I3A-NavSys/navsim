@@ -128,7 +128,7 @@ sudo apt install github-desktop
 	- En Accounts (abajo a la izquierda, encima de la rueda dentada) pulsar _Authorize GitHub for VS Code_
 
 
-# Repositorio UTRAFMAN2
+# Repositorio UTRAFMAN_ROS2
 
 Clonar el repositorio desde GitHub. Utilizar VS Code, o directamente en consola:
 
@@ -137,6 +137,8 @@ mkdir -p ~/code/
 cd ~/code/
 git clone https://github.com/I3A-NavSys/utrafman_ros2
 ```
+
+
 
 Probar un mundo de ejemplo
 
