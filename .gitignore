@@ -1,3 +1,43 @@
+
+# ROS 2 specific
+/build/
+/install/
+/log/
+/ros2_ws/
+/local_setup.bash
+/local_setup.zsh
+/local_setup.sh
+/binary_dir/
+/db/
+/ros2-linux/
+
+# Python specific
+__pycache__/
+*.pyc
+*.pyo
+
+# Compiled Python files
+*.pyc
+*.pyo
+__pycache__/
+
+# Python virtual environments
+venv/
+
+# Other
+*.swp
+*.log
+*.sqlite3
+*.pyc
+*.pyo
+.DS_Store
+
+
+
+
+
+
+###################
 devel/
 logs/
 build/
