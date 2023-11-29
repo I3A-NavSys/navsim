@@ -34,12 +34,18 @@ de momento no tiene nada ejecutable, pero lo reconoce
 ros2 pkg list
 ```
 
-añadimos un plugin de mundo. lo compilamos y añadimos el compilado al path
+añadimos un plugin de mundo. 
+
+compilamos de nuevo desde el raiz
+
+añadimos el directorio resultante al path de Gazebo, escribiendo en bashrc:
 ```bash
-$ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/code/utrafman_ros2/utrafman_ws/src/utrafman_pkg/src/buildD
+export GAZEBO_PLUGIN_PATH=${GAZEBO_PLUGIN_PATH}:~/code/utrafman_ros2/utrafman_ws/install/utrafman_pkg/lib/utrafman_pkg/
 ```
-definimos un un mundo invocando dicho plugin. Lo abrimos en Gazebo y vemos el resultado.
+
+finalmente, definimos un mundo invocando dicho plugin. Lo abrimos en Gazebo y vemos el resultado.
 ```bash
+cd ~/code/utrafman_ros2/utrafman_ws/src/utrafman_pkg/worlds/
 clear; gazebo --verbose hello.world
 ```
 
