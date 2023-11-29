@@ -1,63 +1,80 @@
 <?xml version="1.0" ?>
-<sdf version="1.5">
+<sdf version="1.6">
 
 <world name="tatami">      
-    
+
+<!-- iluminación básica -->
+<include>
+    <uri>model://sun</uri>
+</include>
+
+
+<!-- rejilla del suelo -->
+<!-- <include>
+    <uri>model://ground_plane</uri>
+</include> -->
+
+
 
 <!-- Area de juego -->
 <include>
-    <uri>../models/DCmodels/ground_plane/model.sdf</uri>
+    <name>tatami</name>
+    <uri>../models/DCmodels/tatami</uri>
 </include>
 
 
-<!-- Base de aterrizaje -->
+
+<!-- base de aterrizaje -->
 <include>
-    <name>base_drone</name>
-    <uri>../models/DCmodels/base_drone/model.sdf</uri>
+    <name>vertiport</name>
+    <uri>../models/DCmodels/base_drone</uri>
     <pose>-3 -3 0.26 0 0 0</pose>
 </include>  
 
-
-<!-- UAV -->
-<include>
-    <name>abejorro</name>
-    <uri>../models/DCmodels/drone/model.sdf</uri>
-    <pose>-3 -3 0.55 0 0 1</pose>
-    <static>false</static>
-</include>
 
 
 <!-- Frames -->
 <include>
     <name>frame_red</name>
-    <uri>../models/DCmodels/frame_red/model.sdf</uri>
+    <uri>../models/DCmodels/frame_red</uri>
     <pose>3 2 2 0 0 1</pose>
 </include>    
-
 <include>
     <name>frame_green</name>
-    <uri>../models/DCmodels/frame_green/model.sdf</uri>
+    <uri>../models/DCmodels/frame_green</uri>
     <pose>-2 1 0.5 0 0 2</pose>
 </include>    
-
 <include>
     <name>frame_blue</name>
-    <uri>../models/DCmodels/frame_blue/model.sdf</uri>
+    <uri>../models/DCmodels/frame_blue</uri>
     <pose>3 -1 1 0 0 3</pose>
 </include>    
 
 
+<!-- UAV -->
+<include>
+    <name>abejorro</name>
+    <uri>../models/DCmodels/drone</uri>
+    <pose>-3 -3 0.55 0 0 1</pose>
+</include>
+
+
+
+
 <!-- Coordinates -->   
+<!-- 
 <spherical_coordinates>
     <surface_model>EARTH_WGS84</surface_model>
     <latitude_deg>0</latitude_deg>
     <longitude_deg>0</longitude_deg>
     <elevation>0</elevation>
     <heading_deg>0</heading_deg>
-</spherical_coordinates>
+</spherical_coordinates> 
+-->
 
 
 <!-- Lights -->
+<!-- 
 <scene>
     <ambient>0.5 0.5 0.5 1.0</ambient>
     <shadows>true</shadows>
@@ -73,16 +90,32 @@
         <constant>1</constant>
     </attenuation>
     <direction>-0.5 0.1 -0.9</direction>
-</light>
+</light> 
+-->
 
 
 <!-- Own physics settings to speed up simulation -->
+<!--
 <physics type='ode'>
     <max_step_size>0.01</max_step_size>
     <real_time_factor>1.0</real_time_factor>
     <real_time_update_rate>100</real_time_update_rate>
     <gravity>0 0 -9.8</gravity>
-</physics>
+</physics> 
+-->
+
+
+<!-- Coordinates -->   
+<!-- 
+<spherical_coordinates>
+    <surface_model>EARTH_WGS84</surface_model>
+    <latitude_deg>0</latitude_deg>
+    <longitude_deg>0</longitude_deg>
+    <elevation>0</elevation>
+    <heading_deg>0</heading_deg>
+</spherical_coordinates> 
+-->
+
 
 
 </world>
