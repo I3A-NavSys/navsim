@@ -3,15 +3,14 @@
 clc; clear;
 
 
-
-
 if isunix  %Unix computer
 
+    PLATFORM = 'glnxa64';
     UTRAFMAN_DIR = '~/code/utrafman_ros2/'; %Set it with your repo installation path
-    addpath(fullfile(UTRAFMAN_DIR,'utrafman_ws/src/utrafman_pkg/src/matlab_msg_gen_ros1/glnxa64/install/m/'));
 
 elseif ispc %Windows computer
 
+    PLATFORM = 'win64';
     switch getenv("USERNAME")
         case 'Rafael.Casado'
             UTRAFMAN_DIR = 'c:\Users\Rafael.Casado\OneDrive - Universidad de Castilla-La Mancha\NavSys\code\utrafman_ros2\';
@@ -20,19 +19,12 @@ elseif ispc %Windows computer
         otherwise
             error('Windows user not defined in file UTRAFMAN_init.m');
     end
-    addpath(fullfile(UTRAFMAN_DIR,'utrafman_ws\src\utrafman_pkg\src\matlab_msg_gen_ros1\win64\install\m\'));
 
 end
 
-addpath(genpath(fullfile(UTRAFMAN_DIR,'matlab/')));
 
-
-
-
-
-rosgenmsg(fullfile(UTRAFMAN_DIR,'utrafman_ws/src/utrafman_pkg/src/'));
-
-addpath(fullfile(UTRAFMAN_DIR,'gazebo-ros/src/matlab_msg_gen_ros1/glnxa64/install/m'));
+ros2genmsg(fullfile(UTRAFMAN_DIR,'utrafman_ws/src/utrafman_pkg/interfaces'));
+addpath(fullfile(UTRAFMAN_DIR,'utrafman_ws/src/utrafman_pkg/interfaces/matlab_msg_gen/',PLATFORM,'/install/m/'));
 
 clear classes
 rehash toolboxcache

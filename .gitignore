@@ -1,8 +1,9 @@
+# UTRAFMAN specific
 
 # ROS 2 specific
 /build/
-/utrafman_ws/install/
-/log/
+utrafman_ws/install/
+utrafman_ws/log/
 /ros2_ws/
 /local_setup.bash
 /local_setup.zsh
@@ -10,6 +11,9 @@
 /binary_dir/
 /db/
 /ros2-linux/
+
+# MATLAB ROS generated message
+matlab_msg_gen
 
 # Python specific
 __pycache__/
@@ -89,3 +93,4 @@ qtcreator-*
 
 # Catkin custom files
 CATKIN_IGNORE
+
