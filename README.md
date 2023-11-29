@@ -143,8 +143,9 @@ git clone https://github.com/I3A-NavSys/utrafman_ros2
 Probar un mundo de ejemplo
 
 ```bash
-cd utrafman_ros2/worlds/
-ign gazebo -v 0 tatami.world --render-engine ogre
+cd ~/code/utrafman_ros2/utrafma_ws/src/utrafman_pkg/worlds/
+clear; gazebo --verbose tatami.world
+clear; gazebo --verbose generated_city.world
 ```
 
 # MATLAB
