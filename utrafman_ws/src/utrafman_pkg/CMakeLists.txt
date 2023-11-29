@@ -10,6 +10,11 @@ find_package(ament_cmake REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
+find_package(gazebo_ros    REQUIRED)
+find_package(gazebo_msgs   REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(Eigen3        REQUIRED)
+
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -24,4 +29,64 @@ if(BUILD_TESTING)
 endif()
 
 
+
+# Declare ROS 2 package
 ament_package()
+
+
+# Include directories
+include_directories(
+  ${GAZEBO_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIRS}
+)
+
+# Link directories
+link_directories(${GAZEBO_LIBRARY_DIRS})
+
+
+# Set compiler flags
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEBO_CXX_FLAGS}")
+
+
+# Add ROS 2 libraries
+set(ROS_LIBS
+  rclcpp
+  std_msgs
+  geometry_msgs
+  gazebo_ros
+  #message_generation
+)
+
+# Add executable targets
+# add_library(DroneControl SHARED src/dronecontrol.cc)
+# ament_target_dependencies(DroneControl ${ROS_LIBS})
+# target_link_libraries(DroneControl ${GAZEBO_LIBRARIES})
+
+add_library(UTRAFMAN_gazebo SHARED src/utrafman_gazebo.cc)
+ament_target_dependencies(UTRAFMAN_gazebo ${ROS_LIBS})
+target_link_libraries(UTRAFMAN_gazebo ${GAZEBO_LIBRARIES})
+
+add_library(HELLO_WORLD SHARED src/hello_world.cc)
+ament_target_dependencies(HELLO_WORLD ${ROS_LIBS})
+target_link_libraries(HELLO_WORLD ${GAZEBO_LIBRARIES})
+
+
+# Install targets
+install(
+  TARGETS
+#    DroneControl
+    UTRAFMAN_gazebo
+    HELLO_WORLD
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+
+
+
+
+# Install directories
+# install(
+#   DIRECTORY launch
+#   DESTINATION share/${PROJECT_NAME}
+# )
+

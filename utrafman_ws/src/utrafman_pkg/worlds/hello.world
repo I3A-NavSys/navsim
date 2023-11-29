@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <sdf version="1.4">
   <world name="default">
-    <plugin name="hello_world" filename="libhello_world.so"/>
+    <plugin name="hello_world" filename="libHELLO_WORLD.so"/>
   </world>
 </sdf>
