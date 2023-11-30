@@ -23,8 +23,8 @@ elseif ispc %Windows computer
 end
 
 
-ros2genmsg(fullfile(UTRAFMAN_DIR,'utrafman_ws/src/utrafman_pkg/interfaces'));
-addpath(fullfile(UTRAFMAN_DIR,'utrafman_ws/src/utrafman_pkg/interfaces/matlab_msg_gen/',PLATFORM,'/install/m/'));
+ros2genmsg(fullfile(UTRAFMAN_DIR,'utrafman_ws/src/'));
+addpath(fullfile(UTRAFMAN_DIR,'utrafman_ws/src/matlab_msg_gen/',PLATFORM,'/install/m/'));
 
 clear classes
 rehash toolboxcache

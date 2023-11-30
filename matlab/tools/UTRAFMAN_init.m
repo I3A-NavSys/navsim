@@ -27,5 +27,5 @@ end
 
 
 addpath(genpath(fullfile(UTRAFMAN_DIR,'matlab/')));
-addpath(fullfile(UTRAFMAN_DIR,'utrafman_ws/src/utrafman_pkg/interfaces/matlab_msg_gen/',PLATFORM,'/install/m/'));
+addpath(fullfile(UTRAFMAN_DIR,'utrafman_ws/src/matlab_msg_gen/',PLATFORM,'/install/m/'));
 
