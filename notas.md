@@ -10,23 +10,30 @@ despues creamos paquetes dentro
 ```bash
 cd src
 ros2 pkg create utrafman_pkg
+ros2 pkg create utrafman_msgs
 ```
 
-compilar de nuevo
+compilar de nuevo. ya debe indicar dos paquetes compilados. 
 ```bash
 cd ~/code/utrafman_ros2
 colcon build --symlink-install
 ```
 
-ya indica un paquete compilado. ahora lo añadimos al bash
+Ahora configuramos bash para que nuestro espacio de trabajo actúe como ROS overlayer, dejando a Humble como ROS underlayer:
 ```bash
 echo "source ~/code/utrafman_ros2/install/setup.bash" >> ~/.bashrc
 source ~/.bashrc
 ```
 
-observamos nuestro paquete en la lista reconocida por ROS2
+observamos nuestros paquetes en la lista reconocida por ROS2
 ```bash
 ros2 pkg list
+```
+
+cosas utiles para comprobar la generación de mensajes ROS:
+```bash
+ros2 pkg list | grep utrafman_interfaces
+ros2 interface list | grep "utrafman_interfaces/"
 ```
 
 de momento no tiene nada ejecutable, pero lo reconoce
