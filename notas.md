@@ -34,6 +34,7 @@ cosas utiles para comprobar la generación de mensajes ROS:
 ```bash
 ros2 pkg list | grep utrafman_interfaces
 ros2 interface list | grep "utrafman_interfaces/"
+ros2 interface show utrafman_interfaces/msg/Operator
 ```
 
 de momento no tiene nada ejecutable, pero lo reconoce
