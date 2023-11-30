@@ -1,8 +1,9 @@
 # UTRAFMAN specific
 
 # ROS 2 specific
-/build/
-utrafman_ws/install/
+build
+install
+/utrafman_ws/log/
 utrafman_ws/log/
 /ros2_ws/
 /local_setup.bash
