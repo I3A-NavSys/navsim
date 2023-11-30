@@ -6,14 +6,26 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 # find dependencies
-find_package(ament_cmake REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
+find_package(ament_cmake   REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
 find_package(gazebo_ros    REQUIRED)
 find_package(gazebo_msgs   REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(Eigen3        REQUIRED)
+
+
+
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "msg/Operator.msg"
+  "msg/UAV.msg"
+  "msg/Telemetry.msg"
+  "msg/Waypoint.msg"
+  "msg/Uplan.msg"
+  DEPENDENCIES geometry_msgs builtin_interfaces
+)
 
 
 if(BUILD_TESTING)
@@ -52,12 +64,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEBO_CXX_FLAGS}")
 set(ROS_LIBS
   rclcpp
   std_msgs
-  geometry_msgs
   gazebo_ros
-  #message_generation
+#  geometry_msgs
 )
 
 # Add executable targets
+
 # add_library(DroneControl SHARED src/dronecontrol.cc)
 # ament_target_dependencies(DroneControl ${ROS_LIBS})
 # target_link_libraries(DroneControl ${GAZEBO_LIBRARIES})

@@ -15,7 +15,9 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Operator.msg"
   "msg/UAV.msg"
   "msg/Telemetry.msg"
-  DEPENDENCIES geometry_msgs # Add packages that above messages depend on, in this case geometry_msgs for Sphere.msg
+  "msg/Waypoint.msg"
+  "msg/Uplan.msg"
+  DEPENDENCIES geometry_msgs builtin_interfaces
 )
 
 

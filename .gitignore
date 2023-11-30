@@ -3,8 +3,7 @@
 # ROS 2 specific
 build
 install
-/utrafman_ws/log/
-utrafman_ws/log/
+log
 /ros2_ws/
 /local_setup.bash
 /local_setup.zsh

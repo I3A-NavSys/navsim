@@ -1,5 +1,5 @@
-#geometry_msgs/msg/Pose  pose
-#geometry_msgs/msg/Twist velocity
+geometry_msgs/Pose  pose
+geometry_msgs/Twist velocity
 uint16 wip
 bool   fpip
 builtin_interfaces/Time time
