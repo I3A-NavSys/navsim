@@ -24,6 +24,20 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Telemetry.msg"
   "msg/Waypoint.msg"
   "msg/Uplan.msg"
+
+  "srv/DeployUAV.srv"
+  "srv/TranslateUAV.srv"
+  "srv/RemoveUAV.srv"
+
+  "srv/RegisterOperator.srv"
+  "srv/RegisterUAV.srv"
+  "srv/RegisterFP.srv"
+  "srv/GetOperators.srv"
+  "srv/GetUAVs.srv"
+  "srv/GetFPs.srv"
+  
+  "srv/GetTelemetry.srv"
+  
   DEPENDENCIES geometry_msgs builtin_interfaces
 )
 

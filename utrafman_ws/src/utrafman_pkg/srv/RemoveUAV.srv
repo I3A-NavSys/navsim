@@ -1,3 +1,3 @@
-int16 uavId
+int16 id
 ---
 std_msgs/Bool success
