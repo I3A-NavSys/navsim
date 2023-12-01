@@ -27,14 +27,13 @@ source ~/.bashrc
 
 observamos nuestros paquetes en la lista reconocida por ROS2
 ```bash
-ros2 pkg list
+ros2 pkg list | grep utrafman
 ```
 
 cosas utiles para comprobar la generación de mensajes ROS:
 ```bash
-ros2 pkg list | grep utrafman_interfaces
-ros2 interface list | grep "utrafman_interfaces/"
-ros2 interface show utrafman_interfaces/msg/Operator
+ros2 interface list | grep utrafman
+ros2 interface show utrafman_msgs/msg/Operator
 ```
 
 de momento no tiene nada ejecutable, pero lo reconoce
