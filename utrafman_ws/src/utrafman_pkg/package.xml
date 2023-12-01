@@ -3,16 +3,15 @@
 <package format="3">
   <name>utrafman_pkg</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>This package includes gazebo plugins, worlds and models implemented by UTRAFMAN</description>
   <maintainer email="rafael.casado@uclm.es">usuario</maintainer>
-  <license>TODO: License declaration</license>
+  <license>MIT Licence</license>
 
 
 <!-- Dependencias para construcción -->
   <buildtool_depend>ament_cmake</buildtool_depend>
   <build_depend>rosidl_default_generators</build_depend>
-  <build_depend>gazebo_msgs</build_depend>
-  <build_depend>geometry_msgs</build_depend>  
+  <build_depend>utrafman_msgs</build_depend>  
   
 <!-- Dependencias para testeo -->
   <test_depend>ament_lint_auto</test_depend>
@@ -20,12 +19,10 @@
 
   <!-- Dependencias para ejecución -->
   <exec_depend>rosidl_default_runtime</exec_depend>
-  <exec_depend>geometry_msgs</exec_depend> 
+  <exec_depend>utrafman_msgs</exec_depend> 
 
-
-  <member_of_group>rosidl_interface_packages</member_of_group>
  
   <export>
-      <build_type>ament_cmake</build_type>
+    <build_type>ament_cmake</build_type>
   </export>
 </package>

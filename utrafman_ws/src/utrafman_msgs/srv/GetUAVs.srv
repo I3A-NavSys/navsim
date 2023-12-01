@@ -1,6 +1,6 @@
 int16 id
 ---
-utrafman_pkg/Uplan[] fps
+utrafman_msgs/UAV[] uavs
 
 # esto devuelve muchos?
 # estudiar que solo devuelva uno

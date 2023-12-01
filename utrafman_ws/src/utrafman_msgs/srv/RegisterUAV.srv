@@ -1,0 +1,4 @@
+utrafman_msgs/UAV uav
+float32[] init_pos
+---
+utrafman_msgs/UAV uav 

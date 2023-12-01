@@ -17,7 +17,11 @@
 // #include "ros/callback_queue.h"
 // #include "ros/subscribe_options.h"
 
-//#include "utrafman/deploy_UAV.h"
+#include "utrafman_msgs/srv/deploy_uav.hpp"
+// #include "/home/usuario/code/utrafman_ros2/utrafman_ws/install/utrafman_pkg/include/utrafman_pkg/utrafman_pkg/srv/deploy_uav.hpp"
+
+
+// #include "utrafman/deploy_UAV.h"
 // #include "utrafman/remove_model.h"
 // #include "utrafman/teletransport.h"
 
@@ -36,6 +40,9 @@ namespace gazebo
             rclcpp::Node::SharedPtr rosNode;
 
             // //ROS services
+            // rclcpp::Service<utrafman_pkg::srv::DeployUAV>::SharedPtr DeployUAV_service;
+
+
             // ros::ServiceServer insert_service;
             // ros::ServiceServer transport_service;
             // ros::ServiceServer remove_service;
@@ -46,7 +53,24 @@ namespace gazebo
 
         public:
 
-            // bool insert_callback(utrafman::deploy_UAV::Request &req, utrafman::deploy_UAV::Response &res) {
+            // bool handleService(
+            //                 const std::shared_ptr<rmw_request_id_t> request_header,
+            //                 const std::shared_ptr<utrafman_pkg::srv::DeployUAV::Request>  request,
+            //                       std::shared_ptr<utrafman_pkg::srv::DeployUAV::Response> response)
+            // {
+            //     // Aquí implementa la lógica de tu servicio
+            //     gzmsg << "Recibida solicitud de servicio con argumento: " << request->argumento << std::endl;
+
+            //     // Puedes realizar alguna lógica aquí y enviar una respuesta
+            //     response->status = true;
+
+            //     // Retorna true si el servicio se manejó correctamente
+            //     return true;
+            // }
+
+
+
+            // bool deployUAV_Service(utrafman::deploy_UAV::Request &req, utrafman::deploy_UAV::Response &res) {
             //     //SDF object, model pointer and model string from the request
             //     sdf::SDF sdf_object;
             //     sdf::ElementPtr model_ptr;
@@ -126,6 +150,7 @@ namespace gazebo
                 gzmsg << "UTRAFMAN gazebo plugin loaded" << std::endl;
 
 
+
                 //Store world pointer
                 this->parent = _parent;
 
@@ -137,7 +162,14 @@ namespace gazebo
                 }
 
                 // Create a ROS 2 node
-                this->rosNode = std::make_shared<rclcpp::Node>("UTRAFMANsim");
+                this->rosNode = std::make_shared<rclcpp::Node>("UTRAFMANsimd");
+
+
+                // Crear el servicio
+                // this->DeployUAV_service = this->rosNode->create_service<utrafman_pkg::srv::DeployUAV>(
+                //     "deploy_uav", std::bind(&UTRAFMAN_gazebo::handleService, this,
+                //                                 std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+
 
 
                 // this->insert_service = this->rosNode->advertiseService("/utm/airspace/deploy_UAV", &UTRAFMAN_gazebo::insert_callback, this);
@@ -145,6 +177,11 @@ namespace gazebo
                 // this->transport_service = this->rosNode->advertiseService("/godservice/transport_model", &UTRAFMAN_gazebo::transport_callback, this);
 
             }
+
+
+   
+
+
     };
 
     // Register this plugin with the simulator

@@ -1,4 +1,4 @@
-uint16 flight_plan_id
+uint16 id
 uint8  status
 int8   priority
 
@@ -7,4 +7,4 @@ uint16 drone_id
 
 uint32 dtto
 
-utrafman_interfaces/Waypoint[] route
+utrafman_msgs/Waypoint[] route

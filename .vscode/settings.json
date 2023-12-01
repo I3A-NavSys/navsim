@@ -1,3 +1,6 @@
 {
-    "cmake.sourceDirectory": "/home/usuario/code/utrafman_ros2/utrafman_ws/src/utrafman_pkg"
+    "cmake.sourceDirectory": "/home/usuario/code/utrafman_ros2/utrafman_ws/src/utrafman_pkg",
+    "files.associations": {
+        "functional": "cpp"
+    },
 }

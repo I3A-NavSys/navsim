@@ -6,40 +6,16 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 # find dependencies
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
 find_package(ament_cmake   REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
+find_package(Eigen3        REQUIRED)
 find_package(gazebo_ros    REQUIRED)
 find_package(gazebo_msgs   REQUIRED)
 find_package(geometry_msgs REQUIRED)
-find_package(Eigen3        REQUIRED)
+find_package(utrafman_msgs REQUIRED)
 
 
 
-rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/Operator.msg"
-  "msg/UAV.msg"
-  "msg/Telemetry.msg"
-  "msg/Waypoint.msg"
-  "msg/Uplan.msg"
-
-  "srv/DeployUAV.srv"
-  "srv/TranslateUAV.srv"
-  "srv/RemoveUAV.srv"
-
-  "srv/RegisterOperator.srv"
-  "srv/RegisterUAV.srv"
-  "srv/RegisterFP.srv"
-  "srv/GetOperators.srv"
-  "srv/GetUAVs.srv"
-  "srv/GetFPs.srv"
-  
-  "srv/GetTelemetry.srv"
-  
-  DEPENDENCIES geometry_msgs builtin_interfaces
-)
 
 
 if(BUILD_TESTING)
@@ -66,6 +42,16 @@ include_directories(
   ${EIGEN3_INCLUDE_DIRS}
 )
 
+
+
+# Add header files for ROS2 UTRAFMAN messages and services
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../build/utrafman_msgs/rosidl_generator_cpp/)
+#message("=====================UTRAFMAN ==== CMAKE_CURRENT_SOURCE_DIR  =  ${CMAKE_CURRENT_SOURCE_DIR}")
+# ¡¡Este mensaje no sale por pantalla. Sale en la consola de Visual Studio Code!!
+
+
+
+
 # Link directories
 link_directories(${GAZEBO_LIBRARY_DIRS})
 
@@ -82,6 +68,8 @@ set(ROS_LIBS
 #  geometry_msgs
 )
 
+
+
 # Add executable targets
 
 # add_library(DroneControl SHARED src/dronecontrol.cc)
@@ -97,6 +85,8 @@ ament_target_dependencies(HELLO_WORLD ${ROS_LIBS})
 target_link_libraries(HELLO_WORLD ${GAZEBO_LIBRARIES})
 
 
+
+
 # Install targets
 install(
   TARGETS
@@ -105,8 +95,6 @@ install(
     HELLO_WORLD
   DESTINATION lib/${PROJECT_NAME}
 )
-
-
 
 
 

@@ -1,11 +1,11 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>utrafman_interfaces</name>
+  <name>utrafman_msgs</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>This package includes all the messages for topics and services implemented by UTRAFMAN</description>
   <maintainer email="rafael.casado@uclm.es">usuario</maintainer>
-  <license>TODO: License declaration</license>
+  <license>MIT licence</license>
 
 
 

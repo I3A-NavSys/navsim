@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(utrafman_interfaces)
+project(utrafman_msgs)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -8,7 +8,10 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
+find_package(gazebo_ros    REQUIRED)
+find_package(gazebo_msgs   REQUIRED)
 find_package(geometry_msgs REQUIRED)
+
 
 
 rosidl_generate_interfaces(${PROJECT_NAME}
@@ -17,8 +20,23 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Telemetry.msg"
   "msg/Waypoint.msg"
   "msg/Uplan.msg"
+
+  "srv/DeployUAV.srv"
+  "srv/TranslateUAV.srv"
+  "srv/RemoveUAV.srv"
+
+  "srv/RegisterOperator.srv"
+  "srv/RegisterUAV.srv"
+  "srv/RegisterFP.srv"
+  "srv/GetOperators.srv"
+  "srv/GetUAVs.srv"
+  "srv/GetFPs.srv"
+  
+  "srv/GetTelemetry.srv"
+  
   DEPENDENCIES geometry_msgs builtin_interfaces
 )
+
 
 
 # uncomment the following section in order to fill in
