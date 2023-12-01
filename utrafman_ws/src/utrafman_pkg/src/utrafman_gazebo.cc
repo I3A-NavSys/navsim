@@ -1,16 +1,12 @@
-#include <ignition/math/Pose3.hh>
-#include <boost/format.hpp>
+#include "rclcpp/rclcpp.hpp"
+// #include <boost/format.hpp>
+// #include <ignition/math/Pose3.hh>
 
-#include "gazebo/gazebo.hh"
+// #include "gazebo/gazebo.hh"
 #include "gazebo/common/common.hh"
 #include "gazebo/physics/physics.hh"
 //#include "gazebo_msgs/srv/delete_entity.hpp"
 
-
-#include "rclcpp/rclcpp.hpp"
-
-
- 
 // #include "ros/ros.h"
 // #include "std_msgs/String.h"
 // #include "std_msgs/Bool.h"
@@ -18,9 +14,6 @@
 // #include "ros/subscribe_options.h"
 
 #include "utrafman_msgs/srv/deploy_uav.hpp"
-// #include "/home/usuario/code/utrafman_ros2/utrafman_ws/install/utrafman_pkg/include/utrafman_pkg/utrafman_pkg/srv/deploy_uav.hpp"
-
-
 // #include "utrafman/deploy_UAV.h"
 // #include "utrafman/remove_model.h"
 // #include "utrafman/teletransport.h"
@@ -40,7 +33,8 @@ namespace gazebo
             rclcpp::Node::SharedPtr rosNode;
 
             // //ROS services
-            // rclcpp::Service<utrafman_pkg::srv::DeployUAV>::SharedPtr DeployUAV_service;
+            rclcpp::Service<utrafman_msgs::srv::DeployUAV>::SharedPtr DeployUAV_service;
+
 
 
             // ros::ServiceServer insert_service;
@@ -144,6 +138,22 @@ namespace gazebo
             // }
 
 
+
+
+  
+            void handleDeployUAV(const std::shared_ptr<rmw_request_id_t> request_header,
+                                 const std::shared_ptr<utrafman_msgs::srv::DeployUAV::Request>  request,   
+                                       std::shared_ptr<utrafman_msgs::srv::DeployUAV::Response> response)  
+            {
+                // printf("%s",request->model_sdf);
+                // RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Incoming request");                                         
+                // RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "sending back response: [%ld]", (long int)response->status);
+                response->status = true;
+            }
+
+
+
+
             void Load(physics::WorldPtr _parent, sdf::ElementPtr /*_sdf*/)
             {
             
@@ -162,13 +172,20 @@ namespace gazebo
                 }
 
                 // Create a ROS 2 node
-                this->rosNode = std::make_shared<rclcpp::Node>("UTRAFMANsimd");
+                this->rosNode = rclcpp::Node::make_shared("UTRAFMAN_Gazebo_node");
+
+                // Create the service
+                this->DeployUAV_service = this->rosNode->create_service<utrafman_msgs::srv::DeployUAV>(
+                    "deploy_uav",
+                    std::bind(&UTRAFMAN_gazebo::handleDeployUAV, this,
+                            std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
 
-                // Crear el servicio
-                // this->DeployUAV_service = this->rosNode->create_service<utrafman_pkg::srv::DeployUAV>(
-                //     "deploy_uav", std::bind(&UTRAFMAN_gazebo::handleService, this,
-                //                                 std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+
+                // // Crear el servicio
+                // this->DeployUAV_service = this->rosNode->create_service<utrafman_msgs::srv::DeployUAV>(
+                //     "deploy_uav", 
+                //     std::bind(&UTRAFMAN_gazebo::handleDeployUAV, this, std::placeholders::_1, std::placeholders::_2));
 
 
 
@@ -179,7 +196,21 @@ namespace gazebo
             }
 
 
-   
+
+            // // Función de manejo del servicio
+            // void handleDeployUAV(
+            //     const std::shared_ptr<rmw_request_id_t> request_header,
+            //     const std::shared_ptr<utrafman_msgs::srv::DeployUAV::Request> request,
+            //     const std::shared_ptr<utrafman_msgs::srv::DeployUAV::Response> response)
+            // {
+            //     // Implementa la lógica de manejo del servicio aquí
+
+            //     // Puedes acceder a los datos del request y escribir en el response
+            //     // request->model_sdf y response->status
+
+            //     // Por ejemplo, establecer una respuesta exitosa
+            //     response->status = true;
+            // }   
 
 
     };
