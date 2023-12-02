@@ -14,7 +14,7 @@
 // #include "ros/subscribe_options.h"
 
 #include "utrafman_msgs/srv/deploy_uav.hpp"
-#include "utrafman_msgs/srv/example.hpp"
+#include "utrafman_msgs/srv/test.hpp"
 // #include "utrafman/deploy_UAV.h"
 // #include "utrafman/remove_model.h"
 // #include "utrafman/teletransport.h"
@@ -34,7 +34,7 @@ namespace gazebo
             rclcpp::Node::SharedPtr rosNode;
 
             // //ROS services
-            rclcpp::Service<utrafman_msgs::srv::Example>::SharedPtr rosSrv;
+            rclcpp::Service<utrafman_msgs::srv::Test>::SharedPtr rosSrv_Test;
 
 
 
@@ -145,7 +145,7 @@ namespace gazebo
             void Load(physics::WorldPtr _parent, sdf::ElementPtr /*_sdf*/)
             {
             
-                gzmsg << "UTRAFMAN gazebo plugin loaded" << std::endl;
+                gzmsg << "UTRAFMAN Gazebo plugin loaded" << std::endl;
 
 
 
@@ -160,14 +160,13 @@ namespace gazebo
                 }
 
                 // Create a ROS 2 node
-                this->rosNode = rclcpp::Node::make_shared("UTRAFMAN_Gazebo_node");
+                this->rosNode = rclcpp::Node::make_shared("utrafman_node");
 
                 // Create the service
-                this->rosSrv = this->rosNode->create_service<utrafman_msgs::srv::Example>(
-                    "example",
-                    std::bind(&utrafman_gazebo::handleExample, this,
+                this->rosSrv_Test = this->rosNode->create_service<utrafman_msgs::srv::Test>(
+                    "utrafman/Test",
+                    std::bind(&utrafman_gazebo::handleExample2, this,
                             std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-
 
 
 
@@ -187,12 +186,12 @@ namespace gazebo
 
 
   
-            void handleExample(
+            void handleExample2(
                 const std::shared_ptr<rmw_request_id_t> request_header,
-                const std::shared_ptr<utrafman_msgs::srv::Example::Request>  request,   
-                      std::shared_ptr<utrafman_msgs::srv::Example::Response> response)  
+                const std::shared_ptr<utrafman_msgs::srv::Test::Request>  request,   
+                      std::shared_ptr<utrafman_msgs::srv::Test::Response> response)  
             {
-                gzmsg << "UTRAFMAN gazebo service  EXAMPLE invoqued" << std::endl;
+                gzmsg << "UTRAFMAN service invoqued: Test" << std::endl;
 
                 response->sum = request->a + request->b;
             }
