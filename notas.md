@@ -34,6 +34,7 @@ cosas utiles para comprobar la generación de mensajes ROS:
 ```bash
 ros2 interface list | grep utrafman
 ros2 interface show utrafman_msgs/msg/Operator
+
 ```
 
 de momento no tiene nada ejecutable, pero lo reconoce
@@ -45,9 +46,18 @@ añadimos un plugin de mundo.
 
 compilamos de nuevo desde el raiz
 
-añadimos el directorio resultante al path de Gazebo, escribiendo en bashrc:
+añadimos las librerias resultantes al path de Gazebo, escribiendo en bashrc:
 ```bash
 export GAZEBO_PLUGIN_PATH=${GAZEBO_PLUGIN_PATH}:~/code/utrafman_ros2/utrafman_ws/install/utrafman_pkg/lib/utrafman_pkg/
+export GAZEBO_PLUGIN_PATH=${GAZEBO_PLUGIN_PATH}:~/code/utrafman_ros2/utrafman_ws/install/utrafman_msgs/lib/
+```
+
+Al final, el bashrc tiene que tener todo esto:
+´´´bash
+source /opt/ros/humble/setup.bash
+source ~/code/utrafman_ros2/utrafman_ws/install/setup.bash
+export GAZEBO_PLUGIN_PATH=${GAZEBO_PLUGIN_PATH}:~/code/utrafman_ros2/utrafman_ws/install/utrafman_pkg/lib/utrafman_pkg/
+export GAZEBO_PLUGIN_PATH=${GAZEBO_PLUGIN_PATH}:~/code/utrafman_ros2/utrafman_ws/install/utrafman_msgs/lib/
 ```
 
 finalmente, definimos un mundo invocando dicho plugin. Lo abrimos en Gazebo y vemos el resultado.
