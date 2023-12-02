@@ -15,7 +15,7 @@ elseif ispc %Windows computer
         case 'Rafael.Casado'
             UTRAFMAN_DIR = 'c:\Users\Rafael.Casado\OneDrive - Universidad de Castilla-La Mancha\NavSys\code\utrafman_ros2\';
         case 'Rafa'
-            UTRAFMAN_DIR = 'c:\Users\Rafa\OneDrive - Universidad de Castilla-La Mancha\NavSys\code\utrafman_ros2\';
+            UTRAFMAN_DIR = 'c:\Users\Rafa\code\utrafman_ros2\';
         otherwise
             error('Windows user not defined in file UTRAFMAN_init.m');
     end
