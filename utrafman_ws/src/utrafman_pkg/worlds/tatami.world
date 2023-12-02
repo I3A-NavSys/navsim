@@ -3,6 +3,11 @@
 
 <world name="tatami">      
 
+
+<!-- World plugin (to spawn and remove UAVs and models) -->
+<plugin name="UTRAFMAN_gazebo" filename="libUTRAFMAN_gazebo.so" />
+
+
 <!-- iluminación básica -->
 <include>
     <uri>model://sun</uri>

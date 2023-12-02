@@ -2,7 +2,7 @@
 // #include <boost/format.hpp>
 // #include <ignition/math/Pose3.hh>
 
-// #include "gazebo/gazebo.hh"
+#include "gazebo/gazebo.hh"
 #include "gazebo/common/common.hh"
 #include "gazebo/physics/physics.hh"
 //#include "gazebo_msgs/srv/delete_entity.hpp"
@@ -13,8 +13,8 @@
 // #include "ros/callback_queue.h"
 // #include "ros/subscribe_options.h"
 
-#include "utrafman_msgs/srv/deploy_uav.hpp"
 #include "utrafman_msgs/srv/test.hpp"
+#include "utrafman_msgs/srv/deploy_uav.hpp"
 // #include "utrafman/deploy_UAV.h"
 // #include "utrafman/remove_model.h"
 // #include "utrafman/teletransport.h"
@@ -28,17 +28,15 @@ namespace gazebo
             // //Number of UAVs in the simulation
             // int num_uavs = 0;
 
-            //World pointer
-            physics::WorldPtr parent;
-            //ROS node handle
+            //Gazebo
+            physics::WorldPtr world;
+            event::ConnectionPtr updateConnection;
+
+            //ROS 
             rclcpp::Node::SharedPtr rosNode;
-
-            // //ROS services
             rclcpp::Service<utrafman_msgs::srv::Test>::SharedPtr rosSrv_Test;
+            rclcpp::Service<utrafman_msgs::srv::DeployUAV>::SharedPtr rosSrv_DeployUAV;
 
-
-
-            // ros::ServiceServer insert_service;
             // ros::ServiceServer transport_service;
             // ros::ServiceServer remove_service;
             // //ROS callback queue
@@ -145,12 +143,16 @@ namespace gazebo
             void Load(physics::WorldPtr _parent, sdf::ElementPtr /*_sdf*/)
             {
             
-                gzmsg << "UTRAFMAN Gazebo plugin loaded" << std::endl;
-
-
+                // gzmsg << "Loading UTRAFMAN Gazebo plugin" << std::endl;
+                //printf("Loading UTRAFMAN Gazebo plugin\n");
 
                 //Store world pointer
-                this->parent = _parent;
+                this->world = _parent;
+
+                // Configurar el evento OnUpdate
+                this->updateConnection = event::Events::ConnectWorldUpdateBegin(
+                    std::bind(&utrafman_gazebo::OnUpdate, this));
+
 
                 // Check if ROS 2 is initialized
                 if (!rclcpp::ok()) {
@@ -159,15 +161,19 @@ namespace gazebo
                     rclcpp::init(argc, argv);
                 }
 
-                // Create a ROS 2 node
+                // ROS2 node
                 this->rosNode = rclcpp::Node::make_shared("utrafman_node");
 
-                // Create the service
+                // ROS2 services
                 this->rosSrv_Test = this->rosNode->create_service<utrafman_msgs::srv::Test>(
                     "utrafman/Test",
-                    std::bind(&utrafman_gazebo::handleExample2, this,
+                    std::bind(&utrafman_gazebo::rosSrvFn_Test, this,
                             std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
+                this->rosSrv_DeployUAV = this->rosNode->create_service<utrafman_msgs::srv::DeployUAV>(
+                    "utrafman/DeployUAV",
+                    std::bind(&utrafman_gazebo::rosSrvFn_DeployUAV, this,
+                            std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
 
                 // this->insert_service = this->rosNode->advertiseService("/utm/airspace/deploy_UAV", &UTRAFMAN_gazebo::insert_callback, this);
@@ -175,50 +181,126 @@ namespace gazebo
                 // this->transport_service = this->rosNode->advertiseService("/godservice/transport_model", &UTRAFMAN_gazebo::transport_callback, this);
 
 
+
+
+
+                gzmsg << "UTRAFMAN Gazebo plugin loaded" << std::endl;
+                // printf("UTRAFMAN Gazebo plugin loaded\n");
+
                 // Iniciar el bucle de spin
-                rclcpp::spin(this->rosNode);
+                // rclcpp::spin(this->rosNode);
 
 
 
             }
 
 
+            void OnUpdate()
+            {
+                // printf("UTRAFMAN Gazebo plugin OnUpdate\n\n");
+                // Procesar eventos ROS 2
+                rclcpp::spin_some(rosNode);
+            }
 
 
-  
-            void handleExample2(
+            void rosSrvFn_Test(
                 const std::shared_ptr<rmw_request_id_t> request_header,
                 const std::shared_ptr<utrafman_msgs::srv::Test::Request>  request,   
                       std::shared_ptr<utrafman_msgs::srv::Test::Response> response)  
             {
-                gzmsg << "UTRAFMAN service invoqued: Test" << std::endl;
-
+                gzmsg << "UTRAFMAN service called: Test" << std::endl;
                 response->sum = request->a + request->b;
             }
 
 
+  
+            void rosSrvFn_DeployUAV(
+                const std::shared_ptr<rmw_request_id_t> request_header,
+                const std::shared_ptr<utrafman_msgs::srv::DeployUAV::Request>  request,   
+                      std::shared_ptr<utrafman_msgs::srv::DeployUAV::Response> response)  
+            {
+                // gzmsg << "UTRAFMAN service called: DeployUAV" << std::endl;
+
+                std::string modelTXT = R"(
+                    <?xml version="1.0" ?>
+                    <sdf version="1.7">
+                    <model name="base_drone_deployed"> 
+                    <pose>0 0 1</pose>
+                    <static>false</static>	  
+                    <link name="link">  
+                    <collision name="collision">
+                        <geometry>
+                            <box>
+                            <size>0.5 0.5 0.50</size>
+                            </box>
+                        </geometry>
+                        <surface>
+                            <friction>
+                            <ode>
+                                <mu>100.0</mu>
+                                <mu2>50.0</mu2>
+                                <slip1>0.0</slip1>
+                                <slip2>0.0</slip2>
+                            </ode>
+                            </friction>
+                        </surface>
+                    </collision>
+                    <visual name="visual">
+                        <geometry>
+                            <box>
+                            <size>0.5 0.5 0.50</size>
+                            </box>
+                        </geometry>
+                    </visual>
+                    </link>
+                    </model>
+                    </sdf>
+                )";
+                // printf("El modelo es:\n\n%s\n\n",model.c_str());
 
 
 
-            // Función de manejo del servicio
-    //         void handleDeployUAV(
-    //             const std::shared_ptr<rmw_request_id_t> request_header,
-    //             const std::shared_ptr<utrafman_msgs::srv::DeployUAV::Request>  request,
-    //                   std::shared_ptr<utrafman_msgs::srv::DeployUAV::Response> response)
-    //         {
-    //             // Implementa la lógica de manejo del servicio aquí
+                // Convert from model string to SDF format
+                sdf::SDF modelSDF;
+                modelSDF.SetFromString(modelTXT);
+                modelSDF.PrintValues();
 
-    //             // printf("%s",request->model_sdf);
-    //             // RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Incoming request");                                         
-    //             // RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "sending back response: [%ld]", (long int)response->status);
+                // Accedo al elemento 'model'
+                sdf::ElementPtr modelElement = modelSDF.Root()->GetElement("model");
 
-    //             // Puedes acceder a los datos del request y escribir en el response
-    //             // request->model_sdf y response->status
+                // Modificar el nombre del modelo
+                modelElement->GetAttribute("name")->SetFromString("nuevo_nombre");
 
-    //             // Por ejemplo, establecer una respuesta exitosa
-    //             response->status = true;
-    //         }   
+                // Modificar la posición del modelo (ejemplo: trasladar 1 unidad en el eje X)
+                sdf::ElementPtr poseElement = modelElement->GetElement("pose");
+                ignition::math::Pose3d nuevaPose(1.0, 0.0, 3.0, 1.0, 1.0, 1.0);
+                poseElement->Set(nuevaPose);
 
+                modelSDF.PrintValues();
+
+
+
+                // Insert the model in the world
+                this->world->InsertModelSDF(modelSDF);
+                // this->world->InsertModelString(model);
+                
+   
+                // Imprimir los nombres de todos los modelos
+                // physics::Model_V models = this->world->Models();
+                // for (const auto &model : models)
+                // {
+                //     std::cout << "Model: " << model->GetName() << std::endl;
+                // }
+
+
+
+                // Increase the number of UAVs
+                // this->num_uavs++;
+
+                gzmsg << "UTRAFMAN service DeployUAV: model deployed" << std::endl;
+                response->status = true;
+
+            }
 
     };
 
