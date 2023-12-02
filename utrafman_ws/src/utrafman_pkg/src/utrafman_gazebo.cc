@@ -14,6 +14,7 @@
 // #include "ros/subscribe_options.h"
 
 #include "utrafman_msgs/srv/deploy_uav.hpp"
+#include "utrafman_msgs/srv/example.hpp"
 // #include "utrafman/deploy_UAV.h"
 // #include "utrafman/remove_model.h"
 // #include "utrafman/teletransport.h"
@@ -21,7 +22,7 @@
 
 namespace gazebo
 {
-    class UTRAFMAN_gazebo : public WorldPlugin
+    class utrafman_gazebo : public WorldPlugin
     {
         private:
             // //Number of UAVs in the simulation
@@ -33,7 +34,7 @@ namespace gazebo
             rclcpp::Node::SharedPtr rosNode;
 
             // //ROS services
-            rclcpp::Service<utrafman_msgs::srv::DeployUAV>::SharedPtr DeployUAV_service;
+            rclcpp::Service<utrafman_msgs::srv::Example>::SharedPtr rosSrv;
 
 
 
@@ -140,19 +141,6 @@ namespace gazebo
 
 
 
-  
-            void handleDeployUAV(const std::shared_ptr<rmw_request_id_t> request_header,
-                                 const std::shared_ptr<utrafman_msgs::srv::DeployUAV::Request>  request,   
-                                       std::shared_ptr<utrafman_msgs::srv::DeployUAV::Response> response)  
-            {
-                // printf("%s",request->model_sdf);
-                // RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Incoming request");                                         
-                // RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "sending back response: [%ld]", (long int)response->status);
-                response->status = true;
-            }
-
-
-
 
             void Load(physics::WorldPtr _parent, sdf::ElementPtr /*_sdf*/)
             {
@@ -175,17 +163,11 @@ namespace gazebo
                 this->rosNode = rclcpp::Node::make_shared("UTRAFMAN_Gazebo_node");
 
                 // Create the service
-                this->DeployUAV_service = this->rosNode->create_service<utrafman_msgs::srv::DeployUAV>(
-                    "deploy_uav",
-                    std::bind(&UTRAFMAN_gazebo::handleDeployUAV, this,
+                this->rosSrv = this->rosNode->create_service<utrafman_msgs::srv::Example>(
+                    "example",
+                    std::bind(&utrafman_gazebo::handleExample, this,
                             std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
-
-
-                // // Crear el servicio
-                // this->DeployUAV_service = this->rosNode->create_service<utrafman_msgs::srv::DeployUAV>(
-                //     "deploy_uav", 
-                //     std::bind(&UTRAFMAN_gazebo::handleDeployUAV, this, std::placeholders::_1, std::placeholders::_2));
 
 
 
@@ -197,25 +179,45 @@ namespace gazebo
 
 
 
-            // // Función de manejo del servicio
-            // void handleDeployUAV(
-            //     const std::shared_ptr<rmw_request_id_t> request_header,
-            //     const std::shared_ptr<utrafman_msgs::srv::DeployUAV::Request> request,
-            //     const std::shared_ptr<utrafman_msgs::srv::DeployUAV::Response> response)
-            // {
-            //     // Implementa la lógica de manejo del servicio aquí
 
-            //     // Puedes acceder a los datos del request y escribir en el response
-            //     // request->model_sdf y response->status
+  
+            void handleExample(
+                const std::shared_ptr<rmw_request_id_t> request_header,
+                const std::shared_ptr<utrafman_msgs::srv::Example::Request>  request,   
+                      std::shared_ptr<utrafman_msgs::srv::Example::Response> response)  
+            {
+                gzmsg << "UTRAFMAN gazebo service  EXAMPLE invoqued" << std::endl;
 
-            //     // Por ejemplo, establecer una respuesta exitosa
-            //     response->status = true;
-            // }   
+                // response->status = true;
+            }
+
+
+
+
+
+            // Función de manejo del servicio
+    //         void handleDeployUAV(
+    //             const std::shared_ptr<rmw_request_id_t> request_header,
+    //             const std::shared_ptr<utrafman_msgs::srv::DeployUAV::Request>  request,
+    //                   std::shared_ptr<utrafman_msgs::srv::DeployUAV::Response> response)
+    //         {
+    //             // Implementa la lógica de manejo del servicio aquí
+
+    //             // printf("%s",request->model_sdf);
+    //             // RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Incoming request");                                         
+    //             // RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "sending back response: [%ld]", (long int)response->status);
+
+    //             // Puedes acceder a los datos del request y escribir en el response
+    //             // request->model_sdf y response->status
+
+    //             // Por ejemplo, establecer una respuesta exitosa
+    //             response->status = true;
+    //         }   
 
 
     };
 
     // Register this plugin with the simulator
-    GZ_REGISTER_WORLD_PLUGIN(UTRAFMAN_gazebo)
+    GZ_REGISTER_WORLD_PLUGIN(utrafman_gazebo)
 
 }

@@ -76,9 +76,11 @@ set(ROS_LIBS
 # ament_target_dependencies(DroneControl ${ROS_LIBS})
 # target_link_libraries(DroneControl ${GAZEBO_LIBRARIES})
 
+
 add_library(UTRAFMAN_gazebo SHARED src/utrafman_gazebo.cc)
-ament_target_dependencies(UTRAFMAN_gazebo ${ROS_LIBS})
+ament_target_dependencies(UTRAFMAN_gazebo ${ROS_LIBS} utrafman_msgs)
 target_link_libraries(UTRAFMAN_gazebo ${GAZEBO_LIBRARIES})
+
 
 add_library(HELLO_WORLD SHARED src/hello_world.cc)
 ament_target_dependencies(HELLO_WORLD ${ROS_LIBS})

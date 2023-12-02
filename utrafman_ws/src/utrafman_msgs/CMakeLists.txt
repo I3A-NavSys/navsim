@@ -21,6 +21,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Waypoint.msg"
   "msg/Uplan.msg"
 
+  "srv/Example.srv"
   "srv/DeployUAV.srv"
   "srv/TranslateUAV.srv"
   "srv/RemoveUAV.srv"
