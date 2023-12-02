@@ -175,6 +175,12 @@ namespace gazebo
                 // this->remove_service = this->rosNode->advertiseService("/godservice/remove_model", &UTRAFMAN_gazebo::remove_callback, this);
                 // this->transport_service = this->rosNode->advertiseService("/godservice/transport_model", &UTRAFMAN_gazebo::transport_callback, this);
 
+
+                // Iniciar el bucle de spin
+                rclcpp::spin(this->rosNode);
+
+
+
             }
 
 
@@ -188,7 +194,7 @@ namespace gazebo
             {
                 gzmsg << "UTRAFMAN gazebo service  EXAMPLE invoqued" << std::endl;
 
-                // response->status = true;
+                response->sum = request->a + request->b;
             }
 
 
