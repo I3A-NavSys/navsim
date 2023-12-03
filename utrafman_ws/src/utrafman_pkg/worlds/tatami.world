@@ -5,7 +5,7 @@
 
 
 <!-- World plugin (to spawn and remove UAVs and models) -->
-<plugin name="UTRAFMAN_gazebo" filename="libUTRAFMAN_gazebo.so" />
+<plugin name="UAVManager" filename="libUAVManager.so" />
 
 
 <!-- iluminación básica -->
@@ -54,6 +54,7 @@
     <uri>../models/DCmodels/frame_blue</uri>
     <pose>3 -1 1 0 0 3</pose>
 </include>    
+
 
 
 <!-- UAV -->

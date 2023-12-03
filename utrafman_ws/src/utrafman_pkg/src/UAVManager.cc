@@ -2,6 +2,7 @@
 // #include <boost/format.hpp>
 // #include <ignition/math/Pose3.hh>
 
+
 #include "gazebo/gazebo.hh"
 #include "gazebo/common/common.hh"
 #include "gazebo/physics/physics.hh"
@@ -15,26 +16,34 @@
 
 #include "utrafman_msgs/srv/test.hpp"
 #include "utrafman_msgs/srv/deploy_uav.hpp"
-// #include "utrafman/deploy_UAV.h"
 // #include "utrafman/remove_model.h"
 // #include "utrafman/teletransport.h"
 
 
 namespace gazebo
 {
-    class utrafman_gazebo : public WorldPlugin
+    class UAVManager : public WorldPlugin
     {
         private:
-            // //Number of UAVs in the simulation
-            // int num_uavs = 0;
 
-            //Gazebo
-            physics::WorldPtr world;
-            event::ConnectionPtr updateConnection;
+            int iteration;
 
-            //ROS 
-            rclcpp::Node::SharedPtr rosNode;
-            rclcpp::Service<utrafman_msgs::srv::Test>::SharedPtr rosSrv_Test;
+            // Gazebo
+            physics::WorldPtr    world;
+            event::ConnectionPtr updateConnector;
+
+
+
+            // ROS2 Node
+            rclcpp::Node::SharedPtr      rosNode;
+     
+
+
+            // ROS2 Gazebo services
+
+
+            // ROS2 UTRAFMAN services
+            rclcpp::Service<utrafman_msgs::srv::Test>::SharedPtr      rosSrv_Test;
             rclcpp::Service<utrafman_msgs::srv::DeployUAV>::SharedPtr rosSrv_DeployUAV;
 
             // ros::ServiceServer transport_service;
@@ -146,61 +155,76 @@ namespace gazebo
                 // gzmsg << "Loading UTRAFMAN Gazebo plugin" << std::endl;
                 //printf("Loading UTRAFMAN Gazebo plugin\n");
 
+
                 //Store world pointer
                 this->world = _parent;
 
-                // Configurar el evento OnUpdate
-                this->updateConnection = event::Events::ConnectWorldUpdateBegin(
-                    std::bind(&utrafman_gazebo::OnUpdate, this));
+                // Configurar el evento onWorldUpdateBegin
+                this->updateConnector = event::Events::ConnectWorldUpdateBegin(
+                    std::bind(&UAVManager::OnWorldUpdateBegin, this));  
 
 
-                // Check if ROS 2 is initialized
-                if (!rclcpp::ok()) {
-                    int argc = 0;
-                    char **argv = NULL;
-                    rclcpp::init(argc, argv);
-                }
+                 // Inicializa el nodo de ROS2
+                rclcpp::init(0, nullptr);
+                this->rosNode = rclcpp::Node::make_shared("UTRAFMAN_UAVManager");
 
-                // ROS2 node
-                this->rosNode = rclcpp::Node::make_shared("utrafman_node");
 
-                // ROS2 services
+
+
+
+
+                    
+
+                // CLOCK
+                this->iteration = 0;
+
+                // ROS2 UTRAFMAN services
                 this->rosSrv_Test = this->rosNode->create_service<utrafman_msgs::srv::Test>(
                     "utrafman/Test",
-                    std::bind(&utrafman_gazebo::rosSrvFn_Test, this,
+                    std::bind(&UAVManager::rosSrvFn_Test, this,
                             std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
                 this->rosSrv_DeployUAV = this->rosNode->create_service<utrafman_msgs::srv::DeployUAV>(
                     "utrafman/DeployUAV",
-                    std::bind(&utrafman_gazebo::rosSrvFn_DeployUAV, this,
+                    std::bind(&UAVManager::rosSrvFn_DeployUAV, this,
                             std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
 
-                // this->insert_service = this->rosNode->advertiseService("/utm/airspace/deploy_UAV", &UTRAFMAN_gazebo::insert_callback, this);
-                // this->remove_service = this->rosNode->advertiseService("/godservice/remove_model", &UTRAFMAN_gazebo::remove_callback, this);
-                // this->transport_service = this->rosNode->advertiseService("/godservice/transport_model", &UTRAFMAN_gazebo::transport_callback, this);
+                // this->insert_service = this->rosNode->advertiseService("/utm/airspace/deploy_UAV", &UAVManager::insert_callback, this);
+                // this->remove_service = this->rosNode->advertiseService("/godservice/remove_model", &UAVManager::remove_callback, this);
+                // this->transport_service = this->rosNode->advertiseService("/godservice/transport_model", &UAVManager::transport_callback, this);
 
 
+                // this->world->SetPaused(true);
 
 
-
-                gzmsg << "UTRAFMAN Gazebo plugin loaded" << std::endl;
-                // printf("UTRAFMAN Gazebo plugin loaded\n");
-
-                // Iniciar el bucle de spin
-                // rclcpp::spin(this->rosNode);
-
-
+                gzmsg << "Gazebo plugin loaded: UTRAFMAN UAV Manager" << std::endl;
+                // printf("Gazebo plugin loaded: UTRAFMAN UAV Manager\n");
 
             }
 
 
-            void OnUpdate()
+            // void Init()
+            // {
+            //     printf("UTRAFMAN init  %d\n\n", this->iteration);
+      
+            // }
+
+
+            void OnWorldUpdateBegin()
             {
-                // printf("UTRAFMAN Gazebo plugin OnUpdate\n\n");
+                // printf("UTRAFMAN Gazebo plugin OnWorldUpdateBegin    %d\n\n", this->iteration);
+                // this->iteration++;
                 // Procesar eventos ROS 2
                 rclcpp::spin_some(rosNode);
             }
+
+
+
+
+
+
+
 
 
             void rosSrvFn_Test(
@@ -208,10 +232,21 @@ namespace gazebo
                 const std::shared_ptr<utrafman_msgs::srv::Test::Request>  request,   
                       std::shared_ptr<utrafman_msgs::srv::Test::Response> response)  
             {
-                gzmsg << "UTRAFMAN service called: Test" << std::endl;
+                gzmsg << "ROS2 service called: UTRAFMAN Test" << std::endl;
                 response->sum = request->a + request->b;
             }
 
+
+
+            void rosSrvFn_PauseSimulation()
+            {
+                this->world->SetPaused(true);
+            }
+
+            void rosSrvFn_ResumeSimulation()
+            {
+                this->world->SetPaused(false);
+            }
 
   
             void rosSrvFn_DeployUAV(
@@ -219,7 +254,7 @@ namespace gazebo
                 const std::shared_ptr<utrafman_msgs::srv::DeployUAV::Request>  request,   
                       std::shared_ptr<utrafman_msgs::srv::DeployUAV::Response> response)  
             {
-                // gzmsg << "UTRAFMAN service called: DeployUAV" << std::endl;
+                // gzmsg << "ROS2 service called: UTRAFMAN DeployUAV" << std::endl;
 
                 std::string modelTXT = R"(
                     <?xml version="1.0" ?>
@@ -256,35 +291,30 @@ namespace gazebo
                     </model>
                     </sdf>
                 )";
-                // printf("El modelo es:\n\n%s\n\n",model.c_str());
+                // printf("SDF string:\n\n%s\n\n",model.c_str());
 
 
 
                 // Convert from model string to SDF format
                 sdf::SDF modelSDF;
                 modelSDF.SetFromString(modelTXT);
-                modelSDF.PrintValues();
+                // modelSDF.PrintValues();
 
-                // Accedo al elemento 'model'
+
+                // Model modification
                 sdf::ElementPtr modelElement = modelSDF.Root()->GetElement("model");
-
-                // Modificar el nombre del modelo
                 modelElement->GetAttribute("name")->SetFromString("nuevo_nombre");
-
-                // Modificar la posición del modelo (ejemplo: trasladar 1 unidad en el eje X)
                 sdf::ElementPtr poseElement = modelElement->GetElement("pose");
                 ignition::math::Pose3d nuevaPose(1.0, 0.0, 3.0, 1.0, 1.0, 1.0);
                 poseElement->Set(nuevaPose);
-
-                modelSDF.PrintValues();
-
-
+                // modelSDF.PrintValues();
 
                 // Insert the model in the world
-                this->world->InsertModelSDF(modelSDF);
                 // this->world->InsertModelString(model);
+                this->world->InsertModelSDF(modelSDF);
                 
    
+
                 // Imprimir los nombres de todos los modelos
                 // physics::Model_V models = this->world->Models();
                 // for (const auto &model : models)
@@ -294,10 +324,7 @@ namespace gazebo
 
 
 
-                // Increase the number of UAVs
-                // this->num_uavs++;
-
-                gzmsg << "UTRAFMAN service DeployUAV: model deployed" << std::endl;
+                // gzmsg << "UTRAFMAN service DeployUAV: model deployed" << std::endl;
                 response->status = true;
 
             }
@@ -305,6 +332,6 @@ namespace gazebo
     };
 
     // Register this plugin with the simulator
-    GZ_REGISTER_WORLD_PLUGIN(utrafman_gazebo)
+    GZ_REGISTER_WORLD_PLUGIN(UAVManager)
 
 }

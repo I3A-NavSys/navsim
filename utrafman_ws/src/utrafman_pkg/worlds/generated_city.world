@@ -25,7 +25,7 @@
 
 
 <!-- World plugin (to spawn and remove UAVs and models) -->
-<plugin name="UTRAFMAN_gazebo" filename="libUTRAFMAN_gazebo.so" />
+<plugin name="UAVManager" filename="libUAVManager.so" />
 
 
 
