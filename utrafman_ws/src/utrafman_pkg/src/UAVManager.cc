@@ -2,7 +2,6 @@
 // #include <boost/format.hpp>
 // #include <ignition/math/Pose3.hh>
 
-
 #include "gazebo/gazebo.hh"
 #include <gazebo_ros/node.hpp>
 #include "gazebo/common/common.hh"
@@ -79,20 +78,14 @@ namespace gazebo
                             std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
 
-          
-
-
-                // this->world->SetPaused(true);
-
-
-                 printf("UTRAFMAN UAVManager plugin: loaded\n");
+                //  printf("UTRAFMAN UAVManager plugin: loaded\n");
 
             }
 
 
             void Init()
             {
-                printf("UTRAFMAN UAVManager plugin: inited  %d\n\n", this->iteration);
+                // printf("UTRAFMAN UAVManager plugin: inited\n");
       
             }
 
@@ -100,18 +93,10 @@ namespace gazebo
 
             void OnWorldUpdateBegin()
             {
-                // printf("UTRAFMAN Gazebo plugin OnWorldUpdateBegin    %d\n\n", this->iteration);
-                // this->iteration++;
+                // printf("UTRAFMAN UAVManager plugin: OnWorldUpdateBegin\n");
                 // Procesar eventos ROS 2
                 rclcpp::spin_some(rosNode);
             }
-
-
-
-
-
-
-
 
 
             void rosSrvFn_Test(
@@ -121,18 +106,6 @@ namespace gazebo
             {
                 gzmsg << "ROS2 service called: UTRAFMAN Test" << std::endl;
                 response->sum = request->a + request->b;
-            }
-
-
-
-            void rosSrvFn_PauseSimulation()
-            {
-                this->world->SetPaused(true);
-            }
-
-            void rosSrvFn_ResumeSimulation()
-            {
-                this->world->SetPaused(false);
             }
 
   
@@ -192,8 +165,8 @@ namespace gazebo
                 sdf::ElementPtr modelElement = modelSDF.Root()->GetElement("model");
                 modelElement->GetAttribute("name")->SetFromString("nuevo_nombre");
                 sdf::ElementPtr poseElement = modelElement->GetElement("pose");
-                ignition::math::Pose3d nuevaPose(1.0, 0.0, 10.0, 1.0, 1.0, 1.0);
-                poseElement->Set(nuevaPose);
+                ignition::math::Pose3d initPose(1.0, 0.0, 10.0, 1.0, 1.0, 1.0);
+                poseElement->Set(initPose);
                 // modelSDF.PrintValues();
 
                 // Insert the model in the world
