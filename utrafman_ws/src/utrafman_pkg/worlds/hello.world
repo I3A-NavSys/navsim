@@ -3,17 +3,9 @@
 <world name="default">
 
 
-<!-- World plugin (to spawn and remove UAVs and models) -->
-<!-- <plugin name="HelloWorld" filename="libHelloWorld.so" /> -->
-
-
-<!-- World plugin (to spawn and remove UAVs and models) -->
-<plugin name="GazeboPlugin" filename="libGazeboPlugin.so" />
-
-
-
-<!-- World plugin (to spawn and remove UAVs and models) -->
+<plugin name="HelloWorld" filename="libHelloWorld.so" />
 <!-- <plugin name="UAVManager" filename="libUAVManager.so" /> -->
+<!-- <plugin name="GazeboPlugin" filename="libGazeboPlugin.so" /> -->
 
 
 <model name='base_drone1'>

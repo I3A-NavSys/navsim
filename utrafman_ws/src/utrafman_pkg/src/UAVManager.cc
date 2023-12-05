@@ -33,64 +33,48 @@ namespace gazebo
             physics::WorldPtr    world;
             event::ConnectionPtr updateConnector;
 
-
-
             // ROS2 Node
             rclcpp::Node::SharedPtr      rosNode;
             
-
-            // ROS2 Gazebo services
-
-
             // ROS2 UTRAFMAN services
             rclcpp::Service<utrafman_msgs::srv::Test>::SharedPtr      rosSrv_Test;
             rclcpp::Service<utrafman_msgs::srv::DeployUAV>::SharedPtr rosSrv_DeployUAV;
 
-            // ros::ServiceServer transport_service;
-            // ros::ServiceServer remove_service;
-            // //ROS callback queue
-            // //ros::CallbackQueue rosQueue;
-            // //Spinners
-            // //ros::AsyncSpinner rosSpinners = ros::AsyncSpinner(1, &this->rosQueue);
-
         public:
-
-
 
             void Load(physics::WorldPtr _parent, sdf::ElementPtr /*_sdf*/)
             {
+                // gzmsg << "UTRAFMAN UAVManager plugin: loading" << std::endl;
+                // printf("UTRAFMAN UAVManager plugin: loading\n");
             
-                // gzmsg << "Loading UTRAFMAN Gazebo plugin" << std::endl;
-                //printf("Loading UTRAFMAN Gazebo plugin\n");
 
-
-                //Store world pointer
+                // Store world pointer
                 this->world = _parent;
 
-                // Configurar el evento onWorldUpdateBegin
+
+                // Periodic event
                 this->updateConnector = event::Events::ConnectWorldUpdateBegin(
                     std::bind(&UAVManager::OnWorldUpdateBegin, this));  
 
 
-                 // Inicializa el nodo de ROS2
+                 // ROS2 node
                 rclcpp::init(0, nullptr);
-                this->rosNode = rclcpp::Node::make_shared("UTRAFMAN_UAVManager");
-
-
+                this->rosNode = rclcpp::Node::make_shared("UAVManager");
 
                     
 
                 // // CLOCK
                 this->iteration = 0;
 
+
                 // ROS2 UTRAFMAN services
                 this->rosSrv_Test = this->rosNode->create_service<utrafman_msgs::srv::Test>(
-                    "utrafman/Test",
+                    "AirSpace/Test",
                     std::bind(&UAVManager::rosSrvFn_Test, this,
                             std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
                 this->rosSrv_DeployUAV = this->rosNode->create_service<utrafman_msgs::srv::DeployUAV>(
-                    "utrafman/DeployUAV",
+                    "AirSpace/DeployUAV",
                     std::bind(&UAVManager::rosSrvFn_DeployUAV, this,
                             std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
@@ -101,21 +85,14 @@ namespace gazebo
                 // this->world->SetPaused(true);
 
 
-                gzmsg << "Gazebo plugin loaded: UTRAFMAN UAV Manager" << std::endl;
-                // printf("Gazebo plugin loaded: UTRAFMAN UAV Manager\n");
+                 printf("UTRAFMAN UAVManager plugin: loaded\n");
 
             }
 
 
             void Init()
             {
-                printf("UTRAFMAN init  %d\n\n", this->iteration);
-      
-            }
-
-            void OnUpdate()
-            {
-                printf("UTRAFMAN onupdate  %d\n\n", this->iteration);
+                printf("UTRAFMAN UAVManager plugin: inited  %d\n\n", this->iteration);
       
             }
 
