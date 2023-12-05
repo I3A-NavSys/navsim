@@ -1,4 +1,4 @@
-classdef GazeboClient
+classdef UTRAFMAN_SimManager
     properties
         ROSnode
         ROSsub_clock  % Suscriptor para el reloj
@@ -9,9 +9,9 @@ classdef GazeboClient
     
     methods
         % Constructor
-        function obj = GazeboClient()
+        function obj = UTRAFMAN_SimManager()
             % Inicializar la conexión ROS
-            obj.ROSnode = ros2node('matlab_node');
+            obj.ROSnode = ros2node('UTRAFMAN_SimManager');
 
             % Suscribirse al reloj de Gazebo
             obj.ROSsub_clock = ros2subscriber(obj.ROSnode, ...

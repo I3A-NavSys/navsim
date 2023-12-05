@@ -1,7 +1,7 @@
 clear
 clc
 
-run('../tools/UTRAFMAN_init');
+run('../tools/UTRAFMAN_PATH');
 
 
 
@@ -10,9 +10,12 @@ RafaOperator = SimpleOperator("RafaOperator");
 
 for i=0:9
     for j = 0:9
-        name = ['drone',num2str(i),num2str(j)]
-        RafaOperator.AirSpace_DeployUAV(name,i-4.5,j-4.5,10,1);
-        % pause(0.1);
+        RafaOperator.AirSpace_DeployModel('base', ...
+            ['BASE',num2str(i),num2str(j)], ...
+            [i-4.5 j-4.5 0.26],[0 0 0]);
+        RafaOperator.AirSpace_DeployModel('drone', ...
+            ['UAV',num2str(i),num2str(j)], ...
+            [i-4.5 j-4.5 1],[0 0 rand*2+pi]);
     end
 end
 

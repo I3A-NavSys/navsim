@@ -11,7 +11,7 @@ properties
     % ROS2 interface
     rosNode                        % ROS2 Node 
     rosCli_Test                    % ROS2 service client 
-    rosCli_DeployUAV               % ROS2 Service client to deploy UAVs into the air space
+    rosCli_DeployModel             % ROS2 Service client to deploy models into the air space
     % ROScli_reg_operator            % Service client to register itself as operators
     % ROScli_reg_FP                  % Service client to register a new FP
 
@@ -33,8 +33,8 @@ function obj = SimpleOperator(name)
     obj.rosCli_Test = ros2svcclient(obj.rosNode, ...
         '/AirSpace/Test','utrafman_msgs/Test');
 
-    obj.rosCli_DeployUAV = ros2svcclient(obj.rosNode, ...
-        '/AirSpace/DeployUAV','utrafman_msgs/DeployUAV', ...
+    obj.rosCli_DeployModel = ros2svcclient(obj.rosNode, ...
+        '/AirSpace/DeployModel','utrafman_msgs/DeployModel', ...
         'History','keepall');
 
 
@@ -87,20 +87,31 @@ function AirSpace_Test(obj)
 end
 
 
-function status =  AirSpace_DeployUAV(obj,name,posX,posY,posZ,rot)
-    req = ros2message(obj.rosCli_DeployUAV);
-    req.model_sdf = 'mi fichero SDF';
-    req.name  = name;  %'droneInstanced'
-    req.pos.x = posX;
-    req.pos.y = posY;
-    req.pos.z = posZ;
-    req.rot   = rot;
+function status =  AirSpace_DeployModel(obj,type,name,pos,rot)
+    req = ros2message(obj.rosCli_DeployModel);
+    req.name  = name;  %'deployedModel'
+    req.pos.x = pos(1);
+    req.pos.y = pos(2);
+    req.pos.z = pos(3);
+    req.rot.x = rot(1);
+    req.rot.y = rot(2);
+    req.rot.z = rot(3);
+
+    switch type
+        case 'drone'
+            req.model_sdf = fileread('../../utrafman_ws/src/utrafman_pkg/models/DCmodels/drone/model.sdf');
+        case 'base'
+            req.model_sdf = fileread('../../utrafman_ws/src/utrafman_pkg/models/DCmodels/base_drone/model.sdf');
+        otherwise
+            status = false;
+            return
+    end
 
      
-    status = waitForServer(obj.rosCli_DeployUAV,"Timeout",1);
+    status = waitForServer(obj.rosCli_DeployModel,"Timeout",1);
     if status
         try
-            res = call(obj.rosCli_DeployUAV,req,"Timeout",0.1);
+            call(obj.rosCli_DeployModel,req,"Timeout",1);
         catch
             status = false;
         end
