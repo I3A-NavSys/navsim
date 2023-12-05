@@ -4,6 +4,7 @@
 
 
 #include "gazebo/gazebo.hh"
+#include <gazebo_ros/node.hpp>
 #include "gazebo/common/common.hh"
 #include "gazebo/physics/physics.hh"
 //#include "gazebo_msgs/srv/delete_entity.hpp"
@@ -36,8 +37,7 @@ namespace gazebo
 
             // ROS2 Node
             rclcpp::Node::SharedPtr      rosNode;
-     
-
+            
 
             // ROS2 Gazebo services
 
@@ -54,98 +54,6 @@ namespace gazebo
             // //ros::AsyncSpinner rosSpinners = ros::AsyncSpinner(1, &this->rosQueue);
 
         public:
-
-            // bool handleService(
-            //                 const std::shared_ptr<rmw_request_id_t> request_header,
-            //                 const std::shared_ptr<utrafman_pkg::srv::DeployUAV::Request>  request,
-            //                       std::shared_ptr<utrafman_pkg::srv::DeployUAV::Response> response)
-            // {
-            //     // Aquí implementa la lógica de tu servicio
-            //     gzmsg << "Recibida solicitud de servicio con argumento: " << request->argumento << std::endl;
-
-            //     // Puedes realizar alguna lógica aquí y enviar una respuesta
-            //     response->status = true;
-
-            //     // Retorna true si el servicio se manejó correctamente
-            //     return true;
-            // }
-
-
-
-            // bool deployUAV_Service(utrafman::deploy_UAV::Request &req, utrafman::deploy_UAV::Response &res) {
-            //     //SDF object, model pointer and model string from the request
-            //     sdf::SDF sdf_object;
-            //     sdf::ElementPtr model_ptr;
-            //     std::string model = req.modelSDF;
-
-            //     //Convert from model string to SDF format
-            //     sdf_object.SetFromString(model);
-
-            //     //Get the model
-            //     model_ptr = sdf_object.Root()->GetElement("model");
-
-            //     //Insert the model in the world
-            //     this->parent->InsertModelSDF(sdf_object);
-
-            //     //Increase the number of UAVs
-            //     this->num_uavs++;
-
-            //     ROS_INFO("A new UAV has been deployed. Total UAVs: %i", this->num_uavs);
-            //     return true;
-            // }
-
-            // bool remove_callback(utrafman::remove_model::Request &req, utrafman::remove_model::Response &res) {
-            //     res.success.data = false;
-
-            //     //Sent message to a topic to kill the drone
-            //     std::string topic_name = "/drone/" + std::to_string(req.uavId) + "/kill";
-            //     ros::Publisher topic_pub = this->rosNode->advertise<std_msgs::Bool>(topic_name, 10);
-            //     topic_pub.publish(std_msgs::Bool());
-
-            //     //Wait a few seconds (to be sure that the drone has destroyed all its resources)
-            //     ros::Duration(1.0).sleep();
-
-            //     //Call Gazebo deleteModel service
-            //     ros::ServiceClient gazebo_remove_service = this->rosNode->serviceClient<gazebo_msgs::DeleteModel>("/gazebo/delete_model");
-            //     gazebo_msgs::DeleteModel srv;
-            //     srv.request.model_name = "drone_" + std::to_string(req.uavId);
-            //     gazebo_remove_service.call(srv);
-
-            //     //Check if the model has been removed
-            //     if (srv.response.success) {
-            //         res.success.data = true;
-            //         //Decrease the number of UAVs
-            //         this->num_uavs--;
-            //     }
-
-            //     ROS_INFO("A UAV has been removed. Total UAVs: %i", this->num_uavs);
-            //     return true;
-            // }
-
-            // bool transport_callback(utrafman::teletransport::Request &req, utrafman::teletransport::Response &res) {
-            //     //Get the model
-            //     physics::ModelPtr drone = this->parent->ModelByName("drone_" + std::to_string(req.uavId));
-            //     res.success.data = false;
-
-            //     //Check if the model exists
-            //     if (drone != NULL) {
-            //         //Set the new pose
-            //         ignition::math::Pose3d pose(req.pose.position.x, req.pose.position.y, req.pose.position.z, req.pose.orientation.x, req.pose.orientation.y, req.pose.orientation.z);
-            //         drone->SetWorldPose(pose, true);
-            //         res.success.data = true;
-            //     }
-            //     return true;
-            // }
-
-            // void removeModel(const std_msgs::String::ConstPtr& msg)
-            // {
-            //     ROS_INFO("Elimando drone_%s", msg->data.c_str());
-            //     //Eliminamos el modelo con el nombre indicado
-            //     //this->parent->RemoveModel("drone_" + std::string(msg->data.c_str())); //Esta implementacion no funciona (hay que liberar los recursos antes)
-            //     this->parent->ModelByName("drone_" + std::string(msg->data.c_str()))->Fini();
-            // }
-
-
 
 
 
@@ -170,12 +78,9 @@ namespace gazebo
 
 
 
-
-
-
                     
 
-                // CLOCK
+                // // CLOCK
                 this->iteration = 0;
 
                 // ROS2 UTRAFMAN services
@@ -190,9 +95,7 @@ namespace gazebo
                             std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
 
-                // this->insert_service = this->rosNode->advertiseService("/utm/airspace/deploy_UAV", &UAVManager::insert_callback, this);
-                // this->remove_service = this->rosNode->advertiseService("/godservice/remove_model", &UAVManager::remove_callback, this);
-                // this->transport_service = this->rosNode->advertiseService("/godservice/transport_model", &UAVManager::transport_callback, this);
+          
 
 
                 // this->world->SetPaused(true);
@@ -204,11 +107,18 @@ namespace gazebo
             }
 
 
-            // void Init()
-            // {
-            //     printf("UTRAFMAN init  %d\n\n", this->iteration);
+            void Init()
+            {
+                printf("UTRAFMAN init  %d\n\n", this->iteration);
       
-            // }
+            }
+
+            void OnUpdate()
+            {
+                printf("UTRAFMAN onupdate  %d\n\n", this->iteration);
+      
+            }
+
 
 
             void OnWorldUpdateBegin()

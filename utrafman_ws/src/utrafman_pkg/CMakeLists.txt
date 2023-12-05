@@ -70,9 +70,17 @@ set(ROS_LIBS
 
 # Add executable targets
 
-# add_library(DroneControl SHARED src/dronecontrol.cc)
-# ament_target_dependencies(DroneControl ${ROS_LIBS})
-# target_link_libraries(DroneControl ${GAZEBO_LIBRARIES})
+
+
+
+add_library(HelloWorld SHARED src/HelloWorld.cc)
+ament_target_dependencies(HelloWorld ${ROS_LIBS})
+target_link_libraries(HelloWorld ${GAZEBO_LIBRARIES})
+
+
+add_library(GazeboPlugin SHARED src/GazeboPlugin.cc)
+ament_target_dependencies(GazeboPlugin ${ROS_LIBS})
+target_link_libraries(GazeboPlugin ${GAZEBO_LIBRARIES})
 
 
 add_library(UAVManager SHARED src/UAVManager.cc)
@@ -80,16 +88,15 @@ ament_target_dependencies(UAVManager ${ROS_LIBS} utrafman_msgs)
 target_link_libraries(UAVManager ${GAZEBO_LIBRARIES})
 
 
-add_library(HELLO_WORLD SHARED src/hello_world.cc)
-ament_target_dependencies(HELLO_WORLD ${ROS_LIBS})
-target_link_libraries(HELLO_WORLD ${GAZEBO_LIBRARIES})
-
-
+# add_library(DroneControl SHARED src/dronecontrol.cc)
+# ament_target_dependencies(DroneControl ${ROS_LIBS})
+# target_link_libraries(DroneControl ${GAZEBO_LIBRARIES})
 
 
 # Install targets
 install(TARGETS
-  HELLO_WORLD
+  HelloWorld
+  GazeboPlugin
   UAVManager
 # DroneControl
   DESTINATION lib/${PROJECT_NAME}
@@ -97,11 +104,12 @@ install(TARGETS
 
 
 
-# # Install directories
-# install(DIRECTORY 
-#   launch
-#   DESTINATION share/${PROJECT_NAME}
-# )
+# Install directories
+install(DIRECTORY 
+  launch
+  worlds
+  DESTINATION share/${PROJECT_NAME}
+)
 
 
 

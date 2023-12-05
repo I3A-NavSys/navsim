@@ -5,7 +5,12 @@
 
 
 <!-- World plugin (to spawn and remove UAVs and models) -->
-<plugin name="UAVManager" filename="libUAVManager.so" />
+<plugin name="GazeboPlugin" filename="libGazeboPlugin.so" />
+
+
+
+<!-- World plugin (to spawn and remove UAVs and models) -->
+<!-- <plugin name="UAVManager" filename="libUAVManager.so" /> -->
 
 
 <!-- iluminación básica -->

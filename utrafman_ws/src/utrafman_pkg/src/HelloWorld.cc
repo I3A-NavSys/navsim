@@ -4,16 +4,18 @@ namespace gazebo
 {
   class HelloWorld : public WorldPlugin
   {
-    // public: HelloWorld() : WorldPlugin()
-    // {
-    //   printf("Hello World!\n");
-    // }
 
-    public: void Load(physics::WorldPtr _world, sdf::ElementPtr _sdf)
+    void Load(physics::WorldPtr _world, sdf::ElementPtr _sdf)
     {
-      printf("Hello World!\n");
+      printf("Hello World!  LOAD\n");
       gzmsg << "¡Hola desde mi plugin de mundo!" << std::endl;
     }
+
+    void Init()
+    {
+        printf("Hello World!  INIT\n");
+    }
+
   };
   GZ_REGISTER_WORLD_PLUGIN(HelloWorld)
 }
