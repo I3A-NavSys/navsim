@@ -13,7 +13,7 @@ elseif ispc %Windows computer
     PLATFORM = 'win64';
     switch getenv("USERNAME")
         case 'Rafael.Casado'
-            UTRAFMAN_DIR = 'c:\Users\Rafael.Casado\OneDrive - Universidad de Castilla-La Mancha\NavSys\code\utrafman_ros2\';
+            UTRAFMAN_DIR = 'c:\Users\Rafael.Casado\code\utrafman_ros2\';
         case 'Rafa'
             UTRAFMAN_DIR = 'c:\Users\Rafa\code\utrafman_ros2\';
         otherwise
