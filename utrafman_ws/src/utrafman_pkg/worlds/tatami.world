@@ -4,12 +4,7 @@
 <world name="tatami">      
 
 
-<!-- World plugin (to spawn and remove UAVs and models) -->
-<!-- <plugin name="GazeboPlugin" filename="libGazeboPlugin.so" /> -->
-
-
-
-<!-- World plugin (to spawn and remove UAVs and models) -->
+<!-- <plugin name="HelloWorld" filename="libHelloWorld.so" /> -->
 <plugin name="UAVManager" filename="libUAVManager.so" />
 
 

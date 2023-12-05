@@ -19,7 +19,6 @@ find_package(utrafman_msgs REQUIRED)
 
 
 
-
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
@@ -78,14 +77,15 @@ ament_target_dependencies(HelloWorld ${ROS_LIBS})
 target_link_libraries(HelloWorld ${GAZEBO_LIBRARIES})
 
 
-add_library(GazeboPlugin SHARED src/GazeboPlugin.cc)
-ament_target_dependencies(GazeboPlugin ${ROS_LIBS})
-target_link_libraries(GazeboPlugin ${GAZEBO_LIBRARIES})
-
 
 add_library(UAVManager SHARED src/UAVManager.cc)
 ament_target_dependencies(UAVManager ${ROS_LIBS} utrafman_msgs)
 target_link_libraries(UAVManager ${GAZEBO_LIBRARIES})
+
+
+add_library(GazeboPlugin SHARED src/GazeboPlugin.cc)
+ament_target_dependencies(GazeboPlugin ${ROS_LIBS})
+target_link_libraries(GazeboPlugin ${GAZEBO_LIBRARIES})
 
 
 # add_library(DroneControl SHARED src/dronecontrol.cc)
