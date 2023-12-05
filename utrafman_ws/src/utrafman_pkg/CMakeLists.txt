@@ -83,10 +83,6 @@ ament_target_dependencies(AirSpaceManager ${ROS_LIBS} utrafman_msgs)
 target_link_libraries(AirSpaceManager ${GAZEBO_LIBRARIES})
 
 
-add_library(GazeboPlugin SHARED src/GazeboPlugin.cc)
-ament_target_dependencies(GazeboPlugin ${ROS_LIBS})
-target_link_libraries(GazeboPlugin ${GAZEBO_LIBRARIES})
-
 
 # add_library(DroneControl SHARED src/dronecontrol.cc)
 # ament_target_dependencies(DroneControl ${ROS_LIBS})
@@ -96,7 +92,6 @@ target_link_libraries(GazeboPlugin ${GAZEBO_LIBRARIES})
 # Install targets
 install(TARGETS
   HelloWorld
-  GazeboPlugin
   AirSpaceManager
 # DroneControl
   DESTINATION lib/${PROJECT_NAME}
@@ -106,7 +101,7 @@ install(TARGETS
 
 # Install directories
 install(DIRECTORY 
-  launch
+  # launch
   worlds
   DESTINATION share/${PROJECT_NAME}
 )

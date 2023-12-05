@@ -114,7 +114,7 @@ namespace gazebo
                 const std::shared_ptr<utrafman_msgs::srv::DeployModel::Request>  request,   
                       std::shared_ptr<utrafman_msgs::srv::DeployModel::Response> response)  
             {
-                printf("UTRAFMAN AirSpaceManager plugin: DeployModel\n");
+                // printf("UTRAFMAN AirSpaceManager plugin: DeployModel\n");
 
                 // printf("Model SDF:  %s\n", request->model_sdf.c_str());
                 // printf("Model name: %s\n", request->name.c_str());
