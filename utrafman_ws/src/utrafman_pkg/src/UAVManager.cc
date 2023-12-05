@@ -215,7 +215,7 @@ namespace gazebo
                 sdf::ElementPtr modelElement = modelSDF.Root()->GetElement("model");
                 modelElement->GetAttribute("name")->SetFromString("nuevo_nombre");
                 sdf::ElementPtr poseElement = modelElement->GetElement("pose");
-                ignition::math::Pose3d nuevaPose(1.0, 0.0, 3.0, 1.0, 1.0, 1.0);
+                ignition::math::Pose3d nuevaPose(1.0, 0.0, 10.0, 1.0, 1.0, 1.0);
                 poseElement->Set(nuevaPose);
                 // modelSDF.PrintValues();
 
