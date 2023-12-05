@@ -22,7 +22,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Uplan.msg"
 
   "srv/Test.srv"
-  "srv/DeployUAV.srv"
+  "srv/DeployModel.srv"
   "srv/TranslateUAV.srv"
   "srv/RemoveUAV.srv"
 

@@ -1,6 +1,6 @@
 string model_sdf
 string name
 geometry_msgs/Point pos
-float64 rot
+geometry_msgs/Point rot
 ---
 bool status

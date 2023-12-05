@@ -78,9 +78,9 @@ target_link_libraries(HelloWorld ${GAZEBO_LIBRARIES})
 
 
 
-add_library(UAVManager SHARED src/UAVManager.cc)
-ament_target_dependencies(UAVManager ${ROS_LIBS} utrafman_msgs)
-target_link_libraries(UAVManager ${GAZEBO_LIBRARIES})
+add_library(AirSpaceManager SHARED src/AirSpaceManager.cc)
+ament_target_dependencies(AirSpaceManager ${ROS_LIBS} utrafman_msgs)
+target_link_libraries(AirSpaceManager ${GAZEBO_LIBRARIES})
 
 
 add_library(GazeboPlugin SHARED src/GazeboPlugin.cc)
@@ -97,7 +97,7 @@ target_link_libraries(GazeboPlugin ${GAZEBO_LIBRARIES})
 install(TARGETS
   HelloWorld
   GazeboPlugin
-  UAVManager
+  AirSpaceManager
 # DroneControl
   DESTINATION lib/${PROJECT_NAME}
 )

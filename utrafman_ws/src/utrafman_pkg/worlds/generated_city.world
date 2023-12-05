@@ -25,7 +25,7 @@
 
 
 <!-- World plugin (to spawn and remove UAVs and models) -->
-<plugin name="UAVManager" filename="libUAVManager.so" />
+<plugin name="AirSpaceManager" filename="libAirSpaceManager.so" />
 
 
 
