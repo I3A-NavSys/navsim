@@ -5,15 +5,15 @@ classdef SimpleOperator < handle
 
 properties
     name         string            % Operator name
-    id           uint32            % Unique ID (provided by the U-space registry service)
-    drone_garage UAVProperties     % Array of UAV objects references
+    id           uint16            % Unique ID (provided by the U-space registry service)
+    % drone_garage UAVProperties     % Array of UAV objects references
 
-    % ROS interface
-    gz Gazebo                      % handle to Gazebo connector
-    ROSnode                        % ROS Node
-    ROScli_reg_operator            % Service client to register itself as operators
-    ROScli_reg_UAV                 % Service client to register a new UAVs
-    ROScli_reg_FP                  % Service client to register a new FP
+    % ROS2 interface
+    rosNode                        % ROS2 Node 
+    rosCli_Test                    % ROS2 service client 
+    rosCli_DeployUAV               % ROS2 Service client to deploy UAVs into the air space
+    % ROScli_reg_operator            % Service client to register itself as operators
+    % ROScli_reg_FP                  % Service client to register a new FP
 
 end
 
@@ -25,17 +25,24 @@ function obj = SimpleOperator(name)
 
     obj.name = name;
     
-    % ROS node
-    obj.ROSnode = ros.Node("/utm/operators/"+obj.name,gz.ROS_MASTER_IP,11311);
+    % ROS2 node
+    obj.rosNode = ros2node(obj.name);
 
-    % ROS service client to register itself as operator
-    obj.ROScli_reg_operator = ros.ServiceClient(obj.ROSnode,"/utm/services/registry/register_operator");
+
+    % ROS2 service clients
+    obj.rosCli_Test = ros2svcclient(obj.rosNode, ...
+        '/AirSpace/Test','utrafman_msgs/Test');
+
+    obj.rosCli_DeployUAV = ros2svcclient(obj.rosNode, ...
+        '/AirSpace/DeployUAV','utrafman_msgs/DeployUAV');
+
+    % obj.ROScli_reg_operator = ros.ServiceClient(obj.ROSnode,"/utm/services/registry/register_operator");
 
     % ROS service client to register UAVs
-    obj.ROScli_reg_UAV = ros.ServiceClient(obj.ROSnode,"/utm/services/registry/register_UAV");
+    % obj.ROScli_reg_UAV = ros.ServiceClient(obj.ROSnode,"/utm/services/registry/register_UAV");
 
     % ROS service client to register flight plans
-    obj.ROScli_reg_FP = ros.ServiceClient(obj.ROSnode,"/utm/services/registry/register_FP");
+    % obj.ROScli_reg_FP = ros.ServiceClient(obj.ROSnode,"/utm/services/registry/register_FP");
     
     % %Sign up in the registry
     % if isServerAvailable(obj.ROScli_reg_operator)
@@ -57,6 +64,43 @@ function obj = SimpleOperator(name)
     %Get operator ID
     % obj.id = res.OperatorInfo.Id;
 end
+
+
+function AirSpace_Test(obj)
+    req = ros2message(obj.rosCli_Test);
+    req.a = int16(2);
+    req.b = int16(3);
+        
+    status = waitForServer(obj.rosCli_Test,"Timeout",3);
+    if ~status
+        error("Es servicio ROS2 no está disponible")
+    end
+    res = call(obj.rosCli_Test,req,"Timeout",3);
+        
+    if res.sum == 5
+        disp("El servicio se ha llamado correctamente.")
+    end
+end
+
+
+function AirSpace_DeployUAV(obj)
+    req = ros2message(obj.rosCli_DeployUAV);
+    % req.a = int16(2);
+    % req.b = int16(3);
+    % 
+    status = waitForServer(obj.rosCli_DeployUAV,"Timeout",3);
+    if ~status
+        error("Es servicio ROS2 no está disponible")
+    end
+    res = call(obj.rosCli_DeployUAV,req,"Timeout",3);
+        
+    if res.status == 1
+         disp("El servicio se ha llamado correctamente.")
+    end
+    pause(0.2);
+end
+
+
 
 
 %Register a new drone to the operator adding it to the drone garage

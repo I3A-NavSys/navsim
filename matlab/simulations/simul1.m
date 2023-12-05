@@ -1,7 +1,14 @@
 clear
 clc
 
-addpath(genpath(fullfile('..')));
+run('../tools/UTRAFMAN_init');
 
 
-op1 = SimpleOperator();
+
+RafaOperator = SimpleOperator("RafaOperator");
+RafaOperator.AirSpace_Test;
+
+for i=1:10
+    RafaOperator.AirSpace_DeployUAV;
+end
+
