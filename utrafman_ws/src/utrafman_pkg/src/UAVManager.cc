@@ -114,7 +114,7 @@ namespace gazebo
                 const std::shared_ptr<utrafman_msgs::srv::DeployUAV::Request>  request,   
                       std::shared_ptr<utrafman_msgs::srv::DeployUAV::Response> response)  
             {
-                // gzmsg << "ROS2 service called: UTRAFMAN DeployUAV" << std::endl;
+                printf("UTRAFMAN UAVManager plugin: DeployUAV\n");
 
                 std::string modelTXT = R"(
                     <?xml version="1.0" ?>
@@ -154,6 +154,13 @@ namespace gazebo
                 // printf("SDF string:\n\n%s\n\n",model.c_str());
 
 
+                // std::string model_sdf = request->model_sdf;
+                printf("Model SDF:  %s\n", request->model_sdf.c_str());
+                printf("Model name: %s\n", request->name.c_str());
+                printf("Model pose: %.2f %.2f %.2f - %.2f\n",
+                    request->pos.x, request->pos.y, request->pos.z,
+                    request->rot);
+
 
                 // Convert from model string to SDF format
                 sdf::SDF modelSDF;
@@ -163,9 +170,11 @@ namespace gazebo
 
                 // Model modification
                 sdf::ElementPtr modelElement = modelSDF.Root()->GetElement("model");
-                modelElement->GetAttribute("name")->SetFromString("nuevo_nombre");
+                modelElement->GetAttribute("name")->SetFromString(request->name);
                 sdf::ElementPtr poseElement = modelElement->GetElement("pose");
-                ignition::math::Pose3d initPose(1.0, 0.0, 10.0, 1.0, 1.0, 1.0);
+                ignition::math::Pose3d initPose(
+                    request->pos.x, request->pos.y, request->pos.z, 
+                    0.0, 0.0, request->rot);
                 poseElement->Set(initPose);
                 // modelSDF.PrintValues();
 
