@@ -34,7 +34,11 @@ function obj = SimpleOperator(name)
         '/AirSpace/Test','utrafman_msgs/Test');
 
     obj.rosCli_DeployUAV = ros2svcclient(obj.rosNode, ...
-        '/AirSpace/DeployUAV','utrafman_msgs/DeployUAV');
+        '/AirSpace/DeployUAV','utrafman_msgs/DeployUAV', ...
+        'History','keepall');
+
+
+
 
     % obj.ROScli_reg_operator = ros.ServiceClient(obj.ROSnode,"/utm/services/registry/register_operator");
 
@@ -83,21 +87,28 @@ function AirSpace_Test(obj)
 end
 
 
-function AirSpace_DeployUAV(obj)
+function status =  AirSpace_DeployUAV(obj,name,posX,posY,posZ,rot)
     req = ros2message(obj.rosCli_DeployUAV);
-    % req.a = int16(2);
-    % req.b = int16(3);
-    % 
-    status = waitForServer(obj.rosCli_DeployUAV,"Timeout",3);
-    if ~status
-        error("Es servicio ROS2 no está disponible")
+    req.model_sdf = 'mi fichero SDF';
+    req.name  = name;  %'droneInstanced'
+    req.pos.x = posX;
+    req.pos.y = posY;
+    req.pos.z = posZ;
+    req.rot   = rot;
+
+     
+    status = waitForServer(obj.rosCli_DeployUAV,"Timeout",1);
+    if status
+        try
+            res = call(obj.rosCli_DeployUAV,req,"Timeout",0.1);
+        catch
+            status = false;
+        end
     end
-    res = call(obj.rosCli_DeployUAV,req,"Timeout",3);
         
-    if res.status == 1
-         disp("El servicio se ha llamado correctamente.")
-    end
-    pause(0.2);
+    % if res.status == 1
+    %      disp("El servicio se ha llamado correctamente.")
+    % end
 end
 
 
