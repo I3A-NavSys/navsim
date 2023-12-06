@@ -77,16 +77,14 @@ ament_target_dependencies(HelloWorld ${ROS_LIBS})
 target_link_libraries(HelloWorld ${GAZEBO_LIBRARIES})
 
 
-
 add_library(World SHARED plugins/World.cc)
 ament_target_dependencies(World ${ROS_LIBS} utrafman_msgs)
 target_link_libraries(World ${GAZEBO_LIBRARIES})
 
 
-
-# add_library(DroneControl SHARED plugins/dronecontrol.cc)
-# ament_target_dependencies(DroneControl ${ROS_LIBS})
-# target_link_libraries(DroneControl ${GAZEBO_LIBRARIES})
+add_library(DCnavigation SHARED plugins/DCnavigation.cc)
+ament_target_dependencies(DCnavigation ${ROS_LIBS})
+target_link_libraries(DCnavigation ${GAZEBO_LIBRARIES})
 
 
 
@@ -94,10 +92,9 @@ target_link_libraries(World ${GAZEBO_LIBRARIES})
 install(TARGETS
   HelloWorld
   World
-# DroneControl
+  DCnavigation
   DESTINATION lib/${PROJECT_NAME}
 )
-
 
 
 # Install directories
@@ -106,7 +103,6 @@ install(DIRECTORY
   worlds
   DESTINATION share/${PROJECT_NAME}
 )
-
 
 
 # Declare ROS 2 package
