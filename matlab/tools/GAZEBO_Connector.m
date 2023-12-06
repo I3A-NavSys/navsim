@@ -1,4 +1,4 @@
-classdef UTRAFMAN_SimManager
+classdef GAZEBO_Connector
     properties
         ROSnode
         ROSsub_clock  % Suscriptor para el reloj
@@ -9,7 +9,7 @@ classdef UTRAFMAN_SimManager
     
     methods
         % Constructor
-        function obj = UTRAFMAN_SimManager()
+        function obj = GAZEBO_Connector()
             % Inicializar la conexión ROS
             obj.ROSnode = ros2node('UTRAFMAN_SimManager');
 

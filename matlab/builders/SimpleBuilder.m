@@ -3,11 +3,12 @@
 classdef SimpleBuilder < handle
 
 properties
-    name         string            % Operator name
+    name string                 % Builder name
+    path string                 % path to SDF models
 
     % ROS2 interface
-    rosNode                        % ROS2 Node 
-    rosCli_DeployModel             % ROS2 Service client to deploy models into the air space
+    rosNode                     % ROS2 Node 
+    rosCli_DeployModel          % ROS2 Service client to deploy models into the air space
 
 end
 
@@ -15,9 +16,10 @@ methods
 
 
 %Class constructor
-function obj = SimpleBuilder(name)
+function obj = SimpleBuilder(name,path)
 
     obj.name = name;
+    obj.path = path;
     
     % ROS2 node
     obj.rosNode = ros2node(obj.name);
@@ -33,8 +35,7 @@ end
 
 function status =  DeployModel(obj,model,name,pos,rot)
 
-    path = '../../utrafman_ws/src/utrafman_pkg/models/';
-    file = strcat(path,model,'/model.sdf');
+    file = fullfile(obj.path,model,'/model.sdf');
     req = ros2message(obj.rosCli_DeployModel);
     req.model_sdf = fileread(file);
     req.name  = name;  %'deployedModel'

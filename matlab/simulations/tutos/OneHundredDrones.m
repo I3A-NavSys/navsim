@@ -1,10 +1,10 @@
 clear
 clc
 
-run('../tools/UTRAFMAN_PATH');
+run('../../tools/UTRAFMAN_PATHS');
 
 
-builder = SimpleBuilder("builder");
+builder = SimpleBuilder('builder',UTRAFMAN_MODELS_PATH);
 for i=0:9
     for j = 0:9
         builder.DeployModel('DCmodels/base_drone', ...
@@ -13,9 +13,7 @@ for i=0:9
     end
 end
 
-
-
-op = DC_Operator("DC_Operator");
+op = DC_Operator("DC_Operator",UTRAFMAN_MODELS_PATH);
 for i=0:9
     for j = 0:9
         op.DeployUAV(['UAV',num2str(i),num2str(j)], ...
@@ -23,4 +21,5 @@ for i=0:9
     end
 end
 
-% 
+op.GetTime()
+op.ResetTime;
