@@ -1,7 +1,7 @@
 % Operator classes represent operators in the context of U-space.
 % Each operator has a drone garage where it stores its UAVs.
 
-classdef SimpleOperator < handle
+classdef DC_Operator < handle      % Drone Challenge operator
 
 properties
     name         string            % Operator name
@@ -21,7 +21,7 @@ methods
 
 
 %Class constructor
-function obj = SimpleOperator(name)
+function obj = DC_Operator(name)
 
     obj.name = name;
     
@@ -31,10 +31,10 @@ function obj = SimpleOperator(name)
 
     % ROS2 service clients
     obj.rosCli_Test = ros2svcclient(obj.rosNode, ...
-        '/AirSpace/Test','utrafman_msgs/Test');
+        '/World/Test','utrafman_msgs/Test');
 
     obj.rosCli_DeployModel = ros2svcclient(obj.rosNode, ...
-        '/AirSpace/DeployModel','utrafman_msgs/DeployModel', ...
+        '/World/DeployModel','utrafman_msgs/DeployModel', ...
         'History','keepall');
 
 
@@ -87,8 +87,25 @@ function AirSpace_Test(obj)
 end
 
 
-function status =  AirSpace_DeployModel(obj,type,name,pos,rot)
+function status =  AirSpace_DeployUAV(obj,type,name,pos,rot)
+
+    path = '../../utrafman_ws/src/utrafman_pkg/models/';
+
+    switch type
+        case 'drone'
+            model = '../../utrafman_ws/src/utrafman_pkg/models/DCmodels/drone/model.sdf';
+        case 'base'
+            req.model_sdf = fileread('../../utrafman_ws/src/utrafman_pkg/models/DCmodels/base_drone/model.sdf');
+        otherwise
+            status = false;
+            return
+    end
+
+    file = strcat(path,model,'/model.sdf');
+
+
     req = ros2message(obj.rosCli_DeployModel);
+    req.model_sdf = fileread(file);
     req.name  = name;  %'deployedModel'
     req.pos.x = pos(1);
     req.pos.y = pos(2);
@@ -97,17 +114,6 @@ function status =  AirSpace_DeployModel(obj,type,name,pos,rot)
     req.rot.y = rot(2);
     req.rot.z = rot(3);
 
-    switch type
-        case 'drone'
-            req.model_sdf = fileread('../../utrafman_ws/src/utrafman_pkg/models/DCmodels/drone/model.sdf');
-        case 'base'
-            req.model_sdf = fileread('../../utrafman_ws/src/utrafman_pkg/models/DCmodels/base_drone/model.sdf');
-        otherwise
-            status = false;
-            return
-    end
-
-     
     status = waitForServer(obj.rosCli_DeployModel,"Timeout",1);
     if status
         try
