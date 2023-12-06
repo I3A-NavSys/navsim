@@ -98,17 +98,16 @@ namespace gazebo
                 const std::shared_ptr<utrafman_msgs::srv::Time::Request>  request,   
                       std::shared_ptr<utrafman_msgs::srv::Time::Response> response)  
             {
-                printf("UTRAFMAN World plugin: Service Time called\n");
+                // printf("UTRAFMAN World plugin: Service Time called\n");
 
                 if (request->reset)
                 {
-                    // Reiniciar el tiempo de simulación
-                    physics::PhysicsEnginePtr physics = this->world->Physics();
-                    physics->Reset();
+                    // printf("Simulation reset\n");
+                    this->world->ResetTime();
                 }
 
                 common::Time simTime = this->world->SimTime();
-                printf("time: %.2f\n",simTime.Double());
+                // printf("time: %.2f\n",simTime.Double());
 
                 response->time.sec = simTime.sec;
                 response->time.nanosec = simTime.nsec;
