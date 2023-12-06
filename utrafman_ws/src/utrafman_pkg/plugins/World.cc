@@ -14,7 +14,7 @@
 // #include "ros/callback_queue.h"
 // #include "ros/subscribe_options.h"
 
-#include "utrafman_msgs/srv/test.hpp"
+#include "utrafman_msgs/srv/time.hpp"
 #include "utrafman_msgs/srv/deploy_model.hpp"
 // #include "utrafman/remove_model.h"
 // #include "utrafman/teletransport.h"
@@ -33,10 +33,10 @@ namespace gazebo
             event::ConnectionPtr updateConnector;
 
             // ROS2 Node
-            rclcpp::Node::SharedPtr      rosNode;
+            rclcpp::Node::SharedPtr rosNode;
             
             // ROS2 UTRAFMAN services
-            rclcpp::Service<utrafman_msgs::srv::Test>::SharedPtr      rosSrv_Test;
+            rclcpp::Service<utrafman_msgs::srv::Time>::SharedPtr        rosSrv_Time;
             rclcpp::Service<utrafman_msgs::srv::DeployModel>::SharedPtr rosSrv_DeployModel;
 
         public:
@@ -60,16 +60,11 @@ namespace gazebo
                 rclcpp::init(0, nullptr);
                 this->rosNode = rclcpp::Node::make_shared("World");
 
-                    
-
-                // // CLOCK
-                this->iteration = 0;
-
 
                 // ROS2 UTRAFMAN services
-                this->rosSrv_Test = this->rosNode->create_service<utrafman_msgs::srv::Test>(
-                    "World/Test",
-                    std::bind(&World::rosSrvFn_Test, this,
+                this->rosSrv_Time = this->rosNode->create_service<utrafman_msgs::srv::Time>(
+                    "World/Time",
+                    std::bind(&World::rosSrvFn_Time, this,
                             std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
                 this->rosSrv_DeployModel = this->rosNode->create_service<utrafman_msgs::srv::DeployModel>(
@@ -86,7 +81,6 @@ namespace gazebo
             void Init()
             {
                 // printf("UTRAFMAN World plugin: inited\n");
-      
             }
 
 
@@ -99,13 +93,17 @@ namespace gazebo
             }
 
 
-            void rosSrvFn_Test(
+            void rosSrvFn_Time(
                 const std::shared_ptr<rmw_request_id_t> request_header,
-                const std::shared_ptr<utrafman_msgs::srv::Test::Request>  request,   
-                      std::shared_ptr<utrafman_msgs::srv::Test::Response> response)  
+                const std::shared_ptr<utrafman_msgs::srv::Time::Request>  request,   
+                      std::shared_ptr<utrafman_msgs::srv::Time::Response> response)  
             {
-                gzmsg << "ROS2 service called: UTRAFMAN Test" << std::endl;
-                response->sum = request->a + request->b;
+                printf("UTRAFMAN World plugin: Service Time called\n");
+                common::Time simTime = this->world->SimTime();
+                printf("time: %.2f\n",simTime.Double());
+
+                response->time.sec = simTime.sec;
+                response->time.nanosec = simTime.nsec;
             }
 
   
