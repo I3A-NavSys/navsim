@@ -22,7 +22,7 @@
 
 namespace gazebo
 {
-    class AirSpaceManager : public WorldPlugin
+    class World : public WorldPlugin
     {
         private:
 
@@ -43,8 +43,8 @@ namespace gazebo
 
             void Load(physics::WorldPtr _parent, sdf::ElementPtr /*_sdf*/)
             {
-                // gzmsg << "UTRAFMAN AirSpaceManager plugin: loading" << std::endl;
-                // printf("UTRAFMAN AirSpaceManager plugin: loading\n");
+                // gzmsg << "UTRAFMAN World plugin: loading" << std::endl;
+                // printf("UTRAFMAN World plugin: loading\n");
             
 
                 // Store world pointer
@@ -53,12 +53,12 @@ namespace gazebo
 
                 // Periodic event
                 this->updateConnector = event::Events::ConnectWorldUpdateBegin(
-                    std::bind(&AirSpaceManager::OnWorldUpdateBegin, this));  
+                    std::bind(&World::OnWorldUpdateBegin, this));  
 
 
                  // ROS2 node
                 rclcpp::init(0, nullptr);
-                this->rosNode = rclcpp::Node::make_shared("AirSpaceManager");
+                this->rosNode = rclcpp::Node::make_shared("World");
 
                     
 
@@ -68,24 +68,24 @@ namespace gazebo
 
                 // ROS2 UTRAFMAN services
                 this->rosSrv_Test = this->rosNode->create_service<utrafman_msgs::srv::Test>(
-                    "AirSpace/Test",
-                    std::bind(&AirSpaceManager::rosSrvFn_Test, this,
+                    "World/Test",
+                    std::bind(&World::rosSrvFn_Test, this,
                             std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
                 this->rosSrv_DeployModel = this->rosNode->create_service<utrafman_msgs::srv::DeployModel>(
-                    "AirSpace/DeployModel",
-                    std::bind(&AirSpaceManager::rosSrvFn_DeployModel, this,
+                    "World/DeployModel",
+                    std::bind(&World::rosSrvFn_DeployModel, this,
                             std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
 
-                //  printf("UTRAFMAN AirSpaceManager plugin: loaded\n");
+                //  printf("UTRAFMAN World plugin: loaded\n");
 
             }
 
 
             void Init()
             {
-                // printf("UTRAFMAN AirSpaceManager plugin: inited\n");
+                // printf("UTRAFMAN World plugin: inited\n");
       
             }
 
@@ -93,7 +93,7 @@ namespace gazebo
 
             void OnWorldUpdateBegin()
             {
-                // printf("UTRAFMAN AirSpaceManager plugin: OnWorldUpdateBegin\n");
+                // printf("UTRAFMAN World plugin: OnWorldUpdateBegin\n");
                 // Procesar eventos ROS 2
                 rclcpp::spin_some(rosNode);
             }
@@ -114,7 +114,7 @@ namespace gazebo
                 const std::shared_ptr<utrafman_msgs::srv::DeployModel::Request>  request,   
                       std::shared_ptr<utrafman_msgs::srv::DeployModel::Response> response)  
             {
-                // printf("UTRAFMAN AirSpaceManager plugin: DeployModel\n");
+                // printf("UTRAFMAN World plugin: DeployModel\n");
 
                 // printf("Model SDF:  %s\n", request->model_sdf.c_str());
                 // printf("Model name: %s\n", request->name.c_str());
@@ -200,6 +200,6 @@ namespace gazebo
     };
 
     // Register this plugin with the simulator
-    GZ_REGISTER_WORLD_PLUGIN(AirSpaceManager)
+    GZ_REGISTER_WORLD_PLUGIN(World)
 
 }

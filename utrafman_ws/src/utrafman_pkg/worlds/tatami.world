@@ -5,7 +5,7 @@
 
 
 <!-- <plugin name="HelloWorld" filename="libHelloWorld.so" /> -->
-<plugin name="AirSpaceManager" filename="libAirSpaceManager.so" />
+<plugin name="World" filename="libWorld.so" />
 
 
 <!-- iluminación básica -->

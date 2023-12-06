@@ -72,27 +72,28 @@ set(ROS_LIBS
 
 
 
-add_library(HelloWorld SHARED src/HelloWorld.cc)
+add_library(HelloWorld SHARED plugins/HelloWorld.cc)
 ament_target_dependencies(HelloWorld ${ROS_LIBS})
 target_link_libraries(HelloWorld ${GAZEBO_LIBRARIES})
 
 
 
-add_library(AirSpaceManager SHARED src/AirSpaceManager.cc)
-ament_target_dependencies(AirSpaceManager ${ROS_LIBS} utrafman_msgs)
-target_link_libraries(AirSpaceManager ${GAZEBO_LIBRARIES})
+add_library(World SHARED plugins/World.cc)
+ament_target_dependencies(World ${ROS_LIBS} utrafman_msgs)
+target_link_libraries(World ${GAZEBO_LIBRARIES})
 
 
 
-# add_library(DroneControl SHARED src/dronecontrol.cc)
+# add_library(DroneControl SHARED plugins/dronecontrol.cc)
 # ament_target_dependencies(DroneControl ${ROS_LIBS})
 # target_link_libraries(DroneControl ${GAZEBO_LIBRARIES})
+
 
 
 # Install targets
 install(TARGETS
   HelloWorld
-  AirSpaceManager
+  World
 # DroneControl
   DESTINATION lib/${PROJECT_NAME}
 )
