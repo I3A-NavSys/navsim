@@ -42,8 +42,11 @@
 <include>
     <name>abejorro</name>
     <uri>../models/DCmodels/drone</uri>
-    <pose>-3 -3 0.55 0 0 1</pose>
+    <!-- <pose>-3 -3 0.55 0 0 1</pose> -->
+    <pose>0 0 1 0 0 0</pose>
     <plugin name="DCnavigation" filename="libDCnavigation.so">
+    <!-- <plugin name="dronecontrol_copy" filename="libdronecontrol_copy.so"> -->
+    
     </plugin>
 </include>
 

@@ -111,7 +111,7 @@
 
 
 <visual name='brazo_NE'>
-    <pose>0.0550 -0.0346 0 0 0 -1.0472</pose>
+    <pose>0.0550 -0.0406 0 0 0 -1.0472</pose>
     <geometry>
       <box>
         <size>0.08 .01 .01</size>
@@ -124,7 +124,7 @@
 </visual>
     
 <collision name='brazo_NE'>
-    <pose>0.0550 -0.0346 0 0 0 -1.0472</pose>
+    <pose>0.0550 -0.0406 0 0 0 -1.0472</pose>
     <geometry>
       <box>
         <size>0.08 .01 .01</size>
@@ -181,7 +181,7 @@
     <geometry>
         <cylinder>
             <radius>0.05</radius>
-            <length>.005</length>
+            <length>0.005</length>
         </cylinder>
     </geometry>
     <material>
@@ -195,7 +195,7 @@
     <geometry>
         <cylinder>
             <radius>0.05</radius>
-            <length>.005</length>
+            <length>0.005</length>
         </cylinder>            
     </geometry>
     <surface>
@@ -211,10 +211,10 @@
 </collision>
   
 <visual name='brazo_NW'>
-    <pose>0.0550 0.0346 0 0 0 1.0472</pose>
+    <pose>0.0550 0.0406 0 0 0 1.0472</pose>
     <geometry>
       <box>
-        <size>0.08 .01 .01</size>
+        <size>0.08 0.01 0.01</size>
       </box>
     </geometry>
     <material>
@@ -224,10 +224,10 @@
 </visual>
     
 <collision name='brazo_NW'>
-    <pose>0.0550 0.0346 0 0 0 1.0472</pose>
+    <pose>0.0550 0.0406 0 0 0 1.0472</pose>
     <geometry>
       <box>
-        <size>0.08 .01 .01</size>
+        <size>0.08 0.01 0.01</size>
       </box>
     </geometry>
     <surface>
@@ -246,8 +246,8 @@
     <pose>0.0750 0.0750 -0.01 0 0 0</pose>
     <geometry>
         <cylinder>
-            <radius>.005</radius>
-            <length>.04</length>
+            <radius>0.005</radius>
+            <length>0.04</length>
         </cylinder>
     </geometry>
     <material>
@@ -260,8 +260,8 @@
     <pose>0.0750 0.0750 -0.01 0 0 0</pose>
     <geometry>
         <cylinder>
-            <radius>.005</radius>
-            <length>.04</length>
+            <radius>0.005</radius>
+            <length>0.04</length>
         </cylinder>
     </geometry>
     <surface>
@@ -281,7 +281,7 @@
     <geometry>
         <cylinder>
             <radius>0.05</radius>
-            <length>.005</length>
+            <length>0.005</length>
         </cylinder>
     </geometry>
     <material>
@@ -295,7 +295,7 @@
     <geometry>
         <cylinder>
             <radius>0.05</radius>
-            <length>.005</length>
+            <length>0.005</length>
         </cylinder>            
     </geometry>
     <surface>
@@ -311,10 +311,10 @@
 </collision>
 
 <visual name='brazo_SE'>
-    <pose>-0.0550 -0.0346 0 0 0 1.0472</pose>
+    <pose>-0.0550 -0.0406 0 0 0 1.0472</pose>
     <geometry>
       <box>
-        <size>0.08 .01 .01</size>
+        <size>0.08 0.01 0.01</size>
       </box>
     </geometry>
     <material>
@@ -324,10 +324,10 @@
 </visual>
     
 <collision name='brazo_SE'>
-    <pose>-0.0550 -0.0346 0 0 0 1.0472</pose>
+    <pose>-0.0550 -0.0406 0 0 0 1.0472</pose>
     <geometry>
       <box>
-        <size>0.08 .01 .01</size>
+        <size>0.08 0.01 0.01</size>
       </box>
     </geometry>
     <surface>
@@ -346,8 +346,8 @@
     <pose>-0.0750 -0.0750 -0.01 0 0 0</pose>
     <geometry>
         <cylinder>
-            <radius>.005</radius>
-            <length>.04</length>
+            <radius>0.005</radius>
+            <length>0.04</length>
         </cylinder>
     </geometry>
     <material>
@@ -360,8 +360,8 @@
     <pose>-0.0750 -0.0750 -0.01 0 0 0</pose>
     <geometry>
         <cylinder>
-            <radius>.005</radius>
-            <length>.04</length>
+            <radius>0.005</radius>
+            <length>0.04</length>
         </cylinder>
     </geometry>
     <surface>
@@ -395,7 +395,7 @@
     <geometry>
         <cylinder>
             <radius>0.05</radius>
-            <length>.005</length>
+            <length>0.005</length>
         </cylinder>            
     </geometry>
     <surface>
@@ -411,10 +411,10 @@
 </collision>    
 
 <visual name='brazo_SW'>
-    <pose>-0.0550 0.0346 0 0 0 -1.0472</pose>
+    <pose>-0.0550 0.0406 0 0 0 -1.0472</pose>
     <geometry>
       <box>
-        <size>0.08 .01 .01</size>
+        <size>0.08 0.01 0.01</size>
       </box>
     </geometry>
     <material>
@@ -424,10 +424,10 @@
 </visual>
     
 <collision name='brazo_SW'>
-    <pose>-0.0550 0.0346 0 0 0 -1.0472</pose>
+    <pose>-0.0550 0.0406 0 0 0 -1.0472</pose>
     <geometry>
       <box>
-        <size>0.08 .01 .01</size>
+        <size>0.08 0.01 0.01</size>
       </box>
     </geometry>
     <surface>
@@ -446,8 +446,8 @@
     <pose>-0.0750 0.0750 -0.01 0 0 0</pose>
     <geometry>
         <cylinder>
-            <radius>.005</radius>
-            <length>.04</length>
+            <radius>0.005</radius>
+            <length>0.04</length>
         </cylinder>
     </geometry>
     <material>
@@ -460,8 +460,8 @@
     <pose>-0.0750 0.0750 -0.01 0 0 0</pose>
     <geometry>
         <cylinder>
-            <radius>.005</radius>
-            <length>.04</length>
+            <radius>0.005</radius>
+            <length>0.04</length>
         </cylinder>
     </geometry>
     <surface>
@@ -481,7 +481,7 @@
     <geometry>
         <cylinder>
             <radius>0.05</radius>
-            <length>.005</length>
+            <length>0.005</length>
         </cylinder>
     </geometry>
     <material>
@@ -495,7 +495,7 @@
     <geometry>
         <cylinder>
             <radius>0.05</radius>
-            <length>.005</length>
+            <length>0.005</length>
         </cylinder>            
     </geometry>
     <surface>
@@ -512,16 +512,20 @@
 
 
 <inertial>
-    <mass>0.300</mass>
+    <!-- DJI Air 2S (en modo N) https://www.dji.com/es/air-2s/specs -->
     
-    <!-- <box><size>0.40 0.40 0.05</size></box>  -->
+    <mass>0.595</mass>
+    
+<!-- Inercia para una caja de dimensiones 20x20x3 cm3
+     En realidad nuestro dron ocupa una caja de 25x25x4.5 cms -->
+
     <inertia>                <!-- http://en.wikipedia.org/wiki/List_of_moments_of_inertia -->
-      <ixx>0.001022500</ixx> <!-- for a box: ixx = 1/12 * mass * (y*y + z*z) -->
-      <ixy>0.0</ixy>         <!-- for a box: ixy = 0 -->
-      <ixz>0.0</ixz>         <!-- for a box: ixz = 0 -->
-      <iyy>0.001022500</iyy> <!-- for a box: iyy = 1/12 * mass * (x*x + z*z) -->
-      <iyz>0.0</iyz>         <!-- for a box: iyz = 0 -->
-      <izz>0.002000000</izz> <!-- for a box: izz = 1/12 * mass * (x*x + y*y) -->
+      <ixx>0.002027958</ixx>      for a box: ixx = 1/12 * mass * (y*y + z*z)
+      <iyy>0.002027958</iyy>      for a box: iyy = 1/12 * mass * (x*x + z*z)
+      <izz>0.003966666</izz>      for a box: izz = 1/12 * mass * (x*x + y*y)
+      <ixy>0.0</ixy>         
+      <ixz>0.0</ixz>         
+      <iyz>0.0</iyz>
     </inertia>
 </inertial>
    

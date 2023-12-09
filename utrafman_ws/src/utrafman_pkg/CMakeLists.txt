@@ -41,6 +41,7 @@ include_directories(
 
 
 
+
 # Add header files for ROS2 UTRAFMAN messages and services
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../build/utrafman_msgs/rosidl_generator_cpp/)
 #message("=====================UTRAFMAN ==== CMAKE_CURRENT_SOURCE_DIR  =  ${CMAKE_CURRENT_SOURCE_DIR}")
@@ -54,7 +55,9 @@ link_directories(${GAZEBO_LIBRARY_DIRS})
 
 
 # Set compiler flags
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEBO_CXX_FLAGS}")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEBO_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEBO_CXX_FLAGS} -g")
+
 
 
 # Add ROS 2 libraries
@@ -62,7 +65,7 @@ set(ROS_LIBS
   rclcpp
   std_msgs
   gazebo_ros
-#  geometry_msgs
+  geometry_msgs
 )
 
 
@@ -87,12 +90,17 @@ ament_target_dependencies(DCnavigation ${ROS_LIBS})
 target_link_libraries(DCnavigation ${GAZEBO_LIBRARIES})
 
 
+# add_library(dronecontrol_copy SHARED plugins/dronecontrol_copy.cc)
+# ament_target_dependencies(dronecontrol_copy ${ROS_LIBS})
+# target_link_libraries(dronecontrol_copy ${GAZEBO_LIBRARIES})
+
 
 # Install targets
 install(TARGETS
   HelloWorld
   World
   DCnavigation
+  # dronecontrol_copy
   DESTINATION lib/${PROJECT_NAME}
 )
 

@@ -1,0 +1,53 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+
+        
+        {
+            "name": "Gazebo connect",
+            "type": "cppdbg",
+            "request": "attach",
+            "processId": "${command:pickProcess}",
+            "program": "/usr/bin/gzserver-11.10.2",
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        
+        
+        {
+            "name": "Gazebo launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/usr/bin/gazebo",
+            "args": [
+                "--verbose",
+                "--pause",
+                "DroneChallenge.world"
+            ],
+            "stopAtEntry": false,
+            "cwd": "/home/usuario/code/utrafman_ros2/utrafman_ws/src/utrafman_pkg/worlds/",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        }
+
+    ]
+}
