@@ -1,7 +1,7 @@
 clear
 clc
 
-run('../../tools/UTRAFMAN_PATHS');
+run('../tools/UTRAFMAN_PATHS');
 
 
 builder = SimpleBuilder('builder',UTRAFMAN_MODELS_PATH);
