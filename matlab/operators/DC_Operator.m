@@ -13,6 +13,7 @@ properties
     rosNode                        % ROS2 Node 
     rosCli_Time                    % ROS2 service client 
     rosCli_DeployModel             % ROS2 Service client to deploy models into the air space
+    rosCli_RemoveUAV               % ROS2 Service client to remove UAVs from the air space
     % ROScli_reg_operator            % Service client to register itself as operators
     % ROScli_reg_FP                  % Service client to register a new FP
 
@@ -25,7 +26,7 @@ methods
 function obj = DC_Operator(name,path)
 
     obj.name = name;
-    obj.file = fullfile(path,'/DCmodels/drone/model.sdf');
+    obj.file = fullfile(path,'/DCmodels/drone/model_pluged.sdf');
     
     % ROS2
     obj.rosNode = ros2node(obj.name);
@@ -34,7 +35,10 @@ function obj = DC_Operator(name,path)
     obj.rosCli_DeployModel = ros2svcclient(obj.rosNode, ...
         '/World/DeployModel','navsim_msgs/DeployModel', ...
         'History','keepall');
-
+    obj.rosCli_RemoveUAV = ros2svcclient(obj.rosNode, ...
+        '/World/RemoveUAV','navsim_msgs/RemoveUAV', ...
+        'History','keepall');
+    
 end
 
 
@@ -85,6 +89,24 @@ function status =  DeployUAV(obj,name,pos,rot)
     end
         
 end
+
+
+function status =  RemoveUAV(obj,name)
+
+    req = ros2message(obj.rosCli_RemoveUAV);
+    req.name  = name;  %'deployedModel'
+
+    status = waitForServer(obj.rosCli_RemoveUAV,"Timeout",1);
+    if status
+        try
+            call(obj.rosCli_RemoveUAV,req,"Timeout",1);
+        catch
+            status = false;
+        end
+    end
+        
+end
+
 
 end % methods 
 end % classdef

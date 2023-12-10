@@ -21,8 +21,18 @@ builder.DeployModel('DCmodels/frame_green', ...
 builder.DeployModel('DCmodels/frame_blue', ...
     'frame_blue', [3 -1 1], [0 0 3]);
 
+
+
+
+
 op = DC_Operator("DC_Operator",NAVSIM_MODELS_PATH);
-op.DeployUAV('abejorro', [-3 -3 0.55], [0 0 1]);
+op.DeployUAV('abejorroMATLAB', [-3 -3 2], [0 0 1]);
 
 op.GetTime()
 op.ResetTime;
+
+% pause(1);
+% op.RemoveUAV('abejorronnnnn');
+% 
+% pause(1);
+% op.RemoveUAV('abejorro');
