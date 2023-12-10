@@ -46,7 +46,13 @@ void Load(physics::WorldPtr _parent, sdf::ElementPtr /*_sdf*/)
 
 
     // ROS2 node
-    rclcpp::init(0, nullptr);
+    if (!rclcpp::ok()) 
+    {   
+        // Esta función solo debe usarse una vez por aplicación.
+        // Si ROS ya está iniciado, esta llamada retorna la función actual sin avisar!
+        rclcpp::init(0, nullptr);
+    }
+
     this->rosNode = rclcpp::Node::make_shared("World");
 
 
@@ -205,7 +211,14 @@ void rosSrvFn_RemoveUAV(
     printf("NAVSIM World plugin: RemoveUAV\n");
     physics::ModelPtr model = this->world->ModelByName(request->name);
 
-    printf("Drone a destruir: %s \n", request->name.c_str());
+    if(!model)
+    {
+        printf("UAV not found: %s \n", request->name.c_str());
+        return;
+    }
+
+    this->world->RemoveModel(model);
+    printf("UAV %s removed from air space\n", request->name.c_str());
 
 }
 

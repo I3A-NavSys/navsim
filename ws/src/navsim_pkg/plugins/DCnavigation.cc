@@ -131,7 +131,7 @@ double cmd_rotZ = 0.0;            // (m/s)  velocidad angular deseada en eje Z
 public: 
 void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
 {
-    printf("DRONE CHALLENGE Drone plugin: loading\n");
+    // printf("DRONE CHALLENGE Drone plugin: loading\n");
 
     // Get information from the model
     this->model = _parent;
@@ -143,7 +143,14 @@ void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
         std::bind(&DCnavigation::OnWorldUpdateBegin, this));  
 
     // ROS2
-    rclcpp::init(0, nullptr);
+    if (!rclcpp::ok()) 
+    {   
+        // Esta función solo debe usarse una vez por aplicación
+        // Si ROS ya está iniciado, esta llamada retorna la función actual sin avisar!
+        // Si el UAV se generó desde el plugin de mundo, ROS ya está iniciado!!
+        rclcpp::init(0, nullptr);
+    }
+
     this->rosNode = rclcpp::Node::make_shared(this->UAVname);
     
 
@@ -174,12 +181,13 @@ void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
 	//Control input signal (rotor real speeds)
 	u << 0, 0, 0, 0;
 
+
 }
 
 
 void Init()
 {
-    printf("DC Navigation event: Init\n");
+    // printf("DC Navigation event: Init\n");
 
 ////////////////////////////asumimos un comando!!!
     cmd_on   =  1  ;
@@ -188,7 +196,7 @@ void Init()
     cmd_velY =  0.0;
     cmd_velZ =  0.0;
     cmd_rotZ =  1.0; 
-    printf("UAV command: ON: %.0f \n velX: %.1f    velY: %.1f    velZ: %.1f    rotZ: %.1f \n", 
+    printf("UAV command: ON: %.0f             velX: %.1f    velY: %.1f    velZ: %.1f              rotZ: %.1f \n\n", 
             cmd_on, cmd_velX, cmd_velY, cmd_velX, cmd_rotZ);
 ////////////////////////////
 
@@ -213,7 +221,7 @@ void OnWorldUpdateBegin()
 
     
     // ROS2 events proceessing
-    rclcpp::spin_some(rosNode);
+    // rclcpp::spin_some(rosNode);
 
 	// Pause simulation
 	// physics::WorldPtr world = this->model->GetWorld();

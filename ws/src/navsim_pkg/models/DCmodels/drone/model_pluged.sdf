@@ -5,6 +5,7 @@
 <model name="drone">
 
 <static>false</static>
+
 <plugin name="DCnavigation" filename="libDCnavigation.so">
 </plugin>
     
