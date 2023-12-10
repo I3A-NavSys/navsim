@@ -37,11 +37,11 @@ void Load(physics::WorldPtr _parent, sdf::ElementPtr /*_sdf*/)
 
 
     // Store world pointer
-    this->world = _parent;
+    world = _parent;
 
 
     // Periodic event
-    this->updateConnector = event::Events::ConnectWorldUpdateBegin(
+    updateConnector = event::Events::ConnectWorldUpdateBegin(
         std::bind(&World::OnWorldUpdateBegin, this));  
 
 
@@ -52,22 +52,20 @@ void Load(physics::WorldPtr _parent, sdf::ElementPtr /*_sdf*/)
         // Si ROS ya está iniciado, esta llamada retorna la función actual sin avisar!
         rclcpp::init(0, nullptr);
     }
-
-    this->rosNode = rclcpp::Node::make_shared("World");
-
+    rosNode = rclcpp::Node::make_shared("World");
 
     // ROS2 NAVSIM services
-    this->rosSrv_Time = this->rosNode->create_service<navsim_msgs::srv::Time>(
+    rosSrv_Time = rosNode->create_service<navsim_msgs::srv::Time>(
         "World/Time",
         std::bind(&World::rosSrvFn_Time, this,
                 std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
-    this->rosSrv_DeployModel = this->rosNode->create_service<navsim_msgs::srv::DeployModel>(
+    rosSrv_DeployModel = rosNode->create_service<navsim_msgs::srv::DeployModel>(
         "World/DeployModel",
         std::bind(&World::rosSrvFn_DeployModel, this,
                 std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
-    this->rosSrv_RemoveUAV = this->rosNode->create_service<navsim_msgs::srv::RemoveUAV>(
+    rosSrv_RemoveUAV = rosNode->create_service<navsim_msgs::srv::RemoveUAV>(
         "World/RemoveUAV",
         std::bind(&World::rosSrvFn_RemoveUAV, this,
                 std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
@@ -103,10 +101,10 @@ void rosSrvFn_Time(
     if (request->reset)
     {
         // printf("Simulation reset\n");
-        this->world->ResetTime();
+        world->ResetTime();
     }
 
-    common::Time simTime = this->world->SimTime();
+    common::Time simTime = world->SimTime();
     // printf("time: %.2f\n",simTime.Double());
 
     response->time.sec = simTime.sec;
@@ -117,7 +115,7 @@ void rosSrvFn_Time(
 void rosSrvFn_DeployModel(
     const std::shared_ptr<rmw_request_id_t> request_header,
     const std::shared_ptr<navsim_msgs::srv::DeployModel::Request>  request,   
-            std::shared_ptr<navsim_msgs::srv::DeployModel::Response> response)  
+          std::shared_ptr<navsim_msgs::srv::DeployModel::Response> response)  
 {
     // printf("NAVSIM World plugin: DeployModel\n");
 
@@ -184,7 +182,7 @@ void rosSrvFn_DeployModel(
 
     // Insert the model in the world
     // this->world->InsertModelString(model);
-    this->world->InsertModelSDF(modelSDF);
+    world->InsertModelSDF(modelSDF);
     
 
 
@@ -217,9 +215,9 @@ void rosSrvFn_RemoveUAV(
         return;
     }
 
-    this->world->RemoveModel(model);
+    world->RemoveModel(model);
     printf("UAV %s removed from air space\n", request->name.c_str());
-
+ 
 }
 
 };

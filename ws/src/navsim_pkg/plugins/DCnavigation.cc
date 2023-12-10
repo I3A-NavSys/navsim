@@ -7,9 +7,9 @@
 #include <Eigen/Geometry>
 // #include <stdio.h>
 
+#include "navsim_msgs/msg/telemetry.hpp"
 
 
-// #include "gazebo/physics/physics.hh"
 
 namespace gazebo {
 
@@ -19,15 +19,22 @@ private:
 
 ////////////////////////////////////////////////////////////////////////
 // Gazebo
-physics::ModelPtr model;
-physics::LinkPtr  link;
+
+physics::ModelPtr    model;
+physics::LinkPtr     link;
 event::ConnectionPtr updateConnector;
 
 
 ////////////////////////////////////////////////////////////////////////
 // ROS2
+
 std::string UAVname;
 rclcpp::Node::SharedPtr rosNode;
+
+rclcpp::Publisher<navsim_msgs::msg::Telemetry>::SharedPtr rosPub_Telemetry;
+common::Time prevTelemetryPubTime;
+double TelemetryPeriod = 1.0;    // 1 second
+
 
 
 
@@ -124,7 +131,6 @@ double cmd_rotZ = 0.0;            // (m/s)  velocidad angular deseada en eje Z
 
 
 
-
 ////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////
 
@@ -134,12 +140,12 @@ void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
     // printf("DRONE CHALLENGE Drone plugin: loading\n");
 
     // Get information from the model
-    this->model = _parent;
-    this->UAVname = this->model->GetName();
-    this->link = this->model->GetLink("dronelink");
+    model = _parent;
+    UAVname = model->GetName();
+    link = model->GetLink("dronelink");
 
     // Periodic event
-    this->updateConnector = event::Events::ConnectWorldUpdateBegin(
+    updateConnector = event::Events::ConnectWorldUpdateBegin(
         std::bind(&DCnavigation::OnWorldUpdateBegin, this));  
 
     // ROS2
@@ -150,9 +156,19 @@ void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
         // Si el UAV se generó desde el plugin de mundo, ROS ya está iniciado!!
         rclcpp::init(0, nullptr);
     }
+    rosNode = rclcpp::Node::make_shared(this->UAVname);
 
-    this->rosNode = rclcpp::Node::make_shared(this->UAVname);
     
+    
+    
+    
+//  ESTO NO COMPILA !!
+    rosPub_Telemetry = rosNode->create_publisher<navsim_msgs::msg::Telemetry>("Telemetrypub", 10);
+
+
+
+
+
 
 
 
@@ -189,6 +205,14 @@ void Init()
 {
     // printf("DC Navigation event: Init\n");
 
+    prevTelemetryPubTime = model->GetWorld()->SimTime();
+    
+
+
+  
+
+
+
 ////////////////////////////asumimos un comando!!!
     cmd_on   =  1  ;
 
@@ -218,6 +242,9 @@ void OnWorldUpdateBegin()
     // Platform low level control
     AutoPilot();
     PlatformDynamics();
+
+    // Telemetry communications
+    Telemetry();
 
     
     // ROS2 events proceessing
@@ -255,9 +282,6 @@ void AutoPilot()
         return;
     }
 
-
-
-
     // Check if the simulation was reset
     common::Time currentTime = model->GetWorld()->SimTime();
     // printf("current  control time: %.3f \n", currentTime.Double());
@@ -269,8 +293,6 @@ void AutoPilot()
     double interval = (currentTime - prevControlTime).Double();
     // printf("iteration interval (seconds): %.6f \n", interval);
     prevControlTime = currentTime;
-
-
 
 
     // Getting model status
@@ -370,6 +392,8 @@ void AutoPilot()
 
 }
 
+
+
 void PlatformDynamics()
 {
     // Esta funcion traduce 
@@ -428,12 +452,64 @@ void PlatformDynamics()
         -kMDz * angular_vel.Z() * fabs(angular_vel.Z()));
     link->AddRelativeTorque(MD);
 
-
 }
 
 
-}; // class
+void Telemetry()
+{
+    // printf("UAV Telemetry \n");
 
+    // Check if the simulation was reset
+    common::Time currentTime = model->GetWorld()->SimTime();
+
+    if (currentTime < prevTelemetryPubTime)
+        prevTelemetryPubTime = currentTime; // The simulation was reset
+
+    double interval = (currentTime - prevTelemetryPubTime).Double();
+    if (interval < TelemetryPeriod) return;
+
+    printf("UAV %s transmitting telemetry \n", UAVname.c_str());
+    printf("current time: %.3f \n\n", currentTime.Double());
+
+    prevTelemetryPubTime = currentTime;
+
+    // Getting model status
+    ignition::math::Pose3<double> pose = model->WorldPose();
+    ignition::math::Vector3<double> linear_vel = model->RelativeLinearVel();
+    ignition::math::Vector3<double> angular_vel = model->RelativeAngularVel();
+    // printf("drone xyz =  %.2f  %.2f  %.2f \n", pose.X(), pose.Y(), pose.Z());
+    // printf("drone YPR =  %.2f  %.2f  %.2f \n", pose.Yaw(), pose.Pitch(), pose.Roll());
+    // printf("drone         vel xyz =  %.2f  %.2f  %.2f\n",  linear_vel.X(),  linear_vel.Y(),  linear_vel.Z());
+    // printf("drone angular vel xyz =  %.2f  %.2f  %.2f\n", angular_vel.X(), angular_vel.Y(), angular_vel.Z());
+
+
+    navsim_msgs::msg::Telemetry msg;
+
+    msg.pose.position.x     = pose.X();
+    msg.pose.position.y     = pose.Y();
+    msg.pose.position.z     = pose.Z();
+    msg.pose.orientation.x  = pose.Roll();
+    msg.pose.orientation.y  = pose.Pitch();
+    msg.pose.orientation.z  = pose.Yaw();
+
+    msg.velocity.linear.x   = linear_vel.X();
+    msg.velocity.linear.y   = linear_vel.Y();
+    msg.velocity.linear.z   = linear_vel.Z();
+    msg.velocity.angular.x  = angular_vel.X();
+    msg.velocity.angular.y  = angular_vel.Y();
+    msg.velocity.angular.z  = angular_vel.Z();
+    
+    msg.wip = 42;
+    msg.fpip = true;
+    msg.time.sec = 123456;
+    msg.time.nanosec = 789000000;
+
+//     // rosPub_Telemetry->publish(msg);
+
+
+}
+
+}; // class
 
 // Register this plugin with the simulator
 GZ_REGISTER_MODEL_PLUGIN(DCnavigation)
