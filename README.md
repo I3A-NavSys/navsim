@@ -1,6 +1,6 @@
-# utrafman_ros2
-Repositorio para migrar el simulador de ROS1 a ROS2.
-Actualización 23/11/2023
+# NavSim
+Simulador de navegación de aeronaves desarrollado en Gazebo11 (Classic), ROS2 y Matlab R2023b.
+Actualización 10/12/2023
 
 # Versiones
 
@@ -17,7 +17,7 @@ Mathworks recomienda usar Gazebo 11 incluso con ROS2. Tiene una máquina virtual
 # Configuración de máquina
 
 Instalar la plataforma VMware Workstation 17.5.0 Player.
-Instalar el teclado
+Instalar el teclado.
 
 Crear una máquina virtual con
 - 8 procesadores (que ejecutarán Gazebo)
@@ -76,31 +76,6 @@ ros2 node list
 ros2 topic list
 ```
 
-## Gazebo Fortress (omitir este paso)
-
-Instalar Gazebo Fortress (LTS) siguiendo los pasos de este [tutorial](https://gazebosim.org/docs/fortress/install_ubuntu).
-
-Lanzar un ejemplo
-```bash
-ign gazebo lights.sdf
-```
-
-En la máquina virtual puede que no se reproduzca bien (la imagen parpadea y no se muestran los objetos). En tal caso ejecutarlo renderizando con ogre (en lugar de ogre2)
-```bash
-ign gazebo lights.sdf --render-engine ogre
-```
-
-Instalar puente ROS-Gazebo
-```bash
-sudo apt-get install ros-humble-ros-ign-bridge
-```
-
-Probar los tutoriales básicos:
-
-[building_robot](https://gazebosim.org/docs/fortress/building_robot)
-
-[moving_robot](https://gazebosim.org/docs/fortress/moving_robot)
-
 
 
 # Instalar Git
@@ -128,14 +103,14 @@ sudo apt install github-desktop
 	- En Accounts (abajo a la izquierda, encima de la rueda dentada) pulsar _Authorize GitHub for VS Code_
 
 
-# Repositorio UTRAFMAN_ROS2
+# Repositorio NAVSIM
 
 Clonar el repositorio desde GitHub. Utilizar VS Code, o directamente en consola:
 
 ```bash
 mkdir -p ~/code/
 cd ~/code/
-git clone https://github.com/I3A-NavSys/utrafman_ros2
+git clone https://github.com/I3A-NavSys/navsim
 ```
 
 
@@ -143,7 +118,7 @@ git clone https://github.com/I3A-NavSys/utrafman_ros2
 Probar un mundo de ejemplo
 
 ```bash
-cd ~/code/utrafman_ros2/utrafma_ws/src/utrafman_pkg/worlds/
+cd ~/code/navsim/ws/src/navsim_pkg/worlds/
 clear; gazebo --verbose tatami.world
 clear; gazebo --verbose generated_city.world
 ```
