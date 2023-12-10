@@ -1,6 +1,6 @@
 int16 id
 ---
-utrafman_msgs/UAV[] uavs
+navsim_msgs/UAV[] uavs
 
 # esto devuelve muchos?
 # estudiar que solo devuelva uno

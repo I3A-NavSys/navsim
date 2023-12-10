@@ -1,0 +1,4 @@
+navsim_msgs/UAV uav
+float32[] init_pos
+---
+navsim_msgs/UAV uav 

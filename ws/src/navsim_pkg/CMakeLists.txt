@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(utrafman_pkg)
+project(navsim_pkg)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -14,7 +14,7 @@ find_package(Eigen3        REQUIRED)
 find_package(gazebo_ros    REQUIRED)
 find_package(gazebo_msgs   REQUIRED)
 find_package(geometry_msgs REQUIRED)
-find_package(utrafman_msgs REQUIRED)
+find_package(navsim_msgs   REQUIRED)
 
 
 
@@ -42,9 +42,9 @@ include_directories(
 
 
 
-# Add header files for ROS2 UTRAFMAN messages and services
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../build/utrafman_msgs/rosidl_generator_cpp/)
-#message("=====================UTRAFMAN ==== CMAKE_CURRENT_SOURCE_DIR  =  ${CMAKE_CURRENT_SOURCE_DIR}")
+# Add header files for ROS2 NAVSIM messages and services
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../build/navsim_msgs/rosidl_generator_cpp/)
+#message("=====================NAVSIM ==== CMAKE_CURRENT_SOURCE_DIR  =  ${CMAKE_CURRENT_SOURCE_DIR}")
 # ¡¡Este mensaje no sale por pantalla. Sale en la consola de Visual Studio Code!!
 
 
@@ -81,7 +81,7 @@ target_link_libraries(HelloWorld ${GAZEBO_LIBRARIES})
 
 
 add_library(World SHARED plugins/World.cc)
-ament_target_dependencies(World ${ROS_LIBS} utrafman_msgs)
+ament_target_dependencies(World ${ROS_LIBS} navsim_msgs)
 target_link_libraries(World ${GAZEBO_LIBRARIES})
 
 

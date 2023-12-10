@@ -2,10 +2,10 @@
 #include "gazebo/physics/physics.hh"
 
 #include "rclcpp/rclcpp.hpp"
-#include "utrafman_msgs/srv/time.hpp"
-#include "utrafman_msgs/srv/deploy_model.hpp"
-// #include "utrafman/remove_model.h"
-// #include "utrafman/teletransport.h"
+#include "navsim_msgs/srv/time.hpp"
+#include "navsim_msgs/srv/deploy_model.hpp"
+// #include "navsim/remove_model.h"
+// #include "navsim/teletransport.h"
 
 
 namespace gazebo
@@ -22,16 +22,16 @@ event::ConnectionPtr updateConnector;
 // ROS2 Node
 rclcpp::Node::SharedPtr rosNode;
 
-// ROS2 UTRAFMAN services
-rclcpp::Service<utrafman_msgs::srv::Time>::SharedPtr        rosSrv_Time;
-rclcpp::Service<utrafman_msgs::srv::DeployModel>::SharedPtr rosSrv_DeployModel;
+// ROS2 NAVSIM services
+rclcpp::Service<navsim_msgs::srv::Time>::SharedPtr        rosSrv_Time;
+rclcpp::Service<navsim_msgs::srv::DeployModel>::SharedPtr rosSrv_DeployModel;
 
 public:
 
 void Load(physics::WorldPtr _parent, sdf::ElementPtr /*_sdf*/)
 {
-    // gzmsg << "UTRAFMAN World plugin: loading" << std::endl;
-    // printf("UTRAFMAN World plugin: loading\n");
+    // gzmsg << "NAVSIM World plugin: loading" << std::endl;
+    // printf("NAVSIM World plugin: loading\n");
 
 
     // Store world pointer
@@ -48,33 +48,33 @@ void Load(physics::WorldPtr _parent, sdf::ElementPtr /*_sdf*/)
     this->rosNode = rclcpp::Node::make_shared("World");
 
 
-    // ROS2 UTRAFMAN services
-    this->rosSrv_Time = this->rosNode->create_service<utrafman_msgs::srv::Time>(
+    // ROS2 NAVSIM services
+    this->rosSrv_Time = this->rosNode->create_service<navsim_msgs::srv::Time>(
         "World/Time",
         std::bind(&World::rosSrvFn_Time, this,
                 std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
-    this->rosSrv_DeployModel = this->rosNode->create_service<utrafman_msgs::srv::DeployModel>(
+    this->rosSrv_DeployModel = this->rosNode->create_service<navsim_msgs::srv::DeployModel>(
         "World/DeployModel",
         std::bind(&World::rosSrvFn_DeployModel, this,
                 std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
 
-    //  printf("UTRAFMAN World plugin: loaded\n");
+    //  printf("NAVSIM World plugin: loaded\n");
 
 }
 
 
 void Init()
 {
-    // printf("UTRAFMAN World plugin: inited\n");
+    // printf("NAVSIM World plugin: inited\n");
 }
 
 
 
 void OnWorldUpdateBegin()
 {
-    // printf("UTRAFMAN World plugin: OnWorldUpdateBegin\n");
+    // printf("NAVSIM World plugin: OnWorldUpdateBegin\n");
     // Procesar eventos ROS2
     rclcpp::spin_some(rosNode);
 }
@@ -82,10 +82,10 @@ void OnWorldUpdateBegin()
 
 void rosSrvFn_Time(
     const std::shared_ptr<rmw_request_id_t> request_header,
-    const std::shared_ptr<utrafman_msgs::srv::Time::Request>  request,   
-            std::shared_ptr<utrafman_msgs::srv::Time::Response> response)  
+    const std::shared_ptr<navsim_msgs::srv::Time::Request>  request,   
+            std::shared_ptr<navsim_msgs::srv::Time::Response> response)  
 {
-    // printf("UTRAFMAN World plugin: Service Time called\n");
+    // printf("NAVSIM World plugin: Service Time called\n");
 
     if (request->reset)
     {
@@ -103,10 +103,10 @@ void rosSrvFn_Time(
 
 void rosSrvFn_DeployModel(
     const std::shared_ptr<rmw_request_id_t> request_header,
-    const std::shared_ptr<utrafman_msgs::srv::DeployModel::Request>  request,   
-            std::shared_ptr<utrafman_msgs::srv::DeployModel::Response> response)  
+    const std::shared_ptr<navsim_msgs::srv::DeployModel::Request>  request,   
+            std::shared_ptr<navsim_msgs::srv::DeployModel::Response> response)  
 {
-    // printf("UTRAFMAN World plugin: DeployModel\n");
+    // printf("NAVSIM World plugin: DeployModel\n");
 
     // printf("Model SDF:  %s\n", request->model_sdf.c_str());
     // printf("Model name: %s\n", request->name.c_str());
@@ -184,7 +184,7 @@ void rosSrvFn_DeployModel(
 
 
 
-    // gzmsg << "UTRAFMAN service DeployModel: model deployed" << std::endl;
+    // gzmsg << "NAVSIM service DeployModel: model deployed" << std::endl;
     response->status = true;
 
 }

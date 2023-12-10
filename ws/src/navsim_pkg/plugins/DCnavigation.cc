@@ -178,7 +178,7 @@ void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
 
 void Init()
 {
-    printf("DRONE CHALLENGE Drone plugin: Init\n");
+    printf("DC Navigation event: Init\n");
 
 ////////////////////////////asumimos un comando!!!
     cmd_on   =  1  ;
@@ -187,6 +187,8 @@ void Init()
     cmd_velY =  0.0;
     cmd_velZ =  0.0;
     cmd_rotZ =  1.0; 
+    printf("UAV command: ON: %.0f \n velX: %.1f    velY: %.1f    velZ: %.1f    rotZ: %.1f \n", 
+            cmd_on, cmd_velX, cmd_velY, cmd_velX, cmd_rotZ);
 ////////////////////////////
 
 }
@@ -229,7 +231,7 @@ void AutoPilot()
     // un comando de navegacion (vector velocidad y rotacion deseados)
     // a la velocidad de rotacion de los 4 motores
 
-    printf("DRONE CHALLENGE Drone plugin: Autopilot\n");
+    // printf("DRONE CHALLENGE Drone plugin: Autopilot\n");
 
 
     if (cmd_on == 0)
