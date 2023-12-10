@@ -149,23 +149,18 @@ void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
         std::bind(&DCnavigation::OnWorldUpdateBegin, this));  
 
     // ROS2
-    if (!rclcpp::ok()) 
-    {   
-        // Esta función solo debe usarse una vez por aplicación
-        // Si ROS ya está iniciado, esta llamada retorna la función actual sin avisar!
-        // Si el UAV se generó desde el plugin de mundo, ROS ya está iniciado!!
-        rclcpp::init(0, nullptr);
+    if (rclcpp::ok()) 
+    {
+        rosNode = rclcpp::Node::make_shared(this->UAVname);
+        rosPub_Telemetry = rosNode->create_publisher<navsim_msgs::msg::Telemetry>("Telemetrypub", 10);
+
     }
-    rosNode = rclcpp::Node::make_shared(this->UAVname);
+    else
 
-    
-    
-    
-    
-//  ESTO NO COMPILA !!
-    rosPub_Telemetry = rosNode->create_publisher<navsim_msgs::msg::Telemetry>("Telemetrypub", 10);
-
-
+    {   
+        std::cout << "\x1B[2J\x1B[H";       // Clear screen
+        printf("\nERROR: NavSim world plugin is not running ROS2!\n\n");
+    }
 
 
 
@@ -504,7 +499,7 @@ void Telemetry()
     msg.time.sec = 123456;
     msg.time.nanosec = 789000000;
 
-//     // rosPub_Telemetry->publish(msg);
+    rosPub_Telemetry->publish(msg);
 
 
 }

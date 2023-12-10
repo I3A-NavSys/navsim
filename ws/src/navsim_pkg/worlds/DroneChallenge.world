@@ -3,6 +3,8 @@
 
 <world name="tatami">      
 
+<plugin name="World" filename="libWorld.so" />
+
 
 
 <!-- Area de juego -->
@@ -49,13 +51,6 @@
 </include>
 
 
-
-<!-- UAV -->
-<!-- <include>
-    <name>abejorro2</name>
-    <uri>../models/DCmodels/drone/model_pluged.sdf</uri>
-    <pose>1 0 1 0 0 0</pose>
-</include> -->
 
 
 
