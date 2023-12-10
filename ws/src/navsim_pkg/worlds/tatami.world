@@ -51,14 +51,18 @@
 
 
 <!-- Own physics settings to speed up simulation -->
-<!--
 <physics type='ode'>
-    <max_step_size>0.01</max_step_size>
-    <real_time_factor>1.0</real_time_factor>
+
+    <max_step_size>0.01</max_step_size>                     
+    <!-- default: 0.001 segundos simulados / paso de simulación -->
+    
     <real_time_update_rate>100</real_time_update_rate>
-    <gravity>0 0 -9.8</gravity>
+    <!-- default: 1000 ciclos de simulación / segundo real -->
+
 </physics> 
--->
+
+
+
 
 
 <!-- Coordinates -->   

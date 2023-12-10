@@ -9,9 +9,6 @@
 </plugin>
     
 <link name='dronelink'>
-<!-- Rotores en distribucion cuadrada
-      situados a 25 cms del centro de gravedad
--->
 
 <visual name='fuselaje'>
     <pose>0 0 0 0 0 0</pose>

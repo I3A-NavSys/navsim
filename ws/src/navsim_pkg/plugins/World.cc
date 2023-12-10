@@ -4,6 +4,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "navsim_msgs/srv/time.hpp"
 #include "navsim_msgs/srv/deploy_model.hpp"
+#include "navsim_msgs/srv/remove_uav.hpp"
 // #include "navsim/remove_model.h"
 // #include "navsim/teletransport.h"
 
@@ -25,6 +26,7 @@ rclcpp::Node::SharedPtr rosNode;
 // ROS2 NAVSIM services
 rclcpp::Service<navsim_msgs::srv::Time>::SharedPtr        rosSrv_Time;
 rclcpp::Service<navsim_msgs::srv::DeployModel>::SharedPtr rosSrv_DeployModel;
+rclcpp::Service<navsim_msgs::srv::RemoveUAV>::SharedPtr   rosSrv_RemoveUAV;
 
 public:
 
@@ -43,7 +45,7 @@ void Load(physics::WorldPtr _parent, sdf::ElementPtr /*_sdf*/)
         std::bind(&World::OnWorldUpdateBegin, this));  
 
 
-        // ROS2 node
+    // ROS2 node
     rclcpp::init(0, nullptr);
     this->rosNode = rclcpp::Node::make_shared("World");
 
@@ -57,6 +59,11 @@ void Load(physics::WorldPtr _parent, sdf::ElementPtr /*_sdf*/)
     this->rosSrv_DeployModel = this->rosNode->create_service<navsim_msgs::srv::DeployModel>(
         "World/DeployModel",
         std::bind(&World::rosSrvFn_DeployModel, this,
+                std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+
+    this->rosSrv_RemoveUAV = this->rosNode->create_service<navsim_msgs::srv::RemoveUAV>(
+        "World/RemoveUAV",
+        std::bind(&World::rosSrvFn_RemoveUAV, this,
                 std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
 
@@ -75,7 +82,7 @@ void Init()
 void OnWorldUpdateBegin()
 {
     // printf("NAVSIM World plugin: OnWorldUpdateBegin\n");
-    // Procesar eventos ROS2
+    // ROS2 events proceessing
     rclcpp::spin_some(rosNode);
 }
 
@@ -186,6 +193,19 @@ void rosSrvFn_DeployModel(
 
     // gzmsg << "NAVSIM service DeployModel: model deployed" << std::endl;
     response->status = true;
+
+}
+
+
+void rosSrvFn_RemoveUAV(
+    const std::shared_ptr<rmw_request_id_t> request_header,
+    const std::shared_ptr<navsim_msgs::srv::RemoveUAV::Request>  request,   
+          std::shared_ptr<navsim_msgs::srv::RemoveUAV::Response> response)  
+{
+    printf("NAVSIM World plugin: RemoveUAV\n");
+    physics::ModelPtr model = this->world->ModelByName(request->name);
+
+    printf("Drone a destruir: %s \n", request->name.c_str());
 
 }
 

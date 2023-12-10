@@ -25,7 +25,8 @@ event::ConnectionPtr updateConnector;
 
 
 ////////////////////////////////////////////////////////////////////////
-// ROS2 Node
+// ROS2
+std::string UAVname;
 rclcpp::Node::SharedPtr rosNode;
 
 
@@ -130,21 +131,21 @@ double cmd_rotZ = 0.0;            // (m/s)  velocidad angular deseada en eje Z
 public: 
 void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
 {
-    // printf("DRONE CHALLENGE Drone plugin: loading\n");
+    printf("DRONE CHALLENGE Drone plugin: loading\n");
 
-    // Store pointers to the model
+    // Get information from the model
     this->model = _parent;
+    this->UAVname = this->model->GetName();
     this->link = this->model->GetLink("dronelink");
- 
+
     // Periodic event
     this->updateConnector = event::Events::ConnectWorldUpdateBegin(
         std::bind(&DCnavigation::OnWorldUpdateBegin, this));  
 
     // ROS2
-
-
-
-
+    rclcpp::init(0, nullptr);
+    this->rosNode = rclcpp::Node::make_shared(this->UAVname);
+    
 
 
 
@@ -197,6 +198,8 @@ void Init()
 
 void OnWorldUpdateBegin()
 {
+    // Clear screen
+    // std::cout << "\x1B[2J\x1B[H";
     // printf("DRONE CHALLENGE Drone plugin: OnWorldUpdateBegin\n");
     
     // Navigation??
@@ -210,15 +213,11 @@ void OnWorldUpdateBegin()
 
     
     // ROS2 events proceessing
-    // rclcpp::spin_some(rosNode);
-
+    rclcpp::spin_some(rosNode);
 
 	// Pause simulation
-	physics::WorldPtr world = this->model->GetWorld();
+	// physics::WorldPtr world = this->model->GetWorld();
 	// world->SetPaused(true);
-
-    // Clear screen
-    // std::cout << "\x1B[2J\x1B[H";
 
 
 }
