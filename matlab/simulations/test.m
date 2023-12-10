@@ -3,10 +3,10 @@ clc
 clear
 
 rosNode = ros2node('Tester');
-rosCli_Time = ros2svcclient(rosNode,'/World/Time','utrafman_msgs/Time');
+rosCli_Time = ros2svcclient(rosNode,'/World/Time','navsim_msgs/Time');
 
 req = ros2message(rosCli_Time);
-req.reset = true;
+req.reset = false;
 status = waitForServer(rosCli_Time,"Timeout",3);
 if ~status
     error("Es servicio ROS2 no está disponible")

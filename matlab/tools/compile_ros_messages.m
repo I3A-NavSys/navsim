@@ -6,25 +6,25 @@ clc; clear;
 if isunix  %Unix computer
 
     PLATFORM = 'glnxa64';
-    UTRAFMAN_DIR = '~/code/utrafman_ros2/'; %Set it with your repo installation path
+    NAVSIM_DIR = '~/code/navsim/'; %Set it with your repo installation path
 
 elseif ispc %Windows computer
 
     PLATFORM = 'win64';
     switch getenv("USERNAME")
         case 'Rafael.Casado'
-            UTRAFMAN_DIR = 'c:\Users\Rafael.Casado\code\utrafman_ros2\';
+            NAVSIM_DIR = 'c:\Users\Rafael.Casado\code\navsim\';
         case 'Rafa'
-            UTRAFMAN_DIR = 'c:\Users\Rafa\code\utrafman_ros2\';
+            NAVSIM_DIR = 'c:\Users\Rafa\code\navsim\';
         otherwise
-            error('Windows user not defined in file UTRAFMAN_init.m');
+            error('NAVSIM_DIR not defined');
     end
 
 end
 
 
-ros2genmsg(fullfile(UTRAFMAN_DIR,'utrafman_ws/src/'));
-addpath(fullfile(UTRAFMAN_DIR,'utrafman_ws/src/matlab_msg_gen/',PLATFORM,'/install/m/'));
+ros2genmsg(fullfile(NAVSIM_DIR,'ws/src/'));
+addpath(fullfile(NAVSIM_DIR,'ws/src/matlab_msg_gen/',PLATFORM,'/install/m/'));
 
 clear classes
 rehash toolboxcache

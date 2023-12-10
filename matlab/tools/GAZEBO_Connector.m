@@ -11,7 +11,7 @@ classdef GAZEBO_Connector
         % Constructor
         function obj = GAZEBO_Connector()
             % Inicializar la conexión ROS
-            obj.ROSnode = ros2node('UTRAFMAN_SimManager');
+            obj.ROSnode = ros2node('NAVSIM_SimManager');
 
             % Suscribirse al reloj de Gazebo
             obj.ROSsub_clock = ros2subscriber(obj.ROSnode, ...

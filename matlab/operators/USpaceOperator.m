@@ -31,10 +31,10 @@ function obj = DC_Operator(name)
 
     % ROS2 service clients
     obj.rosCli_Test = ros2svcclient(obj.rosNode, ...
-        '/World/Test','utrafman_msgs/Test');
+        '/World/Test','navsim_msgs/Test');
 
     obj.rosCli_DeployModel = ros2svcclient(obj.rosNode, ...
-        '/World/DeployModel','utrafman_msgs/DeployModel', ...
+        '/World/DeployModel','navsim_msgs/DeployModel', ...
         'History','keepall');
 
 
@@ -89,13 +89,13 @@ end
 
 function status =  AirSpace_DeployUAV(obj,type,name,pos,rot)
 
-    path = '../../utrafman_ws/src/utrafman_pkg/models/';
+    path = '../../ws/src/navsim_pkg/models/';
 
     switch type
         case 'drone'
-            model = '../../utrafman_ws/src/utrafman_pkg/models/DCmodels/drone/model.sdf';
+            model = '../../ws/src/navsim_pkg/models/DCmodels/drone/model.sdf';
         case 'base'
-            req.model_sdf = fileread('../../utrafman_ws/src/utrafman_pkg/models/DCmodels/base_drone/model.sdf');
+            req.model_sdf = fileread('../../ws/src/navsim_pkg/models/DCmodels/base_drone/model.sdf');
         otherwise
             status = false;
             return
