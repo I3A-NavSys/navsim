@@ -15,12 +15,12 @@ Configure a computer with **Ubuntu 22.04.3 LTS (Jammy Jellyfish)**. You can obta
 ## Install ROS2
 
 NAVSIM runs on **ROS2** (Robot Operating System) **Humble Hawksbill LTS**. 
-Please follow the official [tutorial](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debians.html).
+Please install it following the official [tutorial](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debians.html).
 
 
 Make sure that:
 - A _full desktop_ installation is performed.
-- The necessary dependencies for building packages are installed.
+- The necessary dependencies (_ros-dev-tools_) for building packages are installed.
 - Source ROS2
 ```bash
 source /opt/ros/humble/setup.bash
@@ -29,9 +29,24 @@ echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
 Verify the installation with the `ros2` command.
 
 
-As a part of _ROS Noetic_, the _Gazebo 11_ simulator will be installed. To check it, execute the command `gazebo` in a terminal. The graphical interface of Gazebo should open:
+# Install Gazebo
+
+Instal Gazebo 11 (classic) from **Init/Ubuntu Software**. 
+To check it, execute the command `gazebo` in a terminal. The graphical interface of Gazebo should open:
 
 ![Gazebo](./img/gazebo.png 'Gazebo simulator. :size=600px')
+
+Instalar puente ROS-Gazebo
+```bash
+sudo apt install ros-humble-gazebo-ros-pkgs
+```
+
+Check that ROS2 and Gazebo are linked running an empty scenario:
+```bash
+ros2 launch gazebo_ros gazebo.launch.py
+ros2 node list
+ros2 topic list
+```
 
 >:warning: U-TRAFMAN has been developed and tested in the specified ROS/Gazebo versions. While it might work in other versions, there are no compatibility guarantees.
 
