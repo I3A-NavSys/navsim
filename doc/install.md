@@ -94,11 +94,11 @@ Now we set up .bashrc to make our workspace act as a ROS overlay (leaving Humble
 echo 'source ~/code/navsim/ws/install/setup.bash' >> ~/.bashrc
 echo 'export GAZEBO_PLUGIN_PATH=${GAZEBO_PLUGIN_PATH}:~/code/navsim/ws/install/navsim_pkg/lib/navsim_pkg/' >> ~/.bashrc
 echo 'export GAZEBO_PLUGIN_PATH=${GAZEBO_PLUGIN_PATH}:~/code/navsim/ws/install/navsim_msgs/lib/' >> ~/.bashrc
+source ~/.bashrc
 ```
 
 We observe two NavSim packages in the list recognized by ROS2:
 ```bash
-source ~/.bashrc
 ros2 pkg list | grep navsim
 ```
 
@@ -110,21 +110,9 @@ clear; gazebo hello.world
 
 
 
-
-
-
-
-
-
-
-
-
-
-
 ## Install Python
 
-Later, MATLAB ROS2 Toolbox will require Python 3.10.x.
-
+MATLAB ROS2 Toolbox will require Python 3.10.x.
 In Ubuntu, you may install it by executing the following commands in a terminal:
 ```bash
 sudo apt install python3.10-venv
@@ -167,13 +155,13 @@ sudo ./install
 
    e) Confirm your selections and continue the installation process.
 
-5. Once MATLAB is installed, you can delete the installation file and the `matlabinstaller` folder.
+> Once MATLAB is installed, you can delete the installation file and the `matlabinstaller` folder.
 
-6. Open MATLAB. In Windows, start the application. In Ubuntu, execute `matlab` in a terminal.
+5. Open MATLAB. In Windows, start the application. In Ubuntu, execute `matlab` in a terminal.
 
-7. Select **HOME > ENVIRONMENT tile > Preferences**. In the panel on the left, select **ROS Toolbox**. Click on **Open ROS Toolbox Preferences**.
+6. Select **HOME > ENVIRONMENT tile > Preferences**. In the panel on the left, select **ROS Toolbox**. Click on **Open ROS Toolbox Preferences**.
 
-8. In the **ROS Toolbox Preferences** dialog box, set the path to your Python installation.
+7. In the **ROS Toolbox Preferences** dialog box, set the path to your Python installation.
 Typical values may be:
 
    | OS      | Python path |
@@ -182,16 +170,7 @@ Typical values may be:
    | Windows | C:\Users\User\AppData\Local\Programs\Python\Python310\pythonw.exe |
 
 
-10. Click on **Recreate Python Environment**. When it finishes, press **OK**.
-
-
-
-
-
-
-
-
-
+8. Click on **Recreate Python Environment**. When it finishes, press **OK**.
 
 
 
@@ -205,18 +184,8 @@ To compile custom ROS messages, perform the following steps:
 
 3. Run the script `compile_ros_messages.m`. It may take several minutes. If everything is correct, you should see a message in the MATLAB console saying `Build succeeded`.
 
-You can find more information about how to compile custom ROS messages [here](https://es.mathworks.com/help/ros/custom-message-support.html?s_tid=CRUX_lftnav). 
+4. Open the script `NAVSIM_PATHS`, and set variable **NAVSIM_PATH** with the folder path where your simulator installation resides.
 
 
-
-
- 
-   - Set variable **NAVSIM_DIR** with the folder path where your simulation installation resides.
-     
-
-
-
-
-
-## Running your first simulation
+## Running your first simulation with Matlab connection
 
