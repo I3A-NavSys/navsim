@@ -1,6 +1,7 @@
 # Installation
 
 
+
 ## Set up your machine
 
 You can install NAVSIM on either a real computer or a virtual machine. In the second case, we have successfully tested it with VMware Workstation Player 17. You can obtain it [here](https://www.vmware.com/es/products/workstation-player/workstation-player-evaluation.html).
@@ -10,6 +11,7 @@ Configure a computer with **Ubuntu 22.04.3 LTS (Jammy Jellyfish)**. You can obta
 >:warning: NAVSIM has been developed and tested in the specified Ubuntu version. While it might work in other versions, there are no compatibility guarantees.
 
 > You can install ROS/Gazebo and MATLAB on the same computer. However, running MATLAB on a different computer, including Windows platforms, may be beneficial in the case of extensive simulations where the resources of typical machines may be insufficient. In such scenarios, make sure that the computers are connected to the same network and can communicate with each other.
+
 
 
 ## Install ROS2
@@ -24,9 +26,10 @@ Make sure that:
 - Source ROS2
 ```bash
 source /opt/ros/humble/setup.bash
-echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+echo 'source /opt/ros/humble/setup.bash' >> ~/.bashrc
 ```
 Verify the installation with the `ros2` command.
+
 
 
 ## Install Gazebo
@@ -51,7 +54,69 @@ ros2 node list
 ros2 topic list
 ```
 
->:warning: U-TRAFMAN has been developed and tested in the specified ROS/Gazebo versions. While it might work in other versions, there are no compatibility guarantees.
+
+## Install Git
+
+```bash
+sudo apt update
+sudo apt install git
+git --version
+```
+
+Optionally, install GitHub Desktop:
+
+```bash
+wget -qO - https://apt.packages.shiftkey.dev/gpg.key | gpg --dearmor | sudo tee /usr/share/keyrings/shiftkey-packages.gpg > /dev/null
+sudo sh -c 'echo "deb [arch=amd64 signed-by=/usr/share/keyrings/shiftkey-packages.gpg] https://apt.packages.shiftkey.dev/ubuntu/ any main" > /etc/apt/sources.list.d/shiftkey-packages.list'
+sudo apt update
+sudo apt install github-desktop
+```
+
+
+## Clone and compile NAVSIM packages
+
+You can download NAVSIM by cloning the repository in your computer:
+```bash
+cd
+mkdir code
+cd code
+sudo git clone https://github.com/I3A-NavSys/navsim
+```
+
+Then, we need to compile a ROS2 workspace containing the simulation environment:
+```bash
+cd navsim/ws
+colcon build
+```
+
+Now we set up .bashrc to make our workspace act as a ROS overlay (leaving Humble as a ROS underlay). Also, we configure Gazebo to find our libraries:
+```bash
+echo 'source ~/code/navsim/ws/install/setup.bash' >> ~/.bashrc
+echo 'export GAZEBO_PLUGIN_PATH=${GAZEBO_PLUGIN_PATH}:~/code/navsim/ws/install/navsim_pkg/lib/navsim_pkg/' >> ~/.bashrc
+echo 'export GAZEBO_PLUGIN_PATH=${GAZEBO_PLUGIN_PATH}:~/code/navsim/ws/install/navsim_msgs/lib/' >> ~/.bashrc
+```
+
+We observe two NavSim packages in the list recognized by ROS2:
+```bash
+source ~/.bashrc
+ros2 pkg list | grep navsim
+```
+
+Finally, we open a world in Gazebo:
+```bash
+cd ~/code/navsim/ws/src/navsim_pkg/worlds/
+clear; gazebo hello.world
+```
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -120,58 +185,6 @@ Typical values may be:
 10. Click on **Recreate Python Environment**. When it finishes, press **OK**.
 
 
-## Install Git
-
-```bash
-sudo apt update
-sudo apt install git
-git --version
-```
-
-Optionally, install GitHub Desktop:
-
-```bash
-wget -qO - https://apt.packages.shiftkey.dev/gpg.key | gpg --dearmor | sudo tee /usr/share/keyrings/shiftkey-packages.gpg > /dev/null
-sudo sh -c 'echo "deb [arch=amd64 signed-by=/usr/share/keyrings/shiftkey-packages.gpg] https://apt.packages.shiftkey.dev/ubuntu/ any main" > /etc/apt/sources.list.d/shiftkey-packages.list'
-sudo apt update
-sudo apt install github-desktop
-```
-
-
-## Clone and compile NAVSIM packages
-
-You can download NAVSIM by cloning the repository in your computer:
-```bash
-cd
-mkdir code
-cd code
-sudo git clone https://github.com/I3A-NavSys/navsim
-```
-
-Then, we need to compile a ROS2 workspace containing the simulation environment:
-```bash
-cd navsim/ws
-colcon build
-```
-
-Now we set up .bashrc to make our workspace act as a ROS overlay (leaving Humble as a ROS underlay). Also, we configure Gazebo to find our libraries:
-```bash
-echo "source ~/code/navsim/ws/install/setup.bash" >> ~/.bashrc
-echo "export GAZEBO_PLUGIN_PATH=${GAZEBO_PLUGIN_PATH}:~/code/navsim/ws/install/navsim_pkg/lib/navsim_pkg/" >> ~/.bashrc
-echo "export GAZEBO_PLUGIN_PATH=${GAZEBO_PLUGIN_PATH}:~/code/navsim/ws/install/navsim_msgs/lib/" >> ~/.bashrc
-```
-
-We observe two NavSim packages in the list recognized by ROS2:
-```bash
-source ~/.bashrc
-ros2 pkg list | grep navsim
-```
-
-Finally, we open a world in Gazebo:
-```bash
-cd ~/code/navsim/ws/src/navsim_pkg/worlds/
-clear; gazebo hello.world
-```
 
 
 
@@ -198,11 +211,8 @@ You can find more information about how to compile custom ROS messages [here](ht
 
 
  
-   - Set variable **UTRAFMAN_DIR** with the folder path where your simulation installation resides.
+   - Set variable **NAVSIM_DIR** with the folder path where your simulation installation resides.
      
-     >Default value will be `/opt/ros/noetic/share/utrafman_sim/src/`. Change this variable if U-TRAFMAN installation is in another directory or when using a different OS.
-
-
 
 
 
