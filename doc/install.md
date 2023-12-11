@@ -29,7 +29,7 @@ echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
 Verify the installation with the `ros2` command.
 
 
-# Install Gazebo
+## Install Gazebo
 
 Instal Gazebo 11 (classic) from **Init/Ubuntu Software**. 
 To check it, execute the command `gazebo` in a terminal. The graphical interface of Gazebo should open:
@@ -44,6 +44,9 @@ sudo apt install ros-humble-gazebo-ros-pkgs
 Check that ROS2 and Gazebo are linked running an empty scenario:
 ```bash
 ros2 launch gazebo_ros gazebo.launch.py
+```
+In another terminal run:
+```bash
 ros2 node list
 ros2 topic list
 ```
