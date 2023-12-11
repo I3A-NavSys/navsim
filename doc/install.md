@@ -58,34 +58,22 @@ ros2 topic list
 
 ## Install Python
 
-Later, MATLAB ROS Toolbox will require Python.
+Later, MATLAB ROS2 Toolbox will require Python 3.10.x.
 
-In Ubuntu, it is required Python version 3.9.x. 
-You may install it by executing the following commands in a terminal:
+In Ubuntu, you may install it by executing the following commands in a terminal:
 ```bash
-sudo apt install python3.9-venv
-mkdir /tmp/venv
+sudo apt install python3.10-venv
 ```
 
-In Windows, it is required Python version 3.9.x or 3.10.x. 
-For example, you may download and install Python 3.10.11 from the [official site](https://www.python.org/ftp/python/3.10.11/python-3.10.11-amd64.exe).
-
-
->:warning:️ U-TRAFMAN simulator has been tested with the mentioned versions of Python. While it may work with other versions, there are no compatibility guarantees.
-
-
+In Windows, for example, you may download and install Python 3.10.11 from the [official site](https://www.python.org/ftp/python/3.10.11/python-3.10.11-amd64.exe).
 
 
 
 ## Install and configure MATLAB
 
-U-TRAFMAN provides a variety of tools for launching and analyzing simulations. These tools are programmed in MATLAB®. To install it, you can follow these steps:
+NAVSIM provides a variety of tools for launching and analyzing simulations. These tools are programmed in MATLAB® R2023b. To install it, you can follow these steps:
 
-
-
-1. Download MATLAB R2023b from the official [MathWorks website](https://es.mathworks.com/downloads).
-
-   >:warning:  U-TRAFMAN simulator has been tested in **MATLAB R2023a** and **MATLAB R2023b**. While it might work in other versions, there are no compatibility guarantees.
+1. Download **MATLAB R2023b Update 4** from the official [MathWorks website](https://es.mathworks.com/downloads).
 
 2. In Ubuntu, unzip the installer package by running the following commands in your terminal:
 ```bash
@@ -104,8 +92,9 @@ sudo ./install
 
    c) Select the MATLAB products you want to install. Ensure that you select at least the following components:
       - MATLAB R2023b
-      - Parallel Computing Toolbox
+      - Simulink
       - ROS Toolbox
+      - StateFlow
 
    d) Configure installation options:
       - Set _Create symbolic links to MATLAB scripts in:_ `/usr/local/bin`
@@ -117,28 +106,44 @@ sudo ./install
 
 6. Open MATLAB. In Windows, start the application. In Ubuntu, execute `matlab` in a terminal.
 
-    >If Matlab indicates a new release is available and prompts you to update, click on "Don't Show Again."
-
 7. Select **HOME > ENVIRONMENT tile > Preferences**. In the panel on the left, select **ROS Toolbox**. Click on **Open ROS Toolbox Preferences**.
 
 8. In the **ROS Toolbox Preferences** dialog box, set the path to your Python installation.
 Typical values may be:
 
-
    | OS      | Python path |
    |:--------|:------------|
-   | Ubuntu  | /usr/bin/python3.9 |
+   | Ubuntu  | /usr/bin/python3.10 |
    | Windows | C:\Users\User\AppData\Local\Programs\Python\Python310\pythonw.exe |
 
 
 10. Click on **Recreate Python Environment**. When it finishes, press **OK**.
 
 
-## Install and configure U-TRAFMAN
+## Install Git
 
-### Clone U-TRAFMAN package
+```bash
+sudo apt update
+sudo apt install git
+git --version
+```
 
-You can download U-TRAFMAN by cloning the repository in your ROS installation:
+Optionally, install GitHub Desktop:
+
+```bash
+wget -qO - https://apt.packages.shiftkey.dev/gpg.key | gpg --dearmor | sudo tee /usr/share/keyrings/shiftkey-packages.gpg > /dev/null
+sudo sh -c 'echo "deb [arch=amd64 signed-by=/usr/share/keyrings/shiftkey-packages.gpg] https://apt.packages.shiftkey.dev/ubuntu/ any main" > /etc/apt/sources.list.d/shiftkey-packages.list'
+sudo apt update
+sudo apt install github-desktop
+```
+
+
+
+## Install NAVSIM
+
+### Clone NAVSIM packages
+
+You can download NAVSIM by cloning the repository in your computer:
 ```bash
 cd /opt/ros/noetic/share
 sudo git clone https://github.com/I3A-NavSys/utrafman_sim
