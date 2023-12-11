@@ -55,7 +55,7 @@ source /opt/ros/humble/setup.bash
 echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
 ```
 
-Comprobar la instalación con el comando `ros2`.ros
+Comprobar la instalación con el comando `ros2`.
 
 # Instalar Gazebo
 
