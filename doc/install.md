@@ -171,7 +171,12 @@ Typical values may be:
 
 
 8. Click on **Recreate Python Environment**. When it finishes, press **OK**.
-
+9. 
+10. Finally, Matlab needs to use a specific version of the C compiler:
+```bash
+echo 'export LD_PRELOAD=/lib/x86_64-linux-gnu/libstdc++.so.6' >> ~/.bashrc
+source ~/.bashrc
+```
 
 
 ### Compiling ROS messages with MATLAB
