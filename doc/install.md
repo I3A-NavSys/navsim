@@ -3,23 +3,31 @@
 
 ## Set up your machine
 
-You can install U-TRAFMAN on either a real computer or a virtual machine. In the second case, we have successfully tested it with VMware Workstation Player 17. You can obtain it [here](https://www.vmware.com/es/products/workstation-player/workstation-player-evaluation.html).
+You can install NAVSIM on either a real computer or a virtual machine. In the second case, we have successfully tested it with VMware Workstation Player 17. You can obtain it [here](https://www.vmware.com/es/products/workstation-player/workstation-player-evaluation.html).
 
-Configure a computer with **Ubuntu 20.04.6 LTS (Focal Fossa)**. You can obtain a Desktop Image [here](https://releases.ubuntu.com/focal).
+Configure a computer with **Ubuntu 22.04.3 LTS (Jammy Jellyfish)**. You can obtain a Desktop Image [here](https://releases.ubuntu.com/jammy/). Install the system and update everything.
 
->:warning: U-TRAFMAN has been developed and tested in the specified Ubuntu version. While it might work in other versions, there are no compatibility guarantees.
+>:warning: NAVSIM has been developed and tested in the specified Ubuntu version. While it might work in other versions, there are no compatibility guarantees.
 
->:warning: The recommended setup is to install ROS/Gazebo and MATLAB on the same computer. However, running MATLAB on a different computer, including Windows platforms, may be beneficial in the case of extensive simulations where the resources of typical machines may be insufficient. In such scenarios, make sure that the computers are connected to the same network and can communicate with each other.
+> You can install ROS/Gazebo and MATLAB on the same computer. However, running MATLAB on a different computer, including Windows platforms, may be beneficial in the case of extensive simulations where the resources of typical machines may be insufficient. In such scenarios, make sure that the computers are connected to the same network and can communicate with each other.
 
 
-## Install ROS and Gazebo
+## Install ROS2
 
-U-TRAFMAN runs on **ROS** (Robot Operating System) **Noetic**. 
-Please follow the official [tutorial](https://wiki.ros.org/noetic/Installation/Ubuntu) to install it.
+NAVSIM runs on **ROS2** (Robot Operating System) **Humble Hawksbill LTS**. 
+Please follow the official [tutorial](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debians.html).
+
+
 Make sure that:
 - A _full desktop_ installation is performed.
 - The necessary dependencies for building packages are installed.
-- File `/opt/ros/noetic/setup.bash` was sourced in your `.bashrc`.
+- Source ROS2
+```bash
+source /opt/ros/humble/setup.bash
+echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+```
+Verify the installation with the `ros2` command.
+
 
 As a part of _ROS Noetic_, the _Gazebo 11_ simulator will be installed. To check it, execute the command `gazebo` in a terminal. The graphical interface of Gazebo should open:
 
