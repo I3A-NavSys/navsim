@@ -8,6 +8,7 @@
 // #include <stdio.h>
 
 #include "navsim_msgs/msg/telemetry.hpp"
+#include "navsim_msgs/msg/fly_command.hpp"
 
 
 
@@ -34,6 +35,8 @@ rclcpp::Node::SharedPtr rosNode;
 rclcpp::Publisher<navsim_msgs::msg::Telemetry>::SharedPtr rosPub_Telemetry;
 common::Time prevTelemetryPubTime;
 double TelemetryPeriod = 1.0;    // 1 second
+
+rclcpp::Subscription<navsim_msgs::msg::FlyCommand>::SharedPtr rosSub_RemotePilot;
 
 
 
@@ -152,8 +155,14 @@ void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
     if (rclcpp::ok()) 
     {
         rosNode = rclcpp::Node::make_shared(this->UAVname);
+
         rosPub_Telemetry = rosNode->create_publisher<navsim_msgs::msg::Telemetry>("Telemetrypub", 10);
 
+        // rosSub_RemotePilot = create_subscription<navsim_msgs::msg::FlyCommand>(
+        //     "DroneRemotePilot", 10,
+        //     std::bind(&DCdrone::rosTopFn_RemotePilot, this, std::placeholders::_1));
+            
+    
     }
     else
 
@@ -227,12 +236,8 @@ void OnWorldUpdateBegin()
 {
     // Clear screen
     // std::cout << "\x1B[2J\x1B[H";
-    // printf("DRONE CHALLENGE Drone plugin: OnWorldUpdateBegin\n");
+    // printf("DCdrone plugin: OnWorldUpdateBegin\n");
     
-    // Navigation??
-
-
-
     
     // Platform low level control
     ServoControl();
@@ -240,24 +245,26 @@ void OnWorldUpdateBegin()
 
     // Telemetry communications
     Telemetry();
-
     
-    // ROS2 events proceessing
-    // rclcpp::spin_some(rosNode);
-
 	// Pause simulation
 	// physics::WorldPtr world = this->model->GetWorld();
 	// world->SetPaused(true);
 
-
 }
 
-void RemotePilot()
+    
+
+
+
+void rosTopFn_RemotePilot(const navsim_msgs::msg::FlyCommand::SharedPtr msg)
 {
+    printf("DCdrone: data received in topic Remote Pilot \n");
+    
     // This function listen and follow remote commands
 
 
 }
+
 
 
 void ServoControl()

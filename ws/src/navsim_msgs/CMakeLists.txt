@@ -16,25 +16,29 @@ find_package(builtin_interfaces        REQUIRED)
 
 
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/Operator.msg"
-  "msg/UAV.msg"
+  
   "msg/Telemetry.msg"
-  "msg/Waypoint.msg"
-  "msg/Uplan.msg"
+  "msg/FlyCommand.msg"
+
+
+  # "msg/Operator.msg"
+  # "msg/UAV.msg"
+  # "msg/Waypoint.msg"
+  # "msg/Uplan.msg"
 
   "srv/Time.srv"
   "srv/DeployModel.srv"
-  "srv/TranslateUAV.srv"
+  # "srv/TranslateUAV.srv"
   "srv/RemoveUAV.srv"
 
-  "srv/RegisterOperator.srv"
-  "srv/RegisterUAV.srv"
-  "srv/RegisterFP.srv"
-  "srv/GetOperators.srv"
-  "srv/GetUAVs.srv"
-  "srv/GetFPs.srv"
+  # "srv/RegisterOperator.srv"
+  # "srv/RegisterUAV.srv"
+  # "srv/RegisterFP.srv"
+  # "srv/GetOperators.srv"
+  # "srv/GetUAVs.srv"
+  # "srv/GetFPs.srv"
   
-  "srv/GetTelemetry.srv"
+  # "srv/GetTelemetry.srv"
   
   DEPENDENCIES geometry_msgs builtin_interfaces
 )
