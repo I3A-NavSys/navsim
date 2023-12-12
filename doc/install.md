@@ -8,8 +8,6 @@ You can install NAVSIM on either a real computer or a virtual machine. In the se
 
 Configure a computer with **Ubuntu 22.04.3 LTS (Jammy Jellyfish)**. You can obtain a Desktop Image [here](https://releases.ubuntu.com/jammy/). Install the system and update everything.
 
->:warning: NAVSIM has been developed and tested in the specified Ubuntu version. While it might work in other versions, there are no compatibility guarantees.
-
 > You can install ROS/Gazebo and MATLAB on the same computer. However, running MATLAB on a different computer, including Windows platforms, may be beneficial in the case of extensive simulations where the resources of typical machines may be insufficient. In such scenarios, make sure that the computers are connected to the same network and can communicate with each other.
 
 
@@ -71,6 +69,7 @@ sudo sh -c 'echo "deb [arch=amd64 signed-by=/usr/share/keyrings/shiftkey-package
 sudo apt update
 sudo apt install github-desktop
 ```
+
 
 
 ## Clone and compile NAVSIM packages
@@ -178,6 +177,7 @@ Typical values may be:
    | Windows | C:\Users\User\AppData\Local\Programs\Python\Python310\pythonw.exe |
 
 9. Click on **Recreate Python Environment**. When it finishes, press **OK**.
+
 
 
 ### Compiling ROS messages with MATLAB
