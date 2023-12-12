@@ -13,9 +13,10 @@ properties
     rosNode                        % ROS2 Node 
     rosCli_Time                    % ROS2 service client 
     rosCli_DeployModel             % ROS2 Service client to deploy models into the air space
-    rosCli_RemoveUAV               % ROS2 Service client to remove UAVs from the air space
-    % ROScli_reg_operator            % Service client to register itself as operators
-    % ROScli_reg_FP                  % Service client to register a new FP
+    rosCli_RemoveModel             % ROS2 Service client to remove models from the air space
+    rosPub_RemoteCommand           % ROS2 Service client to remotely pilot a drone
+    % ROScli_reg_operator          % Service client to register itself as operators
+    % ROScli_reg_FP                % Service client to register a new FP
 
 end
 
@@ -30,14 +31,22 @@ function obj = DC_Operator(name,path)
     
     % ROS2
     obj.rosNode = ros2node(obj.name);
+
     obj.rosCli_Time = ros2svcclient(obj.rosNode, ...
         '/World/Time','navsim_msgs/Time');
+    
     obj.rosCli_DeployModel = ros2svcclient(obj.rosNode, ...
         '/World/DeployModel','navsim_msgs/DeployModel', ...
         'History','keepall');
-    obj.rosCli_RemoveUAV = ros2svcclient(obj.rosNode, ...
-        '/World/RemoveUAV','navsim_msgs/RemoveUAV', ...
+    
+    obj.rosCli_RemoveModel = ros2svcclient(obj.rosNode, ...
+        '/World/RemoveModel','navsim_msgs/RemoveModel', ...
         'History','keepall');
+
+    obj.rosPub_RemoteCommand = ros2publisher(obj.rosNode, ...
+        '/UAV/RemoteCommand', ...
+        'navsim_msgs/RemoteCommand', ...
+        'History','keeplast');
     
 end
 
@@ -104,6 +113,22 @@ function status =  RemoveUAV(obj,name)
             status = false;
         end
     end
+        
+end
+
+
+
+function RemoteCommand(obj,UAVid,on,velX,velY,velZ,rotZ)
+
+    msg = ros2message(obj.rosPub_RemoteCommand);
+    msg.uav_id        = UAVid;
+    msg.on            = on;
+    msg.vel.linear.x  = velX;
+    msg.vel.linear.y  = velY;
+    msg.vel.linear.z  = velZ;
+    msg.vel.angular.z = rotZ;
+    msg.duration.sec  = int32(1);
+    send(obj.rosPub_RemoteCommand,msg);
         
 end
 
