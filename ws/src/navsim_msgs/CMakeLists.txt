@@ -18,7 +18,7 @@ find_package(builtin_interfaces        REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   
   "msg/Telemetry.msg"
-  "msg/FlyCommand.msg"
+  "msg/RemoteCommand.msg"
 
 
   # "msg/Operator.msg"
@@ -28,8 +28,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 
   "srv/Time.srv"
   "srv/DeployModel.srv"
-  # "srv/TranslateUAV.srv"
-  "srv/RemoveUAV.srv"
+  # "srv/TranslateModel.srv"
+  "srv/RemoveModel.srv"
 
   # "srv/RegisterOperator.srv"
   # "srv/RegisterUAV.srv"

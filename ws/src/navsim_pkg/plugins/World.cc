@@ -4,8 +4,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "navsim_msgs/srv/time.hpp"
 #include "navsim_msgs/srv/deploy_model.hpp"
-#include "navsim_msgs/srv/remove_uav.hpp"
-// #include "navsim/remove_model.h"
+#include "navsim_msgs/srv/remove_model.hpp"
 // #include "navsim/teletransport.h"
 
 
@@ -26,7 +25,7 @@ rclcpp::Node::SharedPtr rosNode;
 // ROS2 NAVSIM services
 rclcpp::Service<navsim_msgs::srv::Time>::SharedPtr        rosSrv_Time;
 rclcpp::Service<navsim_msgs::srv::DeployModel>::SharedPtr rosSrv_DeployModel;
-rclcpp::Service<navsim_msgs::srv::RemoveUAV>::SharedPtr   rosSrv_RemoveUAV;
+rclcpp::Service<navsim_msgs::srv::RemoveModel>::SharedPtr rosSrv_RemoveModel;
 
 public:
 
@@ -65,9 +64,9 @@ void Load(physics::WorldPtr _parent, sdf::ElementPtr /*_sdf*/)
         std::bind(&World::rosSrvFn_DeployModel, this,
                 std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
-    rosSrv_RemoveUAV = rosNode->create_service<navsim_msgs::srv::RemoveUAV>(
-        "World/RemoveUAV",
-        std::bind(&World::rosSrvFn_RemoveUAV, this,
+    rosSrv_RemoveModel = rosNode->create_service<navsim_msgs::srv::RemoveModel>(
+        "World/RemoveModel",
+        std::bind(&World::rosSrvFn_RemoveModel, this,
                 std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
 
@@ -201,12 +200,12 @@ void rosSrvFn_DeployModel(
 }
 
 
-void rosSrvFn_RemoveUAV(
+void rosSrvFn_RemoveModel(
     const std::shared_ptr<rmw_request_id_t> request_header,
-    const std::shared_ptr<navsim_msgs::srv::RemoveUAV::Request>  request,   
-          std::shared_ptr<navsim_msgs::srv::RemoveUAV::Response> response)  
+    const std::shared_ptr<navsim_msgs::srv::RemoveModel::Request>  request,   
+          std::shared_ptr<navsim_msgs::srv::RemoveModel::Response> response)  
 {
-    printf("NAVSIM World plugin: RemoveUAV\n");
+    printf("NAVSIM World plugin: RemoveModel\n");
     physics::ModelPtr model = this->world->ModelByName(request->name);
 
     if(!model)

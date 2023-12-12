@@ -1,5 +1,6 @@
-geometry_msgs/Pose  pose
-geometry_msgs/Twist velocity
-uint16 wip
-bool   fpip
+string                  uav_id
+geometry_msgs/Pose      pose
+geometry_msgs/Twist     velocity
+# uint16                wip
+# bool                  fpip
 builtin_interfaces/Time time

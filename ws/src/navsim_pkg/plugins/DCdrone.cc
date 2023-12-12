@@ -8,7 +8,7 @@
 // #include <stdio.h>
 
 #include "navsim_msgs/msg/telemetry.hpp"
-#include "navsim_msgs/msg/fly_command.hpp"
+#include "navsim_msgs/msg/remote_command.hpp"
 
 
 
@@ -36,7 +36,7 @@ rclcpp::Publisher<navsim_msgs::msg::Telemetry>::SharedPtr rosPub_Telemetry;
 common::Time prevTelemetryPubTime;
 double TelemetryPeriod = 1.0;    // 1 second
 
-rclcpp::Subscription<navsim_msgs::msg::FlyCommand>::SharedPtr rosSub_RemotePilot;
+rclcpp::Subscription<navsim_msgs::msg::RemoteCommand>::SharedPtr rosSub_RemoteCommand;
 
 
 
@@ -159,9 +159,9 @@ void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
         rosPub_Telemetry = rosNode->create_publisher<navsim_msgs::msg::Telemetry>(
             "Telemetry", 10);
 
-        rosSub_RemotePilot = rosNode->create_subscription<navsim_msgs::msg::FlyCommand>(
-            UAVname+"/RemotePilot", 10,
-            std::bind(&DCdrone::rosTopFn_RemotePilot, this, 
+        rosSub_RemoteCommand = rosNode->create_subscription<navsim_msgs::msg::RemoteCommand>(
+            "UAV/RemoteCommand", 10,
+            std::bind(&DCdrone::rosTopFn_RemoteCommand, this, 
                     std::placeholders::_1));
             
     
@@ -250,10 +250,10 @@ void OnWorldUpdateBegin()
 
 
 
-void rosTopFn_RemotePilot(const std::shared_ptr<navsim_msgs::msg::FlyCommand> msg)
+void rosTopFn_RemoteCommand(const std::shared_ptr<navsim_msgs::msg::RemoteCommand> msg)
 {
     printf("DCdrone: data received in topic Remote Pilot\n");
-    printf("Received FlyCommand: on=%d, vel=(%f, %f, %f), duration=(%d, %d)\n",
+    printf("Received RemoteCommand: on=%d, vel=(%f, %f, %f), duration=(%d, %d)\n",
            msg->on, 
            msg->vel.linear.x, msg->vel.linear.y, msg->vel.linear.z,
            msg->duration.sec, msg->duration.nanosec);
@@ -492,24 +492,24 @@ void Telemetry()
 
     navsim_msgs::msg::Telemetry msg;
 
-    msg.pose.position.x     = pose.X();
-    msg.pose.position.y     = pose.Y();
-    msg.pose.position.z     = pose.Z();
-    msg.pose.orientation.x  = pose.Roll();
-    msg.pose.orientation.y  = pose.Pitch();
-    msg.pose.orientation.z  = pose.Yaw();
+    msg.pose.position.x    = pose.X();
+    msg.pose.position.y    = pose.Y();
+    msg.pose.position.z    = pose.Z();
+    msg.pose.orientation.x = pose.Roll();
+    msg.pose.orientation.y = pose.Pitch();
+    msg.pose.orientation.z = pose.Yaw();
 
-    msg.velocity.linear.x   = linear_vel.X();
-    msg.velocity.linear.y   = linear_vel.Y();
-    msg.velocity.linear.z   = linear_vel.Z();
-    msg.velocity.angular.x  = angular_vel.X();
-    msg.velocity.angular.y  = angular_vel.Y();
-    msg.velocity.angular.z  = angular_vel.Z();
+    msg.velocity.linear.x  = linear_vel.X();
+    msg.velocity.linear.y  = linear_vel.Y();
+    msg.velocity.linear.z  = linear_vel.Z();
+    msg.velocity.angular.x = angular_vel.X();
+    msg.velocity.angular.y = angular_vel.Y();
+    msg.velocity.angular.z = angular_vel.Z();
     
-    msg.wip = 42;
-    msg.fpip = true;
-    msg.time.sec = 123456;
-    msg.time.nanosec = 789000000;
+    // msg.wip = 42;
+    // msg.fpip = true;
+    msg.time.sec = currentTime.sec;
+    msg.time.nanosec = currentTime.nsec;
 
     rosPub_Telemetry->publish(msg);
 

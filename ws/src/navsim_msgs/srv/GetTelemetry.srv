@@ -1,3 +1,3 @@
-int16 id
+string uav_id
 ---
 navsim_msgs/Telemetry[] telemetry

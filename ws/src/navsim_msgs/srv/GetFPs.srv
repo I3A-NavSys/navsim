@@ -1,4 +1,4 @@
-int16 id
+string uav_id
 ---
 navsim_msgs/Uplan[] fps
 
