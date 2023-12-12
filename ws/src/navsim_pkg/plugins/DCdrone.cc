@@ -13,7 +13,7 @@
 
 namespace gazebo {
 
-class DCnavigation : public ModelPlugin {
+class DCdrone : public ModelPlugin {
 
 private:
 
@@ -146,7 +146,7 @@ void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
 
     // Periodic event
     updateConnector = event::Events::ConnectWorldUpdateBegin(
-        std::bind(&DCnavigation::OnWorldUpdateBegin, this));  
+        std::bind(&DCdrone::OnWorldUpdateBegin, this));  
 
     // ROS2
     if (rclcpp::ok()) 
@@ -463,8 +463,8 @@ void Telemetry()
     double interval = (currentTime - prevTelemetryPubTime).Double();
     if (interval < TelemetryPeriod) return;
 
-    printf("UAV %s transmitting telemetry \n", UAVname.c_str());
-    printf("current time: %.3f \n\n", currentTime.Double());
+    // printf("UAV %s transmitting telemetry \n", UAVname.c_str());
+    // printf("current time: %.3f \n\n", currentTime.Double());
 
     prevTelemetryPubTime = currentTime;
 
@@ -507,5 +507,5 @@ void Telemetry()
 }; // class
 
 // Register this plugin with the simulator
-GZ_REGISTER_MODEL_PLUGIN(DCnavigation)
+GZ_REGISTER_MODEL_PLUGIN(DCdrone)
 } // namespace gazebo

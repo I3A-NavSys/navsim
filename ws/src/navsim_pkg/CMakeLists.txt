@@ -85,9 +85,9 @@ ament_target_dependencies(World ${ROS_LIBS} navsim_msgs)
 target_link_libraries(World ${GAZEBO_LIBRARIES})
 
 
-add_library(DCnavigation SHARED plugins/DCnavigation.cc)
-ament_target_dependencies(DCnavigation ${ROS_LIBS})
-target_link_libraries(DCnavigation ${GAZEBO_LIBRARIES})
+add_library(DCdrone SHARED plugins/DCdrone.cc)
+ament_target_dependencies(DCdrone ${ROS_LIBS})
+target_link_libraries(DCdrone ${GAZEBO_LIBRARIES})
 
 
 # add_library(dronecontrol_copy SHARED plugins/dronecontrol_copy.cc)
@@ -99,7 +99,7 @@ target_link_libraries(DCnavigation ${GAZEBO_LIBRARIES})
 install(TARGETS
   HelloWorld
   World
-  DCnavigation
+  DCdrone
   # dronecontrol_copy
   DESTINATION lib/${PROJECT_NAME}
 )
