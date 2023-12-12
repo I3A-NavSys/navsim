@@ -36,6 +36,7 @@ ros2 interface list | grep navsim
 ros2 interface show navsim_msgs/msg/Operator
 ros2 service call /navsim/Test navsim_msgs/srv/Test '{a: 2, b: 3}'
 ros2 service call /navsim/DeployUAV navsim_msgs/srv/DeployUAV "{model_sdf: 'tu_modelo_sdf_aqui'}"
+ros2 topic pub /RemotePilot navsim_msgs/msg/FlyCommand "{'on': true, 'vel': { 'linear': { 'x': 0.1, 'y': 0.0, 'z': 0.0 }, 'angular': { 'x': 0.0, 'y': 0.0, 'z': 0.0 } }, 'duration': { 'sec': 10, 'nanosec': 0 }}"
 ```
 
 de momento no tiene nada ejecutable, pero lo reconoce
