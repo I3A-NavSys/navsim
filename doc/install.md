@@ -118,7 +118,7 @@ In Ubuntu, you may install it by executing the following commands in a terminal:
 sudo apt install python3.10-venv
 ```
 
-In Windows, for example, you may download and install Python 3.10.11 from the [official site](https://www.python.org/ftp/python/3.10.11/python-3.10.11-amd64.exe).
+In Windows, you may download and install Python 3.10.11 from the [official site](https://www.python.org/ftp/python/3.10.11/python-3.10.11-amd64.exe).
 
 
 
@@ -133,10 +133,12 @@ NAVSIM provides a variety of tools for launching and analyzing simulations. Thes
 unzip matlab_R2023b_glnxa64.zip -d matlabinstaller
 cd matlabinstaller
 ```
+
 3. In Windows, execute the installer. In Ubuntu, execute the installation script with root privileges:
 ```bash
 sudo ./install
 ```
+
 4. Follow the installation process:
 
    a) Select your license and user information.
@@ -157,11 +159,17 @@ sudo ./install
 
 > Once MATLAB is installed, you can delete the installation file and the `matlabinstaller` folder.
 
-5. Open MATLAB. In Windows, start the application. In Ubuntu, execute `matlab` in a terminal.
+5. In Ubuntu, Matlab needs to use a specific version of the C compiler:
+```bash
+echo 'export LD_PRELOAD=/lib/x86_64-linux-gnu/libstdc++.so.6' >> ~/.bashrc
+source ~/.bashrc
+```
 
-6. Select **HOME > ENVIRONMENT tile > Preferences**. In the panel on the left, select **ROS Toolbox**. Click on **Open ROS Toolbox Preferences**.
+6. Open MATLAB. In Windows, start the application. In Ubuntu, execute `matlab` in a terminal.
 
-7. In the **ROS Toolbox Preferences** dialog box, set the path to your Python installation.
+7. Select **HOME > ENVIRONMENT tile > Preferences**. In the panel on the left, select **ROS Toolbox**. Click on **Open ROS Toolbox Preferences**.
+
+8. In the **ROS Toolbox Preferences** dialog box, set the path to your Python installation.
 Typical values may be:
 
    | OS      | Python path |
@@ -169,14 +177,7 @@ Typical values may be:
    | Ubuntu  | /usr/bin/python3.10 |
    | Windows | C:\Users\User\AppData\Local\Programs\Python\Python310\pythonw.exe |
 
-
-8. Click on **Recreate Python Environment**. When it finishes, press **OK**.
-9. 
-10. Finally, Matlab needs to use a specific version of the C compiler:
-```bash
-echo 'export LD_PRELOAD=/lib/x86_64-linux-gnu/libstdc++.so.6' >> ~/.bashrc
-source ~/.bashrc
-```
+9. Click on **Recreate Python Environment**. When it finishes, press **OK**.
 
 
 ### Compiling ROS messages with MATLAB
