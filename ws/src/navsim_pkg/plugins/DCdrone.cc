@@ -156,25 +156,21 @@ void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
     {
         rosNode = rclcpp::Node::make_shared(this->UAVname);
 
-        rosPub_Telemetry = rosNode->create_publisher<navsim_msgs::msg::Telemetry>("Telemetrypub", 10);
+        rosPub_Telemetry = rosNode->create_publisher<navsim_msgs::msg::Telemetry>(
+            "Telemetry", 10);
 
-        // rosSub_RemotePilot = create_subscription<navsim_msgs::msg::FlyCommand>(
-        //     "DroneRemotePilot", 10,
-        //     std::bind(&DCdrone::rosTopFn_RemotePilot, this, std::placeholders::_1));
+        rosSub_RemotePilot = rosNode->create_subscription<navsim_msgs::msg::FlyCommand>(
+            UAVname+"/RemotePilot", 10,
+            std::bind(&DCdrone::rosTopFn_RemotePilot, this, 
+                    std::placeholders::_1));
             
     
     }
     else
-
     {   
         std::cout << "\x1B[2J\x1B[H";       // Clear screen
         printf("\nERROR: NavSim world plugin is not running ROS2!\n\n");
     }
-
-
-
-
-
 
 
     //Initial control matrices
@@ -211,12 +207,6 @@ void Init()
 
     prevTelemetryPubTime = model->GetWorld()->SimTime();
     
-
-
-  
-
-
-
 ////////////////////////////asumimos un comando!!!
     cmd_on   =  1  ;
 
@@ -224,8 +214,8 @@ void Init()
     cmd_velY =  0.0;
     cmd_velZ =  0.0;
     cmd_rotZ =  1.0; 
-    printf("UAV command: ON: %.0f             velX: %.1f    velY: %.1f    velZ: %.1f              rotZ: %.1f \n\n", 
-            cmd_on, cmd_velX, cmd_velY, cmd_velX, cmd_rotZ);
+    // printf("UAV command: ON: %.0f             velX: %.1f    velY: %.1f    velZ: %.1f              rotZ: %.1f \n\n", 
+    //         cmd_on, cmd_velX, cmd_velY, cmd_velX, cmd_rotZ);
 ////////////////////////////
 
 }
@@ -245,7 +235,11 @@ void OnWorldUpdateBegin()
 
     // Telemetry communications
     Telemetry();
-    
+
+
+    // ROS2 events proceessing
+    rclcpp::spin_some(rosNode);
+
 	// Pause simulation
 	// physics::WorldPtr world = this->model->GetWorld();
 	// world->SetPaused(true);
@@ -256,9 +250,13 @@ void OnWorldUpdateBegin()
 
 
 
-void rosTopFn_RemotePilot(const navsim_msgs::msg::FlyCommand::SharedPtr msg)
+void rosTopFn_RemotePilot(const std::shared_ptr<navsim_msgs::msg::FlyCommand> msg)
 {
-    printf("DCdrone: data received in topic Remote Pilot \n");
+    printf("DCdrone: data received in topic Remote Pilot\n");
+    printf("Received FlyCommand: on=%d, vel=(%f, %f, %f), duration=(%d, %d)\n",
+           msg->on, 
+           msg->vel.linear.x, msg->vel.linear.y, msg->vel.linear.z,
+           msg->duration.sec, msg->duration.nanosec);
     
     // This function listen and follow remote commands
 
