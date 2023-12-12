@@ -180,17 +180,25 @@ Typical values may be:
 
 
 
-### Compiling ROS messages with MATLAB
+## Install a C++ Compiler
+
+Matlab will also require a C++ compiler. We have tested the following options:
+- Ubuntu: **g++**
+- Windows: Visual Studio Community 2022
+
+Check your installation in Matlab with the command  `mex -setup cpp`.
+  
+
+
+### Compile ROS messages with Matlab
 
 To compile custom ROS messages, perform the following steps:
 
-1. Open MATLAB.
+1. In Matlab, go to the folder `navsim/matlab/tools/`.
 
-2. Go to the folder `navsim/matlab/tools/`.
+2. Run the script `compile_ros_messages.m`. It may take several minutes. If everything is correct, you should see a message in the MATLAB console saying `Build succeeded`.
 
-3. Run the script `compile_ros_messages.m`. It may take several minutes. If everything is correct, you should see a message in the MATLAB console saying `Build succeeded`.
-
-4. Open the script `NAVSIM_PATHS`, and set variable **NAVSIM_PATH** with the folder path where your simulator installation resides.
+3. Open the script `NAVSIM_PATHS`, and set variable **NAVSIM_PATH** with the folder path where your simulator installation resides.
 
 
 ## Running your first simulation with Matlab connection
