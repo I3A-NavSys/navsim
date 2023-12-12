@@ -6,7 +6,7 @@
 
 <static>false</static>
 
-<plugin name="DCnavigation" filename="libDCnavigation.so">
+<plugin name="DCdrone" filename="libDCdrone.so">
 </plugin>
     
 <link name='dronelink'>

@@ -235,7 +235,7 @@ void OnWorldUpdateBegin()
 
     
     // Platform low level control
-    AutoPilot();
+    ServoControl();
     PlatformDynamics();
 
     // Telemetry communications
@@ -252,15 +252,21 @@ void OnWorldUpdateBegin()
 
 }
 
-
-
-void AutoPilot()
+void RemotePilot()
 {
-    // Esta funcion traduce 
-    // un comando de navegacion (vector velocidad y rotacion deseados)
-    // a la velocidad de rotacion de los 4 motores
+    // This function listen and follow remote commands
 
-    // printf("DRONE CHALLENGE Drone plugin: Autopilot\n");
+
+}
+
+
+void ServoControl()
+{
+    // This fucntion converts 
+    // a navigation command (desired velocity vector and rotation)
+    // to speeds ot the for rotors
+
+    // printf("DRONE CHALLENGE Drone plugin: ServoControl\n");
 
 
     if (cmd_on == 0)
@@ -450,6 +456,7 @@ void PlatformDynamics()
 }
 
 
+
 void Telemetry()
 {
     // printf("UAV Telemetry \n");
@@ -503,6 +510,9 @@ void Telemetry()
 
 
 }
+
+
+
 
 }; // class
 

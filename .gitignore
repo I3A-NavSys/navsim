@@ -103,3 +103,4 @@ qtcreator-*
 CATKIN_IGNORE
 
 *.slxc
+.vscode/settings.json
