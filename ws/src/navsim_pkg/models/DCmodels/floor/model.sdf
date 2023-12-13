@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <sdf version="1.5">
 
-<model name="tatami">
+<model name="ground_plane">
 
 <static>true</static>
 
@@ -10,9 +10,10 @@
   <collision name="collision">
 
     <geometry>
-      <box>
-        <size>10 10 0.05</size>
-      </box>
+      <plane>
+        <normal>0 0 1</normal>
+        <size>100 100</size>
+      </plane>
     </geometry>
 
     <surface>
@@ -33,13 +34,14 @@
     <cast_shadows>true</cast_shadows>
 
     <geometry>
-      <box>
-        <size>10 10 0.05</size>
-      </box>
+      <plane>
+        <normal>0 0 1</normal>
+        <size>100 100</size>
+      </plane>
     </geometry>
     <material>
-        <ambient>0.76 0.58 0.09 1</ambient> 
-        <diffuse>0.76 0.58 0.09 1</diffuse>
+        <ambient>0.5 0.5 0.5 1</ambient> 
+        <diffuse>0.5 0.5 0.5 1</diffuse>
     </material>
 
   </visual>
