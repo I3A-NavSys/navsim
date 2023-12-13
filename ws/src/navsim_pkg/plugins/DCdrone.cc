@@ -115,7 +115,7 @@ Eigen::Matrix<double, 4, 1> r;  // model reference
 Eigen::Matrix<double, 4, 1> e;  // model error
 Eigen::Matrix<double, 4, 1> E;  // model acumulated error
 
-int E_max = 1;                    // maximun model acumulated error
+int E_max = 10;                    // maximun model acumulated error
 common::Time prevControlTime = 0; // Fecha de la ultima actualizacion del control de bajo nivel 
         
 
@@ -160,7 +160,7 @@ void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
             "Telemetry", 10);
 
         rosSub_RemoteCommand = rosNode->create_subscription<navsim_msgs::msg::RemoteCommand>(
-            "UAV/RemoteCommand", 10,
+            "UAV/" + UAVname + "/RemoteCommand", 10,
             std::bind(&DCdrone::rosTopFn_RemoteCommand, this, 
                     std::placeholders::_1));
             
@@ -208,13 +208,13 @@ void Init()
     prevTelemetryPubTime = model->GetWorld()->SimTime();
     
 ////////////////////////////asumimos un comando!!!
-    cmd_on   =  1  ;
+    // cmd_on   =  1  ;
 
-    cmd_velX =  2.0;
-    cmd_velY =  0.0;
-    cmd_velZ =  0.0;
-    cmd_rotZ =  1.0; 
-    // printf("UAV command: ON: %.0f             velX: %.1f    velY: %.1f    velZ: %.1f              rotZ: %.1f \n\n", 
+    // cmd_velX =  2.0;
+    // cmd_velY =  0.0;
+    // cmd_velZ =  0.0;
+    // cmd_rotZ =  1.0; 
+    // // printf("UAV command: ON: %.0f             velX: %.1f    velY: %.1f    velZ: %.1f              rotZ: %.1f \n\n", 
     //         cmd_on, cmd_velX, cmd_velY, cmd_velX, cmd_rotZ);
 ////////////////////////////
 
@@ -253,7 +253,8 @@ void OnWorldUpdateBegin()
 void rosTopFn_RemoteCommand(const std::shared_ptr<navsim_msgs::msg::RemoteCommand> msg)
 {
     // printf("DCdrone: data received in topic Remote Pilot\n");
-    // printf("Received RemoteCommand: on=%d, cmd=[%f, %f, %f, %f], duration=(%d, %d)\n",
+    // printf("Received RemoteCommand: uav=%s, on=%d, cmd=[%f, %f, %f, %f], duration=(%d, %d)\n",
+    //        msg->uav_id.c_str(), 
     //        msg->on, 
     //        msg->vel.linear.x, msg->vel.linear.y, msg->vel.linear.z,
     //        msg->vel.angular.z, 
