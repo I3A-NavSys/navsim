@@ -252,14 +252,19 @@ void OnWorldUpdateBegin()
 
 void rosTopFn_RemoteCommand(const std::shared_ptr<navsim_msgs::msg::RemoteCommand> msg)
 {
-    printf("DCdrone: data received in topic Remote Pilot\n");
-    printf("Received RemoteCommand: on=%d, vel=(%f, %f, %f), duration=(%d, %d)\n",
-           msg->on, 
-           msg->vel.linear.x, msg->vel.linear.y, msg->vel.linear.z,
-           msg->duration.sec, msg->duration.nanosec);
+    // printf("DCdrone: data received in topic Remote Pilot\n");
+    // printf("Received RemoteCommand: on=%d, cmd=[%f, %f, %f, %f], duration=(%d, %d)\n",
+    //        msg->on, 
+    //        msg->vel.linear.x, msg->vel.linear.y, msg->vel.linear.z,
+    //        msg->vel.angular.z, 
+    //        msg->duration.sec, msg->duration.nanosec);
     
     // This function listen and follow remote commands
-
+    cmd_on   =  msg->on;
+    cmd_velX =  msg->vel.linear.x;
+    cmd_velY =  msg->vel.linear.y;
+    cmd_velZ =  msg->vel.linear.z;
+    cmd_rotZ =  msg->vel.angular.z; 
 
 }
 

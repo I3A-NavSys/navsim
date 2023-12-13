@@ -29,7 +29,7 @@ op = DC_Operator("DC_Operator",NAVSIM_MODELS_PATH);
 % op.DeployUAV('abejorroMATLAB', [-3 -3 2], [0 0 1]);
 
 
-op.RemoteCommand('abejorroMATLAB',true,0.9,0,0,0.1);
+op.RemoteCommand('abejorro',true,0.9,0,0,0.1);
 
 
 op.GetTime()
