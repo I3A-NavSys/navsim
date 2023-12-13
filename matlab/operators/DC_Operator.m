@@ -15,6 +15,7 @@ properties
     rosCli_DeployModel             % ROS2 Service client to deploy models into the air space
     rosCli_RemoveModel             % ROS2 Service client to remove models from the air space
     rosPub_RemoteCommand           % ROS2 Service client to remotely pilot a drone
+    rosSub_GetImage
     % ROScli_reg_operator          % Service client to register itself as operators
     % ROScli_reg_FP                % Service client to register a new FP
 
@@ -44,9 +45,12 @@ function obj = DC_Operator(name,path)
         'History','keepall');
 
     obj.rosPub_RemoteCommand = ros2publisher(obj.rosNode, ...
-        '/UAV/RemoteCommand', ...
+        'UAV/abejorro1/RemoteCommand', ...
         'navsim_msgs/RemoteCommand', ...
         'History','keeplast');
+
+    obj.rosSub_GetImage = ros2subscriber(obj.rosNode, ...
+        '/abejorro1/camera/image_raw','sensor_msgs/Image');
     
 end
 
@@ -132,6 +136,11 @@ function RemoteCommand(obj,UAVid,on,velX,velY,velZ,rotZ)
         
 end
 
+function GetImage(obj,msg)
+
+
+
+end
 
 end % methods 
 end % classdef

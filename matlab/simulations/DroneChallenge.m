@@ -2,7 +2,7 @@
 % Lanzar el simulador con el comando:  $ gazebo tatami.world
 
 % Inicialización
-% clear; clc;
+clear; clc;
 run('../tools/NAVSIM_PATHS');
 % 
 % 
@@ -27,13 +27,35 @@ run('../tools/NAVSIM_PATHS');
 % 
 op = DC_Operator("DC_Operator",NAVSIM_MODELS_PATH);
 % op.DeployUAV('abejorroMATLAB', [-3 -3 2], [0 0 1]);
+% op.RemoteCommand('abejorro1',true,0,0,0.1,0.2);
+ 
+
+msg = receive(op.rosSub_GetImage,3);
 
 
-op.RemoteCommand('abejorro',true,0.9,0,0,0.1);
+% img2Da  = ones(240,320,3,'uint8')* 255;
+% imshow(img2Da)
+img2D = zeros(16,16,3) + 100;
+clf
+imshow(img2D,[1 100])
+hold on
+p = 1;
+for i = 1:16
+for j = 1:16
+for k = 1:3
+    img2D(i,j,k) = msg.data(p);
+    p = p +1;
+end
+end
+end
 
 
-op.GetTime()
-op.ResetTime;
+imshow(img2D,[1 100])
+hold on
+
+
+% op.GetTime()
+% op.ResetTime;
 
 % pause(1);
 % op.RemoveUAV('abejorronnnnn');
