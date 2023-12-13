@@ -32,12 +32,12 @@ Verify the installation with the `ros2` command.
 
 ## Install Gazebo
 
-Instal Gazebo 11 (classic) from **Init/Ubuntu Software**. 
+Install Gazebo 11 (classic) from **Init/Ubuntu Software**. 
 To check it, execute the command `gazebo` in a terminal. The graphical interface of Gazebo should open:
 
 ![Gazebo](./img/gazebo.png 'Gazebo simulator. :size=600px')
 
-Instalar puente ROS-Gazebo
+Install ROS packages for Gazebo connection:
 ```bash
 sudo apt install ros-humble-gazebo-ros-pkgs
 ```
@@ -164,11 +164,15 @@ echo 'export LD_PRELOAD=/lib/x86_64-linux-gnu/libstdc++.so.6' >> ~/.bashrc
 source ~/.bashrc
 ```
 
-6. Open MATLAB. In Windows, start the application. In Ubuntu, execute `matlab` in a terminal.
+6. Open MATLAB.
+- Ubuntu: execute `matlab` in a terminal.
+- Windows: start the application.
 
-7. Select **HOME > ENVIRONMENT tile > Preferences**. In the panel on the left, select **ROS Toolbox**. Click on **Open ROS Toolbox Preferences**.
 
-8. In the **ROS Toolbox Preferences** dialog box, set the path to your Python installation.
+8. Select **HOME > ENVIRONMENT tile > Preferences**. In the panel on the left, select **ROS Toolbox**. Click on **Open ROS Toolbox Preferences**.
+
+
+9. In the **ROS Toolbox Preferences** dialog box, set the path to your Python installation.
 Typical values may be:
 
    | OS      | Python path |
@@ -176,8 +180,9 @@ Typical values may be:
    | Ubuntu  | /usr/bin/python3.10 |
    | Windows | C:\Users\User\AppData\Local\Programs\Python\Python310\pythonw.exe |
 
-9. Click on **Recreate Python Environment**. When it finishes, press **OK**.
 
+10. Click on **Recreate Python Environment**. When it finishes, press **OK**.
+> The process could generate the message _Copying libraries..Warning: Unable to locate 'libpython*.so' library._ You can ignore it.
 
 
 ## Install a C++ Compiler
