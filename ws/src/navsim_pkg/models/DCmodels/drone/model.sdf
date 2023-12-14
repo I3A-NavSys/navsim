@@ -75,14 +75,14 @@
 </collision>
 
 
-<sensor name='UAV/abejorro1' type='camera'>
+<sensor name='/UAV/abejorro1/cam' type='camera'>
 
   <pose>0.08 0 0 0 0 0</pose>        
   <camera name='camera_name'>
     <horizontal_fov>1.57</horizontal_fov>
     <image>
-        <width>16</width>
-        <height>16</height>
+        <width> 320</width>
+        <height>240</height>
     </image>
     <clip>
         <near>0.01</near>
@@ -93,9 +93,9 @@
   <always_on>true</always_on>
   <visualize>true</visualize>
   
-  <plugin name="plugin_name" filename="libgazebo_ros_camera.so">
+  <plugin name="abejorro1_cam" filename="libgazebo_ros_camera.so">
     <alwaysOn>true</alwaysOn>
-    <updateRate>0.01</updateRate>
+    <updateRate>1</updateRate>
     <cameraName>plugin_camera_name</cameraName>
     <robotNamespace>robotNameSpace</robotNamespace>
   </plugin>

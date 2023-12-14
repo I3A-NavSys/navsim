@@ -29,29 +29,24 @@ op = DC_Operator("DC_Operator",NAVSIM_MODELS_PATH);
 % op.DeployUAV('abejorroMATLAB', [-3 -3 2], [0 0 1]);
 % op.RemoteCommand('abejorro1',true,0,0,0.1,0.2);
  
+while (true)
 
-msg = receive(op.rosSub_GetImage,3);
-
-
-% img2Da  = ones(240,320,3,'uint8')* 255;
-% imshow(img2Da)
-img2D = zeros(16,16,3) + 100;
-clf
-imshow(img2D,[1 100])
-hold on
-p = 1;
-for i = 1:16
-for j = 1:16
-for k = 1:3
-    img2D(i,j,k) = msg.data(p);
-    p = p +1;
-end
-end
+    msg = receive(op.rosSub_GetImage,3);
+    img2D = uint8(zeros(msg.height,msg.width,3));
+    elem = 1;
+    for fil = 1:msg.height
+        for col = 1:msg.width
+            for rgb = 1:3
+                img2D(fil,col,rgb) = msg.data(elem);
+                elem = elem + 1;
+            end
+        end
+    end
+    imshow(img2D)
+    pause(1)
 end
 
 
-imshow(img2D,[1 100])
-hold on
 
 
 % op.GetTime()

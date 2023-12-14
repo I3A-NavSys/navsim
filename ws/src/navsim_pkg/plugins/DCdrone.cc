@@ -367,7 +367,7 @@ void ServoControl()
 
 	// Cumulative error
     E = E + (e * interval);
-    // std::cout  << "E:  " << E.transpose()  << " \n\n";
+    std::cout  << "E:  " << E.transpose()  << " \n\n";
 
     if (E(0, 0) >  E_max)   E(0, 0) =  E_max;
     if (E(0, 0) < -E_max)   E(0, 0) = -E_max;
