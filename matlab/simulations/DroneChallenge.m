@@ -1,31 +1,29 @@
-
-% Lanzar el simulador con el comando:  $ gazebo tatami.world
-
 % Inicialización
 clear; clc;
 run('../tools/NAVSIM_PATHS');
 
 
-
-builder = SimpleBuilder('builder',NAVSIM_MODELS_PATH);
-
-builder.DeployModel('DCmodels/base_drone', ...
-    'vertiport', [-3 -3 0.26], [0 0 0]);
-
-builder.DeployModel('DCmodels/frame_red', ...
-    'frame_red', [3 2 2], [0 0 1]);
-
-builder.DeployModel('DCmodels/frame_green', ...
-    'frame_green', [-2 1 0.5], [0 0 2]);
-
-builder.DeployModel('DCmodels/frame_blue', ...
-    'frame_blue', [3 -1 1], [0 0 3]);
-
-
-
+% En caso de lanzar el simulador con el comando:  
+% $ gazebo tatami.world
+% 
+% builder = SimpleBuilder('builder',NAVSIM_MODELS_PATH);
+% 
+% builder.DeployModel('DCmodels/base_drone', ...
+%     'vertiport', [-3 -3 0.26], [0 0 0]);
+% 
+% builder.DeployModel('DCmodels/frame_red', ...
+%     'frame_red', [3 2 2], [0 0 1]);
+% 
+% builder.DeployModel('DCmodels/frame_green', ...
+%     'frame_green', [-2 1 0.5], [0 0 2]);
+% 
+% builder.DeployModel('DCmodels/frame_blue', ...
+%     'frame_blue', [3 -1 1], [0 0 3]);
+% 
 
 
 op = DC_Operator("DC_Operator",NAVSIM_MODELS_PATH);
+
 % op.DeployUAV('abejorroMATLAB', [-3 -3 2], [0 0 1]);
 % op.RemoteCommand('abejorro1',true,0,0,0.1,0.2);
  
@@ -42,7 +40,7 @@ while (true)
             end
         end
     end
-    imshow(img2D)
+    image(img2D)
     pause(1)
 end
 
