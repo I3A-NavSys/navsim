@@ -1,11 +1,11 @@
 % Operator classes represent operators in the context of U-space.
 % Each operator has a drone garage where it stores its UAVs.
 
-classdef DC_Operator < handle      % Drone Challenge operator
+classdef USpaceOperator < handle      
 
 properties
     name         string            % Operator name
-    id           uint16            % Unique ID (provided by the U-space registry service)
+    % id           uint16            % Unique ID (provided by the U-space registry service)
     % drone_garage UAVProperties     % Array of UAV objects references
 
     % ROS2 interface

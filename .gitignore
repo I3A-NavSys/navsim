@@ -15,6 +15,7 @@ log
 /ros2-linux/
 
 # MATLAB and SIMULINK
+*.slxc
 *.asv
 _sfprj/
 slprj
@@ -102,5 +103,5 @@ qtcreator-*
 # Catkin custom files
 CATKIN_IGNORE
 
-*.slxc
+.vscode/settings.json
 .vscode/settings.json

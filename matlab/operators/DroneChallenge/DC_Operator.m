@@ -132,6 +132,9 @@ function RemoteCommand(obj,UAVid,on,velX,velY,velZ,rotZ)
     msg.vel.linear.z  = velZ;
     msg.vel.angular.z = rotZ;
     msg.duration.sec  = int32(1);
+
+
+
     send(obj.rosPub_RemoteCommand,msg);
         
 end

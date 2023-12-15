@@ -4,27 +4,27 @@
 % Inicialización
 clear; clc;
 run('../tools/NAVSIM_PATHS');
-% 
-% 
-% 
-% builder = SimpleBuilder('builder',NAVSIM_MODELS_PATH);
-% 
-% builder.DeployModel('DCmodels/base_drone', ...
-%     'vertiport', [-3 -3 0.26], [0 0 0]);
-% 
-% builder.DeployModel('DCmodels/frame_red', ...
-%     'frame_red', [3 2 2], [0 0 1]);
-% 
-% builder.DeployModel('DCmodels/frame_green', ...
-%     'frame_green', [-2 1 0.5], [0 0 2]);
-% 
-% builder.DeployModel('DCmodels/frame_blue', ...
-%     'frame_blue', [3 -1 1], [0 0 3]);
-% 
-% 
-% 
-% 
-% 
+
+
+
+builder = SimpleBuilder('builder',NAVSIM_MODELS_PATH);
+
+builder.DeployModel('DCmodels/base_drone', ...
+    'vertiport', [-3 -3 0.26], [0 0 0]);
+
+builder.DeployModel('DCmodels/frame_red', ...
+    'frame_red', [3 2 2], [0 0 1]);
+
+builder.DeployModel('DCmodels/frame_green', ...
+    'frame_green', [-2 1 0.5], [0 0 2]);
+
+builder.DeployModel('DCmodels/frame_blue', ...
+    'frame_blue', [3 -1 1], [0 0 3]);
+
+
+
+
+
 op = DC_Operator("DC_Operator",NAVSIM_MODELS_PATH);
 % op.DeployUAV('abejorroMATLAB', [-3 -3 2], [0 0 1]);
 % op.RemoteCommand('abejorro1',true,0,0,0.1,0.2);
@@ -46,6 +46,15 @@ while (true)
     pause(1)
 end
 
+
+
+
+% op.DeployUAV('abejorro1',[-4.5 -4.5 1],[0 0 0]);
+op.RemoteCommand('UAV00',true,0,0,0.1,0);
+pause(1);
+op.RemoteCommand('UAV00',true,1,0,0,1);
+pause(8);
+op.RemoteCommand('UAV00',false,0,0,0,0);
 
 
 

@@ -3,7 +3,7 @@
 <world name="default">
 
 
-<plugin name="HelloWorld" filename="libHelloWorld.so" />
+<plugin name="World" filename="libWorld.so" />
 
 
 </world>

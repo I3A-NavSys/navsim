@@ -123,8 +123,10 @@ common::Time prevControlTime = 0; // Fecha de la ultima actualizacion del contro
 ////////////////////////////////////////////////////////////////////////
 // Navigation parameters
 
+bool  rotors_on = false;
+
 // AutoPilot navigation command
-double cmd_on   = 0;              // (bool) motores activos 
+bool   cmd_on   = false;          // (bool) motores activos 
 double cmd_velX = 0.0;            // (m/s)  velocidad lineal  deseada en eje X
 double cmd_velY = 0.0;            // (m/s)  velocidad lineal  deseada en eje Y
 double cmd_velZ = 0.0;            // (m/s)  velocidad lineal  deseada en eje Z
@@ -195,8 +197,7 @@ void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
 	E << 0, 0, 0, 0;
 
 	//Control input signal (rotor real speeds)
-	u << 0, 0, 0, 0;
-
+	u << w_hov, w_hov, w_hov, w_hov;
 
 }
 
@@ -280,30 +281,40 @@ void ServoControl()
     // printf("DRONE CHALLENGE Drone plugin: ServoControl\n");
 
 
-    if (cmd_on == 0)
+    if (cmd_on == false)
     {
-        // Reset del control
-         E << 0, 0, 0, 0;
-         u << 0, 0, 0, 0;
-
         // Apagamos motores
         w_rotor_NE = 0;
         w_rotor_NW = 0;
         w_rotor_SE = 0;
         w_rotor_SW = 0;
+        rotors_on = false;
+
+        // Reset del control
+         E << 0, 0, 0, 0;
+
         return;
     }
 
-    // Check if the simulation was reset
+
     common::Time currentTime = model->GetWorld()->SimTime();
     // printf("current  control time: %.3f \n", currentTime.Double());
 
+    // Check if the simulation was reset
     if (currentTime < prevControlTime)
-        prevControlTime = currentTime; // The simulation was reset
+        prevControlTime = currentTime; 
+
+    // Check if the fly starts
+    if (rotors_on == false)
+    {
+        rotors_on = true;
+        prevControlTime = currentTime; 
+    }
     // printf("previous control time: %.3f \n", prevControlTime.Double());
 
     double interval = (currentTime - prevControlTime).Double();
-    // printf("iteration interval (seconds): %.6f \n", interval);
+    // printf("control interval (seconds): %.6f \n", interval);
+    
     prevControlTime = currentTime;
 
 
@@ -367,7 +378,7 @@ void ServoControl()
 
 	// Cumulative error
     E = E + (e * interval);
-    std::cout  << "E:  " << E.transpose()  << " \n\n";
+    // std::cout  << "E:  " << E.transpose()  << " \n\n";
 
     if (E(0, 0) >  E_max)   E(0, 0) =  E_max;
     if (E(0, 0) < -E_max)   E(0, 0) = -E_max;
