@@ -10,18 +10,18 @@
 <!-- Area de juego -->
 <include>
     <name>floor</name>
-    <uri>../models/DC/floor</uri>
+    <uri>../models/DCmodels/floor</uri>
 </include>
 <include>
     <name>tatami</name>
-    <uri>../models/DC/tatami</uri>
+    <uri>../models/DCmodels/tatami</uri>
 </include>
 
 
 <!-- base de aterrizaje -->
 <include>
     <name>vertiport</name>
-    <uri>../models/DC/base_drone</uri>
+    <uri>../models/DCmodels/base_drone</uri>
     <pose>-3 -3 0.26 0 0 0</pose>
 </include>   
 
@@ -29,17 +29,17 @@
 <!-- Frames -->
 <include>
     <name>frame_red</name>
-    <uri>../models/DC/frame_red</uri>
+    <uri>../models/DCmodels/frame_red</uri>
     <pose>3 2 2 0 0 1</pose>
 </include>    
 <include>
     <name>frame_green</name>
-    <uri>../models/DC/frame_green</uri>
+    <uri>../models/DCmodels/frame_green</uri>
     <pose>-2 1 0.5 0 0 2</pose>
 </include>    
 <include>
     <name>frame_blue</name>
-    <uri>../models/DC/frame_blue</uri>
+    <uri>../models/DCmodels/frame_blue</uri>
     <pose>3 -1 1 0 0 3</pose>
 </include>    
 
@@ -47,9 +47,8 @@
 <!-- UAV -->
 <include>
     <name>abejorro1</name>
-    <uri>../models/DC/drone</uri>
-    <!-- <pose>-3 -3 0.55 0 0 0.5236</pose> -->
-    <pose>-3 -3 0.55 0 0 1.57</pose>
+    <uri>../models/DCmodels/drone</uri>
+    <pose>-3 -3 0.55 0 0 0.5236</pose>
     <plugin name="DCdrone" filename="libDCdrone.so">
     </plugin>
 </include>
@@ -84,38 +83,16 @@
 
 
 
-<!-- Camera -->
-<gui fullscreen='0'>
-    <camera name='user_camera'>
-      <!-- <pose>-5 -5 1 0 0 0.8</pose> -->
-      <pose>0 0 10 0 1.57 1.57</pose>
-      <view_controller>orbit</view_controller>
-      <projection_type>orthographic</projection_type>
-    </camera>
-  </gui>
-
-  
-
 <!-- Own physics settings to speed up simulation -->
 <physics type='ode'>
 
-    <max_step_size>0.001</max_step_size>                     
+    <max_step_size>0.01</max_step_size>                     
     <!-- default: 0.001 segundos simulados / paso de simulación -->
     
-    <real_time_factor>1</real_time_factor>
-    
-    <real_time_update_rate>1000</real_time_update_rate>
+    <real_time_update_rate>100</real_time_update_rate>
     <!-- default: 1000 ciclos de simulación / segundo real -->
-    
-    <gravity>0 0 -9.8</gravity>
+
 </physics> 
-
-
-
-
-
-
-
 
 
 

@@ -72,32 +72,18 @@ set(ROS_LIBS
 
 # Add executable targets
 
-
-
-
-add_library(HelloWorld SHARED plugins/HelloWorld.cc)
-ament_target_dependencies(HelloWorld ${ROS_LIBS})
-target_link_libraries(HelloWorld ${GAZEBO_LIBRARIES})
-
-
 add_library(World SHARED plugins/World.cc)
 ament_target_dependencies(World ${ROS_LIBS} navsim_msgs)
 target_link_libraries(World ${GAZEBO_LIBRARIES})
-
 
 add_library(DCdrone SHARED plugins/DCdrone.cc)
 ament_target_dependencies(DCdrone ${ROS_LIBS})
 target_link_libraries(DCdrone ${GAZEBO_LIBRARIES})
 
 
-# add_library(dronecontrol_copy SHARED plugins/dronecontrol_copy.cc)
-# ament_target_dependencies(dronecontrol_copy ${ROS_LIBS})
-# target_link_libraries(dronecontrol_copy ${GAZEBO_LIBRARIES})
-
 
 # Install targets
 install(TARGETS
-  HelloWorld
   World
   DCdrone
   # dronecontrol_copy
