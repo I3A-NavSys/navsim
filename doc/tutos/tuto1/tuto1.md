@@ -14,9 +14,11 @@ An environment should open with a gaming area of 10x10 meters. On a white base (
 ![DroneChallenge](./img/DroneChallenge.png 'Drone Challenge scenario. :size=600px')
 
 
-### Check ROS execution
+## Check ROS execution
 
 In a new terminal, we can verify that ROS is running correctly. The command `$ros2 node list` shows four active nodes at the moment.
+
+### World node
 
 The node **/World** is associated with the loaded scenario. Using the `ros2 topic list` command, we observe that it generates a topic **/World/Time** where we can check the simulation time. With these commands, we can determine the structure of the transmitted message:
 
@@ -27,19 +29,27 @@ ros2 interface show builtin_interfaces/msg/Time
 Finally, with the command `ros2 topic echo /World/Time`, we observe that the data refreshes 10 times per second.
 
 
-
-Con el comando `ros2 service list` observamos que existen (entre otros) dos servicios asociados a este nodo, denominados **/World/DeployModel** y **/World/DeployModel** respectivamente. El primer comando es más complejo de utilizar y lo trataremos en un tutorial posterior. El segundo comando permite eliminar un elemento del escenario.  
+With the command `ros2 service list`, we observe that there are (among others) two services associated with this node, named **/World/DeployModel** and **/World/DeployModel** respectively. The first command is more complex to use and will be covered in a later tutorial. The second command allows us to remove an element from the scenario.
 ```bash
 ros2 service type /World/RemoveModel 
 ros2 interface show navsim_msgs/srv/RemoveModel
 ```
-Vemos que podemos llamar al servicio simplemente indicando el nombre del objeto que deseamos eliminar.
+We see that we can call the service simply by indicating the name of the object we want to remove. As an example, let's remove the landing pad with the command:
+```bash
+ros2 service call /World/RemoveModel navsim_msgs/srv/RemoveModel "{name: 'vertiport'}"
+```
+We see that the landing pad disappears, and the drone falls to the ground.
 
 
 
+### UAV node
 
-El nodo **/abejorro1** está asociado al cuadricoptero. Servirá para recibir comandos de control y transmitir su posición
+Cada UAV genera su propio nodo ROS para interactuar con el entorno. En este caso, el nodo del cuadricoptero se llama **/abejorro1**.
 
+Servirá para recibir comandos de control y transmitir su información de telemetría.
+
+
+### UAV cameras
 
 La cámara frontal del quadricoptero genera su propio nodo para la transmisión de imágenes.
 
