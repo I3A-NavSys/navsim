@@ -48,8 +48,7 @@
 <include>
     <name>abejorro1</name>
     <uri>../models/DC/drone</uri>
-    <!-- <pose>-3 -3 0.55 0 0 0.5236</pose> -->
-    <pose>-3 -3 0.55 0 0 1.57</pose>
+    <pose>-3 -3 0.55 0 0 0.5236</pose>
     <plugin name="DCdrone" filename="libDCdrone.so">
     </plugin>
 </include>
@@ -87,10 +86,13 @@
 <!-- Camera -->
 <gui fullscreen='0'>
     <camera name='user_camera'>
-      <!-- <pose>-5 -5 1 0 0 0.8</pose> -->
-      <pose>0 0 10 0 1.57 1.57</pose>
+
+      <pose>-5 -5 1 0 0 0.8</pose>
+      <!-- <pose>0 0 10 0 1.57 1.57</pose> -->
+
       <view_controller>orbit</view_controller>
-      <projection_type>orthographic</projection_type>
+      <!-- <projection_type>orthographic</projection_type> -->
+
     </camera>
   </gui>
 
