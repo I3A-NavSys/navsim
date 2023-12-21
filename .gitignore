@@ -105,3 +105,4 @@ CATKIN_IGNORE
 
 .vscode/settings.json
 .vscode/settings.json
+*.autosave
