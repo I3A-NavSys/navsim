@@ -4,6 +4,10 @@
 
 <model name="drone">
 
+<plugin name="DCdrone" filename="libDCdrone.so">
+</plugin>
+  
+
 <static>false</static>
     
 <link name='dronelink'>

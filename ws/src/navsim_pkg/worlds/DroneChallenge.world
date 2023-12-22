@@ -12,9 +12,11 @@
     <name>floor</name>
     <uri>../models/DC/floor</uri>
 </include>
+
 <include>
-    <name>tatami</name>
+    <name>tatamii</name>
     <uri>../models/DC/tatami</uri>
+    <pose>0 0 -0.4 0 0 0</pose>
 </include>
 
 
@@ -22,7 +24,7 @@
 <include>
     <name>vertiport</name>
     <uri>../models/DC/base_drone</uri>
-    <pose>-3 -3 0.26 0 0 0</pose>
+    <pose>-3 -3 0.30 0 0 0</pose>
 </include>   
 
 
@@ -49,8 +51,6 @@
     <name>abejorro1</name>
     <uri>../models/DC/drone</uri>
     <pose>-3 -3 0.55 0 0 0.5236</pose>
-    <plugin name="DCdrone" filename="libDCdrone.so">
-    </plugin>
 </include>
 
 
@@ -104,12 +104,10 @@
     <max_step_size>0.001</max_step_size>                     
     <!-- default: 0.001 segundos simulados / paso de simulación -->
     
-    <real_time_factor>1</real_time_factor>
-    
     <real_time_update_rate>1000</real_time_update_rate>
     <!-- default: 1000 ciclos de simulación / segundo real -->
     
-    <gravity>0 0 -9.8</gravity>
+    <!-- <gravity>0 0 -9.8</gravity> -->
 </physics> 
 
 

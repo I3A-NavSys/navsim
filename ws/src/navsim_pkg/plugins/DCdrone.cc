@@ -34,7 +34,7 @@ rclcpp::Node::SharedPtr rosNode;
 
 rclcpp::Publisher<navsim_msgs::msg::Telemetry>::SharedPtr rosPub_Telemetry;
 common::Time prevTelemetryPubTime;
-double TelemetryPeriod = 0.1;    // seconds
+double TelemetryPeriod = 1;    // seconds
 
 rclcpp::Subscription<navsim_msgs::msg::RemoteCommand>::SharedPtr rosSub_RemoteCommand;
 
@@ -137,8 +137,7 @@ double cmd_velY = 0.0;            // (m/s)  velocidad lineal  deseada en eje Y
 double cmd_velZ = 0.0;            // (m/s)  velocidad lineal  deseada en eje Z
 double cmd_rotZ = 0.0;            // (m/s)  velocidad angular deseada en eje Z
 
-
-
+common::Time CommandExpTime;
 
 
 ////////////////////////////////////////////////////////////////////////
@@ -210,6 +209,9 @@ void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
 }
 
 
+
+
+
 void Init()
 {
     // printf("DC Navigation event: Init\n");
@@ -228,6 +230,8 @@ void Init()
 ////////////////////////////
 
 }
+
+
 
 
 
@@ -255,7 +259,7 @@ void OnWorldUpdateBegin()
 
 }
 
-    
+
 
 
 
@@ -276,27 +280,82 @@ void rosTopFn_RemoteCommand(const std::shared_ptr<navsim_msgs::msg::RemoteComman
     cmd_velZ =  msg->vel.linear.z;
     cmd_rotZ =  msg->vel.angular.z; 
 
+    common::Time duration;
+    duration.sec  = msg->duration.sec;
+    duration.nsec = msg->duration.nanosec;
+    common::Time currentTime = model->GetWorld()->SimTime();
+    CommandExpTime = currentTime + duration;
+    // printf("current control time: %.3f \n", currentTime.Double());
+    // printf("command duration: %.3f \n", duration.Double());
+    // printf("command expiration time: %.3f \n\n", CommandExpTime.Double());
+
+
 
     // Filtramos comandos fuera de rango
-    if (cmd_velX > 1)
-        cmd_velX = 1;
-    if (cmd_velX < -1)
-        cmd_velX = -1;
-    if (cmd_velY > 1)
-        cmd_velY = 1;
-    if (cmd_velY < -1)
-        cmd_velY = -1;
-    if (cmd_velZ > 1)
-        cmd_velZ = 1;
-    if (cmd_velZ < -1)
-        cmd_velZ = -1;
-    if (cmd_rotZ > 1)
-        cmd_rotZ = 1;
-    if (cmd_rotZ < -1)
-        cmd_rotZ = -1;
 
+    int velMAX = 4;
+
+    if (cmd_velX >  velMAX)
+        cmd_velX =  velMAX;
+    if (cmd_velX < -velMAX)
+        cmd_velX = -velMAX;
+    if (cmd_velY >  velMAX)
+        cmd_velY =  velMAX;
+    if (cmd_velY < -velMAX)
+        cmd_velY = -velMAX;
+    if (cmd_velZ >  velMAX)
+        cmd_velZ =  velMAX;
+    if (cmd_velZ < -velMAX)
+        cmd_velZ = -velMAX;
+    if (cmd_rotZ >  velMAX)
+        cmd_rotZ =  velMAX;
+    if (cmd_rotZ < -velMAX)
+        cmd_rotZ = -velMAX;
 
 }
+
+
+
+
+
+void commandOff()
+{
+    cmd_on   = false;
+    cmd_velX = 0;
+    cmd_velY = 0;
+    cmd_velZ = 0;
+    cmd_rotZ = 0; 
+}
+
+
+
+
+
+void hover()
+{
+    commandOff();
+    cmd_on = true;
+}
+
+
+
+
+void rotorsOff()
+{
+
+    // Apagamos motores
+    w_rotor_NE = 0;
+    w_rotor_NW = 0;
+    w_rotor_SE = 0;
+    w_rotor_SW = 0;
+    rotors_on = false;
+
+    // Reset del control
+    E << 0, 0, 0, 0;
+   
+}
+
+
 
 
 
@@ -311,48 +370,31 @@ void ServoControl()
 
     if (cmd_on == false)
     {
-        // Apagamos motores
-        w_rotor_NE = 0;
-        w_rotor_NW = 0;
-        w_rotor_SE = 0;
-        w_rotor_SW = 0;
-        rotors_on = false;
-
-        // Reset del control
-         E << 0, 0, 0, 0;
-
+        rotorsOff();
         return;
     }
 
 
     common::Time currentTime = model->GetWorld()->SimTime();
-    // printf("current  control time: %.3f \n", currentTime.Double());
 
     // Check if the simulation was reset
-    if (currentTime < prevControlTime)
+    if  (currentTime < prevControlTime)
     {
         prevControlTime = currentTime; 
 
-        // Anulamos comando
-        cmd_on   =  false;
-        cmd_velX =  0;
-        cmd_velY =  0;
-        cmd_velZ =  0;
-        cmd_rotZ =  0; 
-
-        // Apagamos motores
-        w_rotor_NE = 0;
-        w_rotor_NW = 0;
-        w_rotor_SE = 0;
-        w_rotor_SW = 0;
-        rotors_on = false;
-
-        // Reset del control
-         E << 0, 0, 0, 0;
-
-         return;
+        commandOff();
+        rotorsOff();
+        return;
         
     }
+
+
+    // Check if the command has expired
+    if (CommandExpTime < currentTime)
+    {
+        hover();
+    }
+
 
     // Check if the fly starts
     if (rotors_on == false)
@@ -467,6 +509,8 @@ void ServoControl()
 
 
 
+
+
 void PlatformDynamics()
 {
     // Esta funcion traduce 
@@ -526,6 +570,8 @@ void PlatformDynamics()
     link->AddRelativeTorque(MD);
 
 }
+
+
 
 
 

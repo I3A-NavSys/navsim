@@ -1,0 +1,13 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/opt/ros/humble/include/rclcpp/rclcpp"
+            ],
+            "defines": []
+        }
+    ],
+    "version": 4
+}

@@ -26,7 +26,6 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   # "msg/Waypoint.msg"
   # "msg/Uplan.msg"
 
-  "srv/Time.srv"
   "srv/DeployModel.srv"
   # "srv/TranslateModel.srv"
   "srv/RemoveModel.srv"
