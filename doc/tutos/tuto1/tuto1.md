@@ -14,11 +14,10 @@ An environment should open with a gaming area of 10x10 meters. On a white base (
 ![DroneChallenge](./img/DroneChallenge.png 'Drone Challenge scenario. :size=600px')
 
 
-## Check ROS execution
-
 In a new terminal, we can verify that ROS is running correctly. The command `$ros2 node list` shows four active nodes at the moment.
 
-### World node
+
+## Check world node
 
 The node **/World** is associated with the loaded scenario. Using the `ros2 topic list` command, we observe that it generates a topic **/World/Time** where we can check the simulation time. With these commands, we can determine the structure of the transmitted message:
 
@@ -26,10 +25,10 @@ The node **/World** is associated with the loaded scenario. Using the `ros2 topi
 ros2 topic type /World/Time
 ros2 interface show builtin_interfaces/msg/Time
 ```
-Finally, with the command `ros2 topic echo /World/Time`, we observe that the data refreshes 10 times per second.
+Then, with the command `ros2 topic echo /World/Time`, we observe that the data refreshes 10 times per second.
 
 
-With the command `ros2 service list`, we observe that there are (among others) two services associated with this node, named **/World/DeployModel** and **/World/DeployModel** respectively. The first command is more complex to use and will be covered in a later tutorial. The second command allows us to remove an element from the scenario.
+With the command `ros2 service list`, we check that there are (among others) two services associated with this node, named **/World/DeployModel** and **/World/RemoveModel** respectively. The first command is more complex to use and will be covered in a later tutorial. The second command allows us to remove an element from the scenario.
 ```bash
 ros2 service type /World/RemoveModel 
 ros2 interface show navsim_msgs/srv/RemoveModel
@@ -39,23 +38,41 @@ We see that we can call the service simply by indicating the name of the object 
 ros2 service call /World/RemoveModel navsim_msgs/srv/RemoveModel "{name: 'vertiport'}"
 ```
 We see that the landing pad disappears, and the drone falls to the ground.
+Before proceeding, close Gazebo and let's load the original scenario again to recover the vertiport.
+
+```bash
+gazebo DroneChallenge.world
+```
+
+
+## Check UAV node
+
+Each UAV generates its own ROS node to interact with the environment. In this case, the node for the quadcopter is named **/abejorro1**.
+This node manages the transmission of telemetry information and the reception and execution of control commands.
+
+
+### Telemetry
+
+All existing UAVs will publish their telemetry information on the **/UAV/Telemetry** topic. With the command `ros2 topic info /UAV/Telemetry`, we can see that there is a node transmitting messages on this topic. Using the command `ros2 interface show navsim_msgs/msg/Telemetry`, we can see that the message contains:
+- Aircraft identifier
+- Position and orientation
+- body linear and angular velocities
+- Simulation time when the data was generated
+
+With the command `ros2 topic echo /UAV/Telemetry` we check that this data is updated once per second.
+
+### Navigation
 
 
 
-### UAV node
+## Check UAV cameras
 
-Cada UAV genera su propio nodo ROS para interactuar con el entorno. En este caso, el nodo del cuadricoptero se llama **/abejorro1**.
-
-Servirá para recibir comandos de control y transmitir su información de telemetría.
-
-
-### UAV cameras
-
-La cámara frontal del quadricoptero genera su propio nodo para la transmisión de imágenes.
+This quadcopter has two cameras. One camera is real and is mounted on the front of the fuselage. 
+The other camera is virtual and hovers at a certain height behind the aircraft. 
+Each camera generates its own node for image transmission.
 
 
-
-## Human Pilot
+## Launch Pilot interface
 
 > Warning: This step requires having a joystick connected to the computer running Matlab / Simulink. If you don't have one, you can skip this section and proceed to the next one.
 >
