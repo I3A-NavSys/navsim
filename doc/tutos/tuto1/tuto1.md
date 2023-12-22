@@ -63,7 +63,26 @@ With the command `ros2 topic echo /UAV/Telemetry` we check that this data is upd
 
 ### Navigation
 
+Each UAV has its own control topic, unlike telemetry transmission where all UAVs share a single topic.
+Estudiemos el tópico con estos comandos:
+```bash
+ros2 topic list
+ros2 topic type /UAV/abejorro1/RemoteCommand
+ros2 interface show navsim_msgs/msg/RemoteCommand 
+```
+We observe that the control topic is named **/UAV/abejorro1/RemoteCommand**. The command includes:
+- Aircraft identifier (only required in cases where the topic refers to a swarm)
+- Activation/deactivation of rotors
+- Reference linear velocity (expressed in horizon axes)
+- Reference angular velocity (only around the vertical axis)
+- Time of validity of the command.
 
+We can move the quapcorter publishing the following commands:
+```bash
+ros2 topic pub -1 /UAV/abejorro1/RemoteCommand navsim_msgs/msg/RemoteCommand "{'on': true, 'vel': {'linear': {z: 1}}, 'duration': {'sec': 1}}"
+ros2 topic pub -1 /UAV/abejorro1/RemoteCommand navsim_msgs/msg/RemoteCommand "{'on': true, 'vel': {'linear': {x: 1}, 'angular': {z: 1}}, 'duration': {'sec': 6}}"
+ros2 topic pub -1 /UAV/abejorro1/RemoteCommand navsim_msgs/msg/RemoteCommand "{'on': false}"
+```
 
 ## Check UAV cameras
 
