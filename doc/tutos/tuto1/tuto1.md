@@ -64,7 +64,8 @@ With the command `ros2 topic echo /UAV/Telemetry` we check that this data is upd
 ### Navigation
 
 Each UAV has its own control topic, unlike telemetry transmission where all UAVs share a single topic.
-Estudiemos el tópico con estos comandos:
+Let's examine the topic with these commands:
+
 ```bash
 ros2 topic list
 ros2 topic type /UAV/abejorro1/RemoteCommand
