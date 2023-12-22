@@ -83,6 +83,7 @@ ros2 topic pub -1 /UAV/abejorro1/RemoteCommand navsim_msgs/msg/RemoteCommand "{'
 ros2 topic pub -1 /UAV/abejorro1/RemoteCommand navsim_msgs/msg/RemoteCommand "{'on': true, 'vel': {'linear': {x: 1}, 'angular': {z: 1}}, 'duration': {'sec': 6}}"
 ros2 topic pub -1 /UAV/abejorro1/RemoteCommand navsim_msgs/msg/RemoteCommand "{'on': false}"
 ```
+![Drone Flying](./img/droneFlying.png)
 
 ## Check UAV cameras
 
@@ -94,8 +95,7 @@ Each camera generates its own node for image transmission.
 ## Launch Pilot interface
 
 > Warning: This step requires having a joystick connected to the computer running Matlab / Simulink. If you don't have one, you can skip this section and proceed to the next one.
->
-> Este tutorial se ha realizado con un joystick modelo **Thrustmaster T.Flight Stick X**
+> This tutorial has been conducted using a **Thrustmaster T.Flight Stick X** joystick model.
 
 In the Matlab environment, navigate to the `navsim/matlab/operators/DroneChallenge` directory. From there, open the `HumanPilot.slx` model.
 
@@ -108,7 +108,7 @@ Press the **Run** button to execute the model. After compilation, two additional
 ![Drone Challenge follow camera](./img/followCAM.png 'Drone Challenge follow camera. :size=600px')
 
 
-The model displays a speedometer at the top right and a maximum speed limiter at the bottom right. It is recommended to limit the speed to below 2 m/s in the initial attempts.
+The model displays a speedometer at the top right and a maximum speed limiter at the bottom right. It is recommended to limit the speed to below 1 m/s in the initial attempts.
 
 On the left, there is a joystick diagram. At its base, there is a circular LED that indicates whether the quadcopter motors are on (green) or off (red).
 - To turn on the motors, press button 1 on the joystick (index finger). Initially, the drone stabilizes, and it may not be immediately apparent that the motors are on. Check the LED if in doubt.
