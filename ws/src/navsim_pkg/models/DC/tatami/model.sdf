@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <sdf version="1.7">
 
-<model name="tatami">
+<model name="tatami_model">
 
   <static>true</static>
 

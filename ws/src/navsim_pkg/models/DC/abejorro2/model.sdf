@@ -2,7 +2,7 @@
 <sdf version="1.7">
 
 
-<model name="drone">
+<model name="abejorro2">
 
 <plugin name="DCdrone" filename="libDCdrone.so">
 </plugin>
@@ -79,10 +79,10 @@
 </collision>
 
 
-<sensor name='UAV/abejorro1/onboard_cam' type='camera'>
+<!-- <sensor name='UAV/abejorro2/onboard_cam' type='camera'>
 
   <pose>0.08 0 0 0 0 0</pose>        
-  <camera name='onboard_cam'>
+  <camera name='onboard_cam2'>
     <horizontal_fov>1.57</horizontal_fov>
     <image>
         <width> 320</width>
@@ -97,20 +97,19 @@
   <always_on>true</always_on>
   <visualize>false</visualize>
   
-  <plugin name="onboard_cam" filename="libgazebo_ros_camera.so">
+  <plugin name="onboard_cam2" filename="libgazebo_ros_camera.so">
     <alwaysOn>true</alwaysOn>
     <updateRate>1</updateRate>
     <cameraName>onboard_cam</cameraName>
-    <robotNamespace>robotNameSpace</robotNamespace>
   </plugin>
 
-</sensor>    
+</sensor>     -->
 
 
-<sensor name='UAV/abejorro1/follow_cam' type='camera'>
+<sensor name='UAV/abejorro2/follow_cam' type='camera'>
 
   <pose>-0.20 0 0.08 0 0 0</pose>        
-  <camera name='follow_cam'>
+  <camera name='follow_cam2'>
     <horizontal_fov>1.57</horizontal_fov>
     <image>
         <width> 480</width>
@@ -125,11 +124,10 @@
   <always_on>true</always_on>
   <visualize>false</visualize>
   
-  <plugin name="follow_cam" filename="libgazebo_ros_camera.so">
+  <plugin name="follow_cam2" filename="libgazebo_ros_camera.so">
     <alwaysOn>true</alwaysOn>
     <updateRate>1</updateRate>
-    <cameraName>follow_cam</cameraName>
-    <robotNamespace>robotNameSpace</robotNamespace>
+    <cameraName>follow_cam2</cameraName>
   </plugin>
 
 </sensor>    
