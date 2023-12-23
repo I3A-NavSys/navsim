@@ -9,26 +9,38 @@ cd
 cd code/navsim/ws/src/navsim_pkg/worlds
 gazebo DroneChallenge.world
 ```
-An environment should open with a gaming area of 10x10 meters. On a white base (the _vertiport_), there is a quadcopter (called _abejorro1_). Floating in the air, you could see three frames colored red, green, and blue, respectively.
+An environment should open with a gaming area of 10x10 meters. On a white base (the _vertiport_), there is a quadcopter (called _abejorro_). Floating in the air, you could see three frames colored red, green, and blue, respectively.
 
 ![DroneChallenge](./img/DroneChallenge.png 'Drone Challenge scenario. :size=600px')
 
 
-In a new terminal, we can verify that ROS is running correctly. The command `$ros2 node list` shows four active nodes at the moment.
+In a new terminal, we can verify that ROS is running correctly:
+```bash
+ros2 node list
+```
+The command shows four active nodes at the moment.
 
 
 ## Check world node
 
-The node **/World** is associated with the loaded scenario. Using the `ros2 topic list` command, we observe that it generates a topic **/World/Time** where we can check the simulation time. With these commands, we can determine the structure of the transmitted message:
+The node **/World** is associated with the loaded scenario. 
+
+```bash
+ros2 topic list
+```
+We observe that this node generates a topic **/World/Time** where we can check the simulation time.
 
 ```bash
 ros2 topic type /World/Time
 ros2 interface show builtin_interfaces/msg/Time
+ros2 topic echo /World/Time
 ```
-Then, with the command `ros2 topic echo /World/Time`, we observe that the data refreshes 10 times per second.
+With these commands, we can determine the structure of the transmitted message, and observe as the data refreshes 10 times per second.
 
-
-With the command `ros2 service list`, we check that there are (among others) two services associated with this node, named **/World/DeployModel** and **/World/RemoveModel** respectively. The first command is more complex to use and will be covered in a later tutorial. The second command allows us to remove an element from the scenario.
+```bash
+ros2 service list | grep World
+```
+We check that there are (among others) two services associated with this node, named **/World/DeployModel** and **/World/RemoveModel** respectively. The former is more complex to use and will be covered in a later tutorial. The latter service allows us to remove an element from the scenario.
 ```bash
 ros2 service type /World/RemoveModel 
 ros2 interface show navsim_msgs/srv/RemoveModel
@@ -47,19 +59,33 @@ gazebo DroneChallenge.world
 
 ## Check UAV node
 
-Each UAV generates its own ROS node to interact with the environment. In this case, the node for the quadcopter is named **/abejorro1**.
+Each UAV generates its own ROS node to interact with the environment. In this case, the node for the quadcopter is named **/abejorro**.
 This node manages the transmission of telemetry information and the reception and execution of control commands.
 
 
 ### Telemetry
 
-All existing UAVs will publish their telemetry information on the **/UAV/Telemetry** topic. With the command `ros2 topic info /UAV/Telemetry`, we can see that there is a node transmitting messages on this topic. Using the command `ros2 interface show navsim_msgs/msg/Telemetry`, we can see that the message contains:
+All existing UAVs will publish their telemetry information on the **/UAV/Telemetry** topic.
+
+```bash
+ros2 topic list | grep UAV
+ros2 topic info /UAV/Telemetry
+```
+We can see that there is a node transmitting messages on this topic. 
+
+```bash
+ros2 interface show navsim_msgs/msg/Telemetry
+```
+The telemetry message contains:
 - Aircraft identifier
 - Position and orientation
 - body linear and angular velocities
 - Simulation time when the data was generated
 
-With the command `ros2 topic echo /UAV/Telemetry` we check that this data is updated once per second.
+```bash
+ros2 topic echo /UAV/Telemetry
+```
+This data is updated once per second.
 
 ### Navigation
 
@@ -67,30 +93,46 @@ Each UAV has its own control topic, unlike telemetry transmission where all UAVs
 Let's examine the topic with these commands:
 
 ```bash
-ros2 topic list
-ros2 topic type /UAV/abejorro1/RemoteCommand
+ros2 topic list | grep UAV
+ros2 topic type /UAV/abejorro/RemoteCommand
 ros2 interface show navsim_msgs/msg/RemoteCommand 
 ```
-We observe that the control topic is named **/UAV/abejorro1/RemoteCommand**. The command includes:
+We observe that the control topic is named **/UAV/abejorro/RemoteCommand**. The command includes:
 - Aircraft identifier (only required in cases where the topic refers to a swarm)
 - Activation/deactivation of rotors
-- Reference linear velocity (expressed in horizon axes)
-- Reference angular velocity (only around the vertical axis)
-- Time of validity of the command.
+- Commanded linear velocity (expressed in horizon axes)
+- Commanded angular velocity (only around the vertical axis)
+- Command expiration time.
 
-We can move the quapcorter publishing the following commands:
+As an example of use, we can move the quapcopter publishing the following commands:
 ```bash
-ros2 topic pub -1 /UAV/abejorro1/RemoteCommand navsim_msgs/msg/RemoteCommand "{'on': true, 'vel': {'linear': {z: 1}}, 'duration': {'sec': 1}}"
-ros2 topic pub -1 /UAV/abejorro1/RemoteCommand navsim_msgs/msg/RemoteCommand "{'on': true, 'vel': {'linear': {x: 1}, 'angular': {z: 1}}, 'duration': {'sec': 6}}"
-ros2 topic pub -1 /UAV/abejorro1/RemoteCommand navsim_msgs/msg/RemoteCommand "{'on': false}"
+ros2 topic pub -1 /UAV/abejorro/RemoteCommand navsim_msgs/msg/RemoteCommand "{'on': true, 'vel': {'linear': {z: 1}}, 'duration': {'sec': 1}}"
+ros2 topic pub -1 /UAV/abejorro/RemoteCommand navsim_msgs/msg/RemoteCommand "{'on': true, 'vel': {'linear': {x: 1}, 'angular': {z: 1}}, 'duration': {'sec': 6}}"
+ros2 topic pub -1 /UAV/abejorro/RemoteCommand navsim_msgs/msg/RemoteCommand "{'on': false}"
 ```
 ![Drone Flying](./img/droneFlying.png)
 
+
 ## Check UAV cameras
 
-This quadcopter has two cameras. One camera is real and is mounted on the front of the fuselage. 
-The other camera is virtual and hovers at a certain height behind the aircraft. 
-Each camera generates its own node for image transmission.
+```bash
+ros2 node list | grep _cam
+```
+This quadcopter has two cameras. Each of them generates its own node for image transmission:
+- **/onboard_cam** is a real camera mounted on the front of the fuselage. 
+- **/follow_cam** is a virtual camera located at a certain height behind the aircraft. 
+
+```bash
+ros2 topic list | grep _cam
+ros2 topic echo /UAV/abejorro/onboard_cam/image_raw --no-arr
+ros2 topic echo /UAV/abejorro/follow_cam/image_raw --no-arr
+```
+Each camera generates two topics, transmitting camera information and raw image respectively. 
+- **/UAV/abejorro/onboard_cam/image_raw** is transmitting 320x240 RGB pixels at 10 FPS. 
+- **/UAV/abejorro/follow_cam/image_raw** is transmitting 480x320 RGB pixels at 10 FPS.
+
+
+
 
 
 ## Launch Pilot interface
