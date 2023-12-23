@@ -1,5 +1,9 @@
 # 01: Running your first simulation with Matlab connection
 
+In this tutorial, we are going to introduce a programming competition held at the School of Computer Engineering in Albacete (University of Castilla-La Mancha).
+The challenge is aimed at promoting computational thinking among students in Compulsory Secondary Education.
+
+
 ## Launch the scenario
 
 First, we open a scenario in the Gazebo simulator:
@@ -173,8 +177,17 @@ Stop the human pilot interface if it is still running. From Matlab, open the **C
 
 ![Computer pilot](./img/ComputerPilot.png)
 
-En esta ocasión, el piloto automática está programado en un StateFlow chart. 
-A partir de la información de telemetría y la cámara frontal del dron, el sistema debe realizar el circuito completo por sí mismo (sin intervención humana).
+This time, the autopilot is implemented in a StateFlow chart. 
+Using telemetry information and the drone's front camera, the system must complete the entire circuit on its own (without human intervention).
 
+![Autopilot StateFlow chart](./img/autopilot.png)
 
+This starting prototype incorporates basic intelligence, which does not cover many situations that may arise:
+
+1) The drone memorizes the initial position and turn the rotors on.
+2) The drone heads to the center of the tatami, where it starts to rotate. As soon as it detects the red frame, it will move directly toward it. In its proximity, it will start circling around until it is in front of the opening. Then it will move forward for a certain amount of time.
+3) It will then repeat this behavior for the green and blue frames.
+4) Finally, it will move directly to the starting position, where it will turn off the rotors.
+
+Competition participants are tasked with enhancing this proposal, making it robust against unexpected situations.
 
