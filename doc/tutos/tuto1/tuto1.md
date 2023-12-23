@@ -189,5 +189,7 @@ This starting prototype incorporates basic intelligence, which does not cover ma
 3) It will then repeat this behavior for the green and blue frames.
 4) Finally, it will move directly to the starting position, where it will turn off the rotors.
 
+![Autopilot red frame state](./img/RedFrame_state.png)
+
 Competition participants are tasked with enhancing this proposal, making it robust against unexpected situations.
 
