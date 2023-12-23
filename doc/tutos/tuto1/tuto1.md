@@ -135,25 +135,24 @@ Each camera generates two topics, transmitting camera information and raw image 
 
 
 
-## Launch Pilot interface
+## Launch the human pilot interface
 
 > Warning: This step requires having a joystick connected to the computer running Matlab / Simulink. If you don't have one, you can skip this section and proceed to the next one.
 > This tutorial has been conducted using a **Thrustmaster T.Flight Stick X** joystick model.
 
 In the Matlab environment, navigate to the `navsim/matlab/operators/DroneChallenge` directory. From there, open the `HumanPilot.slx` model.
+Press the **Run** button to execute the model. After compilation, two additional windows will open, displaying video captured by the drone cameras. 
+You can rearrange, resize, or close these windows as desired.
 
-![Drone Challenge human pilot](./img/HumanPilot.png 'Drone Challenge human pilot. :size=600px')
+![Onboard camera](./img/onboardCAM.png)
 
-Press the **Run** button to execute the model. After compilation, two additional windows will open. One displays the video image captured by the drone's front camera. The other shows the image from a virtual camera flying behind the drone, designed to assist the human pilot. You can rearrange and resize these windows on the screen as desired or even close them.
-
-![Drone Challenge onboard camera](./img/onboardCAM.png 'Drone Challenge onboard camera. :size=600px')
-
-![Drone Challenge follow camera](./img/followCAM.png 'Drone Challenge follow camera. :size=600px')
+![Follow camera](./img/followCAM.png)
 
 
-The model displays a speedometer at the top right and a maximum speed limiter at the bottom right. It is recommended to limit the speed to below 1 m/s in the initial attempts.
+On the right, the model provides a speedometer and a maximum speed limiter. It is recommended to set the speed below 1 m/s in the initial attempts.
+![Human pilot interface](./img/HumanPilot.png)
 
-On the left, there is a joystick diagram. At its base, there is a circular LED that indicates whether the quadcopter motors are on (green) or off (red).
+On the left, there is a joystick diagram including a circular LED. It indicates whether the quadcopter rotors are on (green) or off (red).
 - To turn on the motors, press button 1 on the joystick (index finger). Initially, the drone stabilizes, and it may not be immediately apparent that the motors are on. Check the LED if in doubt.
 - To turn off the motors, press button 2 on the joystick (thumb). The drone will descend to the ground if it was hovering in the air.
 
@@ -162,6 +161,20 @@ With the motors on, the drone stabilizes automatically. Then, you can:
 - do planar movement: moving the stick.
 - rotate: rotating the stick.
 
+Try piloting the drone to pass through the red, green, and blue frames in order and then return to the vertiport. Record the time from when the motors are activated until they are deactivated again. The pilot with the shortest completion time will be the winner.
+
+Enjoy the game!
+
+
+
+## Launch the computer pilot
+
+Stop the human pilot interface if it is still running. From Matlab, open the **ComputerPilot.slx** model.
+
+![Computer pilot](./img/ComputerPilot.png)
+
+En esta ocasión, el piloto automática está programado en un StateFlow chart. 
+A partir de la información de telemetría y la cámara frontal del dron, el sistema debe realizar el circuito completo por sí mismo (sin intervención humana).
 
 
 
