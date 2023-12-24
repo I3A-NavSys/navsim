@@ -69,11 +69,11 @@ This node manages the transmission of telemetry information and the reception an
 
 ### Telemetry
 
-All existing UAVs will publish their telemetry information on the **/UAV/Telemetry** topic.
+All existing UAVs will publish their telemetry information on the **/UAV/_identifier_/Telemetry** topic.
 
 ```bash
-ros2 topic list | grep UAV
-ros2 topic info /UAV/Telemetry
+ros2 topic list | grep Telemetry
+ros2 topic info /UAV/abejorro/Telemetry
 ```
 We can see that there is a node transmitting messages on this topic. 
 
@@ -81,28 +81,27 @@ We can see that there is a node transmitting messages on this topic.
 ros2 interface show navsim_msgs/msg/Telemetry
 ```
 The telemetry message contains:
-- Aircraft identifier
-- Position and orientation
-- body linear and angular velocities
-- Simulation time when the data was generated
+- UAV identifier (to manage a swarm with the same callback function)
+- UAV position and orientation
+- UAV body linear and angular velocities
+- Data generation time
 
 ```bash
-ros2 topic echo /UAV/Telemetry
+ros2 topic echo /UAV/abejorro/Telemetry
 ```
 This data is updated once per second.
 
 ### Navigation
 
-Each UAV has its own control topic, unlike telemetry transmission where all UAVs share a single topic.
-Let's examine the topic with these commands:
+Each UAV has its own **RemoteCommand** control topic:
 
 ```bash
-ros2 topic list | grep UAV
+ros2 topic list | grep RemoteCommand
 ros2 topic type /UAV/abejorro/RemoteCommand
 ros2 interface show navsim_msgs/msg/RemoteCommand 
 ```
 We observe that the control topic is named **/UAV/abejorro/RemoteCommand**. The command includes:
-- Aircraft identifier (only required in cases where the topic refers to a swarm)
+- UAV identifier (only required in cases where the topic refers to a swarm)
 - Activation/deactivation of rotors
 - Commanded linear velocity (expressed in horizon axes)
 - Commanded angular velocity (only around the vertical axis)
