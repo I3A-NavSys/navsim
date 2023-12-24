@@ -79,10 +79,10 @@
 </collision>
 
 
-<sensor name='UAV/abejorroC/onboard_cam' type='camera'>
+<sensor name='UAV/abejorro/onboard_cam' type='camera'>
 
   <pose>0.08 0 0 0 0 0</pose>        
-  <camera name='onboard_camC'>
+  <camera name='onboard_cam'>
     <horizontal_fov>1.57</horizontal_fov>
     <image>
         <width> 320</width>
@@ -97,19 +97,19 @@
   <always_on>true</always_on>
   <visualize>false</visualize>
   
-  <plugin name="onboard_camC" filename="libgazebo_ros_camera.so">
+  <plugin name="onboard_cam" filename="libgazebo_ros_camera.so">
     <alwaysOn>true</alwaysOn>
     <updateRate>1</updateRate>
-    <cameraName>onboard_cam4</cameraName>
+    <cameraName>onboard_cam</cameraName>
   </plugin>
 
 </sensor>    
 
 
-<sensor name='UAV/abejorroC/follow_cam' type='camera'>
+<!-- <sensor name='UAV/abejorro/follow_cam' type='camera'>
 
   <pose>-0.20 0 0.08 0 0 0</pose>        
-  <camera name='follow_camC'>
+  <camera name='follow_cam'>
     <horizontal_fov>1.57</horizontal_fov>
     <image>
         <width> 480</width>
@@ -124,13 +124,13 @@
   <always_on>true</always_on>
   <visualize>false</visualize>
   
-  <plugin name="follow_camC" filename="libgazebo_ros_camera.so">
+  <plugin name="follow_cam" filename="libgazebo_ros_camera.so">
     <alwaysOn>true</alwaysOn>
     <updateRate>1</updateRate>
-    <cameraName>follow_camC</cameraName>
+    <cameraName>follow_cam</cameraName>
   </plugin>
 
-</sensor>    
+</sensor>     -->
 
 
 

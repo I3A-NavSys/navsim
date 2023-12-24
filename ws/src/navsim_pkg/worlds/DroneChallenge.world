@@ -50,7 +50,8 @@
 <!-- UAV -->
 <include>
     <name>abejorro</name>
-    <pose>-3 -3 0.60 0 0 0.5236</pose>
+    <pose>-3 -3 0.60 0 0 0</pose>
+    <!-- <pose>-3 -3 0.60 0 0 0.5236</pose> -->
     <uri>../models/DC/abejorro</uri>
 </include>
 

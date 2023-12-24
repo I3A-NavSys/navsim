@@ -23,73 +23,80 @@
 
 <!-- bases de aterrizaje -->
 <include>
-    <name>vertiport1</name>
+    <name>vertiport</name>
     <uri>../models/DC/base_drone</uri>
-    <pose>-3 -3 0.26 0 0 0</pose>
-</include>   
-
-<include>
-    <name>vertiport2</name>
-    <uri>../models/DC/base_drone</uri>
-    <pose>-3 3 0.26 0 0 0</pose>
+    <pose>4 0 0.26 0 0 0</pose>
 </include>   
 
 <!-- Frames -->
 <include>
     <name>frame_red</name>
     <uri>../models/DC/frame_red</uri>
-    <pose>3 2 2 0 0 1</pose>
+    <pose>-2 0 1.2 0 0 -0.1</pose>
 </include>    
 <include>
     <name>frame_green</name>
     <uri>../models/DC/frame_green</uri>
-    <pose>-2 1 0.5 0 0 2</pose>
+    <pose>0 1 1 0 0 0.1</pose>
 </include>    
 <include>
     <name>frame_blue</name>
     <uri>../models/DC/frame_blue</uri>
-    <pose>3 -1 1 0 0 3</pose>
+    <pose>2 -1 1.1 0 0 0.2</pose>
 </include>    
 
 
 <!-- UAVs -->
 
 <include>
-    <name>abejorroC</name>
-    <pose>-3 1 0.60 0 0 0.5236</pose>
+    <name>abejorro</name>
+    <pose>-4 0 0.10 0 0 0</pose>
     <uri>../models/DC/abejorroC</uri>
 </include>
 
 <include>
     <name>abejorro1</name>
     <uri>../models/DC/abejorro1</uri>
-    <pose>-3 -3 0.55 0 0 0.5236</pose>
+    <pose>-4 1 0.10 0 0 0</pose>
 </include>
 
 <include>
     <name>abejorro2</name>
-    <pose>-3 -2 0.60 0 0 0.5236</pose>
+    <pose>-4 0.5 0.10 0 0 0</pose>
     <uri>../models/DC/abejorro2</uri>
 </include>
 
 <include>
     <name>abejorro3</name>
-    <pose>-3 -1 0.60 0 0 0.5236</pose>
+    <pose>-4 -0.5 0.10 0 0 0</pose>
     <uri>../models/DC/abejorro3</uri>
 </include>
 
 <include>
     <name>abejorro4</name>
-    <pose>-3 0 0.60 0 0 0.5236</pose>
+    <pose>-4 -1 0.10 0 0 0</pose>
     <uri>../models/DC/abejorro4</uri>
 </include>
 
 
 
-<!-- Lights -->
+
+<!-- I3A -->
+<include>
+    <name>I3A</name>
+    <pose>50 -15 0 0 0 1</pose>
+    <uri>../models/I3A</uri>
+</include>
+
+
+<!-- Area -->
 <scene>
     <ambient>0.5 0.5 0.5 1.0</ambient>
     <shadows>true</shadows>
+    <!-- <sky>
+        <clouds>true</clouds>
+    </sky> -->
+    <origin_visual>false</origin_visual>
 </scene>
 
 <!-- 
@@ -107,22 +114,25 @@
         <range>100</range>
         <constant>1</constant>
     </attenuation>
-    <direction>-0.5 0.1 -0.9</direction>
+    <direction>0.5 0.1 -0.9</direction>
 </light> 
 
 
-<!-- Camera -->
+<!-- Interface -->
 <gui fullscreen='0'>
     <camera name='user_camera'>
 
-      <pose>-5 -5 1 0 0 0.8</pose>
+      <pose>-9 0 1.2 0 0.052 0</pose>
       <!-- <pose>0 0 10 0 1.57 1.57</pose> -->
 
       <view_controller>orbit</view_controller>
       <!-- <projection_type>orthographic</projection_type> -->
 
     </camera>
-  </gui>
+</gui>
+
+
+
 
 
 

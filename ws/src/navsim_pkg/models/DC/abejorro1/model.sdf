@@ -210,9 +210,9 @@
         </cylinder>
     </geometry>
     <material>
-        <ambient>0 1 0 1</ambient>  <!--color Red Green Blue Alpha [0-1] -->
-        <diffuse>0 1 0 1</diffuse>
-    </material>
+      <ambient>0.7 0.7 0.7 1</ambient>  <!--color Red Green Blue Alpha [0-1] -->
+      <diffuse>0.7 0.7 0.7 1</diffuse>
+  </material>
 </visual>
 
 <collision name="rotor_NE">
@@ -310,9 +310,9 @@
         </cylinder>
     </geometry>
     <material>
-        <ambient>0 1 0 1</ambient>  <!--color Red Green Blue Alpha [0-1] -->
-        <diffuse>0 1 0 1</diffuse>
-    </material>
+      <ambient>0.7 0.7 0.7 1</ambient>  <!--color Red Green Blue Alpha [0-1] -->
+      <diffuse>0.7 0.7 0.7 1</diffuse>
+  </material>
 </visual>
 
 <collision name="rotor_NW">
@@ -410,8 +410,8 @@
         </cylinder>
     </geometry>
     <material>
-        <ambient>1 0 0 1</ambient>  <!--color Red Green Blue Alpha [0-1] -->
-        <diffuse>1 0 0 1</diffuse>
+        <ambient>0.4 0.4 0.4 1</ambient>  <!--color Red Green Blue Alpha [0-1] -->
+        <diffuse>0.4 0.4 0.4 1</diffuse>
     </material>
 </visual>
 
@@ -510,9 +510,9 @@
         </cylinder>
     </geometry>
     <material>
-        <ambient>1 0 0 1</ambient>  <!--color Red Green Blue Alpha [0-1] -->
-        <diffuse>1 0 0 1</diffuse>
-    </material>
+      <ambient>0.4 0.4 0.4 1</ambient>  <!--color Red Green Blue Alpha [0-1] -->
+      <diffuse>0.4 0.4 0.4 1</diffuse>
+  </material>
 </visual>
 
 <collision name="rotor_SW">
