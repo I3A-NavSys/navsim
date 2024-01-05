@@ -37,6 +37,8 @@ common::Time prevTelemetryPubTime;
 double TelemetryPeriod = 1.0;    // seconds
 
 rclcpp::Subscription<navsim_msgs::msg::RemoteCommand>::SharedPtr rosSub_RemoteCommand;
+common::Time prevCommandCheckTime;
+double CommandCheckPeriod = 1.0;     // seconds
 
 
 
@@ -206,8 +208,12 @@ void Init()
 {
     // printf("DC Navigation event: Init\n");
 
-    prevTelemetryPubTime = model->GetWorld()->SimTime();
-    
+    common::Time currentTime = model->GetWorld()->SimTime();
+    prevTelemetryPubTime = currentTime;
+    prevCommandCheckTime = currentTime;
+
+
+
 ////////////////////////////asumimos un comando!!!
     // cmd_on   =  1  ;
 
@@ -234,21 +240,15 @@ void OnWorldUpdateBegin()
     ServoControl();
     PlatformDynamics();
 
-    // Telemetry communications
+    // Telemetry communication
     Telemetry();
 
-
-    // ROS2 events proceessing
-    rclcpp::spin_some(rosNode);
-
-	// Pause simulation
-	// physics::WorldPtr world = this->model->GetWorld();
-	// world->SetPaused(true);
+    // Check ROS2 subscriptions
+    CheckSubs();
 
 }
 
     
-
 
 
 void rosTopFn_RemoteCommand(const std::shared_ptr<navsim_msgs::msg::RemoteCommand> msg)
@@ -304,7 +304,6 @@ void rosTopFn_RemoteCommand(const std::shared_ptr<navsim_msgs::msg::RemoteComman
 
 
 
-
 void commandOff()
 {
     cmd_on   = false;
@@ -313,7 +312,6 @@ void commandOff()
     cmd_velZ = 0;
     cmd_rotZ = 0; 
 }
-
 
 
 
@@ -495,6 +493,7 @@ void ServoControl()
 
 
 
+
 void PlatformDynamics()
 {
     // Esta funcion traduce 
@@ -557,6 +556,32 @@ void PlatformDynamics()
 
 
 
+
+void CheckSubs()
+{
+    
+    // Check if the simulation was reset
+    common::Time currentTime = model->GetWorld()->SimTime();
+
+    if (currentTime < prevCommandCheckTime)
+        prevCommandCheckTime = currentTime; // The simulation was reset
+
+    double interval = (currentTime - prevCommandCheckTime).Double();
+    if (interval < CommandCheckPeriod) return;
+
+    // printf("UAV %s checking ROS2 subscriptions \n", UAVname.c_str());
+    // printf("current time: %.3f \n\n", currentTime.Double());
+
+    prevCommandCheckTime = currentTime;
+
+    // ROS2 events proceessing
+    rclcpp::spin_some(rosNode);
+
+}
+
+
+
+
 void Telemetry()
 {
     // printf("UAV Telemetry \n");
@@ -574,6 +599,7 @@ void Telemetry()
     // printf("current time: %.3f \n\n", currentTime.Double());
 
     prevTelemetryPubTime = currentTime;
+
 
     // Getting model status
     ignition::math::Pose3<double> pose = model->WorldPose();
