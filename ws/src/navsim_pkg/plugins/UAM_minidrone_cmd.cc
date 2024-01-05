@@ -14,7 +14,7 @@
 
 namespace gazebo {
 
-class DCdrone : public ModelPlugin {
+class UAM_minidrone_cmd : public ModelPlugin {
 
 private:
 
@@ -132,7 +132,7 @@ double cmd_velY = 0.0;            // (m/s)  velocidad lineal  deseada en eje Y
 double cmd_velZ = 0.0;            // (m/s)  velocidad lineal  deseada en eje Z
 double cmd_rotZ = 0.0;            // (m/s)  velocidad angular deseada en eje Z
 
-
+common::Time CommandExpTime;
 
 
 
@@ -151,7 +151,7 @@ void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
 
     // Periodic event
     updateConnector = event::Events::ConnectWorldUpdateBegin(
-        std::bind(&DCdrone::OnWorldUpdateBegin, this));  
+        std::bind(&UAM_minidrone_cmd::OnWorldUpdateBegin, this));  
 
     // ROS2
     if (rclcpp::ok()) 
@@ -163,7 +163,7 @@ void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
 
         rosSub_RemoteCommand = rosNode->create_subscription<navsim_msgs::msg::RemoteCommand>(
             "UAV/" + UAVname + "/RemoteCommand", 10,
-            std::bind(&DCdrone::rosTopFn_RemoteCommand, this, 
+            std::bind(&UAM_minidrone_cmd::rosTopFn_RemoteCommand, this, 
                     std::placeholders::_1));
             
     
@@ -268,7 +268,80 @@ void rosTopFn_RemoteCommand(const std::shared_ptr<navsim_msgs::msg::RemoteComman
     cmd_velZ =  msg->vel.linear.z;
     cmd_rotZ =  msg->vel.angular.z; 
 
+    common::Time duration;
+    duration.sec  = msg->duration.sec;
+    duration.nsec = msg->duration.nanosec;
+    common::Time currentTime = model->GetWorld()->SimTime();
+    CommandExpTime = currentTime + duration;
+    // printf("current control time: %.3f \n", currentTime.Double());
+    // printf("command duration: %.3f \n", duration.Double());
+    // printf("command expiration time: %.3f \n\n", CommandExpTime.Double());
+
+
+
+    // Filtramos comandos fuera de rango
+
+    int velMAX = 4;
+
+    if (cmd_velX >  velMAX)
+        cmd_velX =  velMAX;
+    if (cmd_velX < -velMAX)
+        cmd_velX = -velMAX;
+    if (cmd_velY >  velMAX)
+        cmd_velY =  velMAX;
+    if (cmd_velY < -velMAX)
+        cmd_velY = -velMAX;
+    if (cmd_velZ >  velMAX)
+        cmd_velZ =  velMAX;
+    if (cmd_velZ < -velMAX)
+        cmd_velZ = -velMAX;
+    if (cmd_rotZ >  velMAX)
+        cmd_rotZ =  velMAX;
+    if (cmd_rotZ < -velMAX)
+        cmd_rotZ = -velMAX;
 }
+
+
+
+
+
+void commandOff()
+{
+    cmd_on   = false;
+    cmd_velX = 0;
+    cmd_velY = 0;
+    cmd_velZ = 0;
+    cmd_rotZ = 0; 
+}
+
+
+
+
+
+void hover()
+{
+    commandOff();
+    cmd_on = true;
+}
+
+
+
+
+void rotorsOff()
+{
+
+    // Apagamos motores
+    w_rotor_NE = 0;
+    w_rotor_NW = 0;
+    w_rotor_SE = 0;
+    w_rotor_SW = 0;
+    rotors_on = false;
+
+    // Reset del control
+    E << 0, 0, 0, 0;
+   
+}
+
 
 
 
@@ -283,26 +356,31 @@ void ServoControl()
 
     if (cmd_on == false)
     {
-        // Apagamos motores
-        w_rotor_NE = 0;
-        w_rotor_NW = 0;
-        w_rotor_SE = 0;
-        w_rotor_SW = 0;
-        rotors_on = false;
-
-        // Reset del control
-         E << 0, 0, 0, 0;
-
+        rotorsOff();
         return;
     }
 
 
     common::Time currentTime = model->GetWorld()->SimTime();
-    // printf("current  control time: %.3f \n", currentTime.Double());
 
     // Check if the simulation was reset
-    if (currentTime < prevControlTime)
+    if  (currentTime < prevControlTime)
+    {
         prevControlTime = currentTime; 
+
+        commandOff();
+        rotorsOff();
+        return;
+        
+    }
+
+
+    // Check if the command has expired
+    if (CommandExpTime < currentTime)
+    {
+        hover();
+    }
+
 
     // Check if the fly starts
     if (rotors_on == false)
@@ -540,5 +618,5 @@ void Telemetry()
 }; // class
 
 // Register this plugin with the simulator
-GZ_REGISTER_MODEL_PLUGIN(DCdrone)
+GZ_REGISTER_MODEL_PLUGIN(UAM_minidrone_cmd)
 } // namespace gazebo

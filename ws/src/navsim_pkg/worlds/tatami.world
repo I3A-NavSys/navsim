@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <sdf version="1.6">
 
-<world name="tatami">      
+<world name="tatami world">      
 
 
 <!-- <plugin name="HelloWorld" filename="libHelloWorld.so" /> -->
@@ -14,17 +14,15 @@
 </include>
 
 
-<!-- rejilla del suelo -->
-<!-- <include>
-    <uri>model://ground_plane</uri>
-</include> -->
-
-
-
 <!-- Area de juego -->
 <include>
+    <name>floor</name>
+    <uri>../models/DC/floor</uri>
+</include>
+<include>
     <name>tatami</name>
-    <uri>../models/DCmodels/tatami</uri>
+    <pose>0 0 -0.49 0 0 0</pose>
+    <uri>../models/DC/tatami</uri>
 </include>
 
 

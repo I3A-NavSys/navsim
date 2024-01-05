@@ -80,13 +80,16 @@ add_library(DCdrone SHARED plugins/DCdrone.cc)
 ament_target_dependencies(DCdrone ${ROS_LIBS})
 target_link_libraries(DCdrone ${GAZEBO_LIBRARIES})
 
+add_library(UAM_minidrone_cmd SHARED plugins/UAM_minidrone_cmd.cc)
+ament_target_dependencies(UAM_minidrone_cmd ${ROS_LIBS})
+target_link_libraries(UAM_minidrone_cmd ${GAZEBO_LIBRARIES})
 
 
 # Install targets
 install(TARGETS
   World
   DCdrone
-  # dronecontrol_copy
+  UAM_minidrone_cmd
   DESTINATION lib/${PROJECT_NAME}
 )
 
