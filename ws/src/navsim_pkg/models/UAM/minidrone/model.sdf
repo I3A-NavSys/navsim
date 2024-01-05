@@ -12,7 +12,7 @@
 <link name='dronelink'>
 
 
-<collision name='collision'>
+<!-- <collision name='collision'>
   <pose>0 0 -0.0075 0 0 0</pose>
   <geometry>
     <box>
@@ -29,7 +29,7 @@
       </ode>
     </friction>
   </surface>
-</collision>
+</collision> -->
 
 
 <visual name='fuselaje'>
@@ -45,7 +45,7 @@
     </material>
 </visual>
   
-<!-- <collision name='fuselaje'>
+<collision name='fuselaje'>
     <pose>0 0 0 0 0 0</pose>
     <geometry>
       <box>
@@ -62,7 +62,7 @@
         </ode>
       </friction>
     </surface>
-</collision> -->
+</collision>
 
 
 
@@ -79,7 +79,7 @@
     </material>
 </visual>
   
-<!-- <collision name='camara'>
+<collision name='camara'>
     <pose>0.065 0 0 0 0 0</pose>
     <geometry>
       <box>
@@ -96,7 +96,7 @@
         </ode>
       </friction>
     </surface>
-</collision> -->
+</collision>
 
 <visual name='brazo_NE'>
     <pose>0.0550 -0.0406 0 0 0 -1.0472</pose>
@@ -111,7 +111,7 @@
     </material>
 </visual>
     
-<!-- <collision name='brazo_NE'>
+<collision name='brazo_NE'>
     <pose>0.0550 -0.0406 0 0 0 -1.0472</pose>
     <geometry>
       <box>
@@ -128,7 +128,7 @@
         </ode>
       </friction>
     </surface>
-</collision> -->
+</collision>
 
 <visual name="motor_NE">
     <pose>0.0750 -0.0750 -0.01 0 0 0</pose>
@@ -144,7 +144,7 @@
     </material>
 </visual>
 
-<!-- <collision name="motor_NE">
+<collision name="motor_NE">
     <pose>0.0750 -0.0750 -0.01 0 0 0</pose>
     <geometry>
         <cylinder>
@@ -162,7 +162,7 @@
             </ode>
         </friction>
     </surface>
-</collision> -->
+</collision>
 
 <visual name="rotor_NE">
     <pose>0.0750 -0.0750 0.01 0 0 0</pose>
@@ -178,7 +178,7 @@
     </material>
 </visual>
 
-<!-- <collision name="rotor_NE">
+<collision name="rotor_NE">
     <pose>0.0750 -0.0750 0.01 0 0 0</pose>
     <geometry>
         <cylinder>
@@ -196,7 +196,7 @@
             </ode>
         </friction>
     </surface>
-</collision> -->
+</collision>
   
 <visual name='brazo_NW'>
     <pose>0.0550 0.0406 0 0 0 1.0472</pose>
@@ -211,7 +211,7 @@
     </material>
 </visual>
     
-<!-- <collision name='brazo_NW'>
+<collision name='brazo_NW'>
     <pose>0.0550 0.0406 0 0 0 1.0472</pose>
     <geometry>
       <box>
@@ -228,7 +228,7 @@
         </ode>
       </friction>
     </surface>
-</collision> -->
+</collision>
 
 <visual name="motor_NW">
     <pose>0.0750 0.0750 -0.01 0 0 0</pose>
@@ -244,7 +244,7 @@
     </material>
 </visual>
 
-<!-- <collision name="motor_NW">
+<collision name="motor_NW">
     <pose>0.0750 0.0750 -0.01 0 0 0</pose>
     <geometry>
         <cylinder>
@@ -262,7 +262,7 @@
             </ode>
         </friction>
     </surface>
-</collision> -->
+</collision>
 
 <visual name="rotor_NW">
     <pose>0.0750 0.0750 0.01 0 0 0</pose>
@@ -278,7 +278,7 @@
     </material>
 </visual>
 
-<!-- <collision name="rotor_NW">
+<collision name="rotor_NW">
     <pose>0.0750 0.0750 0.01 0 0 0</pose>
     <geometry>
         <cylinder>
@@ -296,7 +296,7 @@
             </ode>
         </friction>
     </surface>
-</collision> -->
+</collision>
 
 <visual name='brazo_SE'>
     <pose>-0.0550 -0.0406 0 0 0 1.0472</pose>
@@ -311,7 +311,7 @@
     </material>
 </visual>
     
-<!-- <collision name='brazo_SE'>
+<collision name='brazo_SE'>
     <pose>-0.0550 -0.0406 0 0 0 1.0472</pose>
     <geometry>
       <box>
@@ -328,7 +328,7 @@
         </ode>
       </friction>
     </surface>
-</collision> -->
+</collision>
 
 <visual name="motor_SE">
     <pose>-0.0750 -0.0750 -0.01 0 0 0</pose>
@@ -344,7 +344,7 @@
     </material>
 </visual>
 
-<!-- <collision name="motor_SE">
+<collision name="motor_SE">
     <pose>-0.0750 -0.0750 -0.01 0 0 0</pose>
     <geometry>
         <cylinder>
@@ -362,7 +362,7 @@
             </ode>
         </friction>
     </surface>
-</collision> -->
+</collision>
 
 <visual name="rotor_SE">
     <pose>-0.0750 -0.0750 0.01 0 0 0</pose>
@@ -378,7 +378,7 @@
     </material>
 </visual>
 
-<!-- <collision name="rotor_SE">
+<collision name="rotor_SE">
     <pose>-0.0750 -0.0750 0.01 0 0 0</pose>
     <geometry>
         <cylinder>
@@ -396,7 +396,7 @@
             </ode>
         </friction>
     </surface>
-</collision>     -->
+</collision>    
 
 <visual name='brazo_SW'>
     <pose>-0.0550 0.0406 0 0 0 -1.0472</pose>
@@ -411,7 +411,7 @@
     </material>
 </visual>
     
-<!-- <collision name='brazo_SW'>
+<collision name='brazo_SW'>
     <pose>-0.0550 0.0406 0 0 0 -1.0472</pose>
     <geometry>
       <box>
@@ -428,7 +428,7 @@
         </ode>
       </friction>
     </surface>
-</collision> -->
+</collision>
 
 <visual name="motor_SW">
     <pose>-0.0750 0.0750 -0.01 0 0 0</pose>
@@ -444,7 +444,7 @@
     </material>
 </visual>
 
-<!-- <collision name="motor_SW">
+<collision name="motor_SW">
     <pose>-0.0750 0.0750 -0.01 0 0 0</pose>
     <geometry>
         <cylinder>
@@ -462,7 +462,7 @@
             </ode>
         </friction>
     </surface>
-</collision> -->
+</collision>
 
 <visual name="rotor_SW">
     <pose>-0.0750 0.0750 0.01 0 0 0</pose>
@@ -478,7 +478,7 @@
     </material>
 </visual>
 
-<!-- <collision name="rotor_SW">
+<collision name="rotor_SW">
     <pose>-0.0750 0.0750 0.01 0 0 0</pose>
     <geometry>
         <cylinder>
@@ -496,7 +496,7 @@
             </ode>
         </friction>
     </surface>
-</collision>   -->
+</collision>  
 
 
 <inertial>
