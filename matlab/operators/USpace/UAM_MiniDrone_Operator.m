@@ -1,7 +1,7 @@
 % Operator classes represent operators in the context of U-space.
 % Each operator has a drone garage where it stores its UAVs.
 
-classdef DC_Operator < handle      % Drone Challenge operator
+classdef UAM_MiniDrone_Operator < handle      % Drone Challenge operator
 
 properties
     name string                    % Operator name
@@ -14,8 +14,6 @@ properties
     rosCli_Time                    % ROS2 service client 
     rosCli_DeployModel             % ROS2 Service client to deploy models into the air space
     rosCli_RemoveModel             % ROS2 Service client to remove models from the air space
-    rosPub_RemoteCommand           % ROS2 Service client to remotely pilot a drone
-    rosSub_GetImage
     % ROScli_reg_operator          % Service client to register itself as operators
     % ROScli_reg_FP                % Service client to register a new FP
 
@@ -25,10 +23,10 @@ methods
 
 
 %Class constructor
-function obj = DC_Operator(name,path)
+function obj = UAM_MiniDrone_Operator(name,path)
 
     obj.name = name;
-    obj.file = fullfile(path,'/DCmodels/drone/model_pluged.sdf');
+    obj.file = fullfile(path,'/UAM/minidrone/minidrone_cmd.sdf');
     
     % ROS2
     obj.rosNode = ros2node(obj.name);
@@ -132,18 +130,11 @@ function RemoteCommand(obj,UAVid,on,velX,velY,velZ,rotZ)
     msg.vel.linear.z  = velZ;
     msg.vel.angular.z = rotZ;
     msg.duration.sec  = int32(1);
-
-
-
     send(obj.rosPub_RemoteCommand,msg);
         
 end
 
-function GetImage(obj,msg)
 
-
-
-end
 
 end % methods 
 end % classdef

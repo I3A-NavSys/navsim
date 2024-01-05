@@ -4,14 +4,12 @@ classdef UAVinfo < handle
 
 properties
 
-drone_id    string         % Unique ID (provided by the U-space registry service)
+name        string         % Unique ID (provided by the U-space registry service)
 model       string
-operator_id string         % Operator ID of the drone
-
-init_loc                   % Vector3<double>: Spawn location of the drone in the world 
+operator    string         % Operator ID of the drone
 
 %ROS
-rosPub_RemoteCommand
+rosPub_RemoteCommand       % publisher to remotely pilot a drone
 % rosSub_Telemetry         % ROS2 Subscriber object reference
 
 end
@@ -19,15 +17,26 @@ end
 methods
 
 %Constructor of the class
-function obj = UAVinfo(operator_id, model, init_loc)
-    obj.operator_id = operator_id;
+function obj = UAVinfo(name, model, operator)
+    obj.name = name;
     obj.model = model;
-    obj.init_loc = init_loc;
-    obj.status = 0;
-    % obj.rosPub_RemoteCommand = ros2publisher(sprintf('/drone/%d/uplan', obj.drone_id),"utrafman/Uplan");
-end
+    obj.operator = operator.name;
+
+    if model == UAVmodels.MiniDroneCommanded
+        obj.rosPub_RemoteCommand = ros2publisher(operator.rosNode, ...
+            ['/UAV/',name,'/RemoteCommand'],      ...
+            "navsim_msgs/RemoteCommand");
 
 
-end
+
+
+
+    end
+
 end
 
+end %methods
+end %classdef
+
+
+   
