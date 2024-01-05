@@ -34,7 +34,7 @@ rclcpp::Node::SharedPtr rosNode;
 
 rclcpp::Publisher<navsim_msgs::msg::Telemetry>::SharedPtr rosPub_Telemetry;
 common::Time prevTelemetryPubTime;
-double TelemetryPeriod = 0.1;    // seconds
+double TelemetryPeriod = 1.0;    // seconds
 
 rclcpp::Subscription<navsim_msgs::msg::RemoteCommand>::SharedPtr rosSub_RemoteCommand;
 
@@ -159,7 +159,7 @@ void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
         rosNode = rclcpp::Node::make_shared(this->UAVname);
 
         rosPub_Telemetry = rosNode->create_publisher<navsim_msgs::msg::Telemetry>(
-            "Telemetry", 10);
+            "UAV/" + UAVname + "/Telemetry", 10);
 
         rosSub_RemoteCommand = rosNode->create_subscription<navsim_msgs::msg::RemoteCommand>(
             "UAV/" + UAVname + "/RemoteCommand", 10,
