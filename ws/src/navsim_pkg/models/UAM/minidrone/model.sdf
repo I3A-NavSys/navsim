@@ -77,65 +77,6 @@
     </surface>
 </collision>
 
-
-<sensor name='UAV/abejorro1/onboard_cam' type='camera'>
-
-  <pose>0.08 0 0 0 0 0</pose>        
-  <camera name='onboard_cam'>
-    <horizontal_fov>1.57</horizontal_fov>
-    <image>
-        <width> 320</width>
-        <height>240</height>
-    </image>
-    <clip>
-        <near>0.01</near>
-        <far>20</far>
-    </clip>
-  </camera>        
-  <update_rate>10</update_rate>
-  <always_on>true</always_on>
-  <visualize>false</visualize>
-  
-  <plugin name="onboard_cam" filename="libgazebo_ros_camera.so">
-    <alwaysOn>true</alwaysOn>
-    <updateRate>1</updateRate>
-    <cameraName>onboard_cam</cameraName>
-    <robotNamespace>robotNameSpace</robotNamespace>
-  </plugin>
-
-</sensor>    
-
-
-<sensor name='UAV/abejorro1/follow_cam' type='camera'>
-
-  <pose>-0.20 0 0.08 0 0 0</pose>        
-  <camera name='follow_cam'>
-    <horizontal_fov>1.57</horizontal_fov>
-    <image>
-        <width> 480</width>
-        <height>320</height>
-    </image>
-    <clip>
-        <near>0.05</near>
-        <far>20</far>
-    </clip>
-  </camera>        
-  <update_rate>10</update_rate>
-  <always_on>true</always_on>
-  <visualize>false</visualize>
-  
-  <plugin name="follow_cam" filename="libgazebo_ros_camera.so">
-    <alwaysOn>true</alwaysOn>
-    <updateRate>1</updateRate>
-    <cameraName>follow_cam</cameraName>
-    <robotNamespace>robotNameSpace</robotNamespace>
-  </plugin>
-
-</sensor>    
-
-
-
-
 <visual name='brazo_NE'>
     <pose>0.0550 -0.0406 0 0 0 -1.0472</pose>
     <geometry>
