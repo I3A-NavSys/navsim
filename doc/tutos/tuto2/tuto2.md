@@ -85,11 +85,7 @@ end
 
 ![100 drones flying](./img/100drones_flying.png)
 
+It can be observed that the drones perform the requested actions. However, they do so disorderly, as they receive commands, with a margin of up to a second in some cases. The consequence is that several devices collide in the air. Some of them manage to recover and continue the maneuver from another position, while others fall to the ground.
 
-
-
-
-
-
-
+The goal of USpace is to provide compatible spatiotemporal paths, and for drones to be able to execute them precisely, to prevent such incidents from happening.
 
