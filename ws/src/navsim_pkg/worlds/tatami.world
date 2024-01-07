@@ -4,6 +4,20 @@
 <world name="tatami world">      
 
 
+<!-- Area -->
+<scene>
+    <ambient>0.5 0.5 0.5 1.0</ambient>
+    <shadows>true</shadows>
+    <!-- <sky>
+        <clouds>true</clouds>
+    </sky> -->
+    <origin_visual>false</origin_visual>
+</scene>
+
+
+
+
+
 <!-- <plugin name="HelloWorld" filename="libHelloWorld.so" /> -->
 <plugin name="World" filename="libWorld.so" />
 
@@ -60,6 +74,18 @@
 </physics> 
 
 
+<!-- Interface -->
+<gui fullscreen='0'>
+    <camera name='user_camera'>
+
+      <pose>10 -11 3 0 0.2 2.3</pose>
+      <!-- <pose>0 0 10 0 1.57 1.57</pose> -->
+
+      <view_controller>orbit</view_controller>
+      <!-- <projection_type>orthographic</projection_type> -->
+
+    </camera>
+</gui>
 
 
 
