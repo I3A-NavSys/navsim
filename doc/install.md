@@ -208,37 +208,4 @@ To compile custom ROS messages, perform the following steps:
 
 ## Running your first simulation with Matlab connection
 
-First, we open a scenario in the Gazebo simulator:
-
-```bash
-cd
-cd code/navsim/ws/src/navsim_pkg/worlds
-gazebo DroneChallenge.world
-```
-An environment should open with a gaming area of 10x10 meters. On a white base (the _vertiport_), there is a quadcopter (called _abejorro1_). Floating in the air, you could see three frames colored red, green, and blue, respectively.
-
-![DroneChallenge](./img/DroneChallenge.png 'Drone Challenge scenario. :size=600px')
-
-### Human Pilot
-> Warning: Este paso requiere tener conectado un joystick al ordenador que ejecuta Matlab / Simulink. En caso de no disponer de uno, puede omitir este apartado y continuar con el siguiente.
-
-En el entorno de Matlab, nos ubicamos en el directorio `navsim/matlab/operators/DroneChallenge`. Desde allí abrimos el modelo `HumanPilot.slx`.
-
-![Drone Challenge human pilot](./img/DCHumanPilot.png 'Drone Challenge human pilot. :size=600px')
-
-Pulsamos el botón de **Play** y, tras la compilación, el modelo abre dos ventanas adicionales. En una de ellas se muestra la imágen de vídeo capturada por la cámara que porta el dron en su morro. En la otra se muestra la imagen procedente de una cámara ficticea que vuela tras el dron, y cuya misión es facilitar al piloto humano su tarea. Podemos recolocar y redimensionar estas ventanas en la pantalla a nuestro gusto (o incluso cerrarlas).
-
-![Drone Challenge onboard camera](./img/onboardCAM.png 'Drone Challenge onboard camera. :size=600px')
-
-![Drone Challenge follow camera](./img/followCAM.png 'Drone Challenge follow camera. :size=600px')
-
-
-El modelo muestra a la derecha un velócimetro y un regulador de velocidad máxima. Se recomienda poner dicho regulador a 1 m/s en los primeros intentos. Posteriormente puede elevarse la velocidad máxima.
-
-A la izquierda se muestra un esquema del joystick. Tiene en su base un diodo circular que indica si los motores del cuadricoptero están encendidos (verde) o apagados (rojo). 
-- Para encender los motores pulsamos el botón 1 del joystick  (dedo índice). En principio, el dron queda estabilizado, y puede que no nos percatemos de que los motores se han encendido. Comprobar el diodo en caso de duda.
-- Para apagar los motores pulsamos el botón 2 del joystick (dedo pulgar). El dron caerá al suelo si estaba suspendido en el aíre.
-
-Con los motores encendidos, el dron se estabiliza automáticamente. Entonces, podemos ascender/descender, avanzar/retroceder, desplazarnos lateralmente y rotar sobre nuestro eje vertical.
-
-
+Now, you are prepared to go to the first tutorial to execute a simulation.
