@@ -36,24 +36,13 @@ for i=0:9
     end
 end
 
-pause(10)
+pause(2)
 
 for i=0:9
     for j = 0:9
         operator.RemoteCommand( ...
             ['UAV',num2str(i),num2str(j)], ...
-            true,2,0,0,1,100);
-    end
-end
-
-pause(30)
-
-
-for i=0:9
-    for j = 0:9
-        operator.RemoteCommand( ...
-            ['UAV',num2str(i),num2str(j)], ...
-            false,0,0,0,0,1);
+            true,2,0,0,1,30);
     end
 end
 
