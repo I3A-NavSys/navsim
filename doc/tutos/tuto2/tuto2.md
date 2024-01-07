@@ -44,4 +44,52 @@ end
 
 ![100 boxes](./img/100boxes.png)
 
+Now, we use a **USpaceOperator** object to generate 100 drones over the boxes:
+
+```matlab
+operator = USpaceOperator("operator",NAVSIM_MODELS_PATH);
+for i=0:9
+    for j = 0:9
+        operator.DeployUAV(                ...
+            UAVmodels.MiniDroneCommanded,  ...
+            ['UAV',num2str(i),num2str(j)], ...
+            [i-4.5 j-4.5 1],[0 0 0]); %rand*2*pi
+    end
+end
+```
+
+![100 drones](./img/100drones.png)
+
+
+Finally, let's command the drones to activate, ascend for 1 second from their positions, and then perform a circular maneuver for 10 seconds:
+
+```matlab
+for i=0:9
+    for j = 0:9
+        operator.RemoteCommand( ...
+            ['UAV',num2str(i),num2str(j)], ...
+            true,0,0,0.5,0,1);
+    end
+end
+
+pause(2)
+
+for i=0:9
+    for j = 0:9
+        operator.RemoteCommand( ...
+            ['UAV',num2str(i),num2str(j)], ...
+            true,2,0,0,1,30);
+    end
+end
+```
+
+![100 drones flying](./img/100drones_flying.png)
+
+
+
+
+
+
+
+
 
