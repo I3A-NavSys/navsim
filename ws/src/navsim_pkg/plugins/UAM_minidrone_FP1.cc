@@ -9,6 +9,9 @@
 
 #include "navsim_msgs/msg/telemetry.hpp"
 #include "navsim_msgs/msg/remote_command.hpp"
+#include "navsim_msgs/msg/waypoint.hpp"
+#include "navsim_msgs/msg/uplan.hpp"
+
 
 
 
@@ -40,7 +43,7 @@ double TelemetryPeriod = 1.0;    // seconds
 
 rclcpp::Subscription<navsim_msgs::msg::RemoteCommand>::SharedPtr rosSub_RemoteCommand;
 common::Time prevCommandCheckTime;
-double CommandCheckPeriod = 1.0;     // seconds
+double RosCheckPeriod = 5.0; // seconds
 
 
 
@@ -250,7 +253,7 @@ void OnWorldUpdateBegin()
     Telemetry();
 
     // Check ROS2 subscriptions
-    CheckSubs();
+    CheckROS();
 
 }
 
@@ -560,7 +563,7 @@ void PlatformDynamics()
 
 
 
-void CheckSubs()
+void CheckROS()
 {
     
     // Check if the simulation was reset
@@ -568,7 +571,7 @@ void CheckSubs()
         prevCommandCheckTime = currentTime; // The simulation was reset
 
     double interval = (currentTime - prevCommandCheckTime).Double();
-    if (interval < CommandCheckPeriod) return;
+    if (interval < RosCheckPeriod) return;
 
     // printf("UAV %s checking ROS2 subscriptions \n", UAVname.c_str());
     // printf("current time: %.3f \n\n", currentTime.Double());

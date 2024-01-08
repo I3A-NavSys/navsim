@@ -1,5 +1,4 @@
-float32 x
-float32 y
-float32 z
-builtin_interfaces/Time t
-float32 r
+geometry_msgs/Point     pos
+geometry_msgs/Vector3   vel
+builtin_interfaces/Time time
+
