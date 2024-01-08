@@ -17,6 +17,7 @@ private:
 // Gazebo
 physics::WorldPtr    world;
 event::ConnectionPtr updateConnector;
+common::Time currentTime;
 
 // ROS2 Node
 rclcpp::Node::SharedPtr rosNode;
@@ -30,6 +31,9 @@ double TimePubPeriod = 0.1;    // seconds
 // ROS2 NAVSIM services
 rclcpp::Service<navsim_msgs::srv::DeployModel>::SharedPtr rosSrv_DeployModel;
 rclcpp::Service<navsim_msgs::srv::RemoveModel>::SharedPtr rosSrv_RemoveModel;
+common::Time prevRosCheckTime;
+double RosCheckPeriod = 1.0;     // seconds
+
 
 public:
 
@@ -84,7 +88,10 @@ void Init()
 {
     // printf("NAVSIM World plugin: inited\n");
 
-    prevTimePubTime = world->SimTime();
+    currentTime = world->SimTime();
+    prevTimePubTime  = currentTime;
+    prevRosCheckTime = currentTime;
+
 
 }
 
@@ -94,11 +101,33 @@ void OnWorldUpdateBegin()
 {
     // printf("NAVSIM World plugin: OnWorldUpdateBegin\n");
 
+    currentTime = world->SimTime();
     TimeBroadcast();
 
     // ROS2 events proceessing
-    rclcpp::spin_some(rosNode);
+    CheckROS();
 }
+
+
+
+void CheckROS()
+{
+    
+    // Check if the simulation was reset
+    if (currentTime < prevRosCheckTime)
+        prevRosCheckTime = currentTime; // The simulation was reset
+
+    double interval = (currentTime - prevRosCheckTime).Double();
+    if (interval < RosCheckPeriod) return;
+
+    prevRosCheckTime = currentTime;
+
+    // ROS2 events proceessing
+    rclcpp::spin_some(rosNode);
+
+}
+
+
 
 
 // void rosSrvFn_Time(
@@ -238,8 +267,6 @@ void TimeBroadcast()
     // printf("WORLD Time broadcast \n");
 
     // Check if the simulation was reset
-    common::Time currentTime = world->SimTime();
-
     if (currentTime < prevTimePubTime)
         prevTimePubTime = currentTime; // The simulation was reset
 
@@ -260,10 +287,6 @@ void TimeBroadcast()
 
 
 }
-
-
-
-
 
 
 

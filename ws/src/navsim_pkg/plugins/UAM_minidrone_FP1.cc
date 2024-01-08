@@ -24,6 +24,8 @@ private:
 physics::ModelPtr    model;
 physics::LinkPtr     link;
 event::ConnectionPtr updateConnector;
+common::Time currentTime;
+
 
 
 ////////////////////////////////////////////////////////////////////////
@@ -208,7 +210,7 @@ void Init()
 {
     // printf("DC Navigation event: Init\n");
 
-    common::Time currentTime = model->GetWorld()->SimTime();
+    currentTime = model->GetWorld()->SimTime();
     prevTelemetryPubTime = currentTime;
     prevCommandCheckTime = currentTime;
 
@@ -235,6 +237,10 @@ void OnWorldUpdateBegin()
     // std::cout << "\x1B[2J\x1B[H";
     // printf("DCdrone plugin: OnWorldUpdateBegin\n");
     
+
+
+    currentTime = model->GetWorld()->SimTime();
+
     
     // Platform low level control
     ServoControl();
@@ -271,7 +277,6 @@ void rosTopFn_RemoteCommand(const std::shared_ptr<navsim_msgs::msg::RemoteComman
     common::Time duration;
     duration.sec  = msg->duration.sec;
     duration.nsec = msg->duration.nanosec;
-    common::Time currentTime = model->GetWorld()->SimTime();
     CommandExpTime = currentTime + duration;
     // printf("current control time: %.3f \n", currentTime.Double());
     // printf("command duration: %.3f \n", duration.Double());
@@ -358,8 +363,6 @@ void ServoControl()
         return;
     }
 
-
-    common::Time currentTime = model->GetWorld()->SimTime();
 
     // Check if the simulation was reset
     if  (currentTime < prevControlTime)
@@ -561,8 +564,6 @@ void CheckSubs()
 {
     
     // Check if the simulation was reset
-    common::Time currentTime = model->GetWorld()->SimTime();
-
     if (currentTime < prevCommandCheckTime)
         prevCommandCheckTime = currentTime; // The simulation was reset
 
@@ -587,8 +588,6 @@ void Telemetry()
     // printf("UAV Telemetry \n");
 
     // Check if the simulation was reset
-    common::Time currentTime = model->GetWorld()->SimTime();
-
     if (currentTime < prevTelemetryPubTime)
         prevTelemetryPubTime = currentTime; // The simulation was reset
 
