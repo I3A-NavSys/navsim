@@ -84,12 +84,17 @@ add_library(UAM_minidrone_cmd SHARED plugins/UAM_minidrone_cmd.cc)
 ament_target_dependencies(UAM_minidrone_cmd ${ROS_LIBS})
 target_link_libraries(UAM_minidrone_cmd ${GAZEBO_LIBRARIES})
 
+add_library(UAM_minidrone_FP1 SHARED plugins/UAM_minidrone_FP1.cc)
+ament_target_dependencies(UAM_minidrone_FP1 ${ROS_LIBS})
+target_link_libraries(UAM_minidrone_FP1 ${GAZEBO_LIBRARIES})
+
 
 # Install targets
 install(TARGETS
   World
   DCdrone
   UAM_minidrone_cmd
+  UAM_minidrone_FP1
   DESTINATION lib/${PROJECT_NAME}
 )
 
