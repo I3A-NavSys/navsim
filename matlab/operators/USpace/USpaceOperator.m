@@ -76,6 +76,8 @@ function status = DeployUAV(obj,model,name,pos,rot)
     switch model
         case UAVmodels.MiniDroneCommanded
             file = fullfile(obj.models_path,'/UAM/minidrone/model.sdf');
+        case UAVmodels.MiniDroneFP1
+            file = fullfile(obj.models_path,'/UAM/minidrone/model_FP1.sdf');
         otherwise
             status = false;
             return
