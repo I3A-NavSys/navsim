@@ -11,5 +11,5 @@ builder.DeployModel('DC/base_drone','BASE2',[180 33 50.25],[0 0 0]);
 
 
 operator = USpaceOperator("operator",NAVSIM_MODELS_PATH);
-operator.DeployUAV(UAVmodels.MiniDroneFP1,'UAV',[-190 -120 48.6],[0 0 0]);
+operator.DeployUAV(UAVmodels.MiniDroneFP1,'UAV01',[-190 -120 48.6],[0 0 0]);
 
