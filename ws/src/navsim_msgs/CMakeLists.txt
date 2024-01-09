@@ -20,7 +20,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Telemetry.msg"
   "msg/RemoteCommand.msg"
   "msg/Waypoint.msg"
-  "msg/Uplan.msg"
+  "msg/FlightPlan.msg"
   # "msg/Operator.msg"
   # "msg/UAV.msg"
 

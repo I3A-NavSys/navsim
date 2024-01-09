@@ -8,6 +8,4 @@ int8   priority
 
 navsim_msgs/Waypoint[] route
 
-#uint8  status
-#uint32 dtto
 

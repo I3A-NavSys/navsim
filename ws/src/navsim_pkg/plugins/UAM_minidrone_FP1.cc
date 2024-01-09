@@ -10,7 +10,7 @@
 #include "navsim_msgs/msg/telemetry.hpp"
 #include "navsim_msgs/msg/remote_command.hpp"
 #include "navsim_msgs/msg/waypoint.hpp"
-#include "navsim_msgs/msg/uplan.hpp"
+#include "navsim_msgs/msg/flight_plan.hpp"
 
 
 
@@ -41,9 +41,36 @@ rclcpp::Publisher<navsim_msgs::msg::Telemetry>::SharedPtr rosPub_Telemetry;
 common::Time prevTelemetryPubTime;
 double TelemetryPeriod = 1.0;    // seconds
 
-rclcpp::Subscription<navsim_msgs::msg::RemoteCommand>::SharedPtr rosSub_RemoteCommand;
-common::Time prevCommandCheckTime;
-double RosCheckPeriod = 5.0; // seconds
+rclcpp::Subscription<navsim_msgs::msg::FlightPlan>::SharedPtr rosSub_FlightPlan;
+common::Time prevRosCheckTime;
+double RosCheckPeriod = 5.0;     // seconds
+
+
+
+
+////////////////////////////////////////////////////////////////////////
+// Navigation parameters
+
+bool  rotors_on = false;
+
+// AutoPilot navigation command
+bool   cmd_on   = false;          // (bool) motores activos 
+double cmd_velX = 0.0;            // (m/s)  velocidad lineal  deseada en eje X
+double cmd_velY = 0.0;            // (m/s)  velocidad lineal  deseada en eje Y
+double cmd_velZ = 0.0;            // (m/s)  velocidad lineal  deseada en eje Z
+double cmd_rotZ = 0.0;            // (m/s)  velocidad angular deseada en eje Z
+
+common::Time CommandExpTime;
+
+
+// Flight plan 
+navsim_msgs::msg::FlightPlan::SharedPtr fp;
+
+// int plan_id;
+// std::string operator_id;
+// int   priority;
+// std::vector<navsim_msgs::msg::Waypoint> route;
+
 
 
 
@@ -127,20 +154,6 @@ common::Time prevControlTime = 0; // Fecha de la ultima actualizacion del contro
         
 
 
-////////////////////////////////////////////////////////////////////////
-// Navigation parameters
-
-bool  rotors_on = false;
-
-// AutoPilot navigation command
-bool   cmd_on   = false;          // (bool) motores activos 
-double cmd_velX = 0.0;            // (m/s)  velocidad lineal  deseada en eje X
-double cmd_velY = 0.0;            // (m/s)  velocidad lineal  deseada en eje Y
-double cmd_velZ = 0.0;            // (m/s)  velocidad lineal  deseada en eje Z
-double cmd_rotZ = 0.0;            // (m/s)  velocidad angular deseada en eje Z
-
-common::Time CommandExpTime;
-
 
 
 ////////////////////////////////////////////////////////////////////////
@@ -168,11 +181,15 @@ void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
         rosPub_Telemetry = rosNode->create_publisher<navsim_msgs::msg::Telemetry>(
             "UAV/" + UAVname + "/Telemetry", 10);
 
-        rosSub_RemoteCommand = rosNode->create_subscription<navsim_msgs::msg::RemoteCommand>(
-            "UAV/" + UAVname + "/RemoteCommand", 10,
-            std::bind(&UAM_minidrone_FP1::rosTopFn_RemoteCommand, this, 
-                    std::placeholders::_1));
+        // rosSub_RemoteCommand = rosNode->create_subscription<navsim_msgs::msg::RemoteCommand>(
+        //     "UAV/" + UAVname + "/RemoteCommand", 10,
+        //     std::bind(&UAM_minidrone_FP1::rosTopFn_RemoteCommand, this, 
+        //             std::placeholders::_1));
             
+        rosSub_FlightPlan = rosNode->create_subscription<navsim_msgs::msg::FlightPlan>(
+            "UAV/" + UAVname + "/FlightPlan", 2,
+            std::bind(&UAM_minidrone_FP1::rosTopFn_FlightPlan, this, 
+                    std::placeholders::_1));
     
     }
     else
@@ -215,7 +232,7 @@ void Init()
 
     currentTime = model->GetWorld()->SimTime();
     prevTelemetryPubTime = currentTime;
-    prevCommandCheckTime = currentTime;
+    prevRosCheckTime = currentTime;
 
 
 
@@ -258,6 +275,34 @@ void OnWorldUpdateBegin()
 }
 
     
+
+
+void rosTopFn_FlightPlan(const std::shared_ptr<navsim_msgs::msg::FlightPlan> msg)
+{
+    printf("Data received in topic Flight Plan\n");
+    fp = msg;
+
+    printf("plan_id: %d \n",fp->plan_id);
+    
+    std::vector<navsim_msgs::msg::Waypoint> route = fp->route;
+    int numWPs = route.size();             //Number of waypoints in the route
+    for(int i=0; i<numWPs; i++)
+    {
+        //Next waypoint
+
+        navsim_msgs::msg::Waypoint wp = fp->route[i];
+        printf("[%d]  %.2f  %.2f  %.2f \n",i ,wp.pos.x, wp.pos.y, wp.pos.z);
+        
+        //If waypoint time is less than t, change to the next waypoint
+        if (currentTime > wp.time.sec)
+        {
+            continue;
+        }
+    }
+   
+}
+
+
 
 
 void rosTopFn_RemoteCommand(const std::shared_ptr<navsim_msgs::msg::RemoteCommand> msg)
@@ -567,16 +612,16 @@ void CheckROS()
 {
     
     // Check if the simulation was reset
-    if (currentTime < prevCommandCheckTime)
-        prevCommandCheckTime = currentTime; // The simulation was reset
+    if (currentTime < prevRosCheckTime)
+        prevRosCheckTime = currentTime; // The simulation was reset
 
-    double interval = (currentTime - prevCommandCheckTime).Double();
+    double interval = (currentTime - prevRosCheckTime).Double();
     if (interval < RosCheckPeriod) return;
 
     // printf("UAV %s checking ROS2 subscriptions \n", UAVname.c_str());
     // printf("current time: %.3f \n\n", currentTime.Double());
 
-    prevCommandCheckTime = currentTime;
+    prevRosCheckTime = currentTime;
 
     // ROS2 events proceessing
     rclcpp::spin_some(rosNode);
