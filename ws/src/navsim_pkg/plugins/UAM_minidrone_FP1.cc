@@ -64,7 +64,7 @@ common::Time CommandExpTime;
 
 
 // Flight plan 
-navsim_msgs::msg::FlightPlan::SharedPtr fp;
+navsim_msgs::msg::FlightPlan::SharedPtr fp = nullptr;
 
 // int plan_id;
 // std::string operator_id;
@@ -226,6 +226,7 @@ void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
 }
 
 
+
 void Init()
 {
     // printf("DC Navigation event: Init\n");
@@ -261,6 +262,16 @@ void OnWorldUpdateBegin()
 
     currentTime = model->GetWorld()->SimTime();
 
+    // UAV fligh plan navigation
+    if (fp != nullptr)
+    {
+        int wp = currentWP();
+        printf("WAYPOINT %d \n",wp);
+        // ignition::math::Vector3<double> plannedPos = GetPlannedPos();
+
+    }
+    
+    
     
     // Platform low level control
     ServoControl();
@@ -274,30 +285,78 @@ void OnWorldUpdateBegin()
 
 }
 
+
+int currentWP()
+{
+    std::vector<navsim_msgs::msg::Waypoint> route = fp->route;
+    int numWPs = route.size();
+
+
+    if (fp == nullptr)
+    {
+        printf("Error: flight plan does not exist");
+        return(-1);
+    }
+
+    int i;
+    for(i=0; i<numWPs; i++)
+    {
+        common::Time WPtime;
+        WPtime.sec  = route[i].time.sec;
+        WPtime.nsec = route[i].time.nanosec;
+        if (currentTime < WPtime)
+            break;
+    } 
     
+    return i;
+
+}
+
+ignition::math::Vector3<double> GetPlannedPos()
+{
+
+    ignition::math::Vector3<double> plannedPos;
+
+    if (fp == nullptr)
+    {
+        printf("Error: flight plan does not exist");
+        return(plannedPos);
+    }
+
+    std::vector<navsim_msgs::msg::Waypoint> route = fp->route;
+
+    // Checking the initial waypoint
+    common::Time WPtime;
+    WPtime.sec  = route[0].time.sec;
+    WPtime.nsec = route[0].time.nanosec;
+
+    if (currentTime < WPtime)
+    {
+        plannedPos = ignition::math::Vector3d(route[0].pos.x, route[0].pos.y, route[0].pos.z);
+        printf("WAYPOINT 1\n");
+        return(plannedPos);
+    }
+   
+
+
+    return(plannedPos);
+
+}
 
 
 void rosTopFn_FlightPlan(const std::shared_ptr<navsim_msgs::msg::FlightPlan> msg)
 {
-    printf("Data received in topic Flight Plan\n");
+    // printf("Data received in topic Flight Plan\n");
     fp = msg;
 
     printf("plan_id: %d \n",fp->plan_id);
-    
     std::vector<navsim_msgs::msg::Waypoint> route = fp->route;
     int numWPs = route.size();             //Number of waypoints in the route
     for(int i=0; i<numWPs; i++)
     {
         //Next waypoint
-
         navsim_msgs::msg::Waypoint wp = fp->route[i];
         printf("[%d]  %.2f  %.2f  %.2f \n",i ,wp.pos.x, wp.pos.y, wp.pos.z);
-        
-        //If waypoint time is less than t, change to the next waypoint
-        if (currentTime > wp.time.sec)
-        {
-            continue;
-        }
     }
    
 }
