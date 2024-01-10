@@ -1,4 +1,4 @@
-navsim_msgs/Uplan fp
+navsim_msgs/FlightPlan fp
 ---
 int16 status
-navsim_msgs/Uplan fp
+navsim_msgs/FlightPlan fp

@@ -1,6 +1,6 @@
 string uav_id
 ---
-navsim_msgs/Uplan[] fps
+navsim_msgs/FlightPlan[] fps
 
 # esto devuelve muchos?
 # estudiar que solo devuelva uno
