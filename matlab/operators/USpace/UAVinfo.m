@@ -10,6 +10,7 @@ operator    string         % Operator ID of the drone
 
 %ROS
 rosPub_RemoteCommand       % publisher to remotely pilot a drone
+rosPub_FlightPlan          % publisher to send flight plans to the drone
 % rosSub_Telemetry         % ROS2 Subscriber object reference
 
 end
@@ -22,16 +23,22 @@ function obj = UAVinfo(name, model, operator)
     obj.model = model;
     obj.operator = operator.name;
 
-    if model == UAVmodels.MiniDroneCommanded
-        obj.rosPub_RemoteCommand = ros2publisher(operator.rosNode, ...
-            ['/UAV/',name,'/RemoteCommand'],      ...
-            "navsim_msgs/RemoteCommand");
-
-
-
-
+    switch model
+        case UAVmodels.MiniDroneCommanded
+            obj.rosPub_RemoteCommand = ros2publisher(operator.rosNode, ...
+                ['/UAV/',name,'/RemoteCommand'],      ...
+                "navsim_msgs/RemoteCommand");
+        case UAVmodels.MiniDroneFP1
+            obj.rosPub_FlightPlan = ros2publisher(operator.rosNode, ...
+                ['/UAV/',name,'/FlightPlan'],      ...
+                "navsim_msgs/FlightPlan");
 
     end
+
+end
+
+
+function SendFlightPlan(obj,fp)
 
 end
 
