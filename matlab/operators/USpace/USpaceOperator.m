@@ -48,8 +48,8 @@ end
 function [sec,mil] = GetTime(obj)
     [msg,status,statustext] = receive(obj.rosSub_Time,1);
     if (status)
-        sec = msg.sec;
-        mil = msg.nanosec / 1E6;
+        sec = double(msg.sec);
+        mil = double(msg.nanosec / 1E6);
     else
         sec = 0;
         mil = 0;
