@@ -43,7 +43,7 @@ double TelemetryPeriod = 1.0;    // seconds
 
 rclcpp::Subscription<navsim_msgs::msg::FlightPlan>::SharedPtr rosSub_FlightPlan;
 common::Time prevRosCheckTime;
-double RosCheckPeriod = 5.0;     // seconds
+double RosCheckPeriod = 10.0;     // seconds
 
 
 
@@ -51,6 +51,21 @@ double RosCheckPeriod = 5.0;     // seconds
 ////////////////////////////////////////////////////////////////////////
 // Navigation parameters
 
+// Flight plan 
+navsim_msgs::msg::FlightPlan::SharedPtr fp = nullptr;
+
+// Waypoint currently flying to:
+// -1: no waypoint
+//  0: starting point
+//  1: first waypoint
+// numWPs-1: last waypoint
+
+int currentWP = -1;  
+
+// std::vector<navsim_msgs::msg::Waypoint> route;
+
+
+// rotor engine status on/off
 bool  rotors_on = false;
 
 // AutoPilot navigation command
@@ -63,13 +78,6 @@ double cmd_rotZ = 0.0;            // (m/s)  velocidad angular deseada en eje Z
 common::Time CommandExpTime;
 
 
-// Flight plan 
-navsim_msgs::msg::FlightPlan::SharedPtr fp = nullptr;
-
-// int plan_id;
-// std::string operator_id;
-// int   priority;
-// std::vector<navsim_msgs::msg::Waypoint> route;
 
 
 
@@ -149,7 +157,7 @@ Eigen::Matrix<double, 4, 1> r;  // model reference
 Eigen::Matrix<double, 4, 1> e;  // model error
 Eigen::Matrix<double, 4, 1> E;  // model acumulated error
 
-int E_max = 1;                    // maximun model acumulated error
+int E_max = 5;                    // maximun model acumulated error
 common::Time prevControlTime = 0; // Fecha de la ultima actualizacion del control de bajo nivel 
         
 
@@ -258,20 +266,12 @@ void OnWorldUpdateBegin()
     // std::cout << "\x1B[2J\x1B[H";
     // printf("DCdrone plugin: OnWorldUpdateBegin\n");
     
-
-
+    // Get current simulation time
     currentTime = model->GetWorld()->SimTime();
 
-    // UAV fligh plan navigation
-    if (fp != nullptr)
-    {
-        int wp = currentWP();
-        printf("WAYPOINT %d \n",wp);
-        // ignition::math::Vector3<double> plannedPos = GetPlannedPos();
 
-    }
-    
-    
+    // UAV fligh plan navigation
+    Navigation();
     
     // Platform low level control
     ServoControl();
@@ -286,17 +286,107 @@ void OnWorldUpdateBegin()
 }
 
 
-int currentWP()
+
+void Navigation()
 {
+    if (fp == nullptr) return;
+
+    int plannedWP = GetPlannedWP();
+    if (currentWP == -1 && plannedWP != 0)
+    {
+        // This flight plan is obsolet
+        printf("OBSOLETE FLIGHT PLAN IGNORED\n");
+        fp = nullptr;
+        return;
+    }
+    
     std::vector<navsim_msgs::msg::Waypoint> route = fp->route;
     int numWPs = route.size();
 
-
-    if (fp == nullptr)
+    // Print navigation information
+    if (currentWP != plannedWP)
     {
-        printf("Error: flight plan does not exist");
-        return(-1);
+        if (plannedWP == 0)
+            printf("WAITING AT STARTING WAYPOINT %d \n",plannedWP);
+        else if (plannedWP == 1)
+            printf("STARTING FLIGHT TO WAYPOINT %d \n",plannedWP);
+        else if (plannedWP < numWPs)
+            printf("HEADING WAYPOINT %d \n",plannedWP);
+        else
+            printf("FLIGHT PLAN EXPIRED\n");
     }
+
+
+    currentWP = plannedWP;
+    if (currentWP == 0)
+    {
+        // drone waiting to start the flight
+        return;
+    }
+
+
+    // COMPUTING PLANNED POSITION (1 second later)
+    
+    double x = route[currentWP-1].pos.x; 
+    double y = route[currentWP-1].pos.y;
+    double z = route[currentWP-1].pos.z;
+
+    if (currentWP < numWPs)
+    {
+        
+        double x2 = route[currentWP].pos.x; 
+        double y2 = route[currentWP].pos.y;
+        double z2 = route[currentWP].pos.z;
+    
+        common::Time t1;
+        t1.sec  = route[currentWP-1].time.sec;
+        t1.nsec = route[currentWP-1].time.nanosec;
+
+        common::Time t2;
+        t2.sec  = route[currentWP].time.sec;
+        t2.nsec = route[currentWP].time.nanosec;
+
+        double interpol = (currentTime+1-t1).Double() / (t2-t1).Double() ;
+        x = interpol * (x2-x) + x ;
+        y = interpol * (y2-y) + y ;
+        z = interpol * (z2-z) + z ;
+
+    }
+
+    ignition::math::Vector3<double> plannedPos = ignition::math::Vector3d(x,y,z);
+    // printf("(%d.%d)      %.2f  %.2f  %.2f \n",currentTime.sec, int(currentTime.nsec/1E6) ,x, y, z);
+
+
+    // COMPUTING  DRONE COMMANDED VELOCITY (to achieve planned position in 1 second)
+
+    ignition::math::Pose3<double> pose = model->WorldPose();
+    ignition::math::Vector3<double> currentPos = pose.Pos();
+    // ignition::math::Vector3<double> currentVel = model->RelativeLinearVel();
+    
+    ignition::math::Vector3<double> currentVel = plannedPos - currentPos;
+
+    cmd_on   = true;
+    cmd_velX = currentVel.X();
+    cmd_velY = currentVel.Y();
+    cmd_velZ = currentVel.Z();
+    cmd_rotZ = 0; 
+
+    common::Time duration;
+    duration.sec  = 1;
+    duration.nsec = 0;
+    CommandExpTime = currentTime + duration;
+
+
+}
+    
+
+
+
+
+int GetPlannedWP()
+{
+    std::vector<navsim_msgs::msg::Waypoint> route = fp->route;
+    int numWPs = route.size();
 
     int i;
     for(i=0; i<numWPs; i++)
@@ -312,51 +402,24 @@ int currentWP()
 
 }
 
-ignition::math::Vector3<double> GetPlannedPos()
-{
 
-    ignition::math::Vector3<double> plannedPos;
-
-    if (fp == nullptr)
-    {
-        printf("Error: flight plan does not exist");
-        return(plannedPos);
-    }
-
-    std::vector<navsim_msgs::msg::Waypoint> route = fp->route;
-
-    // Checking the initial waypoint
-    common::Time WPtime;
-    WPtime.sec  = route[0].time.sec;
-    WPtime.nsec = route[0].time.nanosec;
-
-    if (currentTime < WPtime)
-    {
-        plannedPos = ignition::math::Vector3d(route[0].pos.x, route[0].pos.y, route[0].pos.z);
-        printf("WAYPOINT 1\n");
-        return(plannedPos);
-    }
-   
-
-
-    return(plannedPos);
-
-}
 
 
 void rosTopFn_FlightPlan(const std::shared_ptr<navsim_msgs::msg::FlightPlan> msg)
 {
     // printf("Data received in topic Flight Plan\n");
     fp = msg;
+    currentWP = -1;
 
     printf("plan_id: %d \n",fp->plan_id);
     std::vector<navsim_msgs::msg::Waypoint> route = fp->route;
-    int numWPs = route.size();             //Number of waypoints in the route
+    int numWPs = route.size();             
     for(int i=0; i<numWPs; i++)
     {
         //Next waypoint
         navsim_msgs::msg::Waypoint wp = fp->route[i];
-        printf("[%d]  %.2f  %.2f  %.2f \n",i ,wp.pos.x, wp.pos.y, wp.pos.z);
+        printf("[%d]  %.2f  %.2f  %.2f    ",i ,wp.pos.x, wp.pos.y, wp.pos.z);
+        printf("(%d.%d) \n",wp.time.sec, int(wp.time.nanosec/1E7));
     }
    
 }
