@@ -324,6 +324,15 @@ void Navigation()
         return;
     }
 
+    if (currentWP == numWPs)
+    {
+        // flight plan expired
+        fp = nullptr;
+        currentWP = -1;
+        commandOff();
+        return;
+    }
+
 
     // COMPUTING PLANNED POSITION (1 second later)
     
@@ -781,6 +790,8 @@ void Telemetry()
 
 
     navsim_msgs::msg::Telemetry msg;
+
+    msg.uav_id = UAVname;
 
     msg.pose.position.x    = pose.X();
     msg.pose.position.y    = pose.Y();
