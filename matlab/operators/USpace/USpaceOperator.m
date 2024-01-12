@@ -1,5 +1,3 @@
-% Operator classes represent operators in the context of U-space.
-% Each operator has a drone garage where it stores its UAVs.
 
 classdef USpaceOperator < handle      
 
@@ -10,12 +8,10 @@ properties
     fleet   UAVinfo           % Array of UAV objects references
 
     % ROS2 interface
-    rosNode                        % ROS2 Node 
-    rosSub_Time                    % ROS2 subscriptor to get simulation time
-    rosCli_DeployUAV               % ROS2 Service client to deploy models into the air space
-    rosCli_RemoveUAV               % ROS2 Service client to remove models from the air space
-    % ROScli_reg_operator          % Service client to register itself as operators
-    % ROScli_reg_FP                % Service client to register a new FP
+    rosNode                   % ROS2 Node 
+    rosSub_Time               % ROS2 subscriptor to get simulation time
+    rosCli_DeployUAV          % ROS2 Service client to deploy models into the air space
+    rosCli_RemoveUAV          % ROS2 Service client to remove models from the air space
 
 end
 
@@ -46,7 +42,7 @@ end
 
 
 function [sec,mil] = GetTime(obj)
-    [msg,status,statustext] = receive(obj.rosSub_Time,1);
+    [msg,status,~] = receive(obj.rosSub_Time,1);
     if (status)
         sec = double(msg.sec);
         mil = double(msg.nanosec / 1E6);
@@ -167,7 +163,6 @@ function SendFlightPlan(obj,UAVid,fp)
     send(UAV.rosPub_FlightPlan,msg);
         
 end
-
 
 
 function UAV = GetUAV(obj,name)
