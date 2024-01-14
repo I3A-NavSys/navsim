@@ -16,7 +16,8 @@ classdef S_Monitoring< handle
         ros_subs_new_uavs                               %Subscrition to new UAV advertiser topic to know when a new UAV is added
         ros_srv_get_telemetry                           %Service server to get the Telemetry data of a UAV
         ros_srv_get_currentloc                          %Service server to get the current Telemetry data of a UAV
-        ros_pub_conflicts                               %Topic to send the conflict detected 
+        ros_pub_con
+licts                               %Topic to send the conflict detected 
     end
     
     methods

@@ -36,3 +36,12 @@ fp2 = [
 
 operator.SendFlightPlan('UAV01',fp2);
 
+
+
+%%
+monitor.TelemetryViewer('UAV01');
+
+
+
+% operator.RemoveUAV('UAV01');
+

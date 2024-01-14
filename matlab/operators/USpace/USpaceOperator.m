@@ -5,7 +5,7 @@ properties
     name    string            % Operator name
     models_path               
 
-    fleet   UAVinfo           % Array of UAV objects references
+    UAVs = struct([])         % list to the fleet of UAVs
 
     % ROS2 interface
     rosNode                   % ROS2 Node 
@@ -53,21 +53,39 @@ function [sec,mil] = GetTime(obj)
 end
 
 
-function status = DeployUAV(obj,model,name,pos,rot)
+function status = DeployUAV(obj,model,UAVid,pos,rot)
+
+    status = false;
+
+    if obj.getUAVindex(UAVid) ~= -1
+        return
+    end
+
+    uav.id = UAVid;
+    uav.model = model;
 
     switch model
         case UAVmodels.MiniDroneCommanded
             file = fullfile(obj.models_path,'/UAM/minidrone/model.sdf');
+            uav.rosPub = ros2publisher(obj.rosNode, ...
+                ['/UAV/',UAVid,'/RemoteCommand'],      ...
+                "navsim_msgs/RemoteCommand");
+
         case UAVmodels.MiniDroneFP1
             file = fullfile(obj.models_path,'/UAM/minidrone/model_FP1.sdf');
+            uav.rosPub = ros2publisher(obj.rosNode, ...
+                ['/UAV/',UAVid,'/FlightPlan'],      ...
+                "navsim_msgs/FlightPlan");
         otherwise
-            status = false;
             return
     end
 
+    obj.UAVs = [obj.UAVs uav];
+
+    % Call ROS2 service
     req = ros2message(obj.rosCli_DeployUAV);
     req.model_sdf = fileread(file);
-    req.name  = name; 
+    req.name  = UAVid; 
     req.pos.x = pos(1);
     req.pos.y = pos(2);
     req.pos.z = pos(3);
@@ -84,16 +102,23 @@ function status = DeployUAV(obj,model,name,pos,rot)
         end
     end
 
-    obj.fleet(end+1) = UAVinfo(name,model,obj);
-
 
 end
 
 
-function status = RemoveUAV(obj,name)
+function status = RemoveUAV(obj,id)
+
+    i = obj.getUAVindex(id);
+
+    if i == -1
+        return
+    end
+
+    UAV = obj.UAVs(i);
+    obj.UAVs = [ obj.UAVs(1:i-1) obj.UAVs(i+1:end) ];
 
     req = ros2message(obj.rosCli_RemoveUAV);
-    req.name  = name;  
+    req.name  = UAV.id;  
 
     status = waitForServer(obj.rosCli_RemoveUAV,"Timeout",1);
     if status
@@ -103,24 +128,26 @@ function status = RemoveUAV(obj,name)
             status = false;
         end
     end
+    
 
 end
 
 
 function RemoteCommand(obj,UAVid,on,velX,velY,velZ,rotZ,duration)
 
-    UAV = obj.GetUAV(UAVid);
+    i = obj.getUAVindex(UAVid);
 
-    if UAV == false 
+    if i == -1
         return
     end
 
+    UAV = obj.UAVs(i);
     if UAV.model ~= UAVmodels.MiniDroneCommanded
         return
     end
 
     msg = ros2message(UAV.rosPub_RemoteCommand);
-    msg.uav_id        = UAVid;
+    msg.uav_id        = UAV.id;
     msg.on            = on;
     msg.vel.linear.x  = velX;
     msg.vel.linear.y  = velY;
@@ -135,19 +162,20 @@ end
 function SendFlightPlan(obj,UAVid,fp)
     % fp es una lista de filas con 7 componentes
 
-    UAV = obj.GetUAV(UAVid);
+    i = obj.getUAVindex(UAVid);
 
-    if UAV == false 
+    if i == -1
         return
     end
 
+    UAV = obj.UAVs(i);
     if UAV.model ~= UAVmodels.MiniDroneFP1
         return
     end
 
-    msg = ros2message(UAV.rosPub_FlightPlan);
+    msg = ros2message(UAV.rosPub);
     msg.plan_id       = uint16(1);  %de momento
-    msg.uav_id        = UAVid;
+    msg.uav_id        = UAV.id;
     msg.operator_id   = char(obj.name);
 
     for i = 1:length(fp(:,7))
@@ -160,20 +188,25 @@ function SendFlightPlan(obj,UAVid,fp)
         msg.route(i).time.sec = int32(fp(i,7));
         msg.route(i).time.nanosec = uint32(0);
     end
-    send(UAV.rosPub_FlightPlan,msg);
+    send(UAV.rosPub,msg);
         
 end
 
 
-function UAV = GetUAV(obj,name)
-    for i = 1:length(obj.fleet)
-        if obj.fleet(i).name == name
-            UAV = obj.fleet(i);
+function index = getUAVindex(obj,id)
+    index = -1;
+    l = length(obj.UAVs);
+    if l==0
+        return
+    end
+    for i = 1:l
+        if obj.UAVs(i).id == id
+            index = i;
             return
         end
     end
-    UAV = false;
 end
+
 
 
 end % methods 
