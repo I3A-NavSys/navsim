@@ -16,12 +16,7 @@ end
 methods
 
 
-%------------------------------------------------------------
-% A PARTIR DE AQUI LOS METODOS NO ESTÁN CHEQUEADOS !!!
-
 function obj = FlightPlan(id, waypoints)
-    %FLIGHTPLAN Construct for FlightPlan class
-
     obj.id = id;
     obj.priority = 0;
 
@@ -37,14 +32,7 @@ end
 
 
 
-function msg = parseToROS2Message(obj)
-end
-
-
-
 function setWaypoint(obj,waypoint)
-    %SETWAYPOINT This method allow to add/modify a waypoint into a flight plan
-    %   Inserting waypoints out of order are allowed using this method
     
     %Check if the waypoint is a Waypoint object
     if ~isa(waypoint,'Waypoint')
@@ -63,14 +51,13 @@ function setWaypoint(obj,waypoint)
         end
     end
     obj.waypoints(l+1) = waypoint;
+
 end
 
 
 
 function removeWaypointAtTime(obj,t)
-    %REMOVEWAYPOINT This method allow to remove a waypoint from a flight plan
-    %   Removing waypoints out of order are allowed using this method
-    
+
     l = length(obj.waypoints);
     for i = 1:l
         if obj.waypoints(i).t == t
@@ -82,11 +69,12 @@ function removeWaypointAtTime(obj,t)
             return
         end
     end
+
 end
 
 
 
-function t = init_time(obj)
+function t = initTime(obj)
 %time of the first waypoint
     if isempty(obj.waypoints)
         t = [];
@@ -97,7 +85,7 @@ end
 
 
 
-function t = finish_time(obj)
+function t = finishTime(obj)
 %time of the last waypoint
     if isempty(obj.waypoints)
         t = [];
@@ -108,70 +96,9 @@ end
 
 
 
-function obj = reverseWaypoints(obj)
-    %REVERSE This method allow to reverse the flight plan
-    %It reverse the order of the waypoints keeping the same time of the previous waypoints, but not take into account if new section velocities between waypoints are fulfillable
-    
-    %Check if the flight plan is empty
-    if isempty(obj.waypoints)
-        disp('The flight plan is empty');
-        return
-    end
-
-    %Reverse the flight plan
-    reversed = obj.waypoints(end:-1:1);
-
-    for i = 1:length(reversed)
-        %Change the time of the waypoints
-        reversed(i).t = obj.waypoints(end-(i-1)).t;
-    end
-
-    obj.waypoints = reversed;
-end
-
-
-
-function obj = normalizeVelocity(obj)
-    %NORMALIZEVELOCITY This method allow to normalize the velocity of the flight plan
-    %It normalize the velocity of the flight plan, doing that the velocity between waypoints to be the same for all the flight plan
-    
-    %Check if the flight plan is empty
-    if isempty(obj.waypoints)
-        disp('The flight plan is empty');
-        return
-    end
-
-    %Init and finish time of the flight plan
-    init_time = obj.waypoints(1).t;
-    finish_time = obj.waypoints(end).t;
-
-    %Compute the total distance of the flight plan
-    total_distance = 0;
-    for i = 1:length(obj.waypoints)-1
-        total_distance = total_distance + obj.waypoints(i).distanceWithWaypoint(obj.waypoints(i+1));
-    end
-
-    %Compute mean velocity
-    mean_velocity = total_distance/(finish_time-init_time);
-
-    %Normalize the velocity of the flight plan
-    for i = 2:length(obj.waypoints)
-        %Compute the distance between waypoints
-        distance = obj.waypoints(i).distanceWithWaypoint(obj.waypoints(i-1));
-
-        %Compute the new time between waypoints
-        new_time = obj.waypoints(i-1).t + distance/mean_velocity;
-
-        %Change the time of the waypoints
-        obj.waypoints(i).t = new_time;
-    end
-end
-
-
-
 function p = positionAtTime(obj, t)
     % Check if t is out of flight plan schedule, returning not valid pos
-    if t < obj.init_time  ||  t > obj.finish_time
+    if t < obj.initTime  ||  t > obj.finishTime
         p = [NaN NaN NaN];
         return;
     end
@@ -199,9 +126,9 @@ end
 
 
 function tr = trace(obj, time_step)
-    %TRACE This method expands the flight plan behavior over time
+    % This method expands the flight plan behavior over time
     
-    instants = obj.init_time : time_step : obj.finish_time;
+    instants = obj.initTime : time_step : obj.finishTime;
     tr = zeros(length(instants),7);
     tr(:,1) = instants;
    
@@ -220,10 +147,10 @@ end
 
 
 function dist = distanceTo(fp1, fp2, time_step)
-    %DISTANCETO This method obstains relative distance between two flight plans over time
+    % This method obstains relative distance between two flight plans over time
     
-    init_time   = min(fp1.init_time,  fp2.init_time);
-    finish_time = max(fp1.finish_time,fp2.finish_time);
+    init_time   = min(fp1.initTime,  fp2.init_time);
+    finish_time = max(fp1.finishTime,fp2.finish_time);
     
     instants = init_time : time_step : finish_time;
     dist = zeros(length(instants),2);
@@ -241,7 +168,7 @@ end
 
 
 function routeFigure(obj,time_step,color)
-    %ROUTEFIGURE This method allow to display the flight plan trajectory
+    % Display the flight plan trajectory
     
     %Check if the flight plan is empty
     if isempty(obj.waypoints)
@@ -250,11 +177,11 @@ function routeFigure(obj,time_step,color)
     end
 
     %Find if the figure is already open
-    fig_name = "FP" + obj.id + ": POSITION";
-    fig = findobj("Name", fig_name);
+    figName = "FP" + obj.id + ": POSITION";
+    fig = findobj("Name", figName);
     if isempty(fig)
         %Display a figure with the flight plan
-        fig = figure("Name", fig_name);
+        fig = figure("Name", figName);
         fig.Position(3:4) = [800 350];
         fig.NumberTitle = "off";
         % fig.MenuBar = "none";
@@ -457,6 +384,73 @@ function distanceFigure(fp1,fp2,time_step,color)
     plot(dist(:,1),dist(:,2), Color = color );            
 end
 
+
+
+%------------------------------------------------------------
+% A PARTIR DE AQUI LOS METODOS NO ESTÁN CHEQUEADOS !!!
+
+
+function obj = reverseWaypoints(obj)
+    % This method reverse the order of the waypoints 
+    % keeping the same time of the previous waypoints, 
+    % but not take into account if new section velocities 
+    % between waypoints are fulfillable
+    
+    %Check if the flight plan is empty
+    if isempty(obj.waypoints)
+        disp('The flight plan is empty');
+        return
+    end
+
+    %Reverse the flight plan
+    reversed = obj.waypoints(end:-1:1);
+
+    for i = 1:length(reversed)
+        %Change the time of the waypoints
+        reversed(i).t = obj.waypoints(end-(i-1)).t;
+    end
+
+    obj.waypoints = reversed;
+end
+
+
+
+function obj = normalizeVelocity(obj)
+    % This method allow to normalize the velocity of the flight plan
+    % It normalize the velocity of the flight plan, 
+    % doing that the velocity between waypoints to be the same for all the flight plan
+    
+    %Check if the flight plan is empty
+    if isempty(obj.waypoints)
+        disp('The flight plan is empty');
+        return
+    end
+
+    %Init and finish time of the flight plan
+    init_time = obj.waypoints(1).t;
+    finish_time = obj.waypoints(end).t;
+
+    %Compute the total distance of the flight plan
+    total_distance = 0;
+    for i = 1:length(obj.waypoints)-1
+        total_distance = total_distance + obj.waypoints(i).distanceWithWaypoint(obj.waypoints(i+1));
+    end
+
+    %Compute mean velocity
+    mean_velocity = total_distance/(finish_time-init_time);
+
+    %Normalize the velocity of the flight plan
+    for i = 2:length(obj.waypoints)
+        %Compute the distance between waypoints
+        distance = obj.waypoints(i).distanceWithWaypoint(obj.waypoints(i-1));
+
+        %Compute the new time between waypoints
+        new_time = obj.waypoints(i-1).t + distance/mean_velocity;
+
+        %Change the time of the waypoints
+        obj.waypoints(i).t = new_time;
+    end
+end
 
 
 end % methods

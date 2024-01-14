@@ -23,6 +23,7 @@ function obj = SimpleMonitor(name)
 end
 
 
+
 function trackUAV(obj,UAVid)
 
     if obj.getUAVindex(UAVid) ~= -1
@@ -42,63 +43,137 @@ end
 
 
 
-function TelemetryViewer(obj,UAVid)
+function positionFigure(obj,UAVid,fp,timeStep)
 
     i = obj.getUAVindex(UAVid);
     if i == -1
         return
     end
 
-    t = obj.UAVs(i).data(:,1);
-    x = obj.UAVs(i).data(:,2);
-    y = obj.UAVs(i).data(:,3);
-    z = obj.UAVs(i).data(:,4);
-
-
+    % UAV data
+    UAVdata = obj.UAVs(i).data;
+    FPdata  = fp.trace(timeStep);
     
 
     % Checking figure
-    figName = [UAVid ' Telemetry'];
-    figHandler = findobj('Type','figure','Name',figName)';
-    if (isempty(figHandler)) 
-        figHandler = figure( ...
-            'Name',figName, ...
-            'NumberTitle','off', ...
-            'Position',[200 200 800 600]);
+    figName = [UAVid ' position'];
+    fig = findobj('Type','figure','Name',figName)';
+    if (isempty(fig)) 
+        fig = figure("Name", figName);
+        fig.Position(3:4) = [800 400];
+        fig.NumberTitle = "off";
     else
-        clf(figHandler)
+        figure(fig)
+        clf(fig)
     end
 
 
-    %3D viewer
-    subplot(6,2,[1 11])
-    plot3(x,y,z,".:",'Color','black','MarkerSize',10)
-    grid on
-    % plot3(ux(1:end-1),uy(1:end-1),uz(1:end-1));
-    % plot3(waypoints(:,1),waypoints(:,2),waypoints(:,3),'or');
-    % legend(["Simulated", "Reference", "Waypoints"],'Location','northwest');
-    title("Route 3D view")
-    xlabel("pos X")
-    ylabel("pos Y")
-    zlabel("pos Z")
+    %Figure settings
+    tl = tiledlayout(3,5);
+    tl.Padding = 'compact';
+    tl.TileSpacing = 'tight';
+    color = [0 0.7 1];
+    
 
+    %Display Position 3D
+    XYZtile = nexttile([3,3]);
+    title("Position 3D")
     hold on
-
-
-    %XYZ pos
-    subplot(6,2,[2 4]);
-    plot(t,x,".:",'Color','black','MarkerSize',10)
     grid on
+    axis equal
+    view(-20,20)
+    xlabel("x [m]")
+    ylabel("y [m]")
+    zlabel("z [m]")
+    
+    plot3(FPdata(:,2), FPdata(:,3), FPdata(:,4), ...
+        '-', ...
+        LineWidth = 2, ...
+        Color = color )
+    plot3([fp.waypoints(:).x], [fp.waypoints(:).y], [fp.waypoints(:).z], ...
+        'o', ...
+        MarkerSize = 5, ...
+        MarkerFaceColor = 'white', ...
+        MarkerEdgeColor = color )
 
-    subplot(6,2,[6 8]);
-    plot(t,y,".:",'Color','black','MarkerSize',10)
+    plot3(UAVdata(:,2), UAVdata(:,3), UAVdata(:,4), ...
+        '.:', ...
+        Color = 'black', ...
+        MarkerSize = 8)
+
+
+    %Display Position X versus time
+    Xtile   = nexttile([1,2]);
+    title("Position versus time");
+    hold on
     grid on
+    ylabel("x [m]");
 
-    subplot(6,2,[10 12]);
-    plot(t,z,".:",'Color','black','MarkerSize',10)
+    plot(FPdata(:,1), FPdata(:,2), ...
+        '-', ...
+        LineWidth = 2, ...
+        Color = color )
+    plot([fp.waypoints(:).t], [fp.waypoints(:).x], ...
+        'o',...
+        MarkerSize = 5, ...
+        MarkerFaceColor = 'white', ...
+        MarkerEdgeColor = color )
+
+    plot(UAVdata(:,1), UAVdata(:,2), ...
+        ".:", ...
+        Color = 'black', ...
+        MarkerSize = 8 )
+    xlim([fp.initTime fp.finishTime])
+    ax = gca; 
+    ax.XAxis.Visible = 'off';
+        
+    %Display Position Y versus time
+    Ytile   = nexttile([1,2]);
+    hold on
     grid on
+    ylabel("y [m]");
+
+    plot(FPdata(:,1), FPdata(:,3), ...
+        '-', ...
+        LineWidth = 2, ...
+        Color = color )
+    plot([fp.waypoints(:).t], [fp.waypoints(:).y], ...
+        'o',...
+        MarkerSize = 5, ...
+        MarkerFaceColor = 'white', ...
+        MarkerEdgeColor = color )
+
+    plot(UAVdata(:,1), UAVdata(:,3), ...
+        ".:", ...
+        Color = 'black', ...
+        MarkerSize = 8)
+    xlim([fp.initTime fp.finishTime])
+    ax = gca; 
+    ax.XAxis.Visible = 'off';
 
 
+    %Display Position Z versus time
+    Ztile   = nexttile([1,2]);
+    hold on
+    grid on
+    xlabel("t [s]");
+    ylabel("z [m]");
+
+    plot(FPdata(:,1), FPdata(:,4), ...
+        '-', ...
+        LineWidth = 2, ...
+        Color = color )
+    plot([fp.waypoints(:).t], [fp.waypoints(:).z], ...
+        'o',...
+        MarkerSize = 5, ...
+        MarkerFaceColor = 'white', ...
+        MarkerEdgeColor = color )
+
+    plot(UAVdata(:,1), UAVdata(:,4), ...
+        ".:", ...
+        Color = 'black', ...
+        MarkerSize = 8)
+    xlim([fp.initTime fp.finishTime])
 
 end
 
@@ -117,6 +192,7 @@ function index = getUAVindex(obj,id)
         end
     end
 end
+
 
 
 function TelemetryCallback(obj,msg)

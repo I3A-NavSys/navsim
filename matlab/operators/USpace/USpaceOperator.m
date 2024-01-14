@@ -168,25 +168,36 @@ function SendFlightPlan(obj,UAVid,fp)
         return
     end
 
+    % Check drone / FP compatibility
     UAV = obj.UAVs(i);
-    if UAV.model ~= UAVmodels.MiniDroneFP1
+    if UAV.model == UAVmodels.MiniDroneFP1
+        if fp.mode == InterpolationModes.TP
+        else
+            return
+        end
+    else
         return
     end
 
     msg = ros2message(UAV.rosPub);
-    msg.plan_id       = uint16(1);  %de momento
-    msg.uav_id        = UAV.id;
-    msg.operator_id   = char(obj.name);
+    msg.plan_id     = uint16(fp.id);
+    msg.uav_id      = UAV.id;
+    msg.operator_id = char(obj.name);
+    msg.priority    = int8(fp.priority);
 
-    for i = 1:length(fp(:,7))
-        msg.route(i).pos.x = fp(i,1);
-        msg.route(i).pos.y = fp(i,2);
-        msg.route(i).pos.z = fp(i,3);
-        msg.route(i).vel.x = fp(i,4);
-        msg.route(i).vel.y = fp(i,5);
-        msg.route(i).vel.z = fp(i,6);
-        msg.route(i).time.sec = int32(fp(i,7));
-        msg.route(i).time.nanosec = uint32(0);
+    for i = 1:length(fp.waypoints)
+        t = fp.waypoints(i).t;
+        msg.route(i).time.sec = int32(floor(t));
+        msg.route(i).time.nanosec = uint32(rem(t,1)*1E9);
+
+        msg.route(i).pos.x = fp.waypoints(i).x;
+        msg.route(i).pos.y = fp.waypoints(i).y;
+        msg.route(i).pos.z = fp.waypoints(i).z;
+
+        msg.route(i).vel.x = fp.waypoints(i).vx;
+        msg.route(i).vel.y = fp.waypoints(i).vy;
+        msg.route(i).vel.z = fp.waypoints(i).vz;
+
     end
     send(UAV.rosPub,msg);
         
