@@ -1,7 +1,7 @@
 
 # NavSim
 
-Update 15/01/2024.
+Update 15/01/2024
 
 ![NavSim](./doc/img/navsim.jpg)
 
@@ -21,3 +21,10 @@ NAVSIM is a **U-Space** service development tool. It provides:
   - Monitor the execution of flight plans.
 
 ![Matlab tools example](./doc/img/tool_example.png)
+
+## Resources
+
+- [Installation](./doc/install.md)
+- [Tutorial 1:](./doc/tutos/tuto1/tuto1.md) Running your first simulation with Matlab connection
+- [Tutorial 2:](./doc/tutos/tuto2/tuto2.md) Running 100 drones
+- [Tutorial 3:](./doc/tutos/tuto3/tuto3.md) 
