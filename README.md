@@ -18,9 +18,11 @@ NAVSIM is a **U-Space** service development tool. It provides:
   - Generate **flight plans** for the execution of these operations.
   - Detect and resolve conflicts between flight plans.
   - Deploy **UAVs** in the scenario capable of executing a flight plan provided by their operator.
-  - Monitor the execution of flight plans.
+    ![100 drones](./doc/tutos/tuto2/img/100drones.png)
+ 
 
-![Matlab tools example](./doc/img/tool_example.png)
+  - Monitor the execution of flight plans.
+    ![Matlab tools example](./doc/img/tool_example.png)
 
 ## Resources
 
