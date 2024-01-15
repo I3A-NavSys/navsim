@@ -4,7 +4,13 @@
 
 ## Set up your machine
 
-You can install NAVSIM on either a real computer or a virtual machine. In the second case, we have successfully tested it with VMware Workstation Player 17. You can obtain it [here](https://www.vmware.com/es/products/workstation-player/workstation-player-evaluation.html).
+You can install NAVSIM on either a real computer or a virtual machine. In the second case, we have successfully tested it with [VMware Workstation Player 17](https://www.vmware.com/es/products/workstation-player/workstation-player-evaluation.html), with the following configuration:
+
+- 8 processors
+- 32GB RAM
+- 50GB hard drive
+- Activated 3D acceleration (assigning 8GB of RAM)
+
 
 Configure a computer with **Ubuntu 22.04.3 LTS (Jammy Jellyfish)**. You can obtain a Desktop Image [here](https://releases.ubuntu.com/jammy/). Install the system and update everything.
 
