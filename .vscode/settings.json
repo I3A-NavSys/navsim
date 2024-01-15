@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "/home/usuario/code/navsim/ws/src/navsim_pkg"
+    "cmake.sourceDirectory": "/home/rafa/code/navsim/ws/src/navsim_pkg",
+    "C_Cpp.default.compilerPath": "/usr/bin/g++"
 }
