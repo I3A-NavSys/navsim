@@ -34,7 +34,7 @@ This code uses a **SimpleBuilder** object to generate 100 boxes in the area:
 ```matlab
 builder  = SimpleBuilder ("builder" ,NAVSIM_MODELS_PATH);
 for i=0:9
-    for j = 0:max
+    for j = 0:9
         builder.DeployModel('DC/base_drone', ...
             ['BASE',num2str(i),num2str(j)], ...
             [i-4.5 j-4.5 0.26],[0 0 0]);
@@ -53,7 +53,7 @@ for i=0:9
         operator.DeployUAV(                ...
             UAVmodels.MiniDroneCommanded,  ...
             ['UAV',num2str(i),num2str(j)], ...
-            [i-4.5 j-4.5 1],[0 0 0]); %rand*2*pi
+            [i-4.5 j-4.5 1],[0 0 0]);
     end
 end
 ```
@@ -61,7 +61,7 @@ end
 ![100 drones](./img/100drones.png)
 
 
-Finally, let's command the drones to activate, ascend for 1 second from their positions, and then perform a circular maneuver for 10 seconds:
+Finally, let's command the drones to activate, ascend for 1 second from their positions, and then perform a circular maneuver for 30 seconds:
 
 ```matlab
 for i=0:9
