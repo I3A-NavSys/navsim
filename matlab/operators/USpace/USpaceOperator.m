@@ -146,7 +146,7 @@ function RemoteCommand(obj,UAVid,on,velX,velY,velZ,rotZ,duration)
         return
     end
 
-    msg = ros2message(UAV.rosPub_RemoteCommand);
+    msg = ros2message(UAV.rosPub);
     msg.uav_id        = UAV.id;
     msg.on            = on;
     msg.vel.linear.x  = velX;
@@ -154,7 +154,7 @@ function RemoteCommand(obj,UAVid,on,velX,velY,velZ,rotZ,duration)
     msg.vel.linear.z  = velZ;
     msg.vel.angular.z = rotZ;
     msg.duration.sec  = int32(duration);
-    send(UAV.rosPub_RemoteCommand,msg);
+    send(UAV.rosPub,msg);
         
 end
 
