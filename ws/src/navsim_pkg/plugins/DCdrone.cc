@@ -24,6 +24,7 @@ private:
 physics::ModelPtr    model;
 physics::LinkPtr     link;
 event::ConnectionPtr updateConnector;
+common::Time         currentTime;
 
 
 ////////////////////////////////////////////////////////////////////////
@@ -34,10 +35,11 @@ rclcpp::Node::SharedPtr rosNode;
 
 rclcpp::Publisher<navsim_msgs::msg::Telemetry>::SharedPtr rosPub_Telemetry;
 common::Time prevTelemetryPubTime;
-double TelemetryPeriod = 1;    // seconds
+double TelemetryPeriod = 0.1;    // seconds
 
 rclcpp::Subscription<navsim_msgs::msg::RemoteCommand>::SharedPtr rosSub_RemoteCommand;
-
+common::Time prevRosCheckTime;
+double RosCheckPeriod = 0.1;     // seconds
 
 
 
@@ -215,7 +217,10 @@ void Init()
 {
     // printf("DC Navigation event: Init\n");
 
-    prevTelemetryPubTime = model->GetWorld()->SimTime();
+    currentTime = model->GetWorld()->SimTime();
+    prevTelemetryPubTime = currentTime;
+    prevRosCheckTime = currentTime;
+
     
 ////////////////////////////asumimos un comando!!!
     // cmd_on   =  1  ;
@@ -239,7 +244,9 @@ void OnWorldUpdateBegin()
     // Clear screen
     // std::cout << "\x1B[2J\x1B[H";
     // printf("DCdrone plugin: OnWorldUpdateBegin\n");
-    
+
+    // Get current simulation time
+    currentTime = model->GetWorld()->SimTime();
     
     // Platform low level control
     ServoControl();
@@ -248,13 +255,8 @@ void OnWorldUpdateBegin()
     // Telemetry communications
     Telemetry();
 
-
-    // ROS2 events proceessing
-    rclcpp::spin_some(rosNode);
-
-	// Pause simulation
-	// physics::WorldPtr world = this->model->GetWorld();
-	// world->SetPaused(true);
+    // Check ROS2 subscriptions
+    CheckROS();
 
 }
 
@@ -569,6 +571,31 @@ void PlatformDynamics()
     link->AddRelativeTorque(MD);
 
 }
+
+
+
+
+
+void CheckROS()
+{
+    
+    // Check if the simulation was reset
+    if (currentTime < prevRosCheckTime)
+        prevRosCheckTime = currentTime; // The simulation was reset
+
+    double interval = (currentTime - prevRosCheckTime).Double();
+    if (interval < RosCheckPeriod) return;
+
+    // printf("UAV %s checking ROS2 subscriptions \n", UAVname.c_str());
+    // printf("current time: %.3f \n\n", currentTime.Double());
+
+    prevRosCheckTime = currentTime;
+
+    // ROS2 events proceessing
+    rclcpp::spin_some(rosNode);
+
+}
+
 
 
 

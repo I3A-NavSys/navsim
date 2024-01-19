@@ -27,7 +27,7 @@ private:
 physics::ModelPtr    model;
 physics::LinkPtr     link;
 event::ConnectionPtr updateConnector;
-common::Time currentTime;
+common::Time         currentTime;
 
 
 
@@ -43,7 +43,7 @@ double TelemetryPeriod = 1.0;    // seconds
 
 rclcpp::Subscription<navsim_msgs::msg::FlightPlan>::SharedPtr rosSub_FlightPlan;
 common::Time prevRosCheckTime;
-double RosCheckPeriod = 10.0;     // seconds
+double RosCheckPeriod = 2.0;     // seconds
 
 
 
@@ -388,7 +388,6 @@ void Navigation()
 
 }
     
-
 
 
 

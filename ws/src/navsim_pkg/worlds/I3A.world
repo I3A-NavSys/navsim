@@ -50,31 +50,31 @@
 
 <include>
     <name>abejorro</name>
-    <pose>-4 0 0.10 0 0 0</pose>
+    <pose>-4 0 0.13 0 0 0</pose>
     <uri>../models/DC/abejorroC</uri>
 </include>
 
 <include>
     <name>abejorro1</name>
     <uri>../models/DC/abejorro1</uri>
-    <pose>-4 1 0.10 0 0 0</pose>
+    <pose>-4 1 0.13 0 0 0</pose>
 </include>
 
 <include>
     <name>abejorro2</name>
-    <pose>-4 0.5 0.10 0 0 0</pose>
+    <pose>-4 0.5 0.13 0 0 0</pose>
     <uri>../models/DC/abejorro2</uri>
 </include>
 
 <include>
     <name>abejorro3</name>
-    <pose>-4 -0.5 0.10 0 0 0</pose>
+    <pose>-4 -0.5 0.13 0 0 0</pose>
     <uri>../models/DC/abejorro3</uri>
 </include>
 
 <include>
     <name>abejorro4</name>
-    <pose>-4 -1 0.10 0 0 0</pose>
+    <pose>-4 -1 0.13 0 0 0</pose>
     <uri>../models/DC/abejorro4</uri>
 </include>
 

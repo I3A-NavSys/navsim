@@ -32,7 +32,7 @@ double TimePubPeriod = 0.1;    // seconds
 rclcpp::Service<navsim_msgs::srv::DeployModel>::SharedPtr rosSrv_DeployModel;
 rclcpp::Service<navsim_msgs::srv::RemoveModel>::SharedPtr rosSrv_RemoveModel;
 common::Time prevRosCheckTime;
-double RosCheckPeriod = 1.0;     // seconds
+double RosCheckPeriod = 0.1;   // seconds
 
 
 public:
