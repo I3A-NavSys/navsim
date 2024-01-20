@@ -154,7 +154,7 @@ void rosSrvFn_SimControl(
     if (request->pause)
     {
         printf("Simulation paused\n");
-        // world->pause();
+        world->SetPaused(true);
     }
 
 
