@@ -24,6 +24,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   # "msg/Operator.msg"
   # "msg/UAV.msg"
 
+  "srv/SimControl.srv"
   "srv/DeployModel.srv"
   # "srv/TranslateModel.srv"
   "srv/RemoveModel.srv"

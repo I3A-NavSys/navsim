@@ -1,7 +1,8 @@
 #include "gazebo/gazebo.hh"
 #include "gazebo/physics/physics.hh"
 
-#include "rclcpp/rclcpp.hpp"
+#include "rclcpp/rclcpp/rclcpp.hpp"
+#include "navsim_msgs/srv/sim_control.hpp"
 #include "navsim_msgs/srv/deploy_model.hpp"
 #include "navsim_msgs/srv/remove_model.hpp"
 // #include "navsim/teletransport.h"
@@ -29,6 +30,8 @@ double TimePubPeriod = 0.1;    // seconds
 
 
 // ROS2 NAVSIM services
+
+rclcpp::Service<navsim_msgs::srv::SimControl>::SharedPtr  rosSrv_SimControl;
 rclcpp::Service<navsim_msgs::srv::DeployModel>::SharedPtr rosSrv_DeployModel;
 rclcpp::Service<navsim_msgs::srv::RemoveModel>::SharedPtr rosSrv_RemoveModel;
 common::Time prevRosCheckTime;
@@ -67,6 +70,11 @@ void Load(physics::WorldPtr _parent, sdf::ElementPtr /*_sdf*/)
 
 
     // ROS2 NAVSIM services
+
+    rosSrv_SimControl = rosNode->create_service<navsim_msgs::srv::SimControl>(
+        "World/SimControl",
+        std::bind(&World::rosSrvFn_SimControl, this,
+                std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
     rosSrv_DeployModel = rosNode->create_service<navsim_msgs::srv::DeployModel>(
         "World/DeployModel",
@@ -130,25 +138,33 @@ void CheckROS()
 
 
 
-// void rosSrvFn_Time(
-//     const std::shared_ptr<rmw_request_id_t> request_header,
-//     const std::shared_ptr<navsim_msgs::srv::Time::Request>  request,   
-//             std::shared_ptr<navsim_msgs::srv::Time::Response> response)  
-// {
-//     // printf("NAVSIM World plugin: Service Time called\n");
+void rosSrvFn_SimControl(
+    const std::shared_ptr<rmw_request_id_t> request_header,
+    const std::shared_ptr<navsim_msgs::srv::SimControl::Request>  request,   
+          std::shared_ptr<navsim_msgs::srv::SimControl::Response> response)  
+{
+    printf("NAVSIM World plugin: Service SimControl called\n");
 
-//     if (request->reset)
-//     {
-//         // printf("Simulation reset\n");
-//         world->ResetTime();
-//     }
+    if (request->reset)
+    {
+        printf("Simulation reinited\n");
+        world->ResetTime();
+    }
 
-//     common::Time simTime = world->SimTime();
-//     // printf("time: %.2f\n",simTime.Double());
+    if (request->pause)
+    {
+        printf("Simulation paused\n");
+        // world->pause();
+    }
 
-//     response->time.sec = simTime.sec;
-//     response->time.nanosec = simTime.nsec;
-// }
+
+    common::Time simTime = world->SimTime();
+    // printf("time: %.2f\n",simTime.Double());
+
+    response->time.sec = simTime.sec;
+    response->time.nanosec = simTime.nsec;
+}
+
 
 
 void rosSrvFn_DeployModel(
