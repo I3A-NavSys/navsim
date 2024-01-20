@@ -143,17 +143,17 @@ void rosSrvFn_SimControl(
     const std::shared_ptr<navsim_msgs::srv::SimControl::Request>  request,   
           std::shared_ptr<navsim_msgs::srv::SimControl::Response> response)  
 {
-    printf("NAVSIM World plugin: Service SimControl called\n");
+    // printf("NAVSIM World plugin: Service SimControl called\n");
 
     if (request->reset)
     {
-        printf("Simulation reinited\n");
+        printf("\nSimulation reinited\n\n");
         world->ResetTime();
     }
 
     if (request->pause)
     {
-        printf("Simulation paused\n");
+        printf("\nSimulation paused\n\n");
         world->SetPaused(true);
     }
 
