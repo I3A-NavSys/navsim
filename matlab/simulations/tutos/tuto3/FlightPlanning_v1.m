@@ -58,10 +58,11 @@ end
 %Create a Flight Plan for the drone 1
 
 %              t      x        y        z    
-way_data1 = [ 10   -190.00  -119.00  +048.05   
-              15   -190.00  -119.00  +052.00   
+way_data1 = [ 05   -190.00  -119.00  +048.05   
+              10   -190.00  -119.00  +052.00   
+              20   -190.00  -106.00  +052.00   
               30   -152.00  -106.00  +052.00   
-              35   -152.00  -106.00  +049.10  ];
+              40   -152.00  -106.00  +049.10  ];
 
 fp1  = FlightPlan(1,Waypoint.empty);
 for i = 1:size(way_data1,1)
@@ -72,9 +73,8 @@ for i = 1:size(way_data1,1)
 end
 
 % Display
-% time_step = 0.1;
-% fp1.routeFigure(time_step,'b')
-% fp1.velocityFigure(time_step,'b')
+% fp1.RouteFigure(1,'b')
+fp1.VelocityFigure(1,'b')
 
 
 % -------------
@@ -137,6 +137,7 @@ operator.WaitTime(140);
 operator.PauseSim;
 
 % monitor.PositionFigure('UAV01',fp1);
+% monitor.VelocityFigure('UAV01',fp1);
 % monitor.PositionFigure('UAV02',fp2);
 monitor.PositionFigure('UAV03',fp3);
 monitor.VelocityFigure('UAV03',fp3);
