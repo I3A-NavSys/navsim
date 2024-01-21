@@ -339,6 +339,7 @@ void Navigation()
     double x = route[currentWP-1].pos.x; 
     double y = route[currentWP-1].pos.y;
     double z = route[currentWP-1].pos.z;
+    double step = 1;
 
     if (currentWP < numWPs)
     {
@@ -355,7 +356,6 @@ void Navigation()
         t2.sec  = route[currentWP].time.sec;
         t2.nsec = route[currentWP].time.nanosec;
 
-        double step = 0.1;
         common::Time t = currentTime + step;
 
         double interpol = (t-t1).Double() / (t2-t1).Double() ;
@@ -369,13 +369,19 @@ void Navigation()
     // printf("(%d.%d)      %.2f  %.2f  %.2f \n",currentTime.sec, int(currentTime.nsec/1E6) ,x, y, z);
 
 
-    // COMPUTING  DRONE COMMANDED VELOCITY (to achieve planned position in 1 second)
+    // COMPUTING  DRONE COMMANDED VELOCITY (to achieve planned position in 'step' seconds)
 
     ignition::math::Pose3<double> pose = model->WorldPose();
     ignition::math::Vector3<double> currentPos = pose.Pos();
     // ignition::math::Vector3<double> currentVel = model->RelativeLinearVel();
     
-    ignition::math::Vector3<double> currentVel = plannedPos - currentPos;
+    ignition::math::Vector3<double> currentVel = (plannedPos - currentPos) / step;
+    double maxvel = 4; // maximum velocity
+    if (currentVel.Length() > maxvel)
+    {
+        currentVel.Normalize();
+        currentVel *= maxvel;
+    }
 
     cmd_on   = true;
     cmd_velX = currentVel.X();
