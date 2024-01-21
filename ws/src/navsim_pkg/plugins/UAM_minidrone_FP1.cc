@@ -62,7 +62,7 @@ navsim_msgs::msg::FlightPlan::SharedPtr fp = nullptr;
 
 int currentWP = -1;  
 
-// std::vector<navsim_msgs::msg::Waypoint> route;
+double maxvel = 4; // maximum velocity
 
 
 // rotor engine status on/off
@@ -76,10 +76,6 @@ double cmd_velZ = 0.0;            // (m/s)  velocidad lineal  deseada en eje Z
 double cmd_rotZ = 0.0;            // (m/s)  velocidad angular deseada en eje Z
 
 common::Time CommandExpTime;
-
-
-
-
 
 
 
@@ -339,6 +335,8 @@ void Navigation()
     double x = route[currentWP-1].pos.x; 
     double y = route[currentWP-1].pos.y;
     double z = route[currentWP-1].pos.z;
+    ignition::math::Vector3<double> plannedPrevPos = ignition::math::Vector3d(x,y,z);
+    
     double step = 1;
 
     if (currentWP < numWPs)
@@ -375,19 +373,35 @@ void Navigation()
     ignition::math::Vector3<double> currentPos = pose.Pos();
     // ignition::math::Vector3<double> currentVel = model->RelativeLinearVel();
     
-    ignition::math::Vector3<double> currentVel = (plannedPos - currentPos) / step;
-    double maxvel = 4; // maximum velocity
+    ignition::math::Vector3<double> errorPos = plannedPos - currentPos;
+    ignition::math::Vector3<double> currentVel = errorPos / step;
     if (currentVel.Length() > maxvel)
     {
         currentVel.Normalize();
         currentVel *= maxvel;
     }
 
+    ignition::math::Vector3<double> direction = plannedPos - plannedPrevPos;
+    double plannedYaw = atan2(direction.Y(), direction.X());
+    double currentYaw = pose.Yaw();
+    double errorYaw = plannedYaw - currentYaw;
+    double currentWel = errorYaw / step;
+    if (currentWel > 0.1)
+    {
+        currentWel = 0.1;
+    }
+
+    if (currentWel < -0.1)
+    {
+        currentWel = -0.1;
+    }
+
+
     cmd_on   = true;
     cmd_velX = currentVel.X();
     cmd_velY = currentVel.Y();
     cmd_velZ = currentVel.Z();
-    cmd_rotZ = 0; 
+    cmd_rotZ = currentWel; 
 
     common::Time duration;
     duration.sec  = 1;
