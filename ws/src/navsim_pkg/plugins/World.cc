@@ -224,6 +224,13 @@ void rosSrvFn_DeployModel(
     modelSDF.SetFromString(request->model_sdf);
     // modelSDF.PrintValues();
 
+    // Check if this model exists
+    physics::ModelPtr model = this->world->ModelByName(request->name);
+    if(model)
+    {
+        response->status = false;
+        return;
+    }
 
     // Model modification
     sdf::ElementPtr modelElement = modelSDF.Root()->GetElement("model");
@@ -248,8 +255,6 @@ void rosSrvFn_DeployModel(
     //     std::cout << "Model: " << model->GetName() << std::endl;
     // }
 
-
-
     // gzmsg << "NAVSIM service DeployModel: model deployed" << std::endl;
     response->status = true;
 
@@ -261,17 +266,17 @@ void rosSrvFn_RemoveModel(
     const std::shared_ptr<navsim_msgs::srv::RemoveModel::Request>  request,   
           std::shared_ptr<navsim_msgs::srv::RemoveModel::Response> response)  
 {
-    printf("NAVSIM World plugin: RemoveModel\n");
+    // printf("NAVSIM World plugin: RemoveModel\n");
     physics::ModelPtr model = this->world->ModelByName(request->name);
 
     if(!model)
     {
-        printf("UAV not found: %s \n", request->name.c_str());
+        printf("\nUAV not found: %s \n\n", request->name.c_str());
         return;
     }
 
     world->RemoveModel(model);
-    printf("UAV %s removed from air space\n", request->name.c_str());
+    printf("\nUAV %s removed from air space\n\n", request->name.c_str());
  
 }
 
