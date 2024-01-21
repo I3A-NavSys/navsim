@@ -10,6 +10,7 @@ properties
     % ROS2 interface
     rosNode                   % ROS2 Node 
     rosSub_Time               % ROS2 subscriptor to get simulation time
+    rosCli_SimControl         % ROS2 Service client to control the simulation
     rosCli_DeployUAV          % ROS2 Service client to deploy models into the air space
     rosCli_RemoveUAV          % ROS2 Service client to remove models from the air space
 
@@ -29,6 +30,10 @@ function obj = USpaceOperator(name,models_path)
     obj.rosSub_Time = ros2subscriber(obj.rosNode, ...
         '/World/Time','builtin_interfaces/Time', ...
         'History','keeplast');
+
+    obj.rosCli_SimControl = ros2svcclient(obj.rosNode, ...
+        '/World/SimControl','navsim_msgs/SimControl', ...
+        'History','keepall');
 
     obj.rosCli_DeployUAV = ros2svcclient(obj.rosNode, ...
         '/World/DeployModel','navsim_msgs/DeployModel', ...
@@ -50,6 +55,53 @@ function [sec,mil] = GetTime(obj)
         sec = 0;
         mil = 0;
     end
+end
+
+
+function WaitTime(obj,time)
+    [s,~] = obj.GetTime;
+    while s < time
+        [s,~] = obj.GetTime;
+        pause (1);
+    end
+end
+
+
+function status = PauseSim(obj)
+
+    % Call ROS2 service
+    req = ros2message(obj.rosCli_SimControl);
+    req.reset = false;
+    req.pause = true;
+
+    status = waitForServer(obj.rosCli_SimControl,"Timeout",1);
+    if status
+        try
+            call(obj.rosCli_SimControl,req,"Timeout",1);
+        catch
+            status = false;
+        end
+    end
+    
+end
+
+
+function status = ResetSim(obj)
+
+    % Call ROS2 service
+    req = ros2message(obj.rosCli_SimControl);
+    req.reset = true;
+    req.pause = false;
+
+    status = waitForServer(obj.rosCli_SimControl,"Timeout",1);
+    if status
+        try
+            call(obj.rosCli_SimControl,req,"Timeout",1);
+        catch
+            status = false;
+        end
+    end
+    
 end
 
 
@@ -217,7 +269,6 @@ function index = getUAVindex(obj,id)
         end
     end
 end
-
 
 
 end % methods 
