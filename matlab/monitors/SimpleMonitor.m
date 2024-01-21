@@ -24,9 +24,9 @@ end
 
 
 
-function trackUAV(obj,UAVid)
+function TrackUAV(obj,UAVid)
 
-    if obj.getUAVindex(UAVid) ~= -1
+    if obj.GetUAVindex(UAVid) ~= -1
         return
     end
 
@@ -43,9 +43,9 @@ end
 
 
 
-function positionFigure(obj,UAVid,fp,timeStep)
+function PositionFigure(obj,UAVid,fp,timeStep)
 
-    i = obj.getUAVindex(UAVid);
+    i = obj.GetUAVindex(UAVid);
     if i == -1
         return
     end
@@ -179,7 +179,7 @@ end
 
 
 
-function index = getUAVindex(obj,id)
+function index = GetUAVindex(obj,id)
     index = -1;
     l = length(obj.UAVs);
     if l==0
@@ -201,7 +201,7 @@ function TelemetryCallback(obj,msg)
     pos = [msg.pose.position.x   msg.pose.position.y   msg.pose.position.z];
     vel = [msg.velocity.linear.x msg.velocity.linear.y msg.velocity.linear.z];
 
-    i = obj.getUAVindex(msg.uav_id);
+    i = obj.GetUAVindex(msg.uav_id);
     if i == -1
         return
     end

@@ -19,7 +19,7 @@ operator.DeployUAV(UAVmodels.MiniDroneFP1,'UAV01',[-190 -119 48.6],[0 0 0]);
 % run monitoring service
 
 monitor = SimpleMonitor('monitor');
-monitor.trackUAV('UAV01');
+monitor.TrackUAV('UAV01');
 
 
 
@@ -28,9 +28,9 @@ monitor.trackUAV('UAV01');
 
 %             t      x    y    z     vx vy vz
 way_data = [ 10   -190 -119 +048.6   00 00 00       % 0.7 m/s
-             15   -190 -119 +052.0   00 00 00       % 4.0 m/s
-             25   -152 -106 +052.0   00 00 00       % 0.5 m/s
-             30   -152 -106 +049.6   00 00 00 ];
+             15   -190 -119 +052.0   00 00 00       % 2.7 m/s
+             30   -152 -106 +052.0   00 00 00       % 0.5 m/s
+             35   -152 -106 +049.6   00 00 00 ];
 
 
 fp1  = FlightPlan(1,Waypoint.empty);
@@ -53,11 +53,11 @@ operator.SendFlightPlan('UAV01',fp1);
 
 
 %%
-operator.WaitTime(30);
+operator.WaitTime(40);
 % operator.RemoveUAV('UAV01');
 operator.PauseSim;
 
-monitor.positionFigure('UAV01',fp1,1);
+monitor.PositionFigure('UAV01',fp1,1);
 
 
 
