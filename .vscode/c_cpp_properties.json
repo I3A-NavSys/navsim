@@ -32,7 +32,8 @@
                 "/opt/ros/humble/include/libstatistics_collector",
                 "/opt/ros/humble/include/libstatistics_collector",
                 "/opt/ros/humble/include/statistics_msgs",
-                "/opt/ros/humble/include/statistics_msgs"
+                "/opt/ros/humble/include/statistics_msgs",
+                "/usr/include/eigen3"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

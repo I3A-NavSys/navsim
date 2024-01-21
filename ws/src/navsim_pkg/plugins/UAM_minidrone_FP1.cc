@@ -334,7 +334,7 @@ void Navigation()
     }
 
 
-    // COMPUTING PLANNED POSITION (1 second later)
+    // COMPUTING PLANNED POSITION
     
     double x = route[currentWP-1].pos.x; 
     double y = route[currentWP-1].pos.y;
@@ -355,7 +355,10 @@ void Navigation()
         t2.sec  = route[currentWP].time.sec;
         t2.nsec = route[currentWP].time.nanosec;
 
-        double interpol = (currentTime+1-t1).Double() / (t2-t1).Double() ;
+        double step = 0.1;
+        common::Time t = currentTime + step;
+
+        double interpol = (t-t1).Double() / (t2-t1).Double() ;
         x = interpol * (x2-x) + x ;
         y = interpol * (y2-y) + y ;
         z = interpol * (z2-z) + z ;
