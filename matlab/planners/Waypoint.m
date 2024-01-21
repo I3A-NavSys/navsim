@@ -47,7 +47,7 @@ end
 
 
 
-function checkWaypoint(obj,wp)
+function CheckWaypoint(obj,wp)
     if ~isa(wp,'Waypoint')
        error('Error. \nValue must be a Waypoint object, not a %s.',class(wp))
     end
@@ -55,14 +55,14 @@ end
 
 
 
-function p = position(obj)
+function p = Position(obj)
     % Get the position of the waypoint
     p = [ obj.x  obj.y  obj.z ];
 end
 
 
 
-function setPosition(obj,p)
+function SetPosition(obj,p)
     % Set the position of the waypoint
     obj.x = p(1);
     obj.y = p(2);
@@ -71,14 +71,14 @@ end
 
 
 
-function v = velocity(obj)
+function v = Velocity(obj)
     % Get the velocity of the waypoint
     v = [ obj.vx  obj.vy  obj.vz ];
 end
 
 
 
-function setVelocity(obj,v)
+function SetVelocity(obj,v)
     % Set the velocity of the waypoint
     obj.vx = v(1);
     obj.vy = v(2);
@@ -87,41 +87,41 @@ end
 
 
 
-function time = timeTo(a,b)
+function time = TimeTo(a,b)
     % Get the time elapsed from this waypoint to another given
-    a.checkWaypoint(b);
+    a.CheckWaypoint(b);
     time = b.t - a.t;
 end
 
 
 
-function dist = distanceTo(a,b)
+function dist = DistanceTo(a,b)
     % Get the distance between two waypoints
-    a.checkWaypoint(b);
-    dist = norm(a.position - b.position);
+    a.CheckWaypoint(b);
+    dist = norm(a.Position - b.Position);
 end
 
 
 
-function dir = directionTo(a,b)
+function dir = DirectionTo(a,b)
     % Get a direction vector from one waypoint to another            
-    a.checkWaypoint(b);
-    dist = a.distanceTo(b);
+    a.CheckWaypoint(b);
+    dist = a.DistanceTo(b);
     if dist == 0
         dir = [0,0,0];
     else
-        dir = (b.position - a.position) / dist;
+        dir = (b.Position - a.Position) / dist;
     end
 end
 
 
 
-function vel = uniformVelocityTo(a,b)
+function vel = UniformVelocityTo(a,b)
     % Get the uniform velocity between two waypoints
-    a.checkWaypoint(b);
+    a.CheckWaypoint(b);
 
-    dist = a.distanceTo(b);
-    time = a.timeTo(b);
+    dist = a.DistanceTo(b);
+    time = a.TimeTo(b);
 
     if time == 0
         vel = 0;
@@ -132,40 +132,40 @@ end
 
 
 
-function wp3 = interpolationTP(wp1,wp2,t)
+function wp3 = InterpolationTP(wp1,wp2,t)
     % Dados dos waypoints, 
     % genera un tercer waypoint interpolando posiciones a un tiempo dado.
     % Equivale a realizar un movimiento rectilíneo y uniforme.
-    wp1.checkWaypoint(wp2);
+    wp1.CheckWaypoint(wp2);
             
     wp3 = Waypoint;
     wp3.t = t;
-    s13 = wp1.directionTo(wp2) * wp1.uniformVelocityTo(wp2) * wp1.timeTo(wp3);
-    wp3.setPosition(wp1.position + s13);
+    s13 = wp1.DirectionTo(wp2) * wp1.UniformVelocityTo(wp2) * wp1.TimeTo(wp3);
+    wp3.SetPosition(wp1.Position + s13);
 
 end
 
 
 
-function wp3 = interpolationTPV(wp1,wp2,t)
+function wp3 = InterpolationTPV(wp1,wp2,t)
     % PENDIENTE DE CHEQUEAR
     % Dados dos waypoints, 
     % genera un tercer waypoint interpolando posiciones y velocidades a un tiempo dado.
-    wp1.checkWaypoint(wp2);
+    wp1.CheckWaypoint(wp2);
 
     wp3 = Waypoint;
     wp3.t = t;
 
     % s12 = wp1.distanceTo(wp2);
-    s12 = wp2.position - wp1.position;
+    s12 = wp2.position - wp1.Position;
     if norm(s12)==0
-        wp3.setPosition(wp1.position);
+        wp3.setPosition(wp1.Position);
         return
     end
     
-    t12 = wp1.timeTo(wp2);
-    t13 = wp1.timeTo(wp3);
-    v1  = wp1.velocity;
+    t12 = wp1.TimeTo(wp2);
+    t13 = wp1.TimeTo(wp3);
+    v1  = wp1.Velocity;
     v2  = wp2.velocity;
     
     A = [ t12^2/2   t12^3/6 ;
@@ -183,7 +183,7 @@ function wp3 = interpolationTPV(wp1,wp2,t)
     end  
 
     s13 = v1*t13 + 1/2 *a*t13^2 + 1/6 *j*t13^3;
-    wp3.setPosition( wp1.position + s13 );
+    wp3.setPosition( wp1.Position + s13 );
 
 end
 

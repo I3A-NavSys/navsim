@@ -24,7 +24,7 @@ function obj = FlightPlan(id, waypoints)
     if ~isempty(waypoints)
         %Add waypoints to the flight plan
         for i = 1:length(waypoints)
-            obj.setWaypoint(waypoints(i));
+            obj.SetWaypoint(waypoints(i));
         end
     end
     obj.mode = "TP";
@@ -32,7 +32,7 @@ end
 
 
 
-function setWaypoint(obj,waypoint)
+function SetWaypoint(obj,waypoint)
     
     %Check if the waypoint is a Waypoint object
     if ~isa(waypoint,'Waypoint')
@@ -56,7 +56,7 @@ end
 
 
 
-function removeWaypointAtTime(obj,t)
+function RemoveWaypointAtTime(obj,t)
 
     l = length(obj.waypoints);
     for i = 1:l
@@ -74,7 +74,7 @@ end
 
 
 
-function t = initTime(obj)
+function t = InitTime(obj)
 %time of the first waypoint
     if isempty(obj.waypoints)
         t = [];
@@ -85,7 +85,7 @@ end
 
 
 
-function t = finishTime(obj)
+function t = FinishTime(obj)
 %time of the last waypoint
     if isempty(obj.waypoints)
         t = [];
@@ -96,9 +96,9 @@ end
 
 
 
-function p = positionAtTime(obj, t)
+function p = PositionAtTime(obj, t)
     % Check if t is out of flight plan schedule, returning not valid pos
-    if t < obj.initTime  ||  t > obj.finishTime
+    if t < obj.InitTime  ||  t > obj.FinishTime
         p = [NaN NaN NaN];
         return;
     end
@@ -115,26 +115,26 @@ function p = positionAtTime(obj, t)
 
     switch obj.mode
         case InterpolationModes.TP
-            wp3 = wp1.interpolationTP(wp2,t);
+            wp3 = wp1.InterpolationTP(wp2,t);
         case InterpolationModes.TPV
-            wp3 = wp1.interpolationTPV(wp2,t);
+            wp3 = wp1.InterpolationTPV(wp2,t);
     end
-    p = wp3.position;
+    p = wp3.Position;
 
 end
 
 
 
-function tr = trace(obj, time_step)
+function tr = Trace(obj, time_step)
     % This method expands the flight plan behavior over time
     
-    instants = obj.initTime : time_step : obj.finishTime;
+    instants = obj.InitTime : time_step : obj.FinishTime;
     tr = zeros(length(instants),7);
     tr(:,1) = instants;
    
     %Get position in time instants
     for i = 1:length(instants)
-        p = obj.positionAtTime(tr(i,1));
+        p = obj.PositionAtTime(tr(i,1));
         tr(i,2:4) = p;
     end
 
@@ -146,11 +146,11 @@ end
 
 
 
-function dist = distanceTo(fp1, fp2, time_step)
+function dist = DistanceTo(fp1, fp2, time_step)
     % This method obstains relative distance between two flight plans over time
     
-    init_time   = min(fp1.initTime,  fp2.init_time);
-    finish_time = max(fp1.finishTime,fp2.finish_time);
+    init_time   = min(fp1.InitTime,  fp2.init_time);
+    finish_time = max(fp1.FinishTime,fp2.finish_time);
     
     instants = init_time : time_step : finish_time;
     dist = zeros(length(instants),2);
@@ -159,7 +159,7 @@ function dist = distanceTo(fp1, fp2, time_step)
     %Get position in time instants
     for i = 1:length(instants)
         t = dist(i,1);
-        p1 = fp1.positionAtTime(t);
+        p1 = fp1.PositionAtTime(t);
         p2 = fp2.positionAtTime(t);
         dist(i,2) = norm(p2-p1);
     end
@@ -167,7 +167,7 @@ end
 
 
 
-function routeFigure(obj,time_step,color)
+function RouteFigure(obj,time_step,color)
     % Display the flight plan trajectory
     
     %Check if the flight plan is empty
@@ -210,7 +210,7 @@ function routeFigure(obj,time_step,color)
     ylabel("y [m]")
     zlabel("z [m]")
 
-    tr = obj.trace(time_step);
+    tr = obj.Trace(time_step);
     pt = plot3(tr(:,2),tr(:,3),tr(:,4), '-', ...
         Color = color );
     plot3([obj.waypoints(:).x], [obj.waypoints(:).y], [obj.waypoints(:).z], 'o',...
@@ -267,7 +267,7 @@ end
 
 
 
-function velocityFigure(obj,time_step,color)
+function VelocityFigure(obj,time_step,color)
     %VELOCITYFIGURE This method allow to display the flight plan instant velocity
     
     % Check if the flight plan is empty
@@ -304,7 +304,7 @@ function velocityFigure(obj,time_step,color)
     grid on
     ylabel("3D [m/s]");
 
-    tr = obj.trace(time_step);
+    tr = obj.Trace(time_step);
     plot(tr(:,1),sqrt(tr(:,5).^2 + tr(:,6).^2 + tr(:,7).^2), '-', ...
         Color = color );
 
@@ -357,7 +357,7 @@ end
 
 
 
-function distanceFigure(fp1,fp2,time_step,color)
+function DistanceFigure(fp1,fp2,time_step,color)
     % Relative distance between two flightplans
     
     %Find if the figure is already open
@@ -380,7 +380,7 @@ function distanceFigure(fp1,fp2,time_step,color)
     grid on
     hold on
     
-    dist = fp1.distanceTo(fp2, time_step);
+    dist = fp1.DistanceTo(fp2, time_step);
     plot(dist(:,1),dist(:,2), Color = color );            
 end
 
@@ -390,7 +390,7 @@ end
 % A PARTIR DE AQUI LOS METODOS NO ESTÁN CHEQUEADOS !!!
 
 
-function obj = reverseWaypoints(obj)
+function obj = ReverseWaypoints(obj)
     % This method reverse the order of the waypoints 
     % keeping the same time of the previous waypoints, 
     % but not take into account if new section velocities 
@@ -415,7 +415,7 @@ end
 
 
 
-function obj = normalizeVelocity(obj)
+function obj = NormalizeVelocity(obj)
     % This method allow to normalize the velocity of the flight plan
     % It normalize the velocity of the flight plan, 
     % doing that the velocity between waypoints to be the same for all the flight plan

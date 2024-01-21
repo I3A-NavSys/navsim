@@ -43,7 +43,7 @@ end
 
 
 
-function PositionFigure(obj,UAVid,fp,timeStep)
+function PositionFigure(obj,UAVid,fp)
 
     i = obj.GetUAVindex(UAVid);
     if i == -1
@@ -52,7 +52,8 @@ function PositionFigure(obj,UAVid,fp,timeStep)
 
     % UAV data
     UAVdata = obj.UAVs(i).data;
-    FPdata  = fp.trace(timeStep);
+    timeStep = UAVdata(2,1) - UAVdata(1,1);
+    FPdata  = fp.Trace(timeStep);
     
 
     % Checking figure
@@ -123,7 +124,7 @@ function PositionFigure(obj,UAVid,fp,timeStep)
         ".:", ...
         Color = 'black', ...
         MarkerSize = 8 )
-    xlim([fp.initTime fp.finishTime])
+    xlim([fp.InitTime fp.FinishTime])
     ax = gca; 
     ax.XAxis.Visible = 'off';
         
@@ -147,7 +148,7 @@ function PositionFigure(obj,UAVid,fp,timeStep)
         ".:", ...
         Color = 'black', ...
         MarkerSize = 8)
-    xlim([fp.initTime fp.finishTime])
+    xlim([fp.InitTime fp.FinishTime])
     ax = gca; 
     ax.XAxis.Visible = 'off';
 
@@ -173,7 +174,121 @@ function PositionFigure(obj,UAVid,fp,timeStep)
         ".:", ...
         Color = 'black', ...
         MarkerSize = 8)
-    xlim([fp.initTime fp.finishTime])
+    xlim([fp.InitTime fp.FinishTime])
+
+end
+
+
+
+function VelocityFigure(obj,UAVid,fp)
+
+    i = obj.GetUAVindex(UAVid);
+    if i == -1
+        return
+    end
+
+    % UAV data
+    UAVdata = obj.UAVs(i).data;
+    timeStep = UAVdata(2,1) - UAVdata(1,1);
+    FPdata  = fp.Trace(timeStep);
+    
+
+    % Checking figure
+    figName = [UAVid ' velocity'];
+    fig = findobj('Type','figure','Name',figName)';
+    if (isempty(fig)) 
+        fig = figure("Name", figName);
+        fig.Position(3:4) = [800 400];
+        fig.NumberTitle = "off";
+    else
+        figure(fig)
+        clf(fig)
+    end
+
+
+    %Figure settings
+    tl = tiledlayout(3,5);
+    tl.Padding = 'compact';
+    tl.TileSpacing = 'tight';
+    color = [0 0.7 1];
+    
+
+    %Display Position 3D
+    XYZtile = nexttile([3,3]);
+    title("Velocity versus time")
+    hold on
+    grid on
+    ylabel("3D [m/s]");
+
+    plot(FPdata(:,1),sqrt(FPdata(:,5).^2 + FPdata(:,6).^2 + FPdata(:,7).^2), ...
+        '-', ...
+        LineWidth = 2, ...
+        Color = color )
+
+    plot(UAVdata(:,1),sqrt(UAVdata(:,5).^2 + UAVdata(:,6).^2 + UAVdata(:,7).^2), ...
+        '.:', ...
+        Color = 'black', ...
+        MarkerSize = 8)
+    xlim([fp.InitTime fp.FinishTime])
+
+
+    %Display Velocity X versus time
+    Xtile   = nexttile([1,2]);
+    hold on
+    grid on
+    ylabel("vx [m/s]");
+
+    plot(FPdata(:,1),FPdata(:,5), ...
+        '-', ...
+        LineWidth = 2, ...
+        Color = color )
+    plot(UAVdata(:,1),UAVdata(:,5), ...
+        '.:', ...
+        Color = 'black', ...
+        MarkerSize = 8)
+
+    xlim([fp.InitTime fp.FinishTime])
+    ax = gca; 
+    ax.XAxis.Visible = 'off';
+        
+    %Display Position Y versus time
+    Ytile   = nexttile([1,2]);
+    hold on
+    grid on
+    ylabel("xy [m/s]");
+
+    plot(FPdata(:,1),FPdata(:,6), ...
+        '-', ...
+        LineWidth = 2, ...
+        Color = color )
+    plot(UAVdata(:,1),UAVdata(:,6), ...
+        '.:', ...
+        Color = 'black', ...
+        MarkerSize = 8)
+
+    xlim([fp.InitTime fp.FinishTime])
+    ax = gca; 
+    ax.XAxis.Visible = 'off';
+
+
+
+    %Display Position Z versus time
+    Ztile   = nexttile([1,2]);
+    hold on
+    grid on
+    xlabel("t [s]");
+    ylabel("vz [m/s]");
+
+    plot(FPdata(:,1),FPdata(:,7), ...
+        '-', ...
+        LineWidth = 2, ...
+        Color = color )
+    plot(UAVdata(:,1),UAVdata(:,7), ...
+        '.:', ...
+        Color = 'black', ...
+        MarkerSize = 8)
+
+    xlim([fp.InitTime fp.FinishTime])
 
 end
 

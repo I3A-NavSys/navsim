@@ -5,7 +5,8 @@ properties
     name    string            % Operator name
     models_path               
 
-    UAVs = struct([])         % list to the fleet of UAVs
+    ports = struct([])        % list of vertiports
+    UAVs  = struct([])        % list of UAVs fleet
 
     % ROS2 interface
     rosNode                   % ROS2 Node 
@@ -105,11 +106,54 @@ function status = ResetSim(obj)
 end
 
 
+function status = SetVertiport(obj,id,pos)
+
+    if obj.GetPORTindex(id) ~= -1
+        status = false;
+        return
+    end
+
+    port.id = id;
+    port.pos = pos;
+
+    obj.ports = [obj.ports port];
+    status = true;
+end
+
+
+function status = DeleteVertiport(obj,id)
+
+    i = obj.GetPORTindex(id);
+    if i == -1
+        status = false;
+        return
+    end
+    obj.ports = [ obj.ports(1:i-1) obj.ports(i+1:end) ];
+    status = true;
+
+end
+
+
+function index = GetPORTindex(obj,id)
+    index = -1;
+    l = length(obj.ports);
+    if l==0
+        return
+    end
+    for i = 1:l
+        if obj.ports(i).id == id
+            index = i;
+            return
+        end
+    end
+end
+
+
 function status = DeployUAV(obj,model,UAVid,pos,rot)
 
     status = false;
 
-    if obj.getUAVindex(UAVid) ~= -1
+    if obj.GetUAVindex(UAVid) ~= -1
         return
     end
 
@@ -160,7 +204,7 @@ end
 
 function status = RemoveUAV(obj,id)
 
-    i = obj.getUAVindex(id);
+    i = obj.GetUAVindex(id);
 
     if i == -1
         return
@@ -187,7 +231,7 @@ end
 
 function RemoteCommand(obj,UAVid,on,velX,velY,velZ,rotZ,duration)
 
-    i = obj.getUAVindex(UAVid);
+    i = obj.GetUAVindex(UAVid);
 
     if i == -1
         return
@@ -214,7 +258,7 @@ end
 function SendFlightPlan(obj,UAVid,fp)
     % fp es una lista de filas con 7 componentes
 
-    i = obj.getUAVindex(UAVid);
+    i = obj.GetUAVindex(UAVid);
 
     if i == -1
         return
@@ -256,7 +300,7 @@ function SendFlightPlan(obj,UAVid,fp)
 end
 
 
-function index = getUAVindex(obj,id)
+function index = GetUAVindex(obj,id)
     index = -1;
     l = length(obj.UAVs);
     if l==0
