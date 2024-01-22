@@ -60,9 +60,11 @@ end
 %              t      x        y        z    
 way_data1 = [ 05   -190.00  -119.00  +048.05   
               10   -190.00  -119.00  +052.00   
-              20   -190.00  -106.00  +052.00   
-              30   -152.00  -106.00  +052.00   
-              40   -152.00  -106.00  +049.10  ];
+              30   -190.00  -159.00  +052.00   
+              50   -150.00  -159.00  +052.00   
+              70   -150.00  -119.00  +052.00   
+              90   -190.00  -119.00  +052.00   
+              95   -190.00  -119.00  +048.05  ];
 
 fp1  = FlightPlan(1,Waypoint.empty);
 for i = 1:size(way_data1,1)
@@ -101,9 +103,9 @@ end
 %              t      x        y        z    
 way_data3 = [ 10   +180.00  +033.00  +050.00
               15   +180.00  +033.00  +052.00   
-             120   -190.00  -119.00  +052.00
-             130   -190.00  -119.00  +052.00
-             140   -190.00  -119.00  +048.30  ];
+             150   -190.00  -119.00  +052.00
+             160   -190.00  -119.00  +052.00
+             170   -190.00  -119.00  +048.30  ];
 
 fp3  = FlightPlan(3,Waypoint.empty);
 for i = 1:size(way_data3,1)
@@ -124,13 +126,13 @@ end
 
 operator.ResetSim;
 operator.SendFlightPlan('UAV01',fp1);
-% operator.SendFlightPlan('UAV02',fp2);
-% operator.SendFlightPlan('UAV03',fp3);
+operator.SendFlightPlan('UAV02',fp2);
+operator.SendFlightPlan('UAV03',fp3);
 
 
 
 %%
-operator.WaitTime(40);
+operator.WaitTime(max([fp1.FinishTime fp2.FinishTime fp3.FinishTime]));
 % operator.RemoveUAV('UAV01');
 % operator.RemoveUAV('UAV02');
 % operator.RemoveUAV('UAV03');
@@ -138,9 +140,13 @@ operator.PauseSim;
 
 monitor.PositionFigure('UAV01',fp1);
 monitor.VelocityFigure('UAV01',fp1);
-% monitor.PositionFigure('UAV02',fp2);
-% monitor.PositionFigure('UAV03',fp3);
-% monitor.VelocityFigure('UAV03',fp3);
+[med,max,t] = monitor.PathFollowingError('UAV01',fp1)
+
+monitor.PositionFigure('UAV02',fp2);
+monitor.VelocityFigure('UAV02',fp2);
+
+monitor.PositionFigure('UAV03',fp3);
+monitor.VelocityFigure('UAV03',fp3);
 
 
 

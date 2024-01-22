@@ -43,6 +43,42 @@ end
 
 
 
+function [errorMed,errorMax,timeMax] = PathFollowingError(obj,UAVid,fp)
+
+    uav = obj.GetUAVindex(UAVid);
+    if uav == -1
+        return
+    end
+
+    UAVdata = obj.UAVs(uav).data;
+    errorMed   = 0;
+    errorMax   = 0;
+    numSamples = 0;
+
+    for i = 1:size(UAVdata,1)
+        t = UAVdata(i,1);
+        if t < fp.InitTime
+            continue
+        end
+        if t > fp.FinishTime
+            break
+        end
+        posUAV = UAVdata(i,2:4);
+        posFP  = fp.PositionAtTime(t);
+        posError = norm(posFP - posUAV);
+        if posError > errorMax
+           errorMax = posError;
+           timeMax  = t;
+        end
+        errorMed = errorMed + posError;
+        numSamples = numSamples +1;
+    end
+    errorMed = errorMed / numSamples;
+
+end
+
+
+
 function PositionFigure(obj,UAVid,fp)
 
     i = obj.GetUAVindex(UAVid);
@@ -70,14 +106,14 @@ function PositionFigure(obj,UAVid,fp)
 
 
     %Figure settings
-    tl = tiledlayout(3,5);
+    tl = tiledlayout(4,6);
     tl.Padding = 'compact';
     tl.TileSpacing = 'tight';
     color = [0 0.7 1];
     
 
     %Display Position 3D
-    XYZtile = nexttile([3,3]);
+    XYZtile = nexttile([4,4]);
     title("Position 3D")
     hold on
     grid on
@@ -101,6 +137,43 @@ function PositionFigure(obj,UAVid,fp)
         '.:', ...
         Color = 'black', ...
         MarkerSize = 8)
+
+
+    %Display error in Position 3D
+    XYZtile = nexttile([1,2]);
+    title("Error 3D")
+    hold on
+    grid on
+
+    xlabel("t [s]");
+    ylabel("error [m]");
+
+    timeValues  = [];
+    errorValues = [];
+    for i = 1:size(UAVdata,1)
+        t = UAVdata(i,1);
+        if t < fp.InitTime
+            continue
+        end
+        if t > fp.FinishTime
+            break
+        end
+        timeValues = [timeValues t];
+
+        posUAV = UAVdata(i,2:4);
+        posFP  = fp.PositionAtTime(t);
+        posError = norm(posFP - posUAV);
+        errorValues = [errorValues posError];
+    end
+
+    plot(timeValues, errorValues, ...
+        "-", ...
+        LineWidth = 2, ...
+        Color = 'red' )
+    xlim([fp.InitTime fp.FinishTime])
+    ax = gca; 
+    ax.XAxis.Visible = 'off';
+
 
 
     %Display Position X versus time
@@ -154,7 +227,7 @@ function PositionFigure(obj,UAVid,fp)
 
 
     %Display Position Z versus time
-    Ztile   = nexttile([1,2]);
+    Ztile = nexttile([1,2]);
     hold on
     grid on
     xlabel("t [s]");
