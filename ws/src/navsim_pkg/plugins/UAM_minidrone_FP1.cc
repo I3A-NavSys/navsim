@@ -384,6 +384,23 @@ void Navigation()
     ignition::math::Vector3<double> direction = plannedPos - plannedPrevPos;
     double plannedYaw = atan2(direction.Y(), direction.X());
     double currentYaw = pose.Yaw();
+
+
+
+
+        // Crea un cuaternión a partir del ángulo de yaw
+    ignition::math::Quaterniond rotationQuaternion(ignition::math::Vector3d::UnitZ, currentYaw);
+
+    // Rota el vector en coordenadas absolutas al sistema de coordenadas locales
+    ignition::math::Vector3d currentLVel = rotationQuaternion.RotateVectorReverse(currentVel);
+
+    // Imprime el resultado
+    std::cout << "Vector rotado en coordenadas locales: " << currentLVel << std::endl;
+
+
+
+
+
     double errorYaw = plannedYaw - currentYaw;
     double currentWel = errorYaw / step;
     if (currentWel > 0.1)
@@ -398,9 +415,9 @@ void Navigation()
 
 
     cmd_on   = true;
-    cmd_velX = currentVel.X();
-    cmd_velY = currentVel.Y();
-    cmd_velZ = currentVel.Z();
+    cmd_velX = currentLVel.X();
+    cmd_velY = currentLVel.Y();
+    cmd_velZ = currentLVel.Z();
     // cmd_rotZ = currentWel; 
 
     common::Time duration;
