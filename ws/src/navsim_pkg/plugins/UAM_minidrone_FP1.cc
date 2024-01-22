@@ -401,7 +401,7 @@ void Navigation()
     cmd_velX = currentVel.X();
     cmd_velY = currentVel.Y();
     cmd_velZ = currentVel.Z();
-    cmd_rotZ = currentWel; 
+    // cmd_rotZ = currentWel; 
 
     common::Time duration;
     duration.sec  = 1;

@@ -2,9 +2,9 @@
 classdef USpaceOperator < handle      
 
 properties
-    name    string            % Operator name
-    models_path               
 
+    % U-space properties
+    name    string            % Operator name
     ports = struct([])        % list of vertiports
     UAVs  = struct([])        % list of UAVs fleet
 
@@ -14,6 +14,9 @@ properties
     rosCli_SimControl         % ROS2 Service client to control the simulation
     rosCli_DeployUAV          % ROS2 Service client to deploy models into the air space
     rosCli_RemoveUAV          % ROS2 Service client to remove models from the air space
+
+    % Gazebo interface
+    models_path               
 
 end
 

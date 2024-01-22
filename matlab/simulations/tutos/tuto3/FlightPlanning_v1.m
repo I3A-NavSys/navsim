@@ -37,7 +37,7 @@ end
 
 %               x        y        z       rz
 fleetLoc = [ -190.00  -119.00  +048.10    00
-             -152.00  -106.00  +049.10    00
+             -152.00  -106.00  +049.10    pi/2
              +180.00  +033.00  +050.10    00
            ];
 
@@ -74,7 +74,7 @@ end
 
 % Display
 % fp1.RouteFigure(1,'b')
-fp1.VelocityFigure(1,'b')
+% fp1.VelocityFigure(1,'b')
 
 
 % -------------
@@ -115,7 +115,7 @@ end
 
 % Display
 %fp3.RouteFigure(1,'b')
-fp3.VelocityFigure(1,'b')
+% fp3.VelocityFigure(1,'b')
 
 
 
@@ -124,23 +124,23 @@ fp3.VelocityFigure(1,'b')
 
 operator.ResetSim;
 operator.SendFlightPlan('UAV01',fp1);
-operator.SendFlightPlan('UAV02',fp2);
-operator.SendFlightPlan('UAV03',fp3);
+% operator.SendFlightPlan('UAV02',fp2);
+% operator.SendFlightPlan('UAV03',fp3);
 
 
 
 %%
-operator.WaitTime(140);
+operator.WaitTime(40);
 % operator.RemoveUAV('UAV01');
 % operator.RemoveUAV('UAV02');
 % operator.RemoveUAV('UAV03');
 operator.PauseSim;
 
-% monitor.PositionFigure('UAV01',fp1);
-% monitor.VelocityFigure('UAV01',fp1);
+monitor.PositionFigure('UAV01',fp1);
+monitor.VelocityFigure('UAV01',fp1);
 % monitor.PositionFigure('UAV02',fp2);
-monitor.PositionFigure('UAV03',fp3);
-monitor.VelocityFigure('UAV03',fp3);
+% monitor.PositionFigure('UAV03',fp3);
+% monitor.VelocityFigure('UAV03',fp3);
 
 
 
