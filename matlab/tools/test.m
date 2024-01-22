@@ -4,8 +4,7 @@ clear
 
 rosNode = ros2node('Tester');
 rosSub_Time = ros2subscriber(rosNode, ...
-    '/World/Time','builtin_interfaces/Time', ...
-    'History','keeplast');
+    '/World/Time','builtin_interfaces/Time');
 
 [msg,status,~] = receive(rosSub_Time,1);
 if (status)
