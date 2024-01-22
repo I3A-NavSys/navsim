@@ -62,7 +62,8 @@ navsim_msgs::msg::FlightPlan::SharedPtr fp = nullptr;
 
 int currentWP = -1;  
 
-double maxvel = 4; // maximum velocity
+double maxLINvel = 5;   // maximum linear  velocity   [  m/s]
+double maxANGvel = 1;   // maximum angular velocity   [rad/s]
 
 
 // rotor engine status on/off
@@ -287,8 +288,8 @@ void Navigation()
 {
     if (fp == nullptr) return;
 
-    int plannedWP = GetPlannedWP();
-    if (currentWP == -1 && plannedWP != 0)
+    int WP = GetCurrentWP();
+    if (currentWP == -1 && WP != 0)
     {
         // This flight plan is obsolet
         printf("OBSOLETE FLIGHT PLAN IGNORED\n");
@@ -300,20 +301,21 @@ void Navigation()
     int numWPs = route.size();
 
     // Print navigation information
-    if (currentWP != plannedWP)
+    if (currentWP != WP)
     {
-        if (plannedWP == 0)
-            printf("WAITING AT STARTING WAYPOINT %d \n",plannedWP);
-        else if (plannedWP == 1)
-            printf("STARTING FLIGHT TO WAYPOINT %d \n",plannedWP);
-        else if (plannedWP < numWPs)
-            printf("HEADING WAYPOINT %d \n",plannedWP);
+        printf("%s ",UAVname.c_str());
+        if (WP == 0)
+            printf("waiting at starting WP%d \n",WP);
+        else if (WP == 1)
+            printf("starting flight to WP%d \n",WP);
+        else if (WP < numWPs)
+            printf("heading WP%d \n",WP);
         else
-            printf("FLIGHT PLAN EXPIRED\n");
+            printf("has completed its flight plan\n");
     }
 
 
-    currentWP = plannedWP;
+    currentWP = WP;
     if (currentWP == 0)
     {
         // drone waiting to start the flight
@@ -335,7 +337,7 @@ void Navigation()
     double x = route[currentWP-1].pos.x; 
     double y = route[currentWP-1].pos.y;
     double z = route[currentWP-1].pos.z;
-    ignition::math::Vector3<double> plannedPrevPos = ignition::math::Vector3d(x,y,z);
+    ignition::math::Vector3<double> prevWPpos = ignition::math::Vector3d(x,y,z);
     
     double step = 1;
 
@@ -363,54 +365,59 @@ void Navigation()
 
     }
 
-    ignition::math::Vector3<double> plannedPos = ignition::math::Vector3d(x,y,z);
+    ignition::math::Vector3<double> followPos = ignition::math::Vector3d(x,y,z);
     // printf("(%d.%d)      %.2f  %.2f  %.2f \n",currentTime.sec, int(currentTime.nsec/1E6) ,x, y, z);
 
 
-    // COMPUTING  DRONE COMMANDED VELOCITY (to achieve planned position in 'step' seconds)
+    // COMPUTING  DRONE COMMANDED LINEAR VELOCITY (to achieve followPos in 'step' seconds)
 
     ignition::math::Pose3<double> pose = model->WorldPose();
     ignition::math::Vector3<double> currentPos = pose.Pos();
     // ignition::math::Vector3<double> currentVel = model->RelativeLinearVel();
     
-    ignition::math::Vector3<double> errorPos = plannedPos - currentPos;
-    ignition::math::Vector3<double> currentVel = errorPos / step;
-    if (currentVel.Length() > maxvel)
+    ignition::math::Vector3<double> currentVel = (followPos - currentPos) / step;
+    if (currentVel.Length() > maxLINvel)
     {
         currentVel.Normalize();
-        currentVel *= maxvel;
+        currentVel *= maxLINvel;
     }
 
-    ignition::math::Vector3<double> direction = plannedPos - plannedPrevPos;
-    double plannedYaw = atan2(direction.Y(), direction.X());
+    // Crea un cuaternión a partir del ángulo de yaw y rota el vector en coordenadas absolutas al sistema de coordenadas locales
     double currentYaw = pose.Yaw();
-
-
-
-
-        // Crea un cuaternión a partir del ángulo de yaw
     ignition::math::Quaterniond rotationQuaternion(ignition::math::Vector3d::UnitZ, currentYaw);
-
-    // Rota el vector en coordenadas absolutas al sistema de coordenadas locales
     ignition::math::Vector3d currentLVel = rotationQuaternion.RotateVectorReverse(currentVel);
-
-    // Imprime el resultado
-    std::cout << "Vector rotado en coordenadas locales: " << currentLVel << std::endl;
+    // std::cout << "Vector rotado en coordenadas locales: " << currentLVel << std::endl;
 
 
+    // COMPUTING  DRONE COMMANDED ANGULAR VELOCITY
 
+    ignition::math::Vector3<double> followDir = followPos - prevWPpos;
+    followDir.Z() = 0;
+    double errorYaw = 0;
 
-
-    double errorYaw = plannedYaw - currentYaw;
-    double currentWel = errorYaw / step;
-    if (currentWel > 0.1)
+    if (followDir.Length() > 1)
     {
-        currentWel = 0.1;
+        double followYaw = atan2(followDir.Y(), followDir.X());
+        errorYaw = followYaw - currentYaw;
+
+        while (errorYaw < -M_PI)
+        {
+            errorYaw += 2*M_PI;
+        }
+        while (M_PI < errorYaw)
+        {
+            errorYaw -= 2*M_PI;
+        }
     }
 
-    if (currentWel < -0.1)
+    double currentWel = errorYaw / step;
+    if (currentWel < -maxANGvel)
     {
-        currentWel = -0.1;
+        currentWel = -maxANGvel;
+    }
+    if (maxANGvel < currentWel)
+    {
+        currentWel = maxANGvel;
     }
 
 
@@ -418,7 +425,7 @@ void Navigation()
     cmd_velX = currentLVel.X();
     cmd_velY = currentLVel.Y();
     cmd_velZ = currentLVel.Z();
-    // cmd_rotZ = currentWel; 
+    cmd_rotZ = currentWel; 
 
     common::Time duration;
     duration.sec  = 1;
@@ -431,7 +438,7 @@ void Navigation()
 
 
 
-int GetPlannedWP()
+int GetCurrentWP()
 {
     std::vector<navsim_msgs::msg::Waypoint> route = fp->route;
     int numWPs = route.size();
@@ -820,8 +827,8 @@ void Telemetry()
 
     // Getting model status
     ignition::math::Pose3<double> pose = model->WorldPose();
-    ignition::math::Vector3<double> linear_vel = model->RelativeLinearVel();
-    ignition::math::Vector3<double> angular_vel = model->RelativeAngularVel();
+    ignition::math::Vector3<double> linear_vel = model->WorldLinearVel();
+    ignition::math::Vector3<double> angular_vel = model->WorldAngularVel();
     // printf("drone xyz =  %.2f  %.2f  %.2f \n", pose.X(), pose.Y(), pose.Z());
     // printf("drone YPR =  %.2f  %.2f  %.2f \n", pose.Yaw(), pose.Pitch(), pose.Roll());
     // printf("drone         vel xyz =  %.2f  %.2f  %.2f\n",  linear_vel.X(),  linear_vel.Y(),  linear_vel.Z());
