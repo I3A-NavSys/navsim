@@ -110,7 +110,24 @@ ros2 pkg list | grep navsim
 Finally, we open a world in Gazebo:
 ```bash
 cd ~/code/navsim/ws/src/navsim_pkg/worlds/
-clear; gazebo hello.world
+clear; gazebo tatami.world
+```
+In a diferent terminal, we check that Gazebo is sending clock information through a ROS2 topic:
+```bash
+ros2 topic echo /World/time
+```
+```text
+sec: 46
+nanosec: 800000000
+---
+sec: 46
+nanosec: 900000000
+---
+sec: 47
+nanosec: 0
+---
+sec: 47
+nanosec: 100000000
 ```
 
 
