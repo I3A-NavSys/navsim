@@ -1,11 +1,17 @@
-clear; 
 clc;
 
+% clear; 
 run('../../../tools/NAVSIM_PATHS');
 
-builder  = SimpleBuilder ('builder' ,NAVSIM_MODELS_PATH);
-operator = USpaceOperator('operator',NAVSIM_MODELS_PATH);
-monitor  = SimpleMonitor('monitor');
+if ~exist('builder', 'var')
+    builder  = SimpleBuilder ('builder' ,NAVSIM_MODELS_PATH);
+end
+if ~exist('operator', 'var')
+    operator = USpaceOperator('operator',NAVSIM_MODELS_PATH);
+end
+if ~exist('monitor', 'var')
+    monitor  = SimpleMonitor('monitor');
+end
 
 
 % -------------
@@ -140,7 +146,7 @@ operator.PauseSim;
 
 monitor.PositionFigure('UAV01',fp1);
 monitor.VelocityFigure('UAV01',fp1);
-[med,max,t] = monitor.PathFollowingError('UAV01',fp1)
+[medE,maxE,t] = monitor.PathFollowingError('UAV01',fp1)
 
 monitor.PositionFigure('UAV02',fp2);
 monitor.VelocityFigure('UAV02',fp2);

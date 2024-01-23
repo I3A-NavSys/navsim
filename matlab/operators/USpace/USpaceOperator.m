@@ -317,6 +317,33 @@ function index = GetUAVindex(obj,id)
 end
 
 
+% Destructor
+function delete(obj)
+    % Cerrar y eliminar los recursos ROS2
+    if ~isempty(obj.rosCli_RemoveUAV)
+        delete(obj.rosCli_RemoveUAV);
+    end
+    
+    if ~isempty(obj.rosCli_DeployUAV)
+        delete(obj.rosCli_DeployUAV);
+    end
+    
+    if ~isempty(obj.rosCli_SimControl)
+        delete(obj.rosCli_SimControl);
+    end
+    
+    if ~isempty(obj.rosSub_Time)
+        delete(obj.rosSub_Time);
+    end
+    
+    if ~isempty(obj.rosNode)
+        delete(obj.rosNode);
+    end
+    disp('ROS2 operator deleted')
+end
+
+
+
 end % methods 
 end % classdef
 
