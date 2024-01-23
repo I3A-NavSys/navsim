@@ -110,7 +110,24 @@ ros2 pkg list | grep navsim
 Finally, we open a world in Gazebo:
 ```bash
 cd ~/code/navsim/ws/src/navsim_pkg/worlds/
-clear; gazebo hello.world
+clear; gazebo tatami.world
+```
+In a diferent terminal, we check that Gazebo is sending clock information through a ROS2 topic:
+```bash
+ros2 topic echo /World/time
+```
+```text
+sec: 46
+nanosec: 800000000
+---
+sec: 46
+nanosec: 900000000
+---
+sec: 47
+nanosec: 0
+---
+sec: 47
+nanosec: 100000000
 ```
 
 
@@ -195,7 +212,9 @@ Typical values may be:
 
 Matlab will also require a C++ compiler. We have tested the following options:
 - Ubuntu: **g++**
-- Windows: Visual Studio Community 2022
+- Windows: **Visual Studio Community 2022**
+   - "Desktop development with C++" workload is required for MEX and associated functionality.
+   - You can download it [here](https://visualstudio.microsoft.com/es/vs/community/).
 
 Check your installation in Matlab with the command  `mex -setup cpp`.
   
@@ -207,11 +226,15 @@ To compile custom ROS messages, perform the following steps:
 
 1. In Matlab, go to the folder `navsim/matlab/tools/`.
 
-2. Run the script `compile_ros_messages.m`. It may take several minutes. If everything is correct, you should see a message in the MATLAB console saying `Build succeeded`.
+2. Open the script `compile_ros_messages.m`, and set variable **NAVSIM_PATH** with the folder path where your simulator installation resides.
 
-3. Open the script `NAVSIM_PATHS`, and set variable **NAVSIM_PATH** with the folder path where your simulator installation resides.
+3. Run the script. It may take several minutes. If everything is correct, you should see a message in the MATLAB console saying `Build succeeded`.
+
+4. Open the script `NAVSIM_PATHS`, and set variable **NAVSIM_PATH** with the folder path where your simulator installation resides.
 
 
 ## Running your first simulation with Matlab connection
 
-Now, you are prepared to go to the first tutorial to execute a simulation.
+Now, you are prepared to go to the 
+[first tutorial](https://github.com/I3A-NavSys/navsim/blob/main/doc/tutos/tuto1/tuto1.md)
+to execute a simulation.
