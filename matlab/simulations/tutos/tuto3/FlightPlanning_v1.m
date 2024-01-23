@@ -1,17 +1,18 @@
-clc;
+clc
+clear
+pause(0.1) %ROS2 requires time to clear resources
 
-% clear; 
 run('../../../tools/NAVSIM_PATHS');
 
-if ~exist('builder', 'var')
+% if ~exist('builder', 'var')
     builder  = SimpleBuilder ('builder' ,NAVSIM_MODELS_PATH);
-end
-if ~exist('operator', 'var')
+% end
+% if ~exist('operator', 'var')
     operator = USpaceOperator('operator',NAVSIM_MODELS_PATH);
-end
-if ~exist('monitor', 'var')
+% end
+% if ~exist('monitor', 'var')
     monitor  = SimpleMonitor('monitor');
-end
+% end
 
 
 % -------------

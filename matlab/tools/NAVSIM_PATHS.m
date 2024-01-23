@@ -8,14 +8,19 @@ if isunix  %Unix computer
 elseif ispc %Windows computer
 
     PLATFORM = 'win64';
-    switch getenv("USERNAME")
-        case 'Rafael.Casado'
-            NAVSIM_PATH = 'c:\Users\Rafael.Casado\code\navsim\';
-        case 'Rafa'
-            NAVSIM_PATH = 'c:\Users\Rafa\code\navsim\';
-        otherwise
-            error('Windows user not defined in file NAVSIM_init.m');
-    end
+    NAVSIM_PATH = fullfile('c:\Users\',getenv("USERNAME"),'\code\navsim\');
+
+    % switch getenv("USERNAME")
+    %     case 'Rafael.Casado'
+    %         NAVSIM_PATH = 'c:\Users\Rafael.Casado\code\navsim\';
+    %     case 'Rafa'
+    %         NAVSIM_PATH = 'c:\Users\Rafa\code\navsim\';
+    %     case 'rafae'
+    %         NAVSIM_PATH = 'c:\Users\rafae\code\navsim\';
+    % 
+    %     otherwise
+    %         error('Windows user not defined in file NAVSIM_init.m');
+    % end
 
 end
 
