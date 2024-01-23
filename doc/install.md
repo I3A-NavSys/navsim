@@ -195,7 +195,7 @@ Typical values may be:
 
 Matlab will also require a C++ compiler. We have tested the following options:
 - Ubuntu: **g++**
-- Windows: Visual Studio Community 2022
+- Windows: [Visual Studio Community 2022](https://visualstudio.microsoft.com/es/vs/community/)
 
 Check your installation in Matlab with the command  `mex -setup cpp`.
   
