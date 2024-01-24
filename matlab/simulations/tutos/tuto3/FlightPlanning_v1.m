@@ -4,15 +4,9 @@ pause(0.1) %ROS2 requires time to clear resources
 
 run('../../../tools/NAVSIM_PATHS');
 
-% if ~exist('builder', 'var')
-    builder  = SimpleBuilder ('builder' ,NAVSIM_MODELS_PATH);
-% end
-% if ~exist('operator', 'var')
-    operator = USpaceOperator('operator',NAVSIM_MODELS_PATH);
-% end
-% if ~exist('monitor', 'var')
-    monitor  = SimpleMonitor('monitor');
-% end
+builder  = SimpleBuilder ('builder' ,NAVSIM_MODELS_PATH);
+operator = USpaceOperator('operator',NAVSIM_MODELS_PATH);
+monitor  = SimpleMonitor('monitor');
 
 
 % -------------
@@ -108,9 +102,9 @@ end
 %Create a Flight Plan for the drone 3
 
 %              t      x        y        z    
-way_data3 = [ 10   +180.00  +033.00  +050.00
-              15   +180.00  +033.00  +052.00   
-             150   -190.00  -119.00  +052.00
+way_data3 = [  5   +180.00  +033.00  +050.00
+              10   +180.00  +033.00  +052.00   
+              50   -190.00  -119.00  +052.00
              160   -190.00  -119.00  +052.00
              170   -190.00  -119.00  +048.30  ];
 
@@ -132,25 +126,27 @@ end
 %Comunicate Flight Plans
 
 operator.ResetSim;
-operator.SendFlightPlan('UAV01',fp1);
-operator.SendFlightPlan('UAV02',fp2);
+pause(0.1)
+% operator.SendFlightPlan('UAV01',fp1);
+% operator.SendFlightPlan('UAV02',fp2);
 operator.SendFlightPlan('UAV03',fp3);
 
 
 
 %%
-operator.WaitTime(max([fp1.FinishTime fp2.FinishTime fp3.FinishTime]));
+% operator.WaitTime(max([fp1.FinishTime fp2.FinishTime fp3.FinishTime]));
+operator.WaitTime(50);
 % operator.RemoveUAV('UAV01');
 % operator.RemoveUAV('UAV02');
 % operator.RemoveUAV('UAV03');
 operator.PauseSim;
 
-monitor.PositionFigure('UAV01',fp1);
-monitor.VelocityFigure('UAV01',fp1);
-[medE,maxE,t] = monitor.PathFollowingError('UAV01',fp1)
-
-monitor.PositionFigure('UAV02',fp2);
-monitor.VelocityFigure('UAV02',fp2);
+% monitor.PositionFigure('UAV01',fp1);
+% monitor.VelocityFigure('UAV01',fp1);
+% [medE,maxE,t] = monitor.PathFollowingError('UAV01',fp1)
+% 
+% monitor.PositionFigure('UAV02',fp2);
+% monitor.VelocityFigure('UAV02',fp2);
 
 monitor.PositionFigure('UAV03',fp3);
 monitor.VelocityFigure('UAV03',fp3);
