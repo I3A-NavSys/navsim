@@ -62,7 +62,7 @@ navsim_msgs::msg::FlightPlan::SharedPtr fp = nullptr;
 
 int currentWP = -1;  
 
-double maxLINvel = 5;   // maximum linear  velocity   [  m/s]
+double maxLINvel = 4;   // maximum linear  velocity   [  m/s]
 double maxANGvel = 1;   // maximum angular velocity   [rad/s]
 
 
@@ -154,7 +154,7 @@ Eigen::Matrix<double, 4, 1> r;  // model reference
 Eigen::Matrix<double, 4, 1> e;  // model error
 Eigen::Matrix<double, 4, 1> E;  // model acumulated error
 
-int E_max = 5;                    // maximun model acumulated error
+int E_max = 15;  // prev value 5                  // maximun model acumulated error
 common::Time prevControlTime = 0; // Fecha de la ultima actualizacion del control de bajo nivel 
         
 
@@ -371,21 +371,41 @@ void Navigation()
 
     // COMPUTING  DRONE COMMANDED LINEAR VELOCITY (to achieve followPos in 'step' seconds)
 
+    // Current UAV status
     ignition::math::Pose3<double> pose = model->WorldPose();
     ignition::math::Vector3<double> currentPos = pose.Pos();
-    // ignition::math::Vector3<double> currentVel = model->RelativeLinearVel();
+    double currentYaw = pose.Yaw();
+    ignition::math::Vector3<double> currentVel = model->WorldLinearVel();
     
-    ignition::math::Vector3<double> currentVel = (followPos - currentPos) / step;
-    if (currentVel.Length() > maxLINvel)
+
+    ////////////////////////////////////////////////////
+    //
+    // ignition::math::Vector3<double> followVel = (followPos - currentPos) / step;
+    // if (followVel.Length() > maxLINvel)
+    // {
+    //     followVel.Normalize();
+    //     followVel *= maxLINvel;
+    // }
+    //
+    ////////////////////////////////////////////////////
+
+    ignition::math::Vector3<double> followVel = (followPos - currentPos) / step;
+    ignition::math::Vector3<double> variationVel = followVel - currentVel;
+    if (variationVel.Length() > maxLINvel)
     {
-        currentVel.Normalize();
-        currentVel *= maxLINvel;
+        variationVel.Normalize();
+        variationVel *= maxLINvel;
     }
+    followVel = currentVel + variationVel;
+
+    ////////////////////////////////////////////////////
+
+
+
 
     // Crea un cuaternión a partir del ángulo de yaw y rota el vector en coordenadas absolutas al sistema de coordenadas locales
-    double currentYaw = pose.Yaw();
     ignition::math::Quaterniond rotationQuaternion(ignition::math::Vector3d::UnitZ, currentYaw);
-    ignition::math::Vector3d currentLVel = rotationQuaternion.RotateVectorReverse(currentVel);
+    ignition::math::Vector3d followRelVel = rotationQuaternion.RotateVectorReverse(followVel);
     // std::cout << "Vector rotado en coordenadas locales: " << currentLVel << std::endl;
 
 
@@ -422,9 +442,9 @@ void Navigation()
 
 
     cmd_on   = true;
-    cmd_velX = currentLVel.X();
-    cmd_velY = currentLVel.Y();
-    cmd_velZ = currentLVel.Z();
+    cmd_velX = followRelVel.X();
+    cmd_velY = followRelVel.Y();
+    cmd_velZ = followRelVel.Z();
     cmd_rotZ = currentWel; 
 
     common::Time duration;
