@@ -62,8 +62,9 @@ navsim_msgs::msg::FlightPlan::SharedPtr fp = nullptr;
 
 int currentWP = -1;  
 
-double maxLINvel = 4;   // maximum linear  velocity   [  m/s]
-double maxANGvel = 1;   // maximum angular velocity   [rad/s]
+double maxVarLinVel = 5;   // maximum variation in linear  velocity   [  m/s]
+double maxVarAngVel = 2;   // maximum variation in angular velocity   [rad/s]
+double targetStep = 2;     // Compute targetPos targetStep seconds later  [s]
 
 
 // rotor engine status on/off
@@ -331,120 +332,63 @@ void Navigation()
         return;
     }
 
-
-    // COMPUTING PLANNED POSITION
-    
-    double x = route[currentWP-1].pos.x; 
-    double y = route[currentWP-1].pos.y;
-    double z = route[currentWP-1].pos.z;
-    ignition::math::Vector3<double> prevWPpos = ignition::math::Vector3d(x,y,z);
-    
-    double step = 1;
-
-    if (currentWP < numWPs)
-    {
-        
-        double x2 = route[currentWP].pos.x; 
-        double y2 = route[currentWP].pos.y;
-        double z2 = route[currentWP].pos.z;
-    
-        common::Time t1;
-        t1.sec  = route[currentWP-1].time.sec;
-        t1.nsec = route[currentWP-1].time.nanosec;
-
-        common::Time t2;
-        t2.sec  = route[currentWP].time.sec;
-        t2.nsec = route[currentWP].time.nanosec;
-
-        common::Time t = currentTime + step;
-
-        double interpol = (t-t1).Double() / (t2-t1).Double() ;
-        x = interpol * (x2-x) + x ;
-        y = interpol * (y2-y) + y ;
-        z = interpol * (z2-z) + z ;
-
-    }
-
-    ignition::math::Vector3<double> followPos = ignition::math::Vector3d(x,y,z);
-    // printf("(%d.%d)      %.2f  %.2f  %.2f \n",currentTime.sec, int(currentTime.nsec/1E6) ,x, y, z);
-
-
-    // COMPUTING  DRONE COMMANDED LINEAR VELOCITY (to achieve followPos in 'step' seconds)
-
     // Current UAV status
     ignition::math::Pose3<double> pose = model->WorldPose();
     ignition::math::Vector3<double> currentPos = pose.Pos();
     double currentYaw = pose.Yaw();
-    ignition::math::Vector3<double> currentVel = model->WorldLinearVel();
+    ignition::math::Vector3<double> currentAbsVel = model->WorldLinearVel();
+
+    // COMPUTING TARGET POSITION
+    ignition::math::Vector3<double> targetPos = TargetPosition_TP();
     
 
-    ////////////////////////////////////////////////////
-    //
-    // ignition::math::Vector3<double> followVel = (followPos - currentPos) / step;
-    // if (followVel.Length() > maxLINvel)
-    // {
-    //     followVel.Normalize();
-    //     followVel *= maxLINvel;
-    // }
-    //
-    ////////////////////////////////////////////////////
-
-    ignition::math::Vector3<double> followVel = (followPos - currentPos) / step;
-    ignition::math::Vector3<double> variationVel = followVel - currentVel;
-    if (variationVel.Length() > maxLINvel)
+    // COMPUTING TARGET ABSOLUTE LINEAR VELOCITY (to achieve targetPos in 'targetStep' seconds)
+    ignition::math::Vector3<double> targetAbsVel = (targetPos - currentPos) / targetStep;
+    ignition::math::Vector3<double> variationAbsVel = targetAbsVel - currentAbsVel;
+    if (variationAbsVel.Length() > maxVarLinVel)
     {
-        variationVel.Normalize();
-        variationVel *= maxLINvel;
+        variationAbsVel.Normalize();
+        variationAbsVel *= maxVarLinVel;
     }
-    followVel = currentVel + variationVel;
-
-    ////////////////////////////////////////////////////
+    targetAbsVel = currentAbsVel + variationAbsVel;
 
 
+    // COMPUTING TARGET RELATIVE LINEAR VELOCITY (to achieve targetPos in 'step' seconds)
+    ignition::math::Quaterniond orientation = pose.Rot();
+    ignition::math::Vector3d targetRelVel = orientation.RotateVectorReverse(targetAbsVel);
 
 
-    // Crea un cuaternión a partir del ángulo de yaw y rota el vector en coordenadas absolutas al sistema de coordenadas locales
-    ignition::math::Quaterniond rotationQuaternion(ignition::math::Vector3d::UnitZ, currentYaw);
-    ignition::math::Vector3d followRelVel = rotationQuaternion.RotateVectorReverse(followVel);
-    // std::cout << "Vector rotado en coordenadas locales: " << currentLVel << std::endl;
-
-
-    // COMPUTING  DRONE COMMANDED ANGULAR VELOCITY
-
-    ignition::math::Vector3<double> followDir = followPos - prevWPpos;
-    followDir.Z() = 0;
-    double errorYaw = 0;
-
-    if (followDir.Length() > 1)
+    // COMPUTING TARGET YAW
+    double targetYaw = TargetYaw_TP();
+    double errorYaw = targetYaw - currentYaw;
+    while (errorYaw < -M_PI)
     {
-        double followYaw = atan2(followDir.Y(), followDir.X());
-        errorYaw = followYaw - currentYaw;
+        errorYaw += 2*M_PI;
+    }
+    while (M_PI < errorYaw)
+    {
+        errorYaw -= 2*M_PI;
+    }
+    
 
-        while (errorYaw < -M_PI)
-        {
-            errorYaw += 2*M_PI;
-        }
-        while (M_PI < errorYaw)
-        {
-            errorYaw -= 2*M_PI;
-        }
+    // COMPUTING TARGET ANGULAR VELOCITY
+    double currentWel = errorYaw / targetStep;
+    if (currentWel < -maxVarAngVel)
+    {
+        currentWel = -maxVarAngVel;
+    }
+    if (maxVarAngVel < currentWel)
+    {
+        currentWel = maxVarAngVel;
     }
 
-    double currentWel = errorYaw / step;
-    if (currentWel < -maxANGvel)
-    {
-        currentWel = -maxANGvel;
-    }
-    if (maxANGvel < currentWel)
-    {
-        currentWel = maxANGvel;
-    }
 
+    // CREATING COMMANDED RELATIVE VELOCITY VECTOR
 
     cmd_on   = true;
-    cmd_velX = followRelVel.X();
-    cmd_velY = followRelVel.Y();
-    cmd_velZ = followRelVel.Z();
+    cmd_velX = targetRelVel.X();
+    cmd_velY = targetRelVel.Y();
+    cmd_velZ = targetRelVel.Z();
     cmd_rotZ = currentWel; 
 
     common::Time duration;
@@ -476,6 +420,89 @@ int GetCurrentWP()
     return i;
 
 }
+
+
+
+
+ignition::math::Vector3<double> TargetPosition_TP()
+{
+    std::vector<navsim_msgs::msg::Waypoint> route = fp->route;
+    int numWPs = route.size();
+
+    double x = route[currentWP-1].pos.x; 
+    double y = route[currentWP-1].pos.y;
+    double z = route[currentWP-1].pos.z;
+
+    if (currentWP < numWPs)
+    {
+        
+        double x2 = route[currentWP].pos.x; 
+        double y2 = route[currentWP].pos.y;
+        double z2 = route[currentWP].pos.z;
+    
+        common::Time t1;
+        t1.sec  = route[currentWP-1].time.sec;
+        t1.nsec = route[currentWP-1].time.nanosec;
+
+        common::Time t2;
+        t2.sec  = route[currentWP].time.sec;
+        t2.nsec = route[currentWP].time.nanosec;
+
+        common::Time t = currentTime + targetStep;
+
+        double interpol = (t-t1).Double() / (t2-t1).Double() ;
+        x = interpol * (x2-x) + x ;
+        y = interpol * (y2-y) + y ;
+        z = interpol * (z2-z) + z ;
+
+    }
+
+    ignition::math::Vector3<double> targetPos = ignition::math::Vector3d(x,y,z);
+    // printf("(%d.%d)      %.2f  %.2f  %.2f \n",currentTime.sec, int(currentTime.nsec/1E6) ,x, y, z);
+
+    return targetPos;
+
+}
+
+
+
+double TargetYaw_TP()
+{
+    std::vector<navsim_msgs::msg::Waypoint> route = fp->route;
+    int numWPs = route.size();
+    double targetYaw;
+
+    int i;
+    if (currentWP < numWPs)
+    {
+        i = currentWP;
+    }
+    else
+    {
+        i = currentWP-1;
+    }
+    
+    double x = route[i-1].pos.x; 
+    double y = route[i-1].pos.y;
+    double z = route[i-1].pos.z;
+    ignition::math::Vector3<double> prevWPpos = ignition::math::Vector3d(x,y,z);
+
+    double x2 = route[i].pos.x; 
+    double y2 = route[i].pos.y;
+    double z2 = route[i].pos.z;
+    ignition::math::Vector3<double> currentWPpos = ignition::math::Vector3d(x2,y2,z2);
+
+    ignition::math::Vector3<double> targetDir = currentWPpos - prevWPpos;
+    targetDir.Z() = 0;
+    if (targetDir.Length() < 1)
+         targetYaw = model->WorldPose().Yaw();
+    else
+        targetYaw = atan2(targetDir.Y(), targetDir.X());
+
+    return targetYaw;
+
+}
+
 
 
 
@@ -652,21 +679,11 @@ void ServoControl()
     // printf("drone angular vel xyz =  %.2f  %.2f  %.2f\n", angular_vel.X(), angular_vel.Y(), angular_vel.Z());
 
 
-    //Velocities commanded in horizon axes
-    Eigen::Matrix<double, 3, 1> h_cmd;
-    h_cmd(0, 0) = cmd_velX;     // eXdot
-    h_cmd(1, 0) = cmd_velY;     // eYdot
-    h_cmd(2, 0) = cmd_velZ;     // eZdot
-    // std::cout  << "h_cmd:  " << h_cmd.transpose()  << " \n\n";
-
-    //Matrix of transformation from horizon axes to body axes
-    Eigen::Matrix<double, 3, 3> horizon2body;
-    horizon2body = Eigen::AngleAxisd(-x(0, 0), Eigen::Vector3d::UnitX())    // roll
-                    * Eigen::AngleAxisd(-x(1, 0), Eigen::Vector3d::UnitY()); // pitch
-
-    // Transfrom the horizon command to body command
+    //Velocities commanded in body axes
     Eigen::Matrix<double, 3, 1> b_cmd;
-    b_cmd = horizon2body * h_cmd;
+    b_cmd(0, 0) = cmd_velX;     // eXdot
+    b_cmd(1, 0) = cmd_velY;     // eYdot
+    b_cmd(2, 0) = cmd_velZ;     // eZdot
     // std::cout  << "b_cmd:  " << b_cmd.transpose()  << " \n\n";
 
 
