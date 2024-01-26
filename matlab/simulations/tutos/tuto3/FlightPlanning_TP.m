@@ -65,9 +65,11 @@ way_data1 = [ 05   -190.00  -119.00  +048.05
               50   -150.00  -159.00  +052.00   
               70   -150.00  -119.00  +052.00   
               90   -190.00  -119.00  +052.00   
-              95   -190.00  -119.00  +048.05  ];
+              95   -190.00  -119.00  +048.05  
+              97   -190.00  -119.00  +048.05  ];
 
 fp1  = FlightPlan(1,Waypoint.empty);
+
 for i = 1:size(way_data1,1)
     wp = Waypoint();
     wp.t = way_data1(i,1);
@@ -76,8 +78,8 @@ for i = 1:size(way_data1,1)
 end
 
 % Display
-% fp1.RouteFigure(1,'b')
-% fp1.VelocityFigure(1,'b')
+fp1.RouteFigure(1,'b')
+fp1.VelocityFigure(1,'b')
 
 
 % -------------
@@ -143,7 +145,7 @@ operator.PauseSim;
 
 monitor.PositionFigure('UAV01',fp1);
 monitor.VelocityFigure('UAV01',fp1);
-[medE,maxE,t] = monitor.PathFollowingError('UAV01',fp1)
+[medE,maxE,t] = monitor.PathFollowingError('UAV01',fp1);
 
 monitor.PositionFigure('UAV02',fp2);
 monitor.VelocityFigure('UAV02',fp2);

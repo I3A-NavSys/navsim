@@ -66,6 +66,7 @@ function WaitTime(obj,time)
     while s < time
         [s,~] = obj.GetTime;
         pause (1);
+
     end
 end
 
@@ -85,7 +86,6 @@ function status = PauseSim(obj)
             status = false;
         end
     end
-    
 end
 
 
@@ -199,10 +199,7 @@ function status = DeployUAV(obj,model,UAVid,pos,rot)
             status = false;
         end
     end
-
-
 end
-
 
 function status = RemoveUAV(obj,id)
 
@@ -226,8 +223,6 @@ function status = RemoveUAV(obj,id)
             status = false;
         end
     end
-    
-
 end
 
 
@@ -282,6 +277,7 @@ function SendFlightPlan(obj,UAVid,fp)
     msg.uav_id      = UAV.id;
     msg.operator_id = char(obj.name);
     msg.priority    = int8(fp.priority);
+    msg.mode        = char(fp.mode);
 
     for i = 1:length(fp.waypoints)
         t = fp.waypoints(i).t;
