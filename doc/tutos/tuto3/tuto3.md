@@ -188,6 +188,30 @@ monitor.VelocityFigure('UAV03',fp3);
 
 We can see how _UAV01_ has followed its flight plan very precisely. 
 The sudden change in horizontal speed (from 0 to 2 m/s) resulted in an error of only 2 meters, which it corrected after 10 seconds of maneuvering. After that, each 90º turn has caused an error of approximately 1 meter.
+There is also a small error observed at the end, when it finishes the rectangle and has to brake abruptly to descend to the ground.
+![UAV01 pos](./img/UAV01_position.png)
+![UAV01 vel](./img/UAV01_velocity.png)
 
-![UAV01 pos](./img/UAV01 position.png)
+
+The second drone makes an error of more than two meters, which it struggles to correct. 
+The reason is that it is required to achieve a speed of 4 m/s while rotating 180º. 
+It almost eliminates the error when it reaches its destination and has to descend.
+
+![UAV02 pos](./img/UAV02_position.png)
+![UAV02 vel](./img/UAV02_velocity.png)
+
+The third drone has to cover the longest distance. 
+After ascending, it begins horizontal movement at a speed of 6 m/s. 
+It makes an error of just 2 meters since it doesn't have to rotate simultaneously. 
+Afterward, the flight plan requires it to increase its speed to 8 m/s. 
+The biggest error occurs upon arrival, as we haven't programmed the flight plan for a gradual deceleration. 
+Still, it makes only a couple of meters of error. 
+
+![UAV03 pos](./img/UAV03_position.png)
+![UAV03 vel](./img/UAV03_velocity.png)
+
+This demonstrates that the drones perfectly follow straight and uniform paths, with errors occurring mainly during abrupt changes in the velocity vector.
+
+
+
 
