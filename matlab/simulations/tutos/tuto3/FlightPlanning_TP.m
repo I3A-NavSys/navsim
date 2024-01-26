@@ -25,7 +25,7 @@ for i = 1:size(portsLoc,1)
     builder.DeployModel('UAM/vertiport_H', id, ...
         portsLoc(i,1:3), ...
         [0 0 portsLoc(i,4)]);
-    operator.SetVertiport(id,portsLoc(i,1:3));
+    % operator.SetVertiport(id,portsLoc(i,1:3));
 
 end
 
