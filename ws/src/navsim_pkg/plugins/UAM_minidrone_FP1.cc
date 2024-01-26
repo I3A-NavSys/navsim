@@ -338,12 +338,24 @@ void Navigation()
     double currentYaw = pose.Yaw();
     ignition::math::Vector3<double> currentAbsVel = model->WorldLinearVel();
 
+
+    // Time step to analyze movement
+    common::Time FPtime;
+    FPtime.sec  = route[numWPs-1].time.sec;
+    FPtime.nsec = route[numWPs-1].time.nanosec;
+
+    double step = (FPtime - currentTime).Double();
+    if (step > targetStep)
+    {
+        step = targetStep;
+    }
+  
+
     // COMPUTING TARGET POSITION
-    ignition::math::Vector3<double> targetPos = TargetPosition_TP();
-    
+    ignition::math::Vector3<double> targetPos = PositionAtTime(currentTime + step);
 
     // COMPUTING TARGET ABSOLUTE LINEAR VELOCITY (to achieve targetPos in 'targetStep' seconds)
-    ignition::math::Vector3<double> targetAbsVel = (targetPos - currentPos) / targetStep;
+    ignition::math::Vector3<double> targetAbsVel = (targetPos - currentPos) / step;
     ignition::math::Vector3<double> variationAbsVel = targetAbsVel - currentAbsVel;
     if (variationAbsVel.Length() > maxVarLinVel)
     {
@@ -353,13 +365,14 @@ void Navigation()
     targetAbsVel = currentAbsVel + variationAbsVel;
 
 
-    // COMPUTING TARGET RELATIVE LINEAR VELOCITY (to achieve targetPos in 'step' seconds)
+    // COMPUTING DRONE RELATIVE LINEAR VELOCITY
     ignition::math::Quaterniond orientation = pose.Rot();
     ignition::math::Vector3d targetRelVel = orientation.RotateVectorReverse(targetAbsVel);
 
 
+
     // COMPUTING TARGET YAW
-    double targetYaw = TargetYaw_TP();
+    double targetYaw = YawAtTime(currentTime + targetStep);
     double errorYaw = targetYaw - currentYaw;
     while (errorYaw < -M_PI)
     {
@@ -426,10 +439,9 @@ int GetWPatTime(common::Time time)
 
 
 
-ignition::math::Vector3<double> TargetPosition_TP()
+ignition::math::Vector3<double> PositionAtTime(common::Time t)
 {
     
-    common::Time t = currentTime + targetStep;
     int i = GetWPatTime(t);
     int numWPs = fp->route.size();
     
@@ -464,10 +476,9 @@ ignition::math::Vector3<double> TargetPosition_TP()
 
 
 
-double TargetYaw_TP()
+double YawAtTime(common::Time t)
 {
 
-    common::Time t = currentTime + targetStep;
     int i = GetWPatTime(t);
     int numWPs = fp->route.size();
     if (i == numWPs)
