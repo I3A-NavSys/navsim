@@ -171,6 +171,8 @@ operator.WaitTime(max([fp1.FinishTime fp2.FinishTime fp3.FinishTime]));
 operator.PauseSim;
 ```
 
+![UAVs flying](./img/drones_flying.png)
+
 Now is the time to evaluate what happened.
 We request the **monitor** for the temporal graphs of the position and velocity of each drone during the execution of the flight plan.
 
