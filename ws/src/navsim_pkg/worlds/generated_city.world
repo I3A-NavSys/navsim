@@ -4,27 +4,11 @@
 <world name='default'>
 
 <scene>
+    <ambient>0.5 0.5 0.5 1.0</ambient>
+    <shadows>true</shadows>
     <grid>false</grid>
     <origin_visual>false</origin_visual>
-
-    <ambient>0.4 0.4 0.4 1.0</ambient>
-   
-    <shadows>true</shadows>
-    <shadow type="pcf">
-      <cast_shadows>true</cast_shadows>
-      <pssm_splits>1</pssm_splits>
-      <resolution>2048</resolution>
-      <bias>0.001</bias>
-      <far_distance>10000</far_distance>
-      <pcf_size>5</pcf_size>
-      <map_size>20480</map_size>
-    </shadow>
-  </scene>
-
-
-
-
-
+</scene>
 
 <include>
     <uri>model://sun</uri>

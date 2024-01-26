@@ -424,57 +424,42 @@ int GetCurrentWP()
 
 
 
-int GetWPatTime(common::Time time)
+ignition::math::Vector3<double> TargetPosition_TP()
 {
     std::vector<navsim_msgs::msg::Waypoint> route = fp->route;
     int numWPs = route.size();
 
-    int i;
-    for(i=0; i<numWPs; i++)
-    {
-        common::Time WPtime;
-        WPtime.sec  = route[i].time.sec;
-        WPtime.nsec = route[i].time.nanosec;
-        if (time < WPtime)
-            break;
-    } 
-    
-    return i;
+    double x = route[currentWP-1].pos.x; 
+    double y = route[currentWP-1].pos.y;
+    double z = route[currentWP-1].pos.z;
 
-}
-
-
-ignition::math::Vector3<double> TargetPosition_TP()
-{
-    
-    common::Time t = currentTime + targetStep;
-    int i = GetWPatTime(t);
-    int numWPs = fp->route.size();
-    
-    navsim_msgs::msg::Waypoint WP1 = fp->route[i-1];
-    ignition::math::Vector3<double> pos1 = ignition::math::Vector3d(WP1.pos.x,WP1.pos.y,WP1.pos.z);
-    ignition::math::Vector3<double> targetPos = pos1;
-
-    if (i < numWPs)
+    if (currentWP < numWPs)
     {
         
-        navsim_msgs::msg::Waypoint WP2 = fp->route[i];
-        ignition::math::Vector3<double> pos2 = ignition::math::Vector3d(WP2.pos.x,WP2.pos.y,WP2.pos.z);
-
+        double x2 = route[currentWP].pos.x; 
+        double y2 = route[currentWP].pos.y;
+        double z2 = route[currentWP].pos.z;
+    
         common::Time t1;
-        t1.sec  = WP1.time.sec;
-        t1.nsec = WP1.time.nanosec;
+        t1.sec  = route[currentWP-1].time.sec;
+        t1.nsec = route[currentWP-1].time.nanosec;
 
         common::Time t2;
-        t2.sec  = WP2.time.sec;
-        t2.nsec = WP2.time.nanosec;
+        t2.sec  = route[currentWP].time.sec;
+        t2.nsec = route[currentWP].time.nanosec;
 
+        common::Time t = currentTime + targetStep;
 
         double interpol = (t-t1).Double() / (t2-t1).Double() ;
-        targetPos = pos1 + interpol * (pos2 - pos1);
+        x = interpol * (x2-x) + x ;
+        y = interpol * (y2-y) + y ;
+        z = interpol * (z2-z) + z ;
 
     }
-    
+
+    ignition::math::Vector3<double> targetPos = ignition::math::Vector3d(x,y,z);
+    // printf("(%d.%d)      %.2f  %.2f  %.2f \n",currentTime.sec, int(currentTime.nsec/1E6) ,x, y, z);
+
     return targetPos;
 
 }
@@ -483,25 +468,32 @@ ignition::math::Vector3<double> TargetPosition_TP()
 
 double TargetYaw_TP()
 {
+    std::vector<navsim_msgs::msg::Waypoint> route = fp->route;
+    int numWPs = route.size();
+    double targetYaw;
 
-    common::Time t = currentTime + targetStep;
-    int i = GetWPatTime(t);
-    int numWPs = fp->route.size();
-    if (i == numWPs)
+    int i;
+    if (currentWP < numWPs)
     {
-        i--;
+        i = currentWP;
+    }
+    else
+    {
+        i = currentWP-1;
     }
     
-    navsim_msgs::msg::Waypoint WP1 = fp->route[i-1];
-    ignition::math::Vector3<double> prevWPpos = ignition::math::Vector3d(WP1.pos.x,WP1.pos.y,WP1.pos.z);
+    double x = route[i-1].pos.x; 
+    double y = route[i-1].pos.y;
+    double z = route[i-1].pos.z;
+    ignition::math::Vector3<double> prevWPpos = ignition::math::Vector3d(x,y,z);
 
-    navsim_msgs::msg::Waypoint WP2 = fp->route[i];
-    ignition::math::Vector3<double> currentWPpos = ignition::math::Vector3d(WP2.pos.x,WP2.pos.y,WP2.pos.z);
-    
+    double x2 = route[i].pos.x; 
+    double y2 = route[i].pos.y;
+    double z2 = route[i].pos.z;
+    ignition::math::Vector3<double> currentWPpos = ignition::math::Vector3d(x2,y2,z2);
+
     ignition::math::Vector3<double> targetDir = currentWPpos - prevWPpos;
     targetDir.Z() = 0;
-
-    double targetYaw;
     if (targetDir.Length() < 1)
          targetYaw = model->WorldPose().Yaw();
     else
