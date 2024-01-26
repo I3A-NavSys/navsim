@@ -4,8 +4,8 @@ uint16     plan_id
 string      uav_id
 string operator_id
 
-int8   priority
-
+string type
 navsim_msgs/Waypoint[] route
 
+int8   priority
 

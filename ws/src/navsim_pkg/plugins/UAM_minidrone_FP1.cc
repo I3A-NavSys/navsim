@@ -289,7 +289,7 @@ void Navigation()
 {
     if (fp == nullptr) return;
 
-    int WP = GetCurrentWP();
+    int WP = GetWPatTime(currentTime);
     if (currentWP == -1 && WP != 0)
     {
         // This flight plan is obsolet
@@ -402,26 +402,6 @@ void Navigation()
 
 
 
-int GetCurrentWP()
-{
-    std::vector<navsim_msgs::msg::Waypoint> route = fp->route;
-    int numWPs = route.size();
-
-    int i;
-    for(i=0; i<numWPs; i++)
-    {
-        common::Time WPtime;
-        WPtime.sec  = route[i].time.sec;
-        WPtime.nsec = route[i].time.nanosec;
-        if (currentTime < WPtime)
-            break;
-    } 
-    
-    return i;
-
-}
-
-
 
 
 int GetWPatTime(common::Time time)
@@ -442,6 +422,8 @@ int GetWPatTime(common::Time time)
     return i;
 
 }
+
+
 
 
 ignition::math::Vector3<double> TargetPosition_TP()
@@ -481,6 +463,7 @@ ignition::math::Vector3<double> TargetPosition_TP()
 
 
 
+
 double TargetYaw_TP()
 {
 
@@ -514,7 +497,6 @@ double TargetYaw_TP()
 
 
 
-
 void rosTopFn_FlightPlan(const std::shared_ptr<navsim_msgs::msg::FlightPlan> msg)
 {
     // printf("Data received in topic Flight Plan\n");
@@ -528,8 +510,8 @@ void rosTopFn_FlightPlan(const std::shared_ptr<navsim_msgs::msg::FlightPlan> msg
     {
         //Next waypoint
         navsim_msgs::msg::Waypoint wp = fp->route[i];
-        printf("[%d]  %.2f  %.2f  %.2f    ",i ,wp.pos.x, wp.pos.y, wp.pos.z);
-        printf("(%d.%d) \n",wp.time.sec, int(wp.time.nanosec/1E7));
+        printf("[%d.%d] \t",wp.time.sec, int(wp.time.nanosec/1E7));
+        printf("%.2f  %.2f  %.2f\n", wp.pos.x, wp.pos.y, wp.pos.z);
     }
    
 }
