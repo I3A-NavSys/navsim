@@ -6,7 +6,8 @@ properties
 
     % ROS2 interface
     rosNode                   % ROS2 Node 
-
+    rosSer_TrackUAV           % ROS2 Service server to accept tracking request
+    
 end
 
 methods
@@ -16,10 +17,13 @@ function obj = SimpleMonitor(name)
 
     obj.name = name;
 
-
     % ROS2 node
     obj.rosNode = ros2node(obj.name);
 
+    obj.rosSer_TrackUAV = ros2svcserver(obj.rosNode, ...
+        '/NavSim/TrackUAV','navsim_msgs/TrackUAV', ...
+        @obj.TrackUAVCallback);
+    
 end
 
 
@@ -401,6 +405,13 @@ function TelemetryCallback(obj,msg)
     end
     obj.UAVs(i).data(end+1,:) = [time pos vel];
 
+end
+
+
+
+function TrackUAVCallback(obj,msg)
+
+    
 end
 
 

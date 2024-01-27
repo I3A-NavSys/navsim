@@ -13,20 +13,21 @@ for i=0:9
     end
 end
 
-%%
 operator = USpaceOperator("operator",NAVSIM_MODELS_PATH);
 for i=0:9
     for j = 0:9
         operator.DeployUAV(                ...
             UAVmodels.MiniDroneCommanded,  ...
             ['UAV',num2str(i),num2str(j)], ...
-            [i-4.5 j-4.5 1],[0 0 rand*2*pi]); 
+            [i-4.5 j-4.5 1],[0 0 rand*2*pi]); % rand*2*pi
     end
 end
 
 
 %%
-pause(2)
+
+operator.ResetSim;
+operator.WaitTime(1);
 
 for i=0:9
     for j = 0:9
@@ -35,8 +36,7 @@ for i=0:9
             true,0,0,0.5,0,1);
     end
 end
-
-pause(2)
+operator.WaitTime(5);
 
 for i=0:9
     for j = 0:9
@@ -46,8 +46,7 @@ for i=0:9
     end
 end
 
-pause(30)
-
+operator.WaitTime(30);
 for i=0:9
     for j = 0:9
         operator.RemoteCommand( ...
@@ -56,3 +55,5 @@ for i=0:9
     end
 end
 
+operator.WaitTime(32);
+operator.PauseSim;

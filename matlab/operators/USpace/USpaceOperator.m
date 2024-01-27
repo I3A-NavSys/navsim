@@ -32,18 +32,18 @@ function obj = USpaceOperator(name,models_path)
     obj.rosNode = ros2node(obj.name);
 
     obj.rosSub_Time = ros2subscriber(obj.rosNode, ...
-        '/World/Time','builtin_interfaces/Time');
+        '/NavSim/Time','builtin_interfaces/Time');
 
     obj.rosCli_SimControl = ros2svcclient(obj.rosNode, ...
-        '/World/SimControl','navsim_msgs/SimControl', ...
+        '/NavSim/SimControl','navsim_msgs/SimControl', ...
         'History','keepall');
 
     obj.rosCli_DeployUAV = ros2svcclient(obj.rosNode, ...
-        '/World/DeployModel','navsim_msgs/DeployModel', ...
+        '/NavSim/DeployModel','navsim_msgs/DeployModel', ...
         'History','keepall');
 
     obj.rosCli_RemoveUAV = ros2svcclient(obj.rosNode, ...
-        '/World/RemoveModel','navsim_msgs/RemoveModel', ...
+        '/NavSim/RemoveModel','navsim_msgs/RemoveModel', ...
         'History','keepall');
 
 end
@@ -166,13 +166,13 @@ function status = DeployUAV(obj,model,UAVid,pos,rot)
         case UAVmodels.MiniDroneCommanded
             file = fullfile(obj.models_path,'/UAM/minidrone/model.sdf');
             uav.rosPub = ros2publisher(obj.rosNode, ...
-                ['/UAV/',UAVid,'/RemoteCommand'],      ...
+                ['/NavSim/',UAVid,'/RemoteCommand'],      ...
                 "navsim_msgs/RemoteCommand");
 
         case UAVmodels.MiniDroneFP1
             file = fullfile(obj.models_path,'/UAM/minidrone/model_FP1.sdf');
             uav.rosPub = ros2publisher(obj.rosNode, ...
-                ['/UAV/',UAVid,'/FlightPlan'],      ...
+                ['/NavSim/',UAVid,'/FlightPlan'],      ...
                 "navsim_msgs/FlightPlan");
         otherwise
             return
@@ -200,6 +200,7 @@ function status = DeployUAV(obj,model,UAVid,pos,rot)
         end
     end
 end
+
 
 function status = RemoveUAV(obj,id)
 
@@ -311,32 +312,6 @@ function index = GetUAVindex(obj,id)
         end
     end
 end
-
-
-% Destructor
-% function delete(obj)
-%     % Cerrar y eliminar los recursos ROS2
-%     if ~isempty(obj.rosCli_RemoveUAV)
-%         delete(obj.rosCli_RemoveUAV);
-%     end
-% 
-%     if ~isempty(obj.rosCli_DeployUAV)
-%         delete(obj.rosCli_DeployUAV);
-%     end
-% 
-%     if ~isempty(obj.rosCli_SimControl)
-%         delete(obj.rosCli_SimControl);
-%     end
-% 
-%     if ~isempty(obj.rosSub_Time)
-%         delete(obj.rosSub_Time);
-%     end
-% 
-%     if ~isempty(obj.rosNode)
-%         delete(obj.rosNode);
-%     end
-%     disp('ROS2 operator deleted')
-% end
 
 
 
