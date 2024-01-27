@@ -20,7 +20,7 @@ As in the previous tutorials, in a new terminal, verify that the ROS2 **/World**
 ros2 node list
 ```
 
-Also verify that this node manages a service for deploying objects in the area:
+Also verify that this node manages a service **/NavSim/DeployModel** for deploying objects in the area:
 ```bash
 ros2 service list | grep Deploy
 ```
