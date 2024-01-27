@@ -1,6 +1,0 @@
-int16 id
----
-navsim_msgs/Operator[] operators
-
-# esto devuelve muchos?
-# estudiar que solo devuelva uno

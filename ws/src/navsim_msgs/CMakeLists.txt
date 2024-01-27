@@ -21,22 +21,12 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/RemoteCommand.msg"
   "msg/Waypoint.msg"
   "msg/FlightPlan.msg"
-  # "msg/Operator.msg"
-  # "msg/UAV.msg"
 
   "srv/SimControl.srv"
   "srv/DeployModel.srv"
-  # "srv/TranslateModel.srv"
   "srv/RemoveModel.srv"
-  # "srv/RegisterOperator.srv"
-  # "srv/RegisterUAV.srv"
-  # "srv/RegisterFP.srv"
-  # "srv/GetOperators.srv"
-  # "srv/GetUAVs.srv"
-  # "srv/GetFPs.srv"
-  
-  # "srv/GetTelemetry.srv"
-  
+  "srv/TrackUAV.srv"
+
   DEPENDENCIES geometry_msgs builtin_interfaces
 )
 

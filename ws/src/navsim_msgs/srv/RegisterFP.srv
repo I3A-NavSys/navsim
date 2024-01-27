@@ -1,4 +1,0 @@
-navsim_msgs/FlightPlan fp
----
-int16 status
-navsim_msgs/FlightPlan fp
