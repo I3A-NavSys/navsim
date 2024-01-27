@@ -66,23 +66,23 @@ void Load(physics::WorldPtr _parent, sdf::ElementPtr /*_sdf*/)
 
     // ROS2 NAVSIM topics
     rosPub_SimTime  = rosNode->create_publisher<builtin_interfaces::msg::Time>(
-        "World/Time", 1);
+        "NavSim/Time", 1);
 
 
     // ROS2 NAVSIM services
 
     rosSrv_SimControl = rosNode->create_service<navsim_msgs::srv::SimControl>(
-        "World/SimControl",
+        "NavSim/SimControl",
         std::bind(&World::rosSrvFn_SimControl, this,
                 std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
     rosSrv_DeployModel = rosNode->create_service<navsim_msgs::srv::DeployModel>(
-        "World/DeployModel",
+        "NavSim/DeployModel",
         std::bind(&World::rosSrvFn_DeployModel, this,
                 std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
     rosSrv_RemoveModel = rosNode->create_service<navsim_msgs::srv::RemoveModel>(
-        "World/RemoveModel",
+        "NavSim/RemoveModel",
         std::bind(&World::rosSrvFn_RemoveModel, this,
                 std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 

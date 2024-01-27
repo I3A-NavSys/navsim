@@ -161,10 +161,10 @@ void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
         rosNode = rclcpp::Node::make_shared(this->UAVname);
 
         rosPub_Telemetry = rosNode->create_publisher<navsim_msgs::msg::Telemetry>(
-            "UAV/" + UAVname + "/Telemetry", 10);
+            "/NavSim/" + UAVname + "/Telemetry", 10);
 
         rosSub_RemoteCommand = rosNode->create_subscription<navsim_msgs::msg::RemoteCommand>(
-            "UAV/" + UAVname + "/RemoteCommand", 10,
+            "/NavSim/" + UAVname + "/RemoteCommand", 10,
             std::bind(&UAM_minidrone_cmd::rosTopFn_RemoteCommand, this, 
                     std::placeholders::_1));
             
