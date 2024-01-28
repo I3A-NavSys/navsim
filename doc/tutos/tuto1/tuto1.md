@@ -15,7 +15,7 @@ gazebo DroneChallenge.world
 ```
 An environment should open with a gaming area of 10x10 meters. On a white base (the _vertiport_), there is a quadcopter (called _abejorro_). Floating in the air, you could see three frames colored red, green, and blue, respectively.
 
-![DroneChallenge](./img/DroneChallenge.png 'Drone Challenge scenario. :size=600px')
+![DroneChallenge](./img/DroneChallenge.png')
 
 
 In a new terminal, we can verify that ROS is running correctly:
@@ -117,7 +117,7 @@ ros2 topic pub -1 /NavSim/abejorro/RemoteCommand navsim_msgs/msg/RemoteCommand "
 ros2 topic pub -1 /NavSim/abejorro/RemoteCommand navsim_msgs/msg/RemoteCommand "{'on': true, 'vel': {'linear': {x: 1}, 'angular': {z: 1}}, 'duration': {'sec': 6}}"
 ros2 topic pub -1 /NavSim/abejorro/RemoteCommand navsim_msgs/msg/RemoteCommand "{'on': false}"
 ```
-![Drone Flying](./img/droneFlying.png)
+![Drone Flying](./img/drone_flying.png)
 
 
 ## Check UAV cameras
