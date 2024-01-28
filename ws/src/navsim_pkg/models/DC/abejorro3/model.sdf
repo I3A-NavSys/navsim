@@ -79,7 +79,7 @@
 </collision>
 
 
-<!-- <sensor name='UAV/abejorro3/onboard_cam' type='camera'>
+<!-- <sensor name='NavSim/abejorro3/onboard_cam' type='camera'>
 
   <pose>0.08 0 0 0 0 0</pose>        
   <camera name='onboard_cam3'>
@@ -106,7 +106,7 @@
 </sensor>     -->
 
 
-<sensor name='UAV/abejorro3follow_cam' type='camera'>
+<sensor name='NavSim/abejorro3follow_cam' type='camera'>
 
   <pose>-0.20 0 0.08 0 0 0</pose>        
   <camera name='follow_cam3'>

@@ -603,7 +603,7 @@ void Telemetry()
 
     // Getting model status
     ignition::math::Pose3<double> pose = model->WorldPose();
-    ignition::math::Vector3<double> linear_vel = model->RelativeLinearVel();
+    ignition::math::Vector3<double> linear_vel = model->WorldLinearVel();
     ignition::math::Vector3<double> angular_vel = model->RelativeAngularVel();
     // printf("drone xyz =  %.2f  %.2f  %.2f \n", pose.X(), pose.Y(), pose.Z());
     // printf("drone YPR =  %.2f  %.2f  %.2f \n", pose.Yaw(), pose.Pitch(), pose.Roll());
