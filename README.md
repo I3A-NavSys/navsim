@@ -3,7 +3,7 @@
 
 Update 15/01/2024
 
-![NavSim](./doc/img/navsim.jpg)
+![NavSim](./doc/img/navsim.png)
 
 
 NAVSIM is a **U-Space** service development tool. It provides:
