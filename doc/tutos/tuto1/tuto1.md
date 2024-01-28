@@ -15,7 +15,7 @@ gazebo DroneChallenge.world
 ```
 An environment should open with a gaming area of 10x10 meters. On a white base (the _vertiport_), there is a quadcopter (called _abejorro_). Floating in the air, you could see three frames colored red, green, and blue, respectively.
 
-![DroneChallenge](./img/DroneChallenge.png')
+![DroneChallenge](./img/DroneChallenge.png)
 
 
 In a new terminal, we can verify that ROS is running correctly:
@@ -169,7 +169,7 @@ With the motors on, the drone stabilizes automatically. Then, you can:
 Try piloting the drone to pass through the red, green, and blue frames in order and then return to the vertiport. Record the time from when the motors are activated until they are deactivated again. The pilot with the shortest completion time will be the winner.
 
 Enjoy the game!
-
+![Drone crossing the green frame](./img/drone_crossing.png)
 
 
 ## Launch the computer pilot
