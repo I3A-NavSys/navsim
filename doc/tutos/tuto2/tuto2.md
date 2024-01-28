@@ -44,6 +44,8 @@ end
 
 ![100 boxes](./img/100boxes.png)
 
+### Synchronized fleet of aircraft
+
 Now, we use a **USpaceOperator** object to generate 100 drones over the boxes:
 
 ```matlab
@@ -84,8 +86,8 @@ operator.WaitTime(5);
 
 ![100 drones hovering](./img/100drones_hovering.png)
 
+Once the drones are hovering in the air, the operator instructs them to perform a circular maneuver for 30 seconds, applying a linear velocity of 2 m/s and an angular velocity of 1 rad/s:
 
-Finally, let's command the drones to perform a circular maneuver for 30 seconds:
 ```matlab
 for i=0:9
     for j = 0:9
@@ -95,14 +97,34 @@ for i=0:9
     end
 end
 ```
+We can observe how the drones execute the maneuver perfectly synchronized, maintaining the distance between them.
 
 ![100 drones turning](./img/100drones_turning.png)
 
 
+### Fleet with unsynchronized aircraft colliding in mid-air
 
-It can be observed that the drones perform the requested actions. However, they do so disorderly, as they receive commands, with a margin of up to a second in some cases. The consequence is that several devices collide in the air. Some of them manage to recover and continue the maneuver from another position, while others fall to the ground.
+Now we are going to repeat the experiment, making slight modifications to the starting situation of the drones:
+1) We close Gazebo and open it again with the _tatami.world_ scenario.
+2) We modify the Matlab code so that the 100 deployed drones have a random initial orientation.
+
+```matlab
+operator = USpaceOperator("operator",NAVSIM_MODELS_PATH);
+for i=0:9
+    for j = 0:9
+        operator.DeployUAV(                ...
+            UAVmodels.MiniDroneCommanded,  ...
+            ['UAV',num2str(i),num2str(j)], ...
+            [i-4.5 j-4.5 1],[0 0 rand*2*pi]);
+    end
+end
+```
+
+3) We run the simulation.
+
+It can be observed that, in this occassion, several drones collide in the air. Some of them manage to recover and continue the maneuver from another position, while others fall to the ground.
 
 ![100 drones colliding](./img/100drones_colliding.png)
 
-The goal of USpace is to provide compatible spatiotemporal paths, and for drones to be able to execute them precisely, to prevent such incidents from happening.
+The goal of **USpace** is to provide compatible spatiotemporal paths, and for drones to be able to execute them precisely, to prevent such incidents from happening.
 
