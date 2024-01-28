@@ -194,3 +194,19 @@ This starting prototype incorporates basic intelligence, which does not cover ma
 
 Competition participants are tasked with enhancing this proposal, making it robust against unexpected situations.
 
+
+
+## Visit program at I3A
+
+A variant of the previously described _DroneChallenge_ competition is the drone-related activity that is part of the _Visiting Program for Primary and Secondary School Students_ to the **Albacete Research Institute of Informatics** ([I3A](https://www.uclm.es/centros-investigacion/i3a?sc_lang=en)).
+
+We run the command `gazebo I3A.world` to open the appropiate world, which displays a scenario similar to the previous one, with the exception that it includes 5 drones. 
+This time, up to 4 young pilots compete against the autonomous drone to cross the three frames and land at the base located at the other end of the tatami!
+
+In the background, behind the tatami, is the I3A building.
+
+![I3A](./img/I3A_world.png)
+
+In the Matlab environment, the corresponding scripts and models are in the `navsim/matlab/operators/I3Avisit` directory.
+
+![Pilots manager](./img/pilots_manager.png)
