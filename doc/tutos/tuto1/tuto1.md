@@ -123,7 +123,7 @@ ros2 topic pub -1 /NavSim/abejorro/RemoteCommand navsim_msgs/msg/RemoteCommand "
 ## Check UAV cameras
 
 ```bash
-ros2 node list | grep _cam
+ros2 node list
 ```
 This quadcopter has two cameras. Each of them generates its own node for image transmission:
 - **/onboard_cam** is a real camera mounted on the front of the fuselage. 
@@ -131,14 +131,12 @@ This quadcopter has two cameras. Each of them generates its own node for image t
 
 ```bash
 ros2 topic list | grep _cam
-ros2 topic echo /UAV/abejorro/onboard_cam/image_raw --no-arr
-ros2 topic echo /UAV/abejorro/follow_cam/image_raw --no-arr
+ros2 topic echo /NavSim/abejorro/onboard_cam/image_raw --no-arr
+ros2 topic echo /NavSim/abejorro/follow_cam/image_raw --no-arr
 ```
 Each camera generates two topics, transmitting camera information and raw image respectively. 
-- **/UAV/abejorro/onboard_cam/image_raw** is transmitting 320x240 RGB pixels at 10 FPS. 
-- **/UAV/abejorro/follow_cam/image_raw** is transmitting 480x320 RGB pixels at 10 FPS.
-
-
+- **/NavSim/abejorro/onboard_cam/image_raw** is transmitting 320x240 RGB pixels at 10 FPS. 
+- **/NavSim/abejorro/follow_cam/image_raw** is transmitting 480x320 RGB pixels at 10 FPS.
 
 
 
