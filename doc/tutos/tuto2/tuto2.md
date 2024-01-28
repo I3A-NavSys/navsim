@@ -58,10 +58,17 @@ for i=0:9
 end
 ```
 
-![100 drones](./img/100drones.png)
+![100 drones](./img/100dronesb.png)
 
+Once all elements have been deployed in the scenario, we reset the simulation time and begin issuing commands to the drones. 
+The operator waits for the simulation to reach 1 second
 
-Finally, let's command the drones to activate, ascend for 1 second from their positions, and then perform a circular maneuver for 30 seconds:
+```matlab
+operator.ResetSim;
+operator.WaitTime(1);
+```
+Then, the operator instructs all drones to ascend at 0.5 m/s for one second.
+The operator waits for the simulation to reach 5 seconds, allowing the drones to execute the maneuver and come to a stop.
 
 ```matlab
 for i=0:9
@@ -71,9 +78,14 @@ for i=0:9
             true,0,0,0.5,0,1);
     end
 end
+operator.WaitTime(5);
+```
 
-pause(2)
+![100 drones](./img/100drones.png)
 
+
+Finally, let's command the drones to activate, ascend for 1 second from their positions, and then perform a circular maneuver for 30 seconds:
+```matlab
 for i=0:9
     for j = 0:9
         operator.RemoteCommand( ...
