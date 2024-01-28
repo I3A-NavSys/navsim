@@ -37,12 +37,12 @@
 <include>
     <name>frame_green</name>
     <uri>../models/DC/frame_green</uri>
-    <pose>0 1 1 0 0 0.1</pose>
+    <pose>0 2 1 0 0 0.1</pose>
 </include>    
 <include>
     <name>frame_blue</name>
     <uri>../models/DC/frame_blue</uri>
-    <pose>2 -1 1.1 0 0 0.2</pose>
+    <pose>2 -2 1.1 0 0 0.2</pose>
 </include>    
 
 

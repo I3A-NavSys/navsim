@@ -106,7 +106,7 @@
 </sensor>     -->
 
 
-<sensor name='NavSim/abejorro3follow_cam' type='camera'>
+<sensor name='NavSim/abejorro3/follow_cam' type='camera'>
 
   <pose>-0.20 0 0.08 0 0 0</pose>        
   <camera name='follow_cam3'>
@@ -210,8 +210,8 @@
         </cylinder>
     </geometry>
     <material>
-      <ambient>0.7 0.7 0.7 1</ambient>  <!--color Red Green Blue Alpha [0-1] -->
-      <diffuse>0.7 0.7 0.7 1</diffuse>
+      <ambient>0.7 0.7 0.7 0.8</ambient>  <!--color Red Green Blue Alpha [0-1] -->
+      <diffuse>0.7 0.7 0.7 0.8</diffuse>
   </material>
 </visual>
 
@@ -310,8 +310,8 @@
         </cylinder>
     </geometry>
     <material>
-      <ambient>0.7 0.7 0.7 1</ambient>  <!--color Red Green Blue Alpha [0-1] -->
-      <diffuse>0.7 0.7 0.7 1</diffuse>
+      <ambient>0.7 0.7 0.7 0.8</ambient>  <!--color Red Green Blue Alpha [0-1] -->
+      <diffuse>0.7 0.7 0.7 0.8</diffuse>
   </material>
 </visual>
 
@@ -410,8 +410,8 @@
         </cylinder>
     </geometry>
     <material>
-      <ambient>0.6 0.5 0.5 1</ambient>  <!--color Red Green Blue Alpha [0-1] -->
-      <diffuse>0.6 0.5 0.5 1</diffuse>
+      <ambient>0.6 0.5 0.5 0.8</ambient>  <!--color Red Green Blue Alpha [0-1] -->
+      <diffuse>0.6 0.5 0.5 0.8</diffuse>
   </material>
 </visual>
 
@@ -510,8 +510,8 @@
         </cylinder>
     </geometry>
     <material>
-      <ambient>0.6 0.5 0.5 1</ambient>  <!--color Red Green Blue Alpha [0-1] -->
-      <diffuse>0.6 0.5 0.5 1</diffuse>
+      <ambient>0.6 0.5 0.5 0.8</ambient>  <!--color Red Green Blue Alpha [0-1] -->
+      <diffuse>0.6 0.5 0.5 0.8</diffuse>
   </material>
 </visual>
 
