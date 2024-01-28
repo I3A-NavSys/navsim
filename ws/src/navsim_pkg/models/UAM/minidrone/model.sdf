@@ -173,8 +173,8 @@
         </cylinder>
     </geometry>
     <material>
-        <ambient>0 1 0 1</ambient>  <!--color Red Green Blue Alpha [0-1] -->
-        <diffuse>0 1 0 1</diffuse>
+        <ambient>0 1 0 0.8</ambient>  <!--color Red Green Blue Alpha [0-1] -->
+        <diffuse>0 1 0 0.8</diffuse>
     </material>
 </visual>
 
@@ -273,8 +273,8 @@
         </cylinder>
     </geometry>
     <material>
-        <ambient>0 1 0 1</ambient>  <!--color Red Green Blue Alpha [0-1] -->
-        <diffuse>0 1 0 1</diffuse>
+        <ambient>0 1 0 0.8</ambient>  <!--color Red Green Blue Alpha [0-1] -->
+        <diffuse>0 1 0 0.8</diffuse>
     </material>
 </visual>
 
@@ -373,8 +373,8 @@
         </cylinder>
     </geometry>
     <material>
-        <ambient>1 0 0 1</ambient>  <!--color Red Green Blue Alpha [0-1] -->
-        <diffuse>1 0 0 1</diffuse>
+        <ambient>1 0 0 0.8</ambient>  <!--color Red Green Blue Alpha [0-1] -->
+        <diffuse>1 0 0 0.8</diffuse>
     </material>
 </visual>
 
@@ -473,8 +473,8 @@
         </cylinder>
     </geometry>
     <material>
-        <ambient>1 0 0 1</ambient>  <!--color Red Green Blue Alpha [0-1] -->
-        <diffuse>1 0 0 1</diffuse>
+        <ambient>1 0 0 0.8</ambient>  <!--color Red Green Blue Alpha [0-1] -->
+        <diffuse>1 0 0 0.8</diffuse>
     </material>
 </visual>
 
