@@ -30,28 +30,30 @@ The command shows four active nodes at the moment.
 The node **/World** is associated with the loaded scenario. 
 
 ```bash
-ros2 topic list
+ros2 topic list | grep NavSim
 ```
-We observe that this node generates a topic **/World/Time** where we can check the simulation time.
+We observe that this node generates a topic **/NavsSim/Time** where we can check the simulation time.
 
 ```bash
-ros2 topic type /World/Time
+ros2 topic type /NavSim/Time
 ros2 interface show builtin_interfaces/msg/Time
-ros2 topic echo /World/Time
+ros2 topic echo /NavSim/Time
 ```
 With these commands, we can determine the structure of the transmitted message, and observe as the data refreshes 10 times per second.
 
 ```bash
-ros2 service list | grep World
+ros2 service list | grep NavSim
 ```
-We check that there are (among others) two services associated with this node, named **/World/DeployModel** and **/World/RemoveModel** respectively. The former is more complex to use and will be covered in a later tutorial. The latter service allows us to remove an element from the scenario.
+We check that there are three services associated with this node, named **/NavSim/DeployModel**, **/NavSim/RemoveModel**, and **/NavSim/SimControl**, respectively.
+
+The **/NavSim/RemoveModel** service allows us to remove an element from the scenario.
 ```bash
-ros2 service type /World/RemoveModel 
+ros2 service type /NavSim/RemoveModel 
 ros2 interface show navsim_msgs/srv/RemoveModel
 ```
 We see that we can call the service simply by indicating the name of the object we want to remove. As an example, let's remove the landing pad with the command:
 ```bash
-ros2 service call /World/RemoveModel navsim_msgs/srv/RemoveModel "{name: 'vertiport'}"
+ros2 service call /NavSim/RemoveModel navsim_msgs/srv/RemoveModel "{name: 'vertiport'}"
 ```
 We see that the landing pad disappears, and the drone falls to the ground.
 Before proceeding, close Gazebo and let's load the original scenario again to recover the vertiport.
@@ -69,11 +71,11 @@ This node manages the transmission of telemetry information and the reception an
 
 ### Telemetry
 
-All existing UAVs will publish their telemetry information on the **/UAV/_identifier_/Telemetry** topic.
+All existing UAVs will publish their telemetry information on the **/NavSim/_UAVidentifier_/Telemetry** topic.
 
 ```bash
 ros2 topic list | grep Telemetry
-ros2 topic info /UAV/abejorro/Telemetry
+ros2 topic info /NavSim/abejorro/Telemetry
 ```
 We can see that there is a node transmitting messages on this topic. 
 
@@ -81,15 +83,17 @@ We can see that there is a node transmitting messages on this topic.
 ros2 interface show navsim_msgs/msg/Telemetry
 ```
 The telemetry message contains:
-- UAV identifier (to manage a swarm with the same callback function)
+- UAV identifier (to allow the management a swarm with the same callback function)
 - UAV position and orientation
-- UAV body linear and angular velocities
+- UAV world linear velocity
+- UAV body axes angular velocities
 - Data generation time
 
 ```bash
-ros2 topic echo /UAV/abejorro/Telemetry
+ros2 topic echo /NavSim/abejorro/Telemetry
 ```
-This data is updated once per second.
+The refresh rate of telemetry information varies according to the application's requirements, ranging from 10 Hz (this case) to 1 Hz.
+
 
 ### Navigation
 
@@ -97,21 +101,21 @@ Each UAV has its own **RemoteCommand** control topic:
 
 ```bash
 ros2 topic list | grep RemoteCommand
-ros2 topic type /UAV/abejorro/RemoteCommand
+ros2 topic type /NavSim/abejorro/RemoteCommand
 ros2 interface show navsim_msgs/msg/RemoteCommand 
 ```
-We observe that the control topic is named **/UAV/abejorro/RemoteCommand**. The command includes:
+We observe that the control topic is named **/NavSim/abejorro/RemoteCommand**. The command includes:
 - UAV identifier (only required in cases where the topic refers to a swarm)
 - Activation/deactivation of rotors
-- Commanded linear velocity (expressed in horizon axes)
+- Commanded linear velocity (expressed in horizon axes for this kind of drone)
 - Commanded angular velocity (only around the vertical axis)
 - Command expiration time.
 
 As an example of use, we can move the quapcopter publishing the following commands:
 ```bash
-ros2 topic pub -1 /UAV/abejorro/RemoteCommand navsim_msgs/msg/RemoteCommand "{'on': true, 'vel': {'linear': {z: 1}}, 'duration': {'sec': 1}}"
-ros2 topic pub -1 /UAV/abejorro/RemoteCommand navsim_msgs/msg/RemoteCommand "{'on': true, 'vel': {'linear': {x: 1}, 'angular': {z: 1}}, 'duration': {'sec': 6}}"
-ros2 topic pub -1 /UAV/abejorro/RemoteCommand navsim_msgs/msg/RemoteCommand "{'on': false}"
+ros2 topic pub -1 /NavSim/abejorro/RemoteCommand navsim_msgs/msg/RemoteCommand "{'on': true, 'vel': {'linear': {z: 1}}, 'duration': {'sec': 1}}"
+ros2 topic pub -1 /NavSim/abejorro/RemoteCommand navsim_msgs/msg/RemoteCommand "{'on': true, 'vel': {'linear': {x: 1}, 'angular': {z: 1}}, 'duration': {'sec': 6}}"
+ros2 topic pub -1 /NavSim/abejorro/RemoteCommand navsim_msgs/msg/RemoteCommand "{'on': false}"
 ```
 ![Drone Flying](./img/droneFlying.png)
 
