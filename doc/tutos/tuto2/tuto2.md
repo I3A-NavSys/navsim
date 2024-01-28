@@ -58,17 +58,18 @@ for i=0:9
 end
 ```
 
-![100 drones](./img/100dronesb.png)
+![100 drones](./img/100drones.png)
 
 Once all elements have been deployed in the scenario, we reset the simulation time and begin issuing commands to the drones. 
-The operator waits for the simulation to reach 1 second
+The operator waits for `SimTime: 00 00:00:01.000` (1 second):
 
 ```matlab
 operator.ResetSim;
 operator.WaitTime(1);
 ```
+
 Then, the operator instructs all drones to ascend at 0.5 m/s for one second.
-The operator waits for the simulation to reach 5 seconds, allowing the drones to execute the maneuver and come to a stop.
+The operator waits for the simulation to reach 5 seconds, allowing the drones to execute the maneuver and hover.
 
 ```matlab
 for i=0:9
@@ -81,10 +82,10 @@ end
 operator.WaitTime(5);
 ```
 
-![100 drones](./img/100drones.png)
+![100 drones hovering](./img/100drones_hovering.png)
 
 
-Finally, let's command the drones to activate, ascend for 1 second from their positions, and then perform a circular maneuver for 30 seconds:
+Finally, let's command the drones to perform a circular maneuver for 30 seconds:
 ```matlab
 for i=0:9
     for j = 0:9
@@ -95,9 +96,13 @@ for i=0:9
 end
 ```
 
-![100 drones flying](./img/100drones_flying.png)
+![100 drones turning](./img/100drones_turning.png)
+
+
 
 It can be observed that the drones perform the requested actions. However, they do so disorderly, as they receive commands, with a margin of up to a second in some cases. The consequence is that several devices collide in the air. Some of them manage to recover and continue the maneuver from another position, while others fall to the ground.
+
+![100 drones colliding](./img/100drones_colliding.png)
 
 The goal of USpace is to provide compatible spatiotemporal paths, and for drones to be able to execute them precisely, to prevent such incidents from happening.
 
