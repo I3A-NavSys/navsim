@@ -92,6 +92,10 @@ function PositionFigure(obj,UAVid,fp)
 
     % UAV data
     UAVdata = obj.UAVs(i).data;
+    if isempty(UAVdata)
+        return
+    end
+
     timeStep = UAVdata(2,1) - UAVdata(1,1);
     FPdata  = fp.Trace(timeStep);
     
@@ -152,6 +156,13 @@ function PositionFigure(obj,UAVid,fp)
     xlabel("t [s]");
     ylabel("error [m]");
 
+
+    plot([fp.InitTime fp.FinishTime], [fp.radius fp.radius], ...
+        "--", ...
+        Color = 'red' )
+
+
+
     timeValues  = [];
     errorValues = [];
     for i = 1:size(UAVdata,1)
@@ -172,8 +183,8 @@ function PositionFigure(obj,UAVid,fp)
 
     plot(timeValues, errorValues, ...
         "-", ...
-        LineWidth = 2, ...
-        Color = 'red' )
+        LineWidth = 1, ...
+        Color = 'black' )
     xlim([fp.InitTime fp.FinishTime])
     ax = gca; 
     ax.XAxis.Visible = 'off';

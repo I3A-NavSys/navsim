@@ -5,10 +5,12 @@ classdef FlightPlan < handle
 properties
 
 id          int32;
-priority    int8; 
 
 waypoints   Waypoint = Waypoint.empty;     
 mode        InterpolationModes;
+radius      {mustBeNumeric}    % safety bubble for conflict management
+
+priority    int8;
 
 end
 
@@ -19,6 +21,7 @@ methods
 function obj = FlightPlan(id, waypoints)
     obj.id = id;
     obj.priority = 0;
+    obj.radius   = 1;
 
     %Check if the waypoints list is empty ([])
     if ~isempty(waypoints)

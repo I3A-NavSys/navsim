@@ -161,6 +161,7 @@ function status = DeployUAV(obj,model,UAVid,pos,rot)
 
     uav.id = UAVid;
     uav.model = model;
+    uav.fp = FlightPlan.empty;
 
     switch model
         case UAVmodels.MiniDroneCommanded
@@ -273,12 +274,16 @@ function SendFlightPlan(obj,UAVid,fp)
         return
     end
 
+    obj.UAVs(i).fp = fp;
+
+    % Send ROS2 message
     msg = ros2message(UAV.rosPub);
     msg.plan_id     = uint16(fp.id);
     msg.uav_id      = UAV.id;
     msg.operator_id = char(obj.name);
     msg.priority    = int8(fp.priority);
     msg.mode        = char(fp.mode);
+    msg.radius      = fp.radius;
 
     for i = 1:length(fp.waypoints)
         t = fp.waypoints(i).t;
