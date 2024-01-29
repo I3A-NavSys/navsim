@@ -332,10 +332,11 @@ void Navigation()
         navsim_msgs::msg::Waypoint WP0 = fp->route[0];
         ignition::math::Vector3<double> initPos = ignition::math::Vector3d(WP0.pos.x,WP0.pos.y,WP0.pos.z);
         initPos = initPos - currentPos;
-        if (initPos.Length() < fp->radius)
+        if (initPos.Length() > fp->radius)
         {
             // drone in an incorrect starting position
             fp = nullptr;
+            printf("%s discarding FP due to an incorrect starting position\n",UAVname.c_str());
         }
 
         return;
