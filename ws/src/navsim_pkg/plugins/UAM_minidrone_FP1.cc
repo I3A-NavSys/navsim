@@ -136,7 +136,7 @@ const double kMDy = 1.1078e-04;
 
 //Vertical axis:
 //Must be verified at maximum yaw velocity
-//Assuming tjat Vyaw_max = 4*pi rad/s (max yaw velocity of 2rev/s) and w_hov2 (rotor speed to maintain the hovering)
+//Assuming that Vyaw_max = 4*pi rad/s (max yaw velocity of 2rev/s) and w_hov2 (rotor speed to maintain the hovering)
 //And taking into account that MDR = kMDR * w² and MDz = kMDz * Vyaw²
 //operating MDz  = MDR (the air friction compensates the effect of the rotors) and kMDz = kMDR* (2 * w_hov2²) / Vyaw_max² we get that...
 const double kMDz = 7.8914e-05;
@@ -315,11 +315,29 @@ void Navigation()
             printf("has completed its flight plan\n");
     }
 
-
     currentWP = WP;
+
+
+    // Current UAV status
+    ignition::math::Pose3<double> pose = model->WorldPose();
+    ignition::math::Vector3<double> currentPos = pose.Pos();
+    double currentYaw = pose.Yaw();
+    ignition::math::Vector3<double> currentAbsVel = model->WorldLinearVel();
+
+
+
     if (currentWP == 0)
     {
         // drone waiting to start the flight
+        navsim_msgs::msg::Waypoint WP0 = fp->route[0];
+        ignition::math::Vector3<double> initPos = ignition::math::Vector3d(WP0.pos.x,WP0.pos.y,WP0.pos.z);
+        initPos = initPos - currentPos;
+        if (initPos.Length() < fp->radius)
+        {
+            // drone in an incorrect starting position
+            fp = nullptr;
+        }
+
         return;
     }
 
@@ -331,13 +349,6 @@ void Navigation()
         commandOff();
         return;
     }
-
-    // Current UAV status
-    ignition::math::Pose3<double> pose = model->WorldPose();
-    ignition::math::Vector3<double> currentPos = pose.Pos();
-    double currentYaw = pose.Yaw();
-    ignition::math::Vector3<double> currentAbsVel = model->WorldLinearVel();
-
 
     // Time step to analyze movement
     common::Time FPtime;

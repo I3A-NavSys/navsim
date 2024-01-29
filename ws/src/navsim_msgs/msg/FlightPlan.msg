@@ -5,7 +5,8 @@ string      uav_id
 string operator_id
 
 navsim_msgs/Waypoint[] route
-string mode
+string  mode
+float64 radius
 
 int8   priority
 
