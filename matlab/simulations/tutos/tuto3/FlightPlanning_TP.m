@@ -78,8 +78,8 @@ for i = 1:size(way_data1,1)
 end
 
 % Display
-% fp1.RouteFigure(1,'b')
-% fp1.VelocityFigure(1,'b')
+% fp1.RouteFigure(1)
+% fp1.VelocityFigure(1)
 
 
 % -------------
@@ -120,8 +120,8 @@ for i = 1:size(way_data3,1)
 end
 
 % Display
-%fp3.RouteFigure(1,'b')
-% fp3.VelocityFigure(1,'b')
+%fp3.RouteFigure(1)
+% fp3.VelocityFigure(1)
 
 
 

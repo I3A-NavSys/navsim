@@ -128,10 +128,10 @@ end
 
 
 
-function tr = Trace(obj, time_step)
+function tr = Trace(obj, timeStep)
     % This method expands the flight plan behavior over time
     
-    instants = obj.InitTime : time_step : obj.FinishTime;
+    instants = obj.InitTime : timeStep : obj.FinishTime;
     tr = zeros(length(instants),7);
     tr(:,1) = instants;
    
@@ -143,19 +143,19 @@ function tr = Trace(obj, time_step)
 
     %Get velocity in time instants
     for i = 1:length(instants)-1
-        tr(i,5:7) = (tr(i+1,2:4) - tr(i,2:4)) / time_step;
+        tr(i,5:7) = (tr(i+1,2:4) - tr(i,2:4)) / timeStep;
     end
 end
 
 
 
-function dist = DistanceTo(fp1, fp2, time_step)
+function dist = DistanceTo(fp1, fp2, timeStep)
     % This method obstains relative distance between two flight plans over time
     
-    init_time   = min(fp1.InitTime,  fp2.init_time);
-    finish_time = max(fp1.FinishTime,fp2.finish_time);
+    initTime   = min(fp1.InitTime,  fp2.InitTime);
+    finishTime = max(fp1.FinishTime,fp2.FinishTime);
     
-    instants = init_time : time_step : finish_time;
+    instants = initTime : timeStep : finishTime;
     dist = zeros(length(instants),2);
     dist(:,1) = instants;
    
@@ -163,14 +163,36 @@ function dist = DistanceTo(fp1, fp2, time_step)
     for i = 1:length(instants)
         t = dist(i,1);
         p1 = fp1.PositionAtTime(t);
-        p2 = fp2.positionAtTime(t);
+        p2 = fp2.PositionAtTime(t);
         dist(i,2) = norm(p2-p1);
     end
 end
 
 
+function fp2 = TPV2TP(fp1,id,timeStep)
+    % Transform a TPV flight plant to a TP flightPlan
 
-function RouteFigure(obj,time_step,color)
+    fp2 = FlightPlan(id,Waypoint.empty);
+    if fp1.mode ~= "TPV"
+        return
+    end
+
+    fp2.radius   = fp1.radius;
+    fp2.priority = fp1.priority;
+
+    %Get position in time instants
+    for i = fp1.InitTime : timeStep : fp1.FinishTime
+        wp = Waypoint();
+        wp.t = i;
+        p = fp1.PositionAtTime(i);
+        wp.SetPosition(p);
+        fp2.SetWaypoint(wp);
+    end
+end
+
+
+
+function PositionFigure(obj,time_step)
     % Display the flight plan trajectory
     
     %Check if the flight plan is empty
@@ -200,8 +222,8 @@ function RouteFigure(obj,time_step,color)
     tl = tiledlayout(3,5);
     tl.Padding = 'compact';
     tl.TileSpacing = 'tight';
-    
-
+    color = [0 0.7 1];
+ 
     %Display Position 3D
     XYZtile = nexttile([3,3]);
     title("Position 3D")
@@ -214,12 +236,15 @@ function RouteFigure(obj,time_step,color)
     zlabel("z [m]")
 
     tr = obj.Trace(time_step);
-    pt = plot3(tr(:,2),tr(:,3),tr(:,4), '-', ...
+    plot3(tr(:,2),tr(:,3),tr(:,4), ...
+        '-', ...
+        LineWidth = 2, ...
         Color = color );
-    plot3([obj.waypoints(:).x], [obj.waypoints(:).y], [obj.waypoints(:).z], 'o',...
+    plot3([obj.waypoints(:).x], [obj.waypoints(:).y], [obj.waypoints(:).z], ...
+        'o',...
         MarkerSize = 5, ...
-        MarkerFaceColor = 'w', ...
-        MarkerEdgeColor = color );
+        MarkerFaceColor = 'white', ...
+        MarkerEdgeColor = color )
        
     %Display Position X versus time
     Xtile   = nexttile([1,2]);
@@ -229,12 +254,15 @@ function RouteFigure(obj,time_step,color)
     % xlabel("t [s]");
     ylabel("x [m]");
 
-    plot(tr(:,1),tr(:,2), '-', ...
-        Color = color );
-    plot([obj.waypoints(:).t], [obj.waypoints(:).x], 'o',...
+    plot(tr(:,1),tr(:,2), ...
+        '-', ...
+        LineWidth = 2, ...
+        Color = color )
+    plot([obj.waypoints(:).t], [obj.waypoints(:).x], ...
+        'o',...
         MarkerSize = 5, ...
         MarkerFaceColor = 'w', ...
-        MarkerEdgeColor = color );
+        MarkerEdgeColor = color )
 
     %Display Position Y versus time
     Ytile   = nexttile([1,2]);
@@ -244,12 +272,15 @@ function RouteFigure(obj,time_step,color)
     % xlabel("t [s]");
     ylabel("y [m]");
 
-    plot(tr(:,1),tr(:,3), '-', ...
-        Color = color );
-    plot([obj.waypoints(:).t], [obj.waypoints(:).y], 'o',...
+    plot(tr(:,1),tr(:,3), ...
+        '-', ...
+        LineWidth = 2, ...
+        Color = color )
+    plot([obj.waypoints(:).t], [obj.waypoints(:).y], ...
+        'o',...
         MarkerSize = 5, ...
-        MarkerFaceColor = 'w', ...
-        MarkerEdgeColor = color );
+        MarkerFaceColor = 'white', ...
+        MarkerEdgeColor = color )
 
     %Display Position Z versus time
     Ztile   = nexttile([1,2]);
@@ -259,18 +290,21 @@ function RouteFigure(obj,time_step,color)
     xlabel("t [s]");
     ylabel("z [m]");
 
-    plot(tr(:,1),tr(:,4), '-', ...
-        Color = color );
-    plot([obj.waypoints(:).t], [obj.waypoints(:).z], 'o',...
+    plot(tr(:,1),tr(:,4), ...
+        '-', ...
+        LineWidth = 2, ...
+        Color = color )
+    plot([obj.waypoints(:).t], [obj.waypoints(:).z], ...
+        'o',...
         MarkerSize = 5, ...
-        MarkerFaceColor = 'w', ...
-        MarkerEdgeColor = color );
+        MarkerFaceColor = 'white', ...
+        MarkerEdgeColor = color )
 
 end
 
 
 
-function VelocityFigure(obj,time_step,color)
+function VelocityFigure(obj,time_step)
     %VELOCITYFIGURE This method allow to display the flight plan instant velocity
     
     % Check if the flight plan is empty
@@ -299,6 +333,7 @@ function VelocityFigure(obj,time_step,color)
     tl = tiledlayout(4,2);
     tl.Padding = 'compact';
     tl.TileSpacing = 'tight';
+    color = [0 0.7 1];
 
     %Display instant velocity
     Vtile = nexttile([1,2]);
@@ -308,8 +343,10 @@ function VelocityFigure(obj,time_step,color)
     ylabel("3D [m/s]");
 
     tr = obj.Trace(time_step);
-    plot(tr(:,1),sqrt(tr(:,5).^2 + tr(:,6).^2 + tr(:,7).^2), '-', ...
-        Color = color );
+    plot(tr(:,1),sqrt(tr(:,5).^2 + tr(:,6).^2 + tr(:,7).^2), ...
+        '-', ...
+        LineWidth = 2, ...
+        Color = color )
 
     %Display Velocity X versus time
     Xtile   = nexttile([1,2]);
@@ -317,13 +354,15 @@ function VelocityFigure(obj,time_step,color)
     grid on
     ylabel("vx [m/s]");
 
-    plot(tr(:,1),tr(:,5), '-', ...
-        Color = color );
+    plot(tr(:,1),tr(:,5), ...
+        '-', ...
+        LineWidth = 2, ...
+        Color = color )
     if obj.mode == InterpolationModes.TPV
         plot([obj.waypoints(:).t], [obj.waypoints(:).vx], 'o',...
             MarkerSize = 5, ...
-            MarkerFaceColor = 'w', ...
-            MarkerEdgeColor = color );
+            MarkerFaceColor = 'white', ...
+            MarkerEdgeColor = color )
     end
 
     %Display Position Y versus time
@@ -332,13 +371,15 @@ function VelocityFigure(obj,time_step,color)
     grid on
     ylabel("vy [m/s]");
 
-    plot(tr(:,1),tr(:,6), '-', ...
-        Color = color );
+    plot(tr(:,1),tr(:,6), ...
+        '-', ...
+        LineWidth = 2, ...
+        Color = color )
     if obj.mode == InterpolationModes.TPV
         plot([obj.waypoints(:).t], [obj.waypoints(:).vy], 'o',...
             MarkerSize = 5, ...
-            MarkerFaceColor = 'w', ...
-            MarkerEdgeColor = color );
+            MarkerFaceColor = 'white', ...
+            MarkerEdgeColor = color )
     end
 
     %Display Position Z versus time
@@ -348,19 +389,21 @@ function VelocityFigure(obj,time_step,color)
     ylabel("vz [m/s]");
     xlabel("t [s]");
 
-    plot(tr(:,1),tr(:,7), '-', ...
-        Color = color );
+    plot(tr(:,1),tr(:,7), ...
+        '-', ...
+        LineWidth = 2, ...
+        Color = color )
     if obj.mode == InterpolationModes.TPV
         plot([obj.waypoints(:).t], [obj.waypoints(:).vz], 'o',...
             MarkerSize = 5, ...
-            MarkerFaceColor = 'w', ...
-            MarkerEdgeColor = color );
+            MarkerFaceColor = 'white', ...
+            MarkerEdgeColor = color )
     end
 end
 
 
 
-function DistanceFigure(fp1,fp2,time_step,color)
+function DistanceFigure(fp1,fp2,time_step)
     % Relative distance between two flightplans
     
     %Find if the figure is already open
@@ -382,9 +425,9 @@ function DistanceFigure(fp1,fp2,time_step,color)
     xlabel("time [s]")
     grid on
     hold on
-    
+        
     dist = fp1.DistanceTo(fp2, time_step);
-    plot(dist(:,1),dist(:,2), Color = color );            
+    plot(dist(:,1),dist(:,2), Color = 'green' );            
 end
 
 

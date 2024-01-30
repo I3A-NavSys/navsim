@@ -157,16 +157,16 @@ function wp3 = InterpolationTPV(wp1,wp2,t)
     wp3.t = t;
 
     % s12 = wp1.distanceTo(wp2);
-    s12 = wp2.position - wp1.Position;
+    s12 = wp2.Position - wp1.Position;
     if norm(s12)==0
-        wp3.setPosition(wp1.Position);
+        wp3.SetPosition(wp1.Position);
         return
     end
     
     t12 = wp1.TimeTo(wp2);
     t13 = wp1.TimeTo(wp3);
     v1  = wp1.Velocity;
-    v2  = wp2.velocity;
+    v2  = wp2.Velocity;
     
     A = [ t12^2/2   t12^3/6 ;
           t12       t12^2/2 ];
@@ -183,7 +183,7 @@ function wp3 = InterpolationTPV(wp1,wp2,t)
     end  
 
     s13 = v1*t13 + 1/2 *a*t13^2 + 1/6 *j*t13^3;
-    wp3.setPosition( wp1.Position + s13 );
+    wp3.SetPosition( wp1.Position + s13 );
 
 end
 

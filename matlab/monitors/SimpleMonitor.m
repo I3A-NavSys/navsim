@@ -156,12 +156,9 @@ function PositionFigure(obj,UAVid,fp)
     xlabel("t [s]");
     ylabel("error [m]");
 
-
     plot([fp.InitTime fp.FinishTime], [fp.radius fp.radius], ...
         "--", ...
         Color = 'red' )
-
-
 
     timeValues  = [];
     errorValues = [];

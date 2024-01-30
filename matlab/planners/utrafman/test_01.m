@@ -23,13 +23,13 @@ fp1  = FlightPlan(1,Waypoint.empty);
 for i = 1:size(way_data,1)
     wp = Waypoint();
     wp.t = way_data(i,1);
-    wp.setPosition(way_data(i,2:4));
-    fp1.setWaypoint(wp);
+    wp.SetPosition(way_data(i,2:4));
+    fp1.SetWaypoint(wp);
 end
 
 % Display
-fp1.routeFigure(time_step,'b')
-fp1.velocityFigure(time_step,'b')
+fp1.RouteFigure(time_step)
+fp1.VelocityFigure(time_step)
 
   
 %-------------
@@ -37,20 +37,20 @@ fp1.velocityFigure(time_step,'b')
 for i = 1:size(way_data,1)
     waypoints(i) = Waypoint();
     waypoints(i).t = way_data(i,1);
-    waypoints(i).setPosition(way_data(i,2:4));
-    waypoints(i).setVelocity(way_data(i,5:7));
+    waypoints(i).SetPosition(way_data(i,2:4));
+    waypoints(i).SetVelocity(way_data(i,5:7));
 end
 fp2  = FlightPlan(2,waypoints);
 fp2.mode = "TPV";
 
 % Display
-fp2.routeFigure(time_step,'r')
-fp2.velocityFigure(time_step,'r')
+fp2.RouteFigure(time_step)
+fp2.VelocityFigure(time_step)
 
 
 %-------------
 % Relative distance between two flightplans
-fp1.distanceFigure(fp2,time_step,'g')
+fp1.DistanceFigure(fp2,time_step)
 
 
 
