@@ -19,11 +19,12 @@ function obj = SimpleMonitor(name)
 
     % ROS2 node
     obj.rosNode = ros2node(obj.name);
-    pause(0.1) %ROS2 requires time to manage resources
+    pause(0.1) %ROS2 running
 
     obj.rosSer_TrackUAV = ros2svcserver(obj.rosNode, ...
         '/NavSim/TrackUAV','navsim_msgs/TrackUAV', ...
         @obj.TrackUAVCallback);
+    pause(0.1) %ROS2 running
     
 end
 
