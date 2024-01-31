@@ -23,13 +23,11 @@ function obj = SimpleBuilder(name,path)
     
     % ROS2 node
     obj.rosNode = ros2node(obj.name);
-    pause(0.1) %ROS2 running
 
     % ROS2 service clients
     obj.rosCli_DeployModel = ros2svcclient(obj.rosNode, ...
         '/NavSim/DeployModel','navsim_msgs/DeployModel', ...
         'History','keepall');
-    pause(0.1) %ROS2 running
 
 end
 
