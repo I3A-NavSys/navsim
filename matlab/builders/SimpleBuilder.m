@@ -23,6 +23,7 @@ function obj = SimpleBuilder(name,path)
     
     % ROS2 node
     obj.rosNode = ros2node(obj.name);
+    pause(0.1) %ROS2 requires time to manage resources
 
 
     % ROS2 service clients

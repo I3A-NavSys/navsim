@@ -2,6 +2,8 @@ clc
 clear
 pause(0.1) %ROS2 requires time to clear resources
 
+run('../../../tools/NAVSIM_PATHS');
+
 
 
 
@@ -37,7 +39,6 @@ fp2.VelocityFigure(1)
 
 
 
-run('../../../tools/NAVSIM_PATHS');
 
 builder  = SimpleBuilder ('builder' ,NAVSIM_MODELS_PATH);
 operator = USpaceOperator('operator',NAVSIM_MODELS_PATH);

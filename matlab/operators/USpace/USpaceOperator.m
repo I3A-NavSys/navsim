@@ -30,7 +30,8 @@ function obj = USpaceOperator(name,models_path)
 
     % ROS2 node
     obj.rosNode = ros2node(obj.name);
-
+    pause(0.1) %ROS2 requires time to manage resources
+    
     obj.rosSub_Time = ros2subscriber(obj.rosNode, ...
         '/NavSim/Time','builtin_interfaces/Time');
 
