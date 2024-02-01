@@ -1,6 +1,4 @@
 classdef Waypoint < handle
-%WAYPOINT This class represent a flight plan's waypoint
-%   Detailed explanation goes here
 
 properties
 
@@ -156,7 +154,6 @@ function wp3 = InterpolationTPV(wp1,wp2,t)
     wp3 = Waypoint;
     wp3.t = t;
 
-    % s12 = wp1.distanceTo(wp2);
     s12 = wp2.Position - wp1.Position;
     if norm(s12)==0
         wp3.SetPosition(wp1.Position);
@@ -164,7 +161,6 @@ function wp3 = InterpolationTPV(wp1,wp2,t)
     end
     
     t12 = wp1.TimeTo(wp2);
-    t13 = wp1.TimeTo(wp3);
     v1  = wp1.Velocity;
     v2  = wp2.Velocity;
     
@@ -182,6 +178,7 @@ function wp3 = InterpolationTPV(wp1,wp2,t)
         error('Error. Interpolación TPV sin solución')
     end  
 
+    t13 = wp1.TimeTo(wp3);
     s13 = v1*t13 + 1/2 *a*t13^2 + 1/6 *j*t13^3;
     wp3.SetPosition( wp1.Position + s13 );
 
