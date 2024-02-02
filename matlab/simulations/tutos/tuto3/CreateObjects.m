@@ -1,12 +1,13 @@
 clc
 clear
-pause(0.1) %ROS2 requires time to clear resources
+pause(1) %ROS2 requires time to clear resources
 
 run('../../../tools/NAVSIM_PATHS');
 
 builder  = SimpleBuilder ('builder' ,NAVSIM_MODELS_PATH);
 operator = USpaceOperator('operator',NAVSIM_MODELS_PATH);
 monitor  = SimpleMonitor('monitor');
+pause(0.1) %ROS2 requires time to clear resources
 
 
 % -------------

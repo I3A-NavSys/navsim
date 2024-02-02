@@ -1,3 +1,4 @@
+clc 
 
 % -------------
 %Create a Flight Plan for the drone 1

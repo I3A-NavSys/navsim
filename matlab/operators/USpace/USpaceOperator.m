@@ -83,10 +83,10 @@ function status = PauseSim(obj)
     req.reset = false;
     req.pause = true;
 
-    status = waitForServer(obj.rosCli_SimControl,"Timeout",1);
+    status = waitForServer(obj.rosCli_SimControl,'Timeout',1);
     if status
         try
-            call(obj.rosCli_SimControl,req,"Timeout",1);
+            call(obj.rosCli_SimControl,req,'Timeout',1);
         catch
             status = false;
         end
@@ -101,10 +101,10 @@ function status = ResetSim(obj)
     req.reset = true;
     req.pause = false;
 
-    status = waitForServer(obj.rosCli_SimControl,"Timeout",1);
+    status = waitForServer(obj.rosCli_SimControl,'Timeout',1);
     if status
         try
-            call(obj.rosCli_SimControl,req,"Timeout",1);
+            call(obj.rosCli_SimControl,req,'Timeout',1);
         catch
             status = false;
         end
@@ -173,16 +173,17 @@ function status = DeployUAV(obj,model,UAVid,pos,rot)
             file = fullfile(obj.models_path,'/UAM/minidrone/model.sdf');
             uav.rosPub = ros2publisher(obj.rosNode, ...
                 ['/NavSim/',UAVid,'/RemoteCommand'],      ...
-                "navsim_msgs/RemoteCommand");
+                'navsim_msgs/RemoteCommand');
 
         case UAVmodels.MiniDroneFP1
             file = fullfile(obj.models_path,'/UAM/minidrone/model_FP1.sdf');
             uav.rosPub = ros2publisher(obj.rosNode, ...
                 ['/NavSim/',UAVid,'/FlightPlan'],      ...
-                "navsim_msgs/FlightPlan");
+                'navsim_msgs/FlightPlan');
         otherwise
             return
     end
+    pause(0.1)
 
     obj.UAVs = [obj.UAVs uav];
 
@@ -197,10 +198,10 @@ function status = DeployUAV(obj,model,UAVid,pos,rot)
     req.rot.y = rot(2);
     req.rot.z = rot(3);
 
-    status = waitForServer(obj.rosCli_DeployUAV,"Timeout",1);
+    status = waitForServer(obj.rosCli_DeployUAV,'Timeout',1);
     if status
         try
-            call(obj.rosCli_DeployUAV,req,"Timeout",1);
+            call(obj.rosCli_DeployUAV,req,'Timeout',1);
         catch
             status = false;
         end
@@ -222,10 +223,10 @@ function status = RemoveUAV(obj,id)
     req = ros2message(obj.rosCli_RemoveUAV);
     req.name  = UAV.id;  
 
-    status = waitForServer(obj.rosCli_RemoveUAV,"Timeout",1);
+    status = waitForServer(obj.rosCli_RemoveUAV,'Timeout',1);
     if status
         try
-            call(obj.rosCli_RemoveUAV,req,"Timeout",1);
+            call(obj.rosCli_RemoveUAV,req,'Timeout',1);
         catch
             status = false;
         end
