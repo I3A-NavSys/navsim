@@ -30,21 +30,26 @@ function obj = USpaceOperator(name,models_path)
 
     % ROS2 node
     obj.rosNode = ros2node(obj.name);
+    pause(0.1) 
 
     obj.rosSub_Time = ros2subscriber(obj.rosNode, ...
         '/NavSim/Time','builtin_interfaces/Time');
+    pause(0.1) 
 
     obj.rosCli_SimControl = ros2svcclient(obj.rosNode, ...
         '/NavSim/SimControl','navsim_msgs/SimControl', ...
         'History','keepall');
+    pause(0.1) 
 
     obj.rosCli_DeployUAV = ros2svcclient(obj.rosNode, ...
         '/NavSim/DeployModel','navsim_msgs/DeployModel', ...
         'History','keepall');
+    pause(0.1) 
 
     obj.rosCli_RemoveUAV = ros2svcclient(obj.rosNode, ...
         '/NavSim/RemoveModel','navsim_msgs/RemoveModel', ...
         'History','keepall');
+    pause(0.1) 
 
 end
 
