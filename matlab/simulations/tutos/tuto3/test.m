@@ -1,31 +1,39 @@
 clc
 clear
-pause(0.1) %ROS2 requires time to clear resources
-run('../../../tools/NAVSIM_PATHS');
 
 
-operator = USpaceOperator('operator',NAVSIM_MODELS_PATH);
-
-operator.DeployUAV(UAVmodels.MiniDroneFP1,'UAV', ...
-    [ -190.00  -119.00  +048.10], ...
-    [0 0 pi/2 ]);
-
-waitForServer(operator.rosCli_DeployUAV,"Timeout",1);
+% ROS2 node
+rosNode = ros2node('operatorTEST');
 
 
-rosPub1 = ros2publisher(operator.rosNode, ...
+
+
+
+rosCli_DeployUAV = ros2svcclient(rosNode, ...
+    '/NavSim/DeployModel','navsim_msgs/DeployModel', ...
+    'History','keepall');
+
+
+
+% waitForServer(rosCli_DeployUAV,"Timeout",1);
+
+
+rosPub2 = ros2publisher(rosNode, ...
+    "/NavSim/UAV/FlightPlan",      ...
+    "navsim_msgs/FlightPlan",...
+    'History','keepall');
+
+
+rosPub = ros2publisher(rosNode, ...
     '/NavSim/UAV/RemoteCommand',      ...
     "navsim_msgs/RemoteCommand");
 
+rosPub2 = ros2publisher(rosNode, ...
+    '/NavSim/UAV2/RemoteCommand',      ...
+    "navsim_msgs/RemoteCommand");
 
-waitForServer(operator.rosCli_DeployUAV,"Timeout",1);
 
-
-rosPub2 = ros2publisher(operator.rosNode, ...
-    "/NavSim/UAV/FlightPlan",      ...
-    "navsim_msgs/FlightPlan");
-
-waitForServer(operator.rosCli_DeployUAV,"Timeout",1);
+waitForServer(rosCli_DeployUAV,"Timeout",1);
 
 
 
