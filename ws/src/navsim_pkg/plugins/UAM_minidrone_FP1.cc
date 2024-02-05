@@ -11,6 +11,7 @@
 #include "navsim_msgs/msg/remote_command.hpp"
 #include "navsim_msgs/msg/waypoint.hpp"
 #include "navsim_msgs/msg/flight_plan.hpp"
+#include "navsim_msgs/msg/navigation_report.hpp"
 
 
 
@@ -45,6 +46,7 @@ rclcpp::Subscription<navsim_msgs::msg::FlightPlan>::SharedPtr rosSub_FlightPlan;
 common::Time prevRosCheckTime;
 double RosCheckPeriod = 2.0;     // seconds
 
+rclcpp::Publisher<navsim_msgs::msg::NavigationReport>::SharedPtr rosPub_NavReport;
 
 
 
@@ -196,7 +198,10 @@ void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
             "/NavSim/" + UAVname + "/FlightPlan", 2,
             std::bind(&UAM_minidrone_FP1::rosTopFn_FlightPlan, this, 
                     std::placeholders::_1));
-    
+
+        rosPub_NavReport = rosNode->create_publisher<navsim_msgs::msg::NavigationReport>(
+            "/NavSim/" + UAVname + "/NavigationReport", 10);
+
     }
     else
     {   
@@ -289,34 +294,39 @@ void Navigation()
 {
     if (fp == nullptr) return;
 
+    // Create a Navigation Report MSG
+    navsim_msgs::msg::NavigationReport msg;
+
+    msg.plan_id      = fp->plan_id;
+    msg.uav_id       = UAVname;
+    msg.operator_id  = fp->operator_id;
+    
+    msg.fp_aborted   = false;
+    msg.fp_running   = false;
+    msg.fp_completed = false;
+
+    msg.current_wp   = 0;
+    msg.time.sec     = currentTime.sec;
+    msg.time.nanosec = currentTime.nsec;
+
+
+    // Check FP vigency
     int WP = GetWPatTime(currentTime);
+    std::vector<navsim_msgs::msg::Waypoint> route = fp->route;
+    int numWPs = route.size();
+
     if (currentWP == -1 && WP != 0)
     {
         // This flight plan is obsolet
         printf("OBSOLETE FLIGHT PLAN IGNORED\n");
+
+        msg.fp_aborted = true;
+        rosPub_NavReport->publish(msg);
+
         fp = nullptr;
         return;
     }
     
-    std::vector<navsim_msgs::msg::Waypoint> route = fp->route;
-    int numWPs = route.size();
-
-    // Print navigation information
-    if (currentWP != WP)
-    {
-        printf("%s ",UAVname.c_str());
-        if (WP == 0)
-            printf("waiting at starting WP%d \n",WP);
-        else if (WP == 1)
-            printf("starting flight to WP%d \n",WP);
-        else if (WP < numWPs)
-            printf("heading WP%d \n",WP);
-        else
-            printf("has completed its flight plan\n");
-    }
-
-    currentWP = WP;
-
 
     // Current UAV status
     ignition::math::Pose3<double> pose = model->WorldPose();
@@ -325,31 +335,65 @@ void Navigation()
     ignition::math::Vector3<double> currentAbsVel = model->WorldLinearVel();
 
 
-
-    if (currentWP == 0)
+    // Navigation status has changed?
+    if (currentWP != WP)
     {
-        // drone waiting to start the flight
-        navsim_msgs::msg::Waypoint WP0 = fp->route[0];
-        ignition::math::Vector3<double> initPos = ignition::math::Vector3d(WP0.pos.x,WP0.pos.y,WP0.pos.z);
-        initPos = initPos - currentPos;
-        if (initPos.Length() > fp->radius)
+
+        printf("%s ",UAVname.c_str());
+        if (WP == 0)
         {
-            // drone in an incorrect starting position
+            // drone waiting to start the flight
+            printf("waiting at starting WP%d \n",WP);
+
+            navsim_msgs::msg::Waypoint WP0 = fp->route[0];
+            ignition::math::Vector3<double> initPos = ignition::math::Vector3d(WP0.pos.x,WP0.pos.y,WP0.pos.z);
+            initPos = initPos - currentPos;
+            if (initPos.Length() > fp->radius)
+            {
+                // drone in an incorrect starting position
+                printf("%s discarding FP due to an incorrect starting position\n",UAVname.c_str());
+
+                msg.fp_aborted = true;
+                rosPub_NavReport->publish(msg);
+
+                fp = nullptr;
+                return;
+            }
+
+        }
+        else if (WP == 1)
+            printf("starting flight to WP%d \n",WP);
+        else if (WP < numWPs)
+            printf("heading WP%d \n",WP);
+        else
+        {
+            // flight plan completed
+            printf("has completed its flight plan\n");
+    
+            commandOff();
+
+            msg.fp_completed = true;
+            rosPub_NavReport->publish(msg);
+
             fp = nullptr;
-            printf("%s discarding FP due to an incorrect starting position\n",UAVname.c_str());
+            return;
         }
 
-        return;
+        msg.current_wp = WP;
+        rosPub_NavReport->publish(msg);
+
     }
 
-    if (currentWP == numWPs)
-    {
-        // flight plan expired
-        fp = nullptr;
-        currentWP = -1;
-        commandOff();
-        return;
-    }
+    currentWP = WP;
+
+
+
+
+
+
+
+
+
 
     // Time step to analyze movement
     common::Time FPtime;
@@ -424,8 +468,6 @@ void Navigation()
 
 }
     
-
-
 
 
 
