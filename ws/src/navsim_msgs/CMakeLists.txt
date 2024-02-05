@@ -21,6 +21,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/RemoteCommand.msg"
   "msg/Waypoint.msg"
   "msg/FlightPlan.msg"
+  "msg/NavigationReport.msg"
 
   "srv/SimControl.srv"
   "srv/DeployModel.srv"
