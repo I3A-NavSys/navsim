@@ -146,7 +146,6 @@ end
 
 
 function wp3 = InterpolationTPV(wp1,wp2,t)
-    % PENDIENTE DE CHEQUEAR
     % Dados dos waypoints, 
     % genera un tercer waypoint interpolando posiciones y velocidades a un tiempo dado.
     wp1.CheckWaypoint(wp2);
@@ -181,6 +180,50 @@ function wp3 = InterpolationTPV(wp1,wp2,t)
     t13 = wp1.TimeTo(wp3);
     s13 = v1*t13 + 1/2 *a*t13^2 + 1/6 *j*t13^3;
     wp3.SetPosition( wp1.Position + s13 );
+
+end
+
+
+
+function wp3 = InterpolationTPV0(wp1,wp2,t)
+    % PENDIENTE DE CHEQUEAR
+    % Dados dos waypoints con tiempo, posición, velocidad y aceleración nula
+    % interpola un tercer waypoint a un tiempo dado
+    % asumiendo un yerk inicial y un jolt constante
+
+    wp1.CheckWaypoint(wp2);
+
+    wp3 = Waypoint;
+    wp3.t = t;
+
+    r12 = wp2.Position - wp1.Position;
+    if norm(r12)==0
+        wp3.SetPosition(wp1.Position);
+        return
+    end
+    
+    t12 = wp1.TimeTo(wp2);
+    v1  = wp1.Velocity;
+    v2  = wp2.Velocity;
+    
+    A = [ t12^3/6   t12^4/24 
+          t12^2/2   t12^3/6  ];
+
+    B = [ r12-v1*t12 
+            v2-v1     ];
+
+    if rank(A) == 2
+        X = A\B;
+        j1 = X(1,:);  % jerk
+        s = X(2,:);   % jolt
+    else
+        error('Error. Interpolación TPV sin solución')
+    end  
+
+    r1 = wp1.Position;
+    t13 = wp1.TimeTo(wp3);
+    r13 = r1 + v1*t13 + 1/6 *j1*t13^3 + 1/24 *s*t13^4;
+    wp3.SetPosition(r13);
 
 end
 
