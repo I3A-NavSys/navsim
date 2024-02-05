@@ -379,20 +379,13 @@ void Navigation()
             return;
         }
 
+        msg.fp_running = true;
         msg.current_wp = WP;
         rosPub_NavReport->publish(msg);
 
     }
 
     currentWP = WP;
-
-
-
-
-
-
-
-
 
 
     // Time step to analyze movement
