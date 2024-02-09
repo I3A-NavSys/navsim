@@ -121,6 +121,8 @@ function p = PositionAtTime(obj, t)
             wp3 = wp1.InterpolationTP(wp2,t);
         case InterpolationModes.TPV
             wp3 = wp1.InterpolationTPV(wp2,t);
+        case InterpolationModes.TPV0
+            wp3 = wp1.InterpolationTPV0(wp2,t);
     end
     p = wp3.Position;
 
@@ -169,14 +171,14 @@ function dist = DistanceTo(fp1, fp2, timeStep)
 end
 
 
-function fp2 = TPV2TP(fp1,id,timeStep)
-    % Transform a TPV flight plant to a TP flightPlan
+function fp2 = Convert2TP(fp1,id,timeStep)
+    % Transform a TPV / TPV0 flight plant to a TP flightPlan
 
     fp2 = FlightPlan(id,Waypoint.empty);
-    if fp1.mode ~= "TPV"
+    if fp1.mode == InterpolationModes.TP
         return
     end
-
+    
     fp2.radius   = fp1.radius;
     fp2.priority = fp1.priority;
 
@@ -189,6 +191,9 @@ function fp2 = TPV2TP(fp1,id,timeStep)
         fp2.SetWaypoint(wp);
     end
 end
+
+
+
 
 
 

@@ -38,14 +38,14 @@ for i = 1:size(way_data1,1)
     wp.SetVelocity(way_data1(i,5:7));
     fp1.SetWaypoint(wp);
 end
-fp1.mode = "TPV";
-fp1.PositionFigure(1)
-fp1.VelocityFigure(1)
+fp1.mode = "TPV0";
+fp1.PositionFigure(0.1)
+fp1.VelocityFigure(0.1)
 
 
-fp2 = fp1.TPV2TP(2,1);
-fp2.PositionFigure(1)
-fp2.VelocityFigure(1)
+fp2 = fp1.Convert2TP(2,0.1);
+fp2.PositionFigure(0.1)
+fp2.VelocityFigure(0.1)
 
 
 
