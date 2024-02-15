@@ -318,7 +318,7 @@ void Navigation()
     if (currentWP == -1 && WP != 0)
     {
         // This flight plan is obsolet
-        printf("OBSOLETE FLIGHT PLAN IGNORED\n");
+        printf("%s discarding FP due to it is obsolet\n",UAVname.c_str());
 
         msg.fp_aborted = true;
         rosPub_NavReport->publish(msg);
@@ -561,7 +561,8 @@ void rosTopFn_FlightPlan(const std::shared_ptr<navsim_msgs::msg::FlightPlan> msg
     fp = msg;
     currentWP = -1;
 
-    printf("plan_id: %d \n",fp->plan_id);
+    printf("%s has received FP %d \n",UAVname.c_str(),fp->plan_id);
+
     std::vector<navsim_msgs::msg::Waypoint> route = fp->route;
     int numWPs = route.size();             
     for(int i=0; i<numWPs; i++)

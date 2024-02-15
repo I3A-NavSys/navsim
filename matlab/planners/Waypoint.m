@@ -85,6 +85,13 @@ end
 
 
 
+function Postpone(obj,timeStep)
+    % Set the position of the waypoint
+    obj.t = obj.t + timeStep;
+end
+
+
+
 function time = TimeTo(a,b)
     % Get the time elapsed from this waypoint to another given
     a.CheckWaypoint(b);
