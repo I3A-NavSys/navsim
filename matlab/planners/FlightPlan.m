@@ -99,6 +99,23 @@ end
 
 
 
+function Postpone(obj, timeStep)
+    % Postpone the Fligt Plan a given time 
+    for i = 1:length(obj.waypoints)
+        obj.waypoints(i).Postpone(timeStep);
+    end
+end
+
+
+
+function RescheduleAt(obj, time)
+    % Perform a temporal translation of the Fligt Plan to begin at a given time 
+    obj.Postpone(time - obj.InitTime());
+end
+
+
+
+
 function p = PositionAtTime(obj, t)
     % Check if t is out of flight plan schedule, returning not valid pos
     if t < obj.InitTime  ||  t > obj.FinishTime
@@ -169,6 +186,7 @@ function dist = DistanceTo(fp1, fp2, timeStep)
         dist(i,2) = norm(p2-p1);
     end
 end
+
 
 
 function fp2 = Convert2TP(fp1,id,timeStep)

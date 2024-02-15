@@ -5,8 +5,17 @@ properties
 
     % U-space properties
     name    string            % Operator name
-    ports = struct([])        % list of vertiports
-    UAVs  = struct([])        % list of UAVs fleet
+    ports = struct([])        % list of vertiports:     
+                                % id
+                                % pos
+    UAVs  = struct([])        % list of UAVs fleet:
+                                % id
+                                % model
+                                % vertiport { id / "flying" / "unregistered" }
+                                % fp
+                                % rosPub_RemoteCommand
+                                % rosPub_FlightPlan
+                                % rosSub_NavigationReport
 
     % ROS2 interface
     rosNode                   % ROS2 Node 
@@ -167,19 +176,33 @@ function status = DeployUAV(obj,model,UAVid,pos,rot)
     uav.id = UAVid;
     uav.model = model;
     uav.fp = FlightPlan.empty;
+    uav.rosPub_RemoteCommand = ros2publisher.empty;
+    uav.rosPub_FlightPlan = ros2publisher.empty;
+    uav.rosSub_NavigationReport = ros2subscriber.empty;
 
     switch model
+
         case UAVmodels.MiniDroneCommanded
+
             file = fullfile(obj.models_path,'/UAM/minidrone/model.sdf');
-            uav.rosPub = ros2publisher(obj.rosNode, ...
-                ['/NavSim/',UAVid,'/RemoteCommand'],      ...
+
+            uav.rosPub_RemoteCommand = ros2publisher(obj.rosNode, ...
+                ['/NavSim/' UAVid '/RemoteCommand'],      ...
                 'navsim_msgs/RemoteCommand');
 
         case UAVmodels.MiniDroneFP1
+
             file = fullfile(obj.models_path,'/UAM/minidrone/model_FP1.sdf');
-            uav.rosPub = ros2publisher(obj.rosNode, ...
-                ['/NavSim/',UAVid,'/FlightPlan'],      ...
+
+            uav.rosPub_FlightPlan = ros2publisher(obj.rosNode, ...
+                ['/NavSim/' UAVid '/FlightPlan'],      ...
                 'navsim_msgs/FlightPlan');
+
+            uav.rosSub_NavigationReport = ros2subscriber(obj.rosNode, ...
+                ['/NavSim/' UAVid '/NavigationReport'], ...
+                'navsim_msgs/NavigationReport', ...
+                @obj.NavigationReportCallback);
+
         otherwise
             return
     end
@@ -247,7 +270,7 @@ function RemoteCommand(obj,UAVid,on,velX,velY,velZ,rotZ,duration)
         return
     end
 
-    msg = ros2message(UAV.rosPub);
+    msg = ros2message(UAV.rosPub_RemoteCommand);
     msg.uav_id        = UAV.id;
     msg.on            = on;
     msg.vel.linear.x  = velX;
@@ -255,7 +278,7 @@ function RemoteCommand(obj,UAVid,on,velX,velY,velZ,rotZ,duration)
     msg.vel.linear.z  = velZ;
     msg.vel.angular.z = rotZ;
     msg.duration.sec  = int32(duration);
-    send(UAV.rosPub,msg);
+    send(UAV.rosPub_RemoteCommand,msg);
         
 end
 
@@ -283,7 +306,7 @@ function SendFlightPlan(obj,UAVid,fp)
     obj.UAVs(i).fp = fp;
 
     % Send ROS2 message
-    msg = ros2message(UAV.rosPub);
+    msg = ros2message(UAV.rosPub_FlightPlan);
     msg.plan_id     = uint16(fp.id);
     msg.uav_id      = UAV.id;
     msg.operator_id = char(obj.name);
@@ -305,7 +328,7 @@ function SendFlightPlan(obj,UAVid,fp)
         msg.route(i).vel.z = fp.waypoints(i).vz;
 
     end
-    send(UAV.rosPub,msg);
+    send(UAV.rosPub_FlightPlan,msg);
         
 end
 
@@ -322,6 +345,25 @@ function index = GetUAVindex(obj,id)
             return
         end
     end
+end
+
+
+
+function NavigationReportCallback(obj,msg)
+
+    % disp("Report recibido")
+
+    if msg.operator_id ~= obj.name
+        fprintf("ERROR: Operator '%s' is managing a UAV that he does not own.",obj.name);
+        return
+    end
+
+    if msg.fp_completed
+        fprintf("%s has completed its flight plan\n\n",msg.uav_id);
+    end
+
+    % time = double(msg.time.sec) + double(msg.time.nanosec)/1E9;
+
 end
 
 
