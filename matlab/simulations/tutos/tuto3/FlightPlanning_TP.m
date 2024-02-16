@@ -78,13 +78,7 @@ end
 operator.ResetSim;
 operator.SendFlightPlan('UAV01',fp1);
 % operator.SendFlightPlan('UAV02',fp2);
-<<<<<<< HEAD
-% operator.SendFlightPlan('UAV03
-% 
-% ',fp3);
-=======
 % operator.SendFlightPlan('UAV03',fp3);
->>>>>>> ae19622e681d05c47390bcb3894e6ccb2383d2b2
 
 
 
