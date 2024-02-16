@@ -270,13 +270,8 @@ function RemoteCommand(obj,UAVid,on,velX,velY,velZ,rotZ,duration)
         return
     end
 
-<<<<<<< HEAD
-    msg = ros2message(UAV.rosPub_RemoteCommand);
-    msg.uav_id        = UAV.id;
-=======
     msg = ros2message(uav.rosPub_RemoteCommand);
     msg.uav_id        = uav.id;
->>>>>>> ae19622e681d05c47390bcb3894e6ccb2383d2b2
     msg.on            = on;
     msg.vel.linear.x  = velX;
     msg.vel.linear.y  = velY;
@@ -311,7 +306,7 @@ function SendFlightPlan(obj,UAVid,fp)
     obj.UAVs(i).fp = fp;
 
     % Send ROS2 message
-    msg = ros2message(UAV.rosPub_FlightPlan);
+    msg = ros2message(uav.rosPub_FlightPlan);
     msg.plan_id     = uint16(fp.id);
     msg.uav_id      = uav.id;
     msg.operator_id = char(obj.name);
@@ -333,7 +328,7 @@ function SendFlightPlan(obj,UAVid,fp)
         msg.route(i).vel.z = fp.waypoints(i).vz;
 
     end
-    send(UAV.rosPub_FlightPlan,msg);
+    send(uav.rosPub_FlightPlan,msg);
         
 end
 
