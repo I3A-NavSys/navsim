@@ -39,26 +39,26 @@ function obj = USpaceOperator(name,models_path)
 
     % ROS2 node
     obj.rosNode = ros2node(obj.name);
-    pause(0.1) 
+    % pause(0.1) 
 
     obj.rosSub_Time = ros2subscriber(obj.rosNode, ...
         '/NavSim/Time','builtin_interfaces/Time');
-    pause(0.1) 
+    % pause(0.1) 
 
     obj.rosCli_SimControl = ros2svcclient(obj.rosNode, ...
         '/NavSim/SimControl','navsim_msgs/SimControl', ...
         'History','keepall');
-    pause(0.1) 
+    % pause(0.1) 
 
     obj.rosCli_DeployUAV = ros2svcclient(obj.rosNode, ...
         '/NavSim/DeployModel','navsim_msgs/DeployModel', ...
         'History','keepall');
-    pause(0.1) 
+    % pause(0.1) 
 
     obj.rosCli_RemoveUAV = ros2svcclient(obj.rosNode, ...
         '/NavSim/RemoveModel','navsim_msgs/RemoveModel', ...
         'History','keepall');
-    pause(0.1) 
+    % pause(0.1) 
 
 end
 
@@ -79,13 +79,13 @@ function WaitTime(obj,time)
     [s,~] = obj.GetTime;
     while s < time
         [s,~] = obj.GetTime;
-        pause (1);
+        % pause (1);
 
     end
 end
 
 
-function status = PauseSim(obj)
+function status = pauseSim(obj)
 
     % Call ROS2 service
     req = ros2message(obj.rosCli_SimControl);
@@ -206,7 +206,7 @@ function status = DeployUAV(obj,model,UAVid,pos,rot)
         otherwise
             return
     end
-    pause(0.1)
+    % pause(0.1)
 
     obj.UAVs = [obj.UAVs uav];
 
@@ -240,11 +240,11 @@ function status = RemoveUAV(obj,id)
         return
     end
 
-    UAV = obj.UAVs(i);
+    uav = obj.UAVs(i);
     obj.UAVs = [ obj.UAVs(1:i-1) obj.UAVs(i+1:end) ];
 
     req = ros2message(obj.rosCli_RemoveUAV);
-    req.name  = UAV.id;  
+    req.name  = uav.id;  
 
     status = waitForServer(obj.rosCli_RemoveUAV,'Timeout',1);
     if status
@@ -265,20 +265,29 @@ function RemoteCommand(obj,UAVid,on,velX,velY,velZ,rotZ,duration)
         return
     end
 
-    UAV = obj.UAVs(i);
-    if UAV.model ~= UAVmodels.MiniDroneCommanded
+    uav = obj.UAVs(i);
+    if uav.model ~= UAVmodels.MiniDroneCommanded
         return
     end
 
+<<<<<<< HEAD
     msg = ros2message(UAV.rosPub_RemoteCommand);
     msg.uav_id        = UAV.id;
+=======
+    msg = ros2message(uav.rosPub_RemoteCommand);
+    msg.uav_id        = uav.id;
+>>>>>>> ae19622e681d05c47390bcb3894e6ccb2383d2b2
     msg.on            = on;
     msg.vel.linear.x  = velX;
     msg.vel.linear.y  = velY;
     msg.vel.linear.z  = velZ;
     msg.vel.angular.z = rotZ;
     msg.duration.sec  = int32(duration);
+<<<<<<< HEAD
     send(UAV.rosPub_RemoteCommand,msg);
+=======
+    send(uav.rosPub_RemoteCommand,msg);
+>>>>>>> ae19622e681d05c47390bcb3894e6ccb2383d2b2
         
 end
 
@@ -293,8 +302,8 @@ function SendFlightPlan(obj,UAVid,fp)
     end
 
     % Check drone / FP compatibility
-    UAV = obj.UAVs(i);
-    if UAV.model == UAVmodels.MiniDroneFP1
+    uav = obj.UAVs(i);
+    if uav.model == UAVmodels.MiniDroneFP1
         if fp.mode == InterpolationModes.TP
         else
             return
@@ -306,9 +315,13 @@ function SendFlightPlan(obj,UAVid,fp)
     obj.UAVs(i).fp = fp;
 
     % Send ROS2 message
+<<<<<<< HEAD
     msg = ros2message(UAV.rosPub_FlightPlan);
+=======
+    msg = ros2message(uav.rosPub_FlightPlan);
+>>>>>>> ae19622e681d05c47390bcb3894e6ccb2383d2b2
     msg.plan_id     = uint16(fp.id);
-    msg.uav_id      = UAV.id;
+    msg.uav_id      = uav.id;
     msg.operator_id = char(obj.name);
     msg.priority    = int8(fp.priority);
     msg.mode        = char(fp.mode);
@@ -328,7 +341,11 @@ function SendFlightPlan(obj,UAVid,fp)
         msg.route(i).vel.z = fp.waypoints(i).vz;
 
     end
+<<<<<<< HEAD
     send(UAV.rosPub_FlightPlan,msg);
+=======
+    send(uav.rosPub_FlightPlan,msg);
+>>>>>>> ae19622e681d05c47390bcb3894e6ccb2383d2b2
         
 end
 
@@ -351,6 +368,7 @@ end
 
 function NavigationReportCallback(obj,msg)
 
+<<<<<<< HEAD
     % disp("Report recibido")
 
     if msg.operator_id ~= obj.name
@@ -360,6 +378,35 @@ function NavigationReportCallback(obj,msg)
 
     if msg.fp_completed
         fprintf("%s has completed its flight plan\n\n",msg.uav_id);
+=======
+    % disp("NavigationReport received")
+
+    if msg.operator_id ~= obj.name
+        fprintf("WARNING: Operator '%s' is managing a UAV that he does not own \n\n",obj.name);
+        return
+    end
+    
+    if msg.fp_aborted
+        fprintf("%s has discarded the proposed flight plan \n",msg.uav_id);
+    end
+
+    if msg.fp_running
+        if (msg.current_wp == 0)
+            fprintf("%s waiting at starting WP0 \n",msg.uav_id);
+        elseif (msg.current_wp == 1)
+            fprintf("%s starting flight to WP1 \n",msg.uav_id);
+        else
+            fprintf("%s heading WP%d \n",msg.uav_id,msg.current_wp);
+        end
+    end
+
+    if msg.fp_completed
+        fprintf("%s has completed its flight plan \n",msg.uav_id);
+        i = obj.GetUAVindex(msg.uav_id);
+        uav = obj.UAVs(i);
+        fp = uav.fp;
+        
+>>>>>>> ae19622e681d05c47390bcb3894e6ccb2383d2b2
     end
 
     % time = double(msg.time.sec) + double(msg.time.nanosec)/1E9;
