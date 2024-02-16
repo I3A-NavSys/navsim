@@ -283,11 +283,7 @@ function RemoteCommand(obj,UAVid,on,velX,velY,velZ,rotZ,duration)
     msg.vel.linear.z  = velZ;
     msg.vel.angular.z = rotZ;
     msg.duration.sec  = int32(duration);
-<<<<<<< HEAD
     send(UAV.rosPub_RemoteCommand,msg);
-=======
-    send(uav.rosPub_RemoteCommand,msg);
->>>>>>> ae19622e681d05c47390bcb3894e6ccb2383d2b2
         
 end
 
@@ -315,11 +311,7 @@ function SendFlightPlan(obj,UAVid,fp)
     obj.UAVs(i).fp = fp;
 
     % Send ROS2 message
-<<<<<<< HEAD
     msg = ros2message(UAV.rosPub_FlightPlan);
-=======
-    msg = ros2message(uav.rosPub_FlightPlan);
->>>>>>> ae19622e681d05c47390bcb3894e6ccb2383d2b2
     msg.plan_id     = uint16(fp.id);
     msg.uav_id      = uav.id;
     msg.operator_id = char(obj.name);
@@ -341,11 +333,7 @@ function SendFlightPlan(obj,UAVid,fp)
         msg.route(i).vel.z = fp.waypoints(i).vz;
 
     end
-<<<<<<< HEAD
     send(UAV.rosPub_FlightPlan,msg);
-=======
-    send(uav.rosPub_FlightPlan,msg);
->>>>>>> ae19622e681d05c47390bcb3894e6ccb2383d2b2
         
 end
 
@@ -368,17 +356,6 @@ end
 
 function NavigationReportCallback(obj,msg)
 
-<<<<<<< HEAD
-    % disp("Report recibido")
-
-    if msg.operator_id ~= obj.name
-        fprintf("ERROR: Operator '%s' is managing a UAV that he does not own.",obj.name);
-        return
-    end
-
-    if msg.fp_completed
-        fprintf("%s has completed its flight plan\n\n",msg.uav_id);
-=======
     % disp("NavigationReport received")
 
     if msg.operator_id ~= obj.name
@@ -402,11 +379,10 @@ function NavigationReportCallback(obj,msg)
 
     if msg.fp_completed
         fprintf("%s has completed its flight plan \n",msg.uav_id);
-        i = obj.GetUAVindex(msg.uav_id);
-        uav = obj.UAVs(i);
-        fp = uav.fp;
+        % i = obj.GetUAVindex(msg.uav_id);
+        % uav = obj.UAVs(i);
+        % fp = uav.fp;
         
->>>>>>> ae19622e681d05c47390bcb3894e6ccb2383d2b2
     end
 
     % time = double(msg.time.sec) + double(msg.time.nanosec)/1E9;
