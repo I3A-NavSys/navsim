@@ -27,8 +27,11 @@ ros2 service list | grep Deploy
 
 ## Matlab
 
+### CreateObject.m
+
 Now open Matlab (in the same computer or other computer connected to the same subnetwotk).
-Navigate to `navsim/matlab/simulations/tutos/tuto3`. From here, open the script `FlightPlannig_TP.m` and execute it.
+Navigate to `navsim/matlab/simulations/tutos/tuto3`. From here, open the script `CreateObjets.m` and execute it.
+
 
 This code employs a **SimpleBuilder** to deploy vertiports in the area, a **USpaceOperator** to manage the operation of several drones, and a **SimpleMonitor** to analyze their accuracy executing flight plans.
 
@@ -78,16 +81,21 @@ for i = 1:size(fleetLoc,1)
     monitor.TrackUAV(id);
 end
 ```
-Next, we create a flight plan for each drone. 
+
+![UAV deployed](./img/UAV02_init_pos.png)
+
+
+
+### FlightPlannig_TP.m
+
+Now, open the script `FlightPlannig_TP.m` and execute it. 
+
+First, we create a flight plan for each drone. 
 A TP (Time/Position) flight plan is a sequence of waypoints that reflect positions the device should be at specific moments. 
 Of course, the waypoints are ordered chronologically, even if they were inserted in a different order. 
 Inserting a waypoint overwrites another existing one at the same time.
 
 ```matlab
-
-The flight plan for UAV01 involves ascending a few meters, performing a closed rectangular trajectory, and landing at the same point.
-The other drones will move from their respective vertiports to the first one.
-
 % -------------
 %Create a Flight Plan for the drone 1
 %              t      x        y        z    
@@ -108,7 +116,16 @@ for i = 1:size(way_data1,1)
     wp.SetPosition(way_data1(i,2:4));
     fp1.SetWaypoint(wp);
 end
+```
 
+The flight plan for UAV01 involves ascending a few meters, performing a closed rectangular trajectory, and landing at the same point.
+
+![Flight plan 1: position](./img/FP1_position.png)
+![Flight plan1: velocity](./img/FP1_velocity.png)
+
+UAV02 and UAV03 will move from their respective vertiports to the first one.
+
+```matlab
 % -------------
 %Create a Flight Plan for the drone 2
 %              t      x        y        z    
@@ -157,7 +174,6 @@ Then, if desired, we can remove them from the scenario. Finally, we stop the sim
 % -------------
 %Comunicate Flight Plans
 operator.ResetSim;
-pause(0.1)
 operator.SendFlightPlan('UAV01',fp1);
 operator.SendFlightPlan('UAV02',fp2);
 operator.SendFlightPlan('UAV03',fp3);

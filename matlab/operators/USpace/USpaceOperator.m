@@ -12,7 +12,8 @@ properties
                                 % id
                                 % model
                                 % vertiport { id / "flying" / "unregistered" }
-                                % fp
+                                % op_index =0 -> vertiport = id / "unregistered";
+                                %          >0 -> vertiport = "flying"
                                 % rosPub_RemoteCommand
                                 % rosPub_FlightPlan
                                 % rosSub_NavigationReport
@@ -85,7 +86,7 @@ function WaitTime(obj,time)
 end
 
 
-function status = pauseSim(obj)
+function status = PauseSim(obj)
 
     % Call ROS2 service
     req = ros2message(obj.rosCli_SimControl);
@@ -165,6 +166,13 @@ function index = GetPORTindex(obj,id)
 end
 
 
+function DeployFleet(obj,model,UAVid,pos,rot)
+
+
+
+end
+
+
 function status = DeployUAV(obj,model,UAVid,pos,rot)
 
     status = false;
@@ -175,11 +183,15 @@ function status = DeployUAV(obj,model,UAVid,pos,rot)
 
     uav.id = UAVid;
     uav.model = model;
+
+    uav.vertiport = "unregistered";
+    uav.operation = 0;
     uav.fp = FlightPlan.empty;
+
     uav.rosPub_RemoteCommand = ros2publisher.empty;
     uav.rosPub_FlightPlan = ros2publisher.empty;
     uav.rosSub_NavigationReport = ros2subscriber.empty;
-
+  
     switch model
 
         case UAVmodels.MiniDroneCommanded
@@ -287,7 +299,6 @@ function SendFlightPlan(obj,UAVid,fp)
     % fp es una lista de filas con 7 componentes
 
     i = obj.GetUAVindex(UAVid);
-
     if i == -1
         return
     end
