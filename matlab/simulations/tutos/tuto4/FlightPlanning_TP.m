@@ -6,12 +6,14 @@ clc
 %              t      x        y        z    
 way_data1 = [ 05   -190.00  -119.00  +048.05   
               10   -190.00  -119.00  +052.00   
-              30   -190.00  -159.00  +052.00   
-              50   -150.00  -159.00  +052.00   
-              70   -150.00  -119.00  +052.00   
+              28   -190.00  -154.00  +052.00   
+              32   -185.00  -159.00  +052.00   
+              48   -155.00  -159.00  +052.00   
+              52   -150.00  -154.00  +052.00   
+              68   -150.00  -124.00  +052.00   
+              72   -155.00  -119.00  +052.00   
               90   -190.00  -119.00  +052.00   
-              95   -190.00  -119.00  +048.05  
-              97   -190.00  -119.00  +048.05  ];
+              95   -190.00  -119.00  +048.05  ];
 
 fp1  = FlightPlan(1,Waypoint.empty);
 
@@ -23,8 +25,8 @@ for i = 1:size(way_data1,1)
 end
 
 % Display
-fp1.PositionFigure(1)
-fp1.VelocityFigure(1)
+% fp1.PositionFigure(1)
+% fp1.VelocityFigure(1)
 
 
 % -------------
@@ -64,33 +66,38 @@ for i = 1:size(way_data3,1)
     fp3.SetWaypoint(wp);
 end
 
+% Display
+% fp3.RouteFigure(1)
+% fp3.VelocityFigure(1)
+
 
 
 % -------------
 %Comunicate Flight Plans
+
 operator.ResetSim;
 operator.SendFlightPlan('UAV01',fp1);
-operator.SendFlightPlan('UAV02',fp2);
-operator.SendFlightPlan('UAV03',fp3);
+% operator.SendFlightPlan('UAV02',fp2);
+% operator.SendFlightPlan('UAV03',fp3);
 
 
 
 %%
-operator.WaitTime(max([fp1.FinishTime fp2.FinishTime fp3.FinishTime]));
+% operator.WaitTime(max([fp1.FinishTime fp2.FinishTime fp3.FinishTime]));
 % operator.RemoveUAV('UAV01');
 % operator.RemoveUAV('UAV02');
 % operator.RemoveUAV('UAV03');
-operator.PauseSim;
+% operator.PauseSim;
 
-monitor.PositionFigure('UAV01',fp1);
-monitor.VelocityFigure('UAV01',fp1);
-[medE,maxE,t] = monitor.PathFollowingError('UAV01',fp1);
-
-monitor.PositionFigure('UAV02',fp2);
-monitor.VelocityFigure('UAV02',fp2);
-
-monitor.PositionFigure('UAV03',fp3);
-monitor.VelocityFigure('UAV03',fp3);
+% monitor.PositionFigure('UAV01',fp1);
+% monitor.VelocityFigure('UAV01',fp1);
+% [medE,maxE,t] = monitor.PathFollowingError('UAV01',fp1);
+% 
+% monitor.PositionFigure('UAV02',fp2);
+% monitor.VelocityFigure('UAV02',fp2);
+% 
+% monitor.PositionFigure('UAV03',fp3);
+% monitor.VelocityFigure('UAV03',fp3);
 
 
 
