@@ -5,18 +5,8 @@ properties
 
     % U-space properties
     name    string            % Operator name
-    ports = struct([])        % list of vertiports:     
-                                % id
-                                % pos
-    UAVs  = struct([])        % list of UAVs fleet:
-                                % id
-                                % model
-                                % vertiport { id / "flying" / "unregistered" }
-                                % op_index =0 -> vertiport = id / "unregistered";
-                                %          >0 -> vertiport = "flying"
-                                % rosPub_RemoteCommand
-                                % rosPub_FlightPlan
-                                % rosSub_NavigationReport
+    ports = PortInfo.empty;
+    UAVs  = UAVinfo.empty;
 
     % ROS2 interface
     rosNode                   % ROS2 Node 
@@ -40,26 +30,21 @@ function obj = USpaceOperator(name,models_path)
 
     % ROS2 node
     obj.rosNode = ros2node(obj.name);
-    % pause(0.1) 
 
     obj.rosSub_Time = ros2subscriber(obj.rosNode, ...
         '/NavSim/Time','builtin_interfaces/Time');
-    % pause(0.1) 
 
     obj.rosCli_SimControl = ros2svcclient(obj.rosNode, ...
         '/NavSim/SimControl','navsim_msgs/SimControl', ...
         'History','keepall');
-    % pause(0.1) 
 
     obj.rosCli_DeployUAV = ros2svcclient(obj.rosNode, ...
         '/NavSim/DeployModel','navsim_msgs/DeployModel', ...
         'History','keepall');
-    % pause(0.1) 
 
     obj.rosCli_RemoveUAV = ros2svcclient(obj.rosNode, ...
         '/NavSim/RemoveModel','navsim_msgs/RemoveModel', ...
         'History','keepall');
-    % pause(0.1) 
 
 end
 
@@ -130,10 +115,9 @@ function status = SetVertiport(obj,id,pos)
         return
     end
 
-    port.id = id;
-    port.pos = pos;
-
+    port = PortInfo(id,pos);
     obj.ports = [obj.ports port];
+
     status = true;
 end
 
@@ -166,11 +150,8 @@ function index = GetPORTindex(obj,id)
 end
 
 
-function DeployFleet(obj,model,UAVid,pos,rot)
-
-
-
-end
+% function DeployFleet(obj,model,UAVid,pos,rot)
+% end
 
 
 function status = DeployUAV(obj,model,UAVid,pos,rot)
@@ -181,17 +162,8 @@ function status = DeployUAV(obj,model,UAVid,pos,rot)
         return
     end
 
-    uav.id = UAVid;
-    uav.model = model;
+    uav = UAVinfo(UAVid,model);
 
-    uav.vertiport = "unregistered";
-    uav.operation = 0;
-    uav.fp = FlightPlan.empty;
-
-    uav.rosPub_RemoteCommand = ros2publisher.empty;
-    uav.rosPub_FlightPlan = ros2publisher.empty;
-    uav.rosSub_NavigationReport = ros2subscriber.empty;
-  
     switch model
 
         case UAVmodels.MiniDroneCommanded
@@ -218,9 +190,9 @@ function status = DeployUAV(obj,model,UAVid,pos,rot)
         otherwise
             return
     end
-    % pause(0.1)
 
     obj.UAVs = [obj.UAVs uav];
+
 
     % Call ROS2 service
     req = ros2message(obj.rosCli_DeployUAV);
@@ -319,7 +291,7 @@ function SendFlightPlan(obj,UAVid,fp)
     % Send ROS2 message
     msg = ros2message(uav.rosPub_FlightPlan);
     msg.plan_id     = uint16(fp.id);
-    msg.uav_id      = uav.id;
+    msg.uav_id      = char(uav.id);
     msg.operator_id = char(obj.name);
     msg.priority    = int8(fp.priority);
     msg.mode        = char(fp.mode);
