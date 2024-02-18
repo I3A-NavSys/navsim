@@ -35,3 +35,5 @@ end
 
 operator.DeployFleet(3,UAVmodels.MiniDroneFP1);
 monitor.TrackUAV(operator.Fleet); 
+
+operator.OperateUAV("UAV01");

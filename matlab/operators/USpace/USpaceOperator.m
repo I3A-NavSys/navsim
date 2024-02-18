@@ -4,9 +4,10 @@ classdef USpaceOperator < handle
 properties
 
     % U-space properties
-    name    string            % Operator name
-    ports = PortInfo.empty;
-    UAVs  = UAVinfo.empty;
+    name    string              % Operator name
+    VPs  = PortInfo.empty;      % list of available vertiports
+    UAVs = UAVinfo.empty;       % list of managed UAVs
+    ops  = OperationInfo.empty; % list of generated operations
 
     % ROS2 interface
     rosNode                   % ROS2 Node 
@@ -116,7 +117,7 @@ function status = SetVertiport(obj,id,pos)
     end
 
     port = PortInfo(id,pos);
-    obj.ports = [obj.ports port];
+    obj.VPs = [obj.VPs port];
 
     status = true;
 end
@@ -129,7 +130,7 @@ function status = DeleteVertiport(obj,id)
         status = false;
         return
     end
-    obj.ports = [ obj.ports(1:i-1) obj.ports(i+1:end) ];
+    obj.VPs = [ obj.VPs(1:i-1) obj.VPs(i+1:end) ];
     status = true;
 
 end
@@ -137,12 +138,12 @@ end
 
 function index = GetPORTindex(obj,id)
     index = -1;
-    l = length(obj.ports);
+    l = length(obj.VPs);
     if l==0
         return
     end
     for i = 1:l
-        if obj.ports(i).id == id
+        if obj.VPs(i).id == id
             index = i;
             return
         end
@@ -151,7 +152,7 @@ end
 
 
 function DeployFleet(obj,numUAVs,model)
-    if numUAVs > length(obj.ports)
+    if numUAVs > length(obj.VPs)
         disp("Cannot generate more drones than available vertiports")
         return
     end
@@ -160,13 +161,14 @@ function DeployFleet(obj,numUAVs,model)
   
         id = sprintf('UAV%02d', i);
         obj.DeployUAV(model,id, ...
-            obj.ports(i).pos+[0 0 0.10], ...
+            obj.VPs(i).pos+[0 0 0.10], ...
             [0 0 rand*2*pi]);       
     end
 end
 
 
 function UAVids = Fleet(obj)
+    % the operator provides a list with the id of all its drones
     numUAVs = length(obj.UAVs);
     UAVids = strings(1,numUAVs);
     for i = 1:numUAVs
@@ -285,6 +287,26 @@ function RemoteCommand(obj,UAVid,on,velX,velY,velZ,rotZ,duration)
     msg.duration.sec  = int32(duration);
     send(UAV.rosPub_RemoteCommand,msg);
         
+end
+
+
+function OperateUAV(obj, UAVids)
+    % the operator generate an operation for an idle UAV
+    
+    for u = 1:length(UAVids)
+        i = obj.GetUAVindex(UAVids(u)); 
+        if  i == -1
+            continue
+        end
+    
+        op = OperationInfo;
+        uav = obj.UAVs(i);
+
+        % VAMOS POR AQUI
+
+        obj.ops = [obj.ops op];
+
+    end
 end
 
 

@@ -1,4 +1,3 @@
-%Class for a UAV in the simulation
 
 classdef UAVinfo < handle
 
