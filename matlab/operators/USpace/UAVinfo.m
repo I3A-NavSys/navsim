@@ -4,15 +4,11 @@ classdef UAVinfo < handle
 
 properties
     id         string      % UAV unique ID
-    model      UAVmodels             
+    model      UAVmodels
+
     vertiport  string      % id / "flying" / "unregistered"
-
     operation              % number of current operation
-                           % =0 -> vertiport = id / "unregistered"
-                           % >0 -> vertiport = "flying"
-
     fp         FlightPlan
-    
 
     % ROS2 interface
     rosPub_RemoteCommand

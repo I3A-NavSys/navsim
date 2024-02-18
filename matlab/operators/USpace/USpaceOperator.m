@@ -150,8 +150,29 @@ function index = GetPORTindex(obj,id)
 end
 
 
-% function DeployFleet(obj,model,UAVid,pos,rot)
-% end
+function DeployFleet(obj,numUAVs,model)
+    if numUAVs > length(obj.ports)
+        disp("Cannot generate more drones than available vertiports")
+        return
+    end
+
+    for i = 1:numUAVs
+  
+        id = sprintf('UAV%02d', i);
+        obj.DeployUAV(model,id, ...
+            obj.ports(i).pos+[0 0 0.10], ...
+            [0 0 rand*2*pi]);       
+    end
+end
+
+
+function UAVids = Fleet(obj)
+    numUAVs = length(obj.UAVs);
+    UAVids = strings(1,numUAVs);
+    for i = 1:numUAVs
+        UAVids(i) = obj.UAVs(i).id;
+    end
+end
 
 
 function status = DeployUAV(obj,model,UAVid,pos,rot)
@@ -264,6 +285,11 @@ function RemoteCommand(obj,UAVid,on,velX,velY,velZ,rotZ,duration)
     msg.duration.sec  = int32(duration);
     send(UAV.rosPub_RemoteCommand,msg);
         
+end
+
+
+function GenerateFlightPlan(obj,VPsource,VPdest)
+    
 end
 
 
