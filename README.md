@@ -1,7 +1,7 @@
 
 # NavSim
 
-Update 15/01/2024
+Update 21/02/2024
 
 ![NavSim](./doc/img/navsim.png)
 
