@@ -38,15 +38,15 @@ Verify the installation with the `ros2` command.
 
 ## Install Gazebo
 
-Install Gazebo 11 (classic) from **Init/Ubuntu Software**. 
-To check it, execute the command `gazebo` in a terminal. The graphical interface of Gazebo should open:
-
-![Gazebo](./img/gazebo.png 'Gazebo simulator. :size=600px')
-
 Install ROS packages for Gazebo connection:
 ```bash
 sudo apt install ros-humble-gazebo-ros-pkgs
 ```
+
+This will also install Gazebo 11 (classic). 
+To check it, execute the command `gazebo` in a terminal. The graphical interface of Gazebo should open:
+
+![Gazebo](./img/gazebo.png 'Gazebo simulator. :size=600px')
 
 Check that ROS2 and Gazebo are linked running an empty scenario:
 ```bash
