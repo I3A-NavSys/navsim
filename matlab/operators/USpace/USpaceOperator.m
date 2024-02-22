@@ -50,14 +50,12 @@ function obj = USpaceOperator(name,models_path)
 end
 
 
-function [sec,mil] = GetTime(obj)
+function time = GetTime(obj)
     [msg,status,~] = receive(obj.rosSub_Time,1);
     if (status)
-        sec = double(msg.sec);
-        mil = double(msg.nanosec / 1E6);
+        time = double(msg.sec) + double(msg.nanosec)/1E9;
     else
-        sec = 0;
-        mil = 0;
+        time = 0;
     end
 end
 
@@ -210,6 +208,11 @@ function status = DeployUAV(obj,model,UAVid,pos,rot)
                 'navsim_msgs/NavigationReport', ...
                 @obj.NavigationReportCallback);
 
+            uav.rosSub_Telemetry = ros2subscriber(obj.rosNode, ...
+                ['/NavSim/' UAVid '/Telemetry'], ...
+                'navsim_msgs/Telemetry', ...
+                @obj.TelemetryCallback);
+
         otherwise
             return
     end
@@ -293,17 +296,46 @@ end
 function OperateUAV(obj, UAVid)
     % the operator generate an operation for an idle UAV
     
-    i = obj.GetUAVindex(UAVids(u)); 
+    i = obj.GetUAVindex(UAVid); 
     if  i == -1
         return
     end
 
+    fprintf("%s assigning an operation to %s \n",obj.name,UAVid);
+
     op = OperationInfo;
-    uav = obj.UAVs(i);
+    op.uav_id = UAVid;
 
     % VAMOS POR AQUI
 
+    way_data1 = [ 05   -190.00  -119.00  +048.05   
+                  10   -190.00  -119.00  +052.00   
+                  30   -190.00  -159.00  +052.00   
+                  50   -150.00  -159.00  +052.00   
+                  70   -150.00  -119.00  +052.00   
+                  90   -190.00  -119.00  +052.00   
+                  95   -190.00  -119.00  +048.05  
+                  97   -190.00  -119.00  +048.05  ];
+    
+
+    fp  = FlightPlan(1,Waypoint.empty);
+    
+    for j = 1:size(way_data1,1)
+        wp = Waypoint();
+        wp.t = way_data1(j,1);
+        wp.SetPosition(way_data1(j,2:4));
+        fp.SetWaypoint(wp);
+    end
+
+    time = obj.GetTime();
+    fp.RescheduleAt(time + 5);
+
+    op.VPsource = 'VP1';
+    op.VPdest   = 'VP2';
+    op.fp = fp;
     obj.ops = [obj.ops op];
+    obj.UAVs(i).op = length(obj.ops);
+    obj.SendFlightPlan('UAV01',fp);
 
 end
 
@@ -331,8 +363,6 @@ function SendFlightPlan(obj,UAVid,fp)
     else
         return
     end
-
-    obj.UAVs(i).fp = fp;
 
     % Send ROS2 message
     msg = ros2message(uav.rosPub_FlightPlan);
@@ -374,6 +404,22 @@ function index = GetUAVindex(obj,id)
             return
         end
     end
+end
+
+
+
+function TelemetryCallback(obj,msg)
+
+    i = obj.GetUAVindex(msg.uav_id);
+
+    if i == -1
+        return
+    end
+
+    obj.UAVs(i).time = double(msg.time.sec) + double(msg.time.nanosec)/1E9;
+    obj.UAVs(i).pos = [msg.pose.position.x   msg.pose.position.y   msg.pose.position.z];
+    obj.UAVs(i).vel = [msg.velocity.linear.x msg.velocity.linear.y msg.velocity.linear.z];
+
 end
 
 

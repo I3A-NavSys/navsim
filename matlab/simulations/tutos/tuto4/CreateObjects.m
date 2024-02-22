@@ -19,21 +19,22 @@ portsLoc = [ -190.00  -119.00  +048.00    pi/2
 
 for i = 1:size(portsLoc,1)
    
-    id = sprintf('BASE%02d', i);
-    builder.DeployModel('UAM/vertiport_H', id, ...
+    UAVid = sprintf('BASE%02d', i);
+    builder.DeployModel('UAM/vertiport_H', UAVid, ...
         portsLoc(i,1:3), ...
         [0 0 portsLoc(i,4)]);
-    operator.SetVertiport(id,portsLoc(i,1:3));
+    operator.SetVertiport(UAVid,portsLoc(i,1:3));
 end
 
 
-
-
-
-%% -------------
+% -------------
 % Deploy fleet
+operator.DeployFleet(1,UAVmodels.MiniDroneFP1);
 
-operator.DeployFleet(3,UAVmodels.MiniDroneFP1);
-monitor.TrackUAV(operator.Fleet); 
+%%
+for UAVid = operator.Fleet
+    monitor.TrackUAV(UAVid); 
+end
+
 
 operator.OperateUAV("UAV01");

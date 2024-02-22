@@ -3,16 +3,17 @@ classdef OperationInfo < handle
 
 properties
     
+    uav_id    string      % UAV unique ID
+
     VPsource  string      % id / "unregistered"
     VPdest    string      % id / "unregistered"
     fp        FlightPlan
-    uav_id    string      % UAV unique ID
 
 end
     
 methods
 
-function obj = OperationInfo(id, pos)
+function obj = OperationInfo()
     obj.VPsource = "unregistered";
     obj.VPdest   = "unregistered";
     obj.fp = FlightPlan.empty;
