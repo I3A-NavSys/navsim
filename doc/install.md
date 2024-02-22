@@ -167,11 +167,17 @@ sudo ./install
    
    b) Choose the destination folder (the default location is fine).
 
-   c) Select the MATLAB products you want to install. Ensure that you select at least the following components:
-      - MATLAB R2023b
-      - Simulink
-      - ROS Toolbox
-      - StateFlow
+   c) Select the MATLAB products you want to install.
+      - Ensure that you select at least the following components:
+         - MATLAB R2023b
+         - ROS Toolbox
+  
+      - And only in the case you want to run tutorial 1, please also select the following components:
+         - Simulink
+         - StateFlow
+         - Simulink 3D Animation
+         - Computer Vision Toolbox
+         - Image Processing Toolbox
 
    d) Configure installation options:
       - Set _Create symbolic links to MATLAB scripts in:_ `/usr/local/bin`
