@@ -290,23 +290,21 @@ function RemoteCommand(obj,UAVid,on,velX,velY,velZ,rotZ,duration)
 end
 
 
-function OperateUAV(obj, UAVids)
+function OperateUAV(obj, UAVid)
     % the operator generate an operation for an idle UAV
     
-    for u = 1:length(UAVids)
-        i = obj.GetUAVindex(UAVids(u)); 
-        if  i == -1
-            continue
-        end
-    
-        op = OperationInfo;
-        uav = obj.UAVs(i);
-
-        % VAMOS POR AQUI
-
-        obj.ops = [obj.ops op];
-
+    i = obj.GetUAVindex(UAVids(u)); 
+    if  i == -1
+        return
     end
+
+    op = OperationInfo;
+    uav = obj.UAVs(i);
+
+    % VAMOS POR AQUI
+
+    obj.ops = [obj.ops op];
+
 end
 
 
