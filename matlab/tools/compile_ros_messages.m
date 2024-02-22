@@ -16,8 +16,8 @@ elseif ispc %Windows computer
             NAVSIM_PATH = 'c:\Users\Rafael.Casado\code\navsim\';
         case 'Rafa'
             NAVSIM_PATH = 'c:\Users\Rafa\code\navsim\';
-        case 'rafae'
-            NAVSIM_PATH = 'c:\Users\rafae\code\navsim\';
+        case 'usuario'
+            NAVSIM_PATH = 'c:\Users\usuario\code\navsim\';
         otherwise
             error('NAVSIM_DIR not defined');
     end
