@@ -28,20 +28,19 @@ end
 
 
 
-function TrackUAV(obj,UAVids)
-    for i = 1:size(UAVids,1)
-        if obj.GetUAVindex(UAVids(i)) ~= -1
-            continue
-        end
-    
-        uav.id = char(UAVids(i,:));
-        uav.data = double.empty(0,7);
-        uav.rosSub_Telemetry = ros2subscriber(obj.rosNode, ...
-            ['/NavSim/' uav.id '/Telemetry'],'navsim_msgs/Telemetry', ...
-            @obj.TelemetryCallback);
-    
-        obj.UAVs = [obj.UAVs uav];
+function TrackUAV(obj,UAVid)
+
+    if obj.GetUAVindex(UAVid) ~= -1
+        return
     end
+    
+    uav.id = char(UAVid);
+    uav.data = double.empty(0,7);
+    uav.rosSub_Telemetry = ros2subscriber(obj.rosNode, ...
+        ['/NavSim/' uav.id '/Telemetry'],'navsim_msgs/Telemetry', ...
+        @obj.TelemetryCallback);
+
+    obj.UAVs = [obj.UAVs uav];
 end
 
 
