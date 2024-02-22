@@ -161,6 +161,8 @@ On the left, there is a joystick diagram including a circular LED. It indicates 
 - To turn on the motors, press button 1 on the joystick (index finger). Initially, the drone stabilizes, and it may not be immediately apparent that the motors are on. Check the LED if in doubt.
 - To turn off the motors, press button 2 on the joystick (thumb). The drone will descend to the ground if it was hovering in the air.
 
+> If the joystick doesn't respond, double-click on the **Joystick drone 1 / Joystick input** block to access its configuration options. Modify the value of the **Joystick ID** parameter with different port numbers until you find the correct one.
+
 With the motors on, the drone stabilizes automatically. Then, you can:
 - ascend/descend: employing the thrust lever.
 - do planar movement: moving the stick.
