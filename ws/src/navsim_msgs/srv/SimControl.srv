@@ -1,4 +1,4 @@
-bool  reset
-bool  pause
+bool reset
+bool pause
 ---
 builtin_interfaces/Time time
