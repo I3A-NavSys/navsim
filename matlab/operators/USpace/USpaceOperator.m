@@ -164,11 +164,13 @@ function DeployFleet(obj,numUAVs,info)
         return
     end
 
-    for i = 1:numUAVs
+    randomVPs = randperm(length(obj.VPs));
   
+    for i = 1:numUAVs
         id = sprintf('UAV%02d', i);
+        vp = randomVPs(i);
         obj.DeployUAV(info,id, ...
-            obj.VPs(i).pos+[0 0 0.10], ...
+            obj.VPs(vp).pos+[0 0 0.10], ...
             [0 0 rand*2*pi]);
     end
 end
@@ -336,8 +338,6 @@ function OperateUAV(obj, UAVid)
         return
     end
 
-    fprintf("%s assigning an operation to %s \n",obj.name,UAVid);
-
     op = OperationInfo;
     op.uav_id = UAVid;
 
@@ -345,9 +345,9 @@ function OperateUAV(obj, UAVid)
     op.VPsource = obj.GetUAVLocation(UAVid);
 
     if op.VPsource == "unregistered"
+        fprintf("\n%s is LOST \n\n",UAVid);
         return;
     end
-
 
     % elige vertipuerto de destino
     op.VPdest = op.VPsource;
@@ -356,12 +356,15 @@ function OperateUAV(obj, UAVid)
         op.VPdest = obj.VPs(v2).id;
     end
 
-
+    % Generating a flight plan
     op.fp = obj.GenerateFlightPlan(op.VPsource,op.VPdest,obj.UAVs(i));
+    time = obj.GetTime();
+    op.fp.RescheduleAt(time + 5);
 
     obj.ops = [obj.ops op];
     obj.UAVs(i).op = length(obj.ops);
     obj.SendFlightPlan(UAVid,op.fp);
+    fprintf("Operation assigned to %s \n",UAVid);
 
 end
 
@@ -380,27 +383,28 @@ function fp = GenerateFlightPlan(obj,VPsource,VPdest,info)
     wp2 = Waypoint();
     wp3 = Waypoint();
     wp4 = Waypoint();
+    wp5 = Waypoint();
     
     wp1.SetPosition(vp1+[0 0 0.1]);
     wp2.SetPosition(vp1+[0 0 5]);
     wp3.SetPosition(vp2+[0 0 5]);
-    wp4.SetPosition(vp2+[0 0 0.1]);
+    wp4.SetPosition(vp2+[0 0 5]);
+    wp5.SetPosition(vp2+[0 0 0.1]);
 
-    wp2.SetPosition(wp2.Position + 2 * wp2.DirectionTo(wp3));
-    wp3.SetPosition(wp3.Position - 2 * wp2.DirectionTo(wp3));
+    wp2.SetPosition(wp2.Position +  2 * wp2.DirectionTo(wp3));
+    wp3.SetPosition(wp3.Position - 10 * wp2.DirectionTo(wp3));
 
     wp1.t = 0;
     wp2.t = 5;
     wp3.t = wp2.t + wp2.DistanceTo(wp3) / info.velMax;
-    wp4.t = wp3.t + 10;
+    wp4.t = wp3.t + 5;
+    wp5.t = wp4.t + 5;
 
     fp.SetWaypoint(wp1);
     fp.SetWaypoint(wp2);
     fp.SetWaypoint(wp3);
     fp.SetWaypoint(wp4);
-
-    time = obj.GetTime();
-    fp.RescheduleAt(time + 5);
+    fp.SetWaypoint(wp5);
     
 end
 
@@ -427,7 +431,7 @@ function SendFlightPlan(obj,UAVid,fp)
 
     % Send ROS2 message
     msg = ros2message(uav.rosPub_FlightPlan);
-msg.plan_id     = uint16(1);
+msg.plan_id     = uint16(1);   % este dato se puede quitar del mensaje
     msg.uav_id      = char(uav.id);
     msg.operator_id = char(obj.name);
     msg.priority    = int8(fp.priority);
@@ -501,16 +505,16 @@ function NavigationReportCallback(obj,msg)
 
     if msg.fp_running
         if (msg.current_wp == 0)
-            fprintf("%s waiting at starting WP0 \n",msg.uav_id);
+            % fprintf("%s waiting at starting WP0 \n",msg.uav_id);
         elseif (msg.current_wp == 1)
-            fprintf("%s starting flight to WP1 \n",msg.uav_id);
+            % fprintf("%s starting flight plan \n",msg.uav_id);
         else
-            fprintf("%s heading WP%d \n",msg.uav_id,msg.current_wp);
+            % fprintf("%s heading WP%d \n",msg.uav_id,msg.current_wp);
         end
     end
 
     if msg.fp_completed
-        fprintf("%s has completed its flight plan \n",msg.uav_id);
+        % fprintf("%s has completed its flight plan \n",msg.uav_id);
 
         obj.OperateUAV(msg.uav_id);
 

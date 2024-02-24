@@ -11,9 +11,20 @@ monitor  = SimpleMonitor('monitor');
 % Set vertiports
 
 %               x        y        z       rz
-portsLoc = [ -190.00  -119.00  +048.00    pi/2
-             -152.00  -106.00  +049.00    pi/2
+portsLoc = [ -190.00  -119.00  +048.00    pi/4
+             -152.00  -106.00  +049.00    pi/4
+             -134.00  -190.00  +048.00    00
+             -092.00  -144.00  +041.00    00
+             -074.00  -100.00  +043.00    00
+             -073.00  +216.00  +027.00    00
+             -007.00  +015.00  +043.00    00
+             +060.00  +131.00  +032.00    00
              +180.00  +033.00  +050.00    00
+             +186.00  -081.00  +050.00    pi/2
+             -200.00  +157.00  +044.00    pi/2
+             -200.00   +20.00  +042.00    pi/2
+             +186.00  +195.00  +039.00    pi/2
+             +126.00  -189.00  +039.00    pi/2
            ];
 
 
@@ -31,17 +42,14 @@ end
 % Deploy fleet
 info = UAVinfo('',UAVmodels.MiniDroneFP1);
 info.velMax = 10;
-operator.DeployFleet(3,info);
+operator.DeployFleet(size(portsLoc,1),info);
 
 %%
 for UAVid = operator.FleetIds
     monitor.TrackUAV(UAVid); 
+    operator.OperateUAV(UAVid);
 end
 
-% crear una función que opere a todos!!!
-operator.OperateUAV("UAV01");
-operator.OperateUAV("UAV02");
-operator.OperateUAV("UAV03");
 
 
 % monitor.PositionFigure('UAV01',operator.ops(1).fp);
