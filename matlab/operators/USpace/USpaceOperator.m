@@ -21,6 +21,8 @@ properties
 
 end
 
+
+
 methods
 
 
@@ -50,6 +52,7 @@ function obj = USpaceOperator(name,models_path)
 end
 
 
+
 function time = GetTime(obj)
     [msg,status,~] = receive(obj.rosSub_Time,1);
     if (status)
@@ -60,14 +63,15 @@ function time = GetTime(obj)
 end
 
 
-function WaitTime(obj,time)
-    [s,~] = obj.GetTime;
-    while s < time
-        [s,~] = obj.GetTime;
-        % pause (1);
 
+function WaitTime(obj,time)
+    t = obj.GetTime;
+    while t < time
+        t = obj.GetTime;
+        pause(0.1);
     end
 end
+
 
 
 function status = PauseSim(obj)
@@ -86,6 +90,7 @@ function status = PauseSim(obj)
         end
     end
 end
+
 
 
 function status = ResetSim(obj)
@@ -107,18 +112,20 @@ function status = ResetSim(obj)
 end
 
 
-function status = SetVertiport(obj,id,pos)
+
+function status = SetVertiport(obj,id,pos,radius)
 
     if obj.GetPORTindex(id) ~= -1
         status = false;
         return
     end
 
-    port = PortInfo(id,pos);
+    port = PortInfo(id,pos,radius);
     obj.VPs = [obj.VPs port];
 
     status = true;
 end
+
 
 
 function status = DeleteVertiport(obj,id)
@@ -132,6 +139,7 @@ function status = DeleteVertiport(obj,id)
     status = true;
 
 end
+
 
 
 function index = GetPORTindex(obj,id)
@@ -149,7 +157,8 @@ function index = GetPORTindex(obj,id)
 end
 
 
-function DeployFleet(obj,numUAVs,model)
+
+function DeployFleet(obj,numUAVs,info)
     if numUAVs > length(obj.VPs)
         disp("Cannot generate more drones than available vertiports")
         return
@@ -158,14 +167,15 @@ function DeployFleet(obj,numUAVs,model)
     for i = 1:numUAVs
   
         id = sprintf('UAV%02d', i);
-        obj.DeployUAV(model,id, ...
+        obj.DeployUAV(info,id, ...
             obj.VPs(i).pos+[0 0 0.10], ...
-            [0 0 rand*2*pi]);       
+            [0 0 rand*2*pi]);
     end
 end
 
 
-function UAVids = Fleet(obj)
+
+function UAVids = FleetIds(obj)
     % the operator provides a list with the id of all its drones
     numUAVs = length(obj.UAVs);
     UAVids = strings(1,numUAVs);
@@ -175,7 +185,8 @@ function UAVids = Fleet(obj)
 end
 
 
-function status = DeployUAV(obj,model,UAVid,pos,rot)
+
+function status = DeployUAV(obj,info,UAVid,pos,rot)
 
     status = false;
 
@@ -183,9 +194,11 @@ function status = DeployUAV(obj,model,UAVid,pos,rot)
         return
     end
 
-    uav = UAVinfo(UAVid,model);
+    uav = UAVinfo(UAVid,info.model);
+    uav.pos = pos;
+    uav.velMax = info.velMax;
 
-    switch model
+    switch info.model
 
         case UAVmodels.MiniDroneCommanded
 
@@ -242,6 +255,7 @@ function status = DeployUAV(obj,model,UAVid,pos,rot)
 end
 
 
+
 function status = RemoveUAV(obj,id)
 
     i = obj.GetUAVindex(id);
@@ -267,6 +281,7 @@ function status = RemoveUAV(obj,id)
 end
 
 
+
 function RemoteCommand(obj,UAVid,on,velX,velY,velZ,rotZ,duration)
 
     i = obj.GetUAVindex(UAVid);
@@ -281,16 +296,36 @@ function RemoteCommand(obj,UAVid,on,velX,velY,velZ,rotZ,duration)
     end
 
     msg = ros2message(uav.rosPub_RemoteCommand);
-    msg.uav_id        = uav.id;
+    msg.uav_id        = char(uav.id);
     msg.on            = on;
     msg.vel.linear.x  = velX;
     msg.vel.linear.y  = velY;
     msg.vel.linear.z  = velZ;
     msg.vel.angular.z = rotZ;
     msg.duration.sec  = int32(duration);
-    send(UAV.rosPub_RemoteCommand,msg);
+    send(uav.rosPub_RemoteCommand,msg);
         
 end
+
+
+
+function VPid = GetUAVLocation(obj,UAVid)
+    VPid = 'unregistered';
+    i = obj.GetUAVindex(UAVid); 
+    if  i == -1
+        return
+    end
+    
+    pos = obj.UAVs(i).pos;
+    
+    for v = obj.VPs
+        if norm(v.pos - pos) < v.radius
+            VPid = v.id;
+            return;
+        end
+    end
+end
+
 
 
 function OperateUAV(obj, UAVid)
@@ -306,43 +341,69 @@ function OperateUAV(obj, UAVid)
     op = OperationInfo;
     op.uav_id = UAVid;
 
-    % VAMOS POR AQUI
+    % identifica el vertipuerto actual del dron
+    op.VPsource = obj.GetUAVLocation(UAVid);
 
-    way_data1 = [ 05   -190.00  -119.00  +048.05   
-                  10   -190.00  -119.00  +052.00   
-                  30   -190.00  -159.00  +052.00   
-                  50   -150.00  -159.00  +052.00   
-                  70   -150.00  -119.00  +052.00   
-                  90   -190.00  -119.00  +052.00   
-                  95   -190.00  -119.00  +048.05  
-                  97   -190.00  -119.00  +048.05  ];
-    
-
-    fp  = FlightPlan(1,Waypoint.empty);
-    
-    for j = 1:size(way_data1,1)
-        wp = Waypoint();
-        wp.t = way_data1(j,1);
-        wp.SetPosition(way_data1(j,2:4));
-        fp.SetWaypoint(wp);
+    if op.VPsource == "unregistered"
+        return;
     end
+
+
+    % elige vertipuerto de destino
+    op.VPdest = op.VPsource;
+    while op.VPdest == op.VPsource
+        v2 = randi(length(obj.VPs));
+        op.VPdest = obj.VPs(v2).id;
+    end
+
+
+    op.fp = obj.GenerateFlightPlan(op.VPsource,op.VPdest,obj.UAVs(i));
+
+    obj.ops = [obj.ops op];
+    obj.UAVs(i).op = length(obj.ops);
+    obj.SendFlightPlan(UAVid,op.fp);
+
+end
+
+
+
+function fp = GenerateFlightPlan(obj,VPsource,VPdest,info)
+
+    % Get position of both vertiports
+    vp1 = obj.VPs(obj.GetPORTindex(VPsource)).pos;
+    vp2 = obj.VPs(obj.GetPORTindex(VPdest)).pos;
+    
+    % Flight plan
+    fp  = FlightPlan(Waypoint.empty);
+
+    wp1 = Waypoint();
+    wp2 = Waypoint();
+    wp3 = Waypoint();
+    wp4 = Waypoint();
+    
+    wp1.SetPosition(vp1+[0 0 0.1]);
+    wp2.SetPosition(vp1+[0 0 5]);
+    wp3.SetPosition(vp2+[0 0 5]);
+    wp4.SetPosition(vp2+[0 0 0.1]);
+
+    wp2.SetPosition(wp2.Position + 2 * wp2.DirectionTo(wp3));
+    wp3.SetPosition(wp3.Position - 2 * wp2.DirectionTo(wp3));
+
+    wp1.t = 0;
+    wp2.t = 5;
+    wp3.t = wp2.t + wp2.DistanceTo(wp3) / info.velMax;
+    wp4.t = wp3.t + 10;
+
+    fp.SetWaypoint(wp1);
+    fp.SetWaypoint(wp2);
+    fp.SetWaypoint(wp3);
+    fp.SetWaypoint(wp4);
 
     time = obj.GetTime();
     fp.RescheduleAt(time + 5);
-
-    op.VPsource = 'VP1';
-    op.VPdest   = 'VP2';
-    op.fp = fp;
-    obj.ops = [obj.ops op];
-    obj.UAVs(i).op = length(obj.ops);
-    obj.SendFlightPlan('UAV01',fp);
-
-end
-
-
-function GenerateFlightPlan(obj,VPsource,VPdest)
     
 end
+
 
 
 function SendFlightPlan(obj,UAVid,fp)
@@ -366,7 +427,7 @@ function SendFlightPlan(obj,UAVid,fp)
 
     % Send ROS2 message
     msg = ros2message(uav.rosPub_FlightPlan);
-    msg.plan_id     = uint16(fp.id);
+msg.plan_id     = uint16(1);
     msg.uav_id      = char(uav.id);
     msg.operator_id = char(obj.name);
     msg.priority    = int8(fp.priority);
@@ -390,6 +451,7 @@ function SendFlightPlan(obj,UAVid,fp)
     send(uav.rosPub_FlightPlan,msg);
         
 end
+
 
 
 function index = GetUAVindex(obj,id)
@@ -449,10 +511,9 @@ function NavigationReportCallback(obj,msg)
 
     if msg.fp_completed
         fprintf("%s has completed its flight plan \n",msg.uav_id);
-        % i = obj.GetUAVindex(msg.uav_id);
-        % uav = obj.UAVs(i);
-        % fp = uav.fp;
-        
+
+        obj.OperateUAV(msg.uav_id);
+
     end
 
     % time = double(msg.time.sec) + double(msg.time.nanosec)/1E9;

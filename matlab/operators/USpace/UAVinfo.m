@@ -6,6 +6,9 @@ properties
     id         string      % UAV unique ID
     model      UAVmodels
 
+    % Aircraft performance
+    velMax
+
     % Telemetry information
     time
     pos

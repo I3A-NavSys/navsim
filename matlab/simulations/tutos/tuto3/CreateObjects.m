@@ -36,10 +36,13 @@ fleetLoc = [ -190.00  -119.00  +048.10    pi/2
            ];
 
 
+info = UAVinfo('',UAVmodels.MiniDroneFP1);
+info.velMax = 10;
+
 for i = 1:size(fleetLoc,1)
    
     id = sprintf('UAV%02d', i);
-    operator.DeployUAV(UAVmodels.MiniDroneFP1,id, ...
+    operator.DeployUAV(info,id, ...
         fleetLoc(i,1:3), ...
         [0 0 fleetLoc(i,4)]);
     monitor.TrackUAV(id);

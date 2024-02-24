@@ -23,18 +23,26 @@ for i = 1:size(portsLoc,1)
     builder.DeployModel('UAM/vertiport_H', UAVid, ...
         portsLoc(i,1:3), ...
         [0 0 portsLoc(i,4)]);
-    operator.SetVertiport(UAVid,portsLoc(i,1:3));
+    operator.SetVertiport(UAVid,portsLoc(i,1:3),1);
 end
 
 
 % -------------
 % Deploy fleet
-operator.DeployFleet(1,UAVmodels.MiniDroneFP1);
+info = UAVinfo('',UAVmodels.MiniDroneFP1);
+info.velMax = 10;
+operator.DeployFleet(3,info);
 
 %%
-for UAVid = operator.Fleet
+for UAVid = operator.FleetIds
     monitor.TrackUAV(UAVid); 
 end
 
-
+% crear una función que opere a todos!!!
 operator.OperateUAV("UAV01");
+operator.OperateUAV("UAV02");
+operator.OperateUAV("UAV03");
+
+
+% monitor.PositionFigure('UAV01',operator.ops(1).fp);
+% monitor.VelocityFigure('UAV01',operator.ops(1).fp);

@@ -13,7 +13,7 @@ way_data1 = [ 05   -190.00  -119.00  +048.05
               95   -190.00  -119.00  +048.05  
               97   -190.00  -119.00  +048.05  ];
 
-fp1  = FlightPlan(1,Waypoint.empty);
+fp1  = FlightPlan(Waypoint.empty);
 
 for i = 1:size(way_data1,1)
     wp = Waypoint();
@@ -23,8 +23,8 @@ for i = 1:size(way_data1,1)
 end
 
 % Display
-fp1.PositionFigure(1)
-fp1.VelocityFigure(1)
+fp1.PositionFigure("FP1",1)
+fp1.VelocityFigure("FP1",1)
 
 
 % -------------
@@ -37,7 +37,7 @@ way_data2 = [ 10   -152.00  -106.00  +049.05
               30   -190.00  -119.00  +051.90
               35   -190.00  -119.00  +048.10  ];
 
-fp2  = FlightPlan(2,Waypoint.empty);
+fp2  = FlightPlan(Waypoint.empty);
 for i = 1:size(way_data2,1)
     wp = Waypoint();
     wp.t = way_data2(i,1);
@@ -56,7 +56,7 @@ way_data3 = [  5   +180.00  +033.00  +050.00
               70   -190.00  -119.00  +052.00
               75   -190.00  -119.00  +048.30  ];
 
-fp3  = FlightPlan(3,Waypoint.empty);
+fp3  = FlightPlan(Waypoint.empty);
 for i = 1:size(way_data3,1)
     wp = Waypoint();
     wp.t = way_data3(i,1);
