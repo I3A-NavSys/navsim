@@ -66,7 +66,7 @@ int currentWP = -1;
 
 double maxVarLinVel = 5;   // maximum variation in linear  velocity   [  m/s]
 double maxVarAngVel = 2;   // maximum variation in angular velocity   [rad/s]
-double targetStep = 2;     // Compute targetPos targetStep seconds later  [s]
+double targetStep   = 2;   // Compute targetPos targetStep seconds later  [s]
 
 
 // rotor engine status on/off
@@ -272,6 +272,8 @@ void OnWorldUpdateBegin()
     // Get current simulation time
     currentTime = model->GetWorld()->SimTime();
 
+    // Check ROS2 subscriptions
+    CheckROS();
 
     // UAV fligh plan navigation
     Navigation();
@@ -282,9 +284,6 @@ void OnWorldUpdateBegin()
 
     // Telemetry communication
     Telemetry();
-
-    // Check ROS2 subscriptions
-    CheckROS();
 
 }
 
@@ -671,11 +670,9 @@ void rotorsOff()
 
 void ServoControl()
 {
-    // This fucntion converts 
+    // This function converts 
     // a navigation command (desired velocity vector and rotation)
-    // to speeds ot the for rotors
-
-    // printf("DRONE CHALLENGE Drone plugin: ServoControl\n");
+    // to speeds of the four rotors
 
 
     if (cmd_on == false)
