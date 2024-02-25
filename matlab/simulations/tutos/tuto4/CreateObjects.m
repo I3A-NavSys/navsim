@@ -45,6 +45,7 @@ info = UAVinfo('',UAVmodels.MiniDroneFP1);
 info.velMax = 10;
 % operator.DeployFleet(size(portsLoc,1),info);
 operator.DeployFleet(1,info);
+pause(1)
 
 %%
 % -------------
@@ -57,6 +58,7 @@ end
 
 
 %% 
+pause(1)
 op = operator.ops(end);
 monitor.PositionFigure(op.UAVid,op.fp);
 monitor.VelocityFigure(op.UAVid,op.fp);

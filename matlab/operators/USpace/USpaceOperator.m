@@ -359,7 +359,7 @@ function OperateUAV(obj, UAVid)
     % Generating a flight plan
     op.fp = obj.GenerateFlightPlan(op);
     time = obj.GetTime();
-    op.fp.RescheduleAt(time + 20);
+    op.fp.RescheduleAt(time + 30);
     op.fp.id = length(obj.ops)+1;
 
     % Confirm the operation
