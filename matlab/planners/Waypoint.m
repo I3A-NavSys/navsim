@@ -121,6 +121,25 @@ end
 
 
 
+function angle = CourseTo(a,b)
+    % Get the course from one waypoint to another
+    % -X -> -  90
+    % +Y ->     0
+    % +x -> +  90
+    % -Y -> +-180
+    a.CheckWaypoint(b);
+    dist = a.DistanceTo(b);
+    if dist == 0
+        angle = 0;
+    else
+        cx = b.x - a.x;
+        cy = b.y - a.y;
+        angle = atan2d(cx,cy);
+    end
+end
+
+
+
 function vel = UniformVelocityTo(a,b)
     % Get the uniform velocity between two waypoints
     a.CheckWaypoint(b);

@@ -3,7 +3,7 @@ classdef UAVinfo < handle
 
 properties
     % Aircraft information
-    id         string      % UAV unique ID
+    id         char       % UAV unique ID
     model      UAVmodels
 
     % Aircraft performance
@@ -28,7 +28,7 @@ end
 methods
 
 function obj = UAVinfo(id, model)
-    obj.id    = id;
+    obj.id    = char(id);
     obj.model = model;
     obj.op    = 0;
 

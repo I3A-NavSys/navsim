@@ -1,7 +1,7 @@
 classdef SimpleMonitor < handle
 
 properties
-    name    string            % Monitor name
+    name   char               % Monitor name
     UAVs = struct([])         % list of UAVs being tracked
 
     % ROS2 interface
@@ -15,7 +15,7 @@ methods
 
 function obj = SimpleMonitor(name)
 
-    obj.name = name;
+    obj.name = char(name);
 
     % ROS2 node
     obj.rosNode = ros2node(obj.name);
@@ -272,7 +272,8 @@ function VelocityFigure(obj,UAVid,fp)
 
     % UAV data
     UAVdata = obj.UAVs(i).data;
-    timeStep = UAVdata(2,1) - UAVdata(1,1);
+    % timeStep = (UAVdata(2,1) - UAVdata(1,1));
+    timeStep = 0.01;
     FPdata  = fp.Trace(timeStep);
     
 

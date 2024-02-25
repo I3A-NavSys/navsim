@@ -23,9 +23,8 @@ for i = 1:size(way_data1,1)
 end
 
 % Display
-fp1.PositionFigure("FP1",1)
-fp1.VelocityFigure("FP1",1)
-
+fp1.PositionFigure(1);
+fp1.VelocityFigure(1);
 
 % -------------
 %Create a Flight Plan for the drone 2

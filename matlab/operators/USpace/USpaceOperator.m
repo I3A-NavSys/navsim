@@ -312,7 +312,6 @@ end
 
 
 function VPid = GetUAVLocation(obj,UAVid)
-    VPid = 'unregistered';
     i = obj.GetUAVindex(UAVid); 
     if  i == -1
         return
@@ -326,6 +325,7 @@ function VPid = GetUAVLocation(obj,UAVid)
             return;
         end
     end
+    VPid = char('unregistered');
 end
 
 
@@ -339,7 +339,7 @@ function OperateUAV(obj, UAVid)
     end
 
     op = OperationInfo;
-    op.uav_id = UAVid;
+    op.UAVid = char(UAVid);
 
     % identifica el vertipuerto actual del dron
     op.VPsource = obj.GetUAVLocation(UAVid);
@@ -357,12 +357,14 @@ function OperateUAV(obj, UAVid)
     end
 
     % Generating a flight plan
-    op.fp = obj.GenerateFlightPlan(op.VPsource,op.VPdest,obj.UAVs(i));
+    op.fp = obj.GenerateFlightPlan(op);
     time = obj.GetTime();
-    op.fp.RescheduleAt(time + 5);
+    op.fp.RescheduleAt(time + 20);
+    op.fp.id = length(obj.ops)+1;
 
+    % Confirm the operation
+    obj.UAVs(i).op = op.fp.id;
     obj.ops = [obj.ops op];
-    obj.UAVs(i).op = length(obj.ops);
     obj.SendFlightPlan(UAVid,op.fp);
     fprintf("Operation assigned to %s \n",UAVid);
 
@@ -370,41 +372,59 @@ end
 
 
 
-function fp = GenerateFlightPlan(obj,VPsource,VPdest,info)
+function fp = GenerateFlightPlan(obj,op)
 
+    % Get UAV performance
+    uav = obj.UAVs(obj.GetUAVindex(op.UAVid));
+    
     % Get position of both vertiports
-    vp1 = obj.VPs(obj.GetPORTindex(VPsource)).pos;
-    vp2 = obj.VPs(obj.GetPORTindex(VPdest)).pos;
+    vp1 = obj.VPs(obj.GetPORTindex(op.VPsource)).pos;
+    vp2 = obj.VPs(obj.GetPORTindex(op.VPdest)).pos;
     
-    % Flight plan
+    % Create flight plan with 5 waypoints
     fp  = FlightPlan(Waypoint.empty);
-
-    wp1 = Waypoint();
-    wp2 = Waypoint();
-    wp3 = Waypoint();
-    wp4 = Waypoint();
-    wp5 = Waypoint();
+    wp1H = Waypoint();
+    wp1M = Waypoint();
+    wp1L = Waypoint();
+    wp3  = Waypoint();
+    wp2H = Waypoint();
+    wp2M = Waypoint();
+    wp2L = Waypoint();
     
-    wp1.SetPosition(vp1+[0 0 0.1]);
-    wp2.SetPosition(vp1+[0 0 5]);
-    wp3.SetPosition(vp2+[0 0 5]);
-    wp4.SetPosition(vp2+[0 0 5]);
-    wp5.SetPosition(vp2+[0 0 0.1]);
+    % take off / landing positions
+    wp1L.SetPosition(vp1+[0 0 0.25]);
+    wp2L.SetPosition(vp2+[0 0 0.25]);
 
-    wp2.SetPosition(wp2.Position +  2 * wp2.DirectionTo(wp3));
-    wp3.SetPosition(wp3.Position - 10 * wp2.DirectionTo(wp3));
+    % take off / landing approach positions
+    wp1M.SetPosition(vp1+[0 0 1]);
+    wp2M.SetPosition(vp2+[0 0 1]);
 
-    wp1.t = 0;
-    wp2.t = 5;
-    wp3.t = wp2.t + wp2.DistanceTo(wp3) / info.velMax;
-    wp4.t = wp3.t + 5;
-    wp5.t = wp4.t + 5;
+    % take off / landing hovering positions
+    angle = wp1L.CourseTo(wp2L);
+    wp1H.SetPosition(wp1L.Position);
+    wp1H.z = 70 + angle/20;
+    wp2H.SetPosition(wp2L.Position);
+    wp2H.z = wp1H.z;
 
-    fp.SetWaypoint(wp1);
-    fp.SetWaypoint(wp2);
+    wp1H.SetPosition(wp1H.Position + 2 * wp1H.DirectionTo(wp2H));
+    wp3.SetPosition(wp2H.Position - 10 * wp1H.DirectionTo(wp2H));
+
+    % waypoint time intervals
+    wp1L.t = 0;
+    wp1M.t = wp1L.t + wp1L.DistanceTo(wp1M) / 0.2;             % 0.2m/s
+    wp1H.t = wp1M.t + wp1M.DistanceTo(wp1H) / 2;               % 2m/s
+    wp3.t  = wp1H.t + wp1H.DistanceTo(wp3)  / uav.velMax;
+    wp2H.t = wp3.t  +  wp3.DistanceTo(wp2H) / 2;               % 2m/s
+    wp2M.t = wp2H.t + wp2H.DistanceTo(wp2M) / 2;               % 2m/s
+    wp2L.t = wp2M.t + wp2M.DistanceTo(wp2L) / 0.2;             % 0.2m/s
+
+    fp.SetWaypoint(wp1L);
+    fp.SetWaypoint(wp1M);
+    fp.SetWaypoint(wp1H);
     fp.SetWaypoint(wp3);
-    fp.SetWaypoint(wp4);
-    fp.SetWaypoint(wp5);
+    fp.SetWaypoint(wp2H);
+    fp.SetWaypoint(wp2M);
+    fp.SetWaypoint(wp2L);
     
 end
 
@@ -431,7 +451,7 @@ function SendFlightPlan(obj,UAVid,fp)
 
     % Send ROS2 message
     msg = ros2message(uav.rosPub_FlightPlan);
-msg.plan_id     = uint16(1);   % este dato se puede quitar del mensaje
+    msg.plan_id     = uint16(fp.id);
     msg.uav_id      = char(uav.id);
     msg.operator_id = char(obj.name);
     msg.priority    = int8(fp.priority);
@@ -492,35 +512,50 @@ end
 
 function NavigationReportCallback(obj,msg)
 
+    % time = double(msg.time.sec) + double(msg.time.nanosec)/1E9;
     % disp("NavigationReport received")
 
     if msg.operator_id ~= obj.name
-        fprintf("WARNING: Operator '%s' is managing a UAV that he does not own \n\n",obj.name);
+        fprintf("WARNING: Operator '%s' has rceived a report from a not opetared UAV %s \n\n",obj.name,msg.uav_id);
         return
     end
-    
+
+    op = obj.ops(msg.plan_id);
+    if msg.uav_id ~= op.UAVid
+        fprintf("WARNING: Drone %s is executing a corrupted flight plan \n\n",msg.uav_id);
+        return;
+    end
+
     if msg.fp_aborted
         fprintf("%s has discarded the proposed flight plan \n",msg.uav_id);
     end
 
-    if msg.fp_running
-        if (msg.current_wp == 0)
-            % fprintf("%s waiting at starting WP0 \n",msg.uav_id);
-        elseif (msg.current_wp == 1)
-            % fprintf("%s starting flight plan \n",msg.uav_id);
-        else
-            % fprintf("%s heading WP%d \n",msg.uav_id,msg.current_wp);
-        end
-    end
+    % if msg.fp_running
+    %     if (msg.current_wp == 0)
+    %         fprintf("%s waiting at starting WP0 \n",msg.uav_id);
+    %     elseif (msg.current_wp == 1)
+    %         fprintf("%s starting flight plan \n",msg.uav_id);
+    %     else
+    %         fprintf("%s heading WP%d \n",msg.uav_id,msg.current_wp);
+    %     end
+    % end
 
     if msg.fp_completed
-        % fprintf("%s has completed its flight plan \n",msg.uav_id);
 
-        obj.OperateUAV(msg.uav_id);
+        UAVloc = obj.GetUAVLocation(msg.uav_id);
+        if strcmp(UAVloc,op.VPdest)
+            % fprintf("%s has completed its flight plan \n",msg.uav_id);
+            obj.OperateUAV(op.UAVid);
+        else
+            fprintf("\n%s has not completed its flight plan \n",msg.uav_id);
+            % disp(msg.uav_id)
+            % disp(UAVloc)
+            % disp(op.VPdest)
+            return;
+        end
+
 
     end
-
-    % time = double(msg.time.sec) + double(msg.time.nanosec)/1E9;
 
 end
 

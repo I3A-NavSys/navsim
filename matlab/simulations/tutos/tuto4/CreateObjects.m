@@ -1,5 +1,6 @@
 clc
 clear
+
 run('../../../tools/NAVSIM_PATHS');
 
 builder  = SimpleBuilder ('builder' ,NAVSIM_MODELS_PATH);
@@ -42,9 +43,12 @@ end
 % Deploy fleet
 info = UAVinfo('',UAVmodels.MiniDroneFP1);
 info.velMax = 10;
-operator.DeployFleet(size(portsLoc,1),info);
+% operator.DeployFleet(size(portsLoc,1),info);
+operator.DeployFleet(1,info);
 
 %%
+% -------------
+% Begin operations
 for UAVid = operator.FleetIds
     monitor.TrackUAV(UAVid); 
     operator.OperateUAV(UAVid);
@@ -52,5 +56,7 @@ end
 
 
 
-% monitor.PositionFigure('UAV01',operator.ops(1).fp);
-% monitor.VelocityFigure('UAV01',operator.ops(1).fp);
+%% 
+op = operator.ops(end);
+monitor.PositionFigure(op.UAVid,op.fp);
+monitor.VelocityFigure(op.UAVid,op.fp);

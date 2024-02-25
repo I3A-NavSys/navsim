@@ -4,6 +4,8 @@ classdef FlightPlan < handle
 
 properties
 
+id          % operation identifier
+
 waypoints   Waypoint = Waypoint.empty;     
 mode        InterpolationModes;
 radius      {mustBeNumeric}    % safety bubble for conflict management
@@ -17,6 +19,7 @@ methods
 
 
 function obj = FlightPlan(waypoints)
+    obj.id = 0;
     obj.priority = 0;
     obj.radius   = 1;
 
@@ -209,7 +212,7 @@ end
 
 
 
-function PositionFigure(obj,name,time_step)
+function PositionFigure(obj,time_step)
     % Display the flight plan trajectory
     
     %Check if the flight plan is empty
@@ -219,7 +222,7 @@ function PositionFigure(obj,name,time_step)
     end
 
     %Find if the figure is already open
-    figName = name + ": POSITION";
+    figName = "FP" + obj.id + ": POSITION";
     fig = findobj("Name", figName);
     if isempty(fig)
         %Display a figure with the flight plan
@@ -321,7 +324,7 @@ end
 
 
 
-function VelocityFigure(obj,name,time_step)
+function VelocityFigure(obj,time_step)
     %VELOCITYFIGURE This method allow to display the flight plan instant velocity
     
     % Check if the flight plan is empty
@@ -331,7 +334,7 @@ function VelocityFigure(obj,name,time_step)
     end
 
     %Find if the figure is already open
-    fig_name = name + ": VELOCITY";
+    fig_name = "FP" + obj.id + ": VELOCITY";
     fig = findobj('Type', 'Figure',"Name", fig_name);
     if isempty(fig)
         %Display a figure with the flight plan
