@@ -331,7 +331,8 @@ end
 
 
 function OperateUAV(obj, UAVid)
-    % the operator generate an operation for an idle UAV
+    % the operator generate an operation for an idle UAV.
+    % the operation starts in 10 seconds
     
     i = obj.GetUAVindex(UAVid); 
     if  i == -1
@@ -359,7 +360,7 @@ function OperateUAV(obj, UAVid)
     % Generating a flight plan
     op.fp = obj.GenerateFlightPlan(op);
     time = obj.GetTime();
-    op.fp.RescheduleAt(time + 30);
+    op.fp.RescheduleAt(time + 10);
     op.fp.id = length(obj.ops)+1;
 
     % Confirm the operation
