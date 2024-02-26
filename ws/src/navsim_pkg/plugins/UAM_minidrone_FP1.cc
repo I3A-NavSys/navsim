@@ -338,16 +338,17 @@ void Navigation()
     if (currentWP != WP)
     {
 
-        printf("%s ",UAVname.c_str());
         if (WP == 0)
         {
-            // drone waiting to start the flight
-            printf("waiting at starting WP%d \n",WP);
-
             navsim_msgs::msg::Waypoint WP0 = fp->route[0];
             ignition::math::Vector3<double> initPos = ignition::math::Vector3d(WP0.pos.x,WP0.pos.y,WP0.pos.z);
             initPos = initPos - currentPos;
-            if (initPos.Length() > fp->radius)
+            if (initPos.Length() < fp->radius)
+            {
+                // drone waiting to start the flight
+                printf("%s waiting to start a FP \n",UAVname.c_str());
+            }
+            else
             {
                 // drone in an incorrect starting position
                 printf("%s discarding FP due to an incorrect starting position\n",UAVname.c_str());
@@ -358,16 +359,13 @@ void Navigation()
                 fp = nullptr;
                 return;
             }
-
         }
-        else if (WP == 1)
-            printf("starting flight to WP%d \n",WP);
         else if (WP < numWPs)
-            printf("heading WP%d \n",WP);
+            printf("%s flying to WP%d \n",UAVname.c_str(),WP);
         else
         {
             // flight plan completed
-            printf("has completed its flight plan\n");
+            printf("%s has completed its flight plan\n",UAVname.c_str());
     
             commandOff();
 
@@ -387,17 +385,41 @@ void Navigation()
     currentWP = WP;
 
 
+    // // Time step to analyze movement
+    // double step = 0;
+    // if (currentWP > 0)
+    // {
+    //     common::Time FPtime;
+    //     FPtime.sec  = route[numWPs-1].time.sec;
+    //     FPtime.nsec = route[numWPs-1].time.nanosec;
+
+    //     step = (FPtime - currentTime).Double();
+    //     if (step > targetStep)
+    //     {
+    //         step = targetStep;
+    //     }
+    // }
+  
+
+
+
     // Time step to analyze movement
     common::Time FPtime;
-    FPtime.sec  = route[numWPs-1].time.sec;
-    FPtime.nsec = route[numWPs-1].time.nanosec;
-
+    FPtime.sec  = route[currentWP].time.sec;
+    FPtime.nsec = route[currentWP].time.nanosec;
     double step = (FPtime - currentTime).Double();
-    if (step > targetStep)
+
+    if ( 0<currentWP && currentWP<numWPs )
     {
         step = targetStep;
     }
-  
+
+    if (step==0)
+    {
+        step = 1;   // to avoid division by zero
+    }
+
+
 
     // COMPUTING TARGET POSITION
     ignition::math::Vector3<double> targetPos = PositionAtTime(currentTime + step);
@@ -487,17 +509,30 @@ int GetWPatTime(common::Time time)
 
 ignition::math::Vector3<double> PositionAtTime(common::Time t)
 {
+    ignition::math::Vector3<double> targetPos;
     
-    int i = GetWPatTime(t);
     int numWPs = fp->route.size();
-    
-    navsim_msgs::msg::Waypoint WP1 = fp->route[i-1];
-    ignition::math::Vector3<double> pos1 = ignition::math::Vector3d(WP1.pos.x,WP1.pos.y,WP1.pos.z);
-    ignition::math::Vector3<double> targetPos = pos1;
+    int i = GetWPatTime(t);
 
-    if (i < numWPs)
+    if ( i==0 )
     {
-        
+        // The drone is waiting to start the FP
+        navsim_msgs::msg::Waypoint WP = fp->route[0];
+        targetPos = ignition::math::Vector3d(WP.pos.x,WP.pos.y,WP.pos.z);
+    }
+
+    else if ( i==numWPs )
+    {
+        // The drone has completed the FP
+        navsim_msgs::msg::Waypoint WP = fp->route[i-1];
+        targetPos = ignition::math::Vector3d(WP.pos.x,WP.pos.y,WP.pos.z);
+    }
+
+    else
+    {
+        // The drone is executing the FP
+        navsim_msgs::msg::Waypoint WP1 = fp->route[i-1];
+        ignition::math::Vector3<double> pos1 = ignition::math::Vector3d(WP1.pos.x,WP1.pos.y,WP1.pos.z);
         navsim_msgs::msg::Waypoint WP2 = fp->route[i];
         ignition::math::Vector3<double> pos2 = ignition::math::Vector3d(WP2.pos.x,WP2.pos.y,WP2.pos.z);
 
@@ -508,7 +543,6 @@ ignition::math::Vector3<double> PositionAtTime(common::Time t)
         common::Time t2;
         t2.sec  = WP2.time.sec;
         t2.nsec = WP2.time.nanosec;
-
 
         double interpol = (t-t1).Double() / (t2-t1).Double() ;
         targetPos = pos1 + interpol * (pos2 - pos1);
