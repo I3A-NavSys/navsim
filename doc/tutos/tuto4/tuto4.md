@@ -84,17 +84,27 @@ operator.DeployFleet(size(portsLoc,1),info);
 
 ![Two drones deployed](./img/drones_deployed.png)
 
-
 And finally, we instruct the **monitor** to store the telemetry information transmitted by each drone, 
 and the operator to generate an operation for each drone:
 
+```matlab
+% -------------
+% Begin operations
+for UAVid = operator.FleetIds
+    monitor.TrackUAV(UAVid); 
+    operator.OperateUAV(UAVid);
+end
+```
 Each operation starts from the vertiport where the drone is located, towards a randomly chosen destination vertiport (with the only restriction being that it must be different from the origin). The flight plan includes the drone ascending to a height of 70 meters (plus or minus 9 meters, depending on the course to follow), flying straight towards its destination, and descending vertically to land. The ascent and descent are performed at 2m/s. The cruising speed is 10m/s. 10 meters before completing the horizontal displacement, the drone reduces its speed to 2 m/s.
+
+![Flight plan](./img/flight_plan.png)
+
 
 As soon as a drone informs the operator that it has completed the flight plan, the operator will assign it a new operation that will start 10 seconds later.
 
 
 
-![Two drones landing at the same vertiport](./img/Drones_landing.png)
+![Two drones landing at the same vertiport](./img/drones_landing.png)
 
 
-![Two drones colliding](./img/Drones_colliding.png)
+![Two drones colliding](./img/drones_colliding.png)
