@@ -385,24 +385,6 @@ void Navigation()
     currentWP = WP;
 
 
-    // // Time step to analyze movement
-    // double step = 0;
-    // if (currentWP > 0)
-    // {
-    //     common::Time FPtime;
-    //     FPtime.sec  = route[numWPs-1].time.sec;
-    //     FPtime.nsec = route[numWPs-1].time.nanosec;
-
-    //     step = (FPtime - currentTime).Double();
-    //     if (step > targetStep)
-    //     {
-    //         step = targetStep;
-    //     }
-    // }
-  
-
-
-
     // Time step to analyze movement
     common::Time FPtime;
     FPtime.sec  = route[currentWP].time.sec;
