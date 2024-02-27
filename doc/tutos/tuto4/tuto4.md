@@ -21,11 +21,12 @@ ros2 service list | grep Deploy
 
 ## Matlab
 
-### CreateObject.m
+### CreateObjects.m
 
 Now open Matlab (in the same computer or other computer connected to the same subnetwotk).
 Navigate to `navsim/matlab/simulations/tutos/tuto4`. From here, open the script `CreateObjets.m` and execute it.
 
+>We are experiencing issues with accessing ROS2 communications from Matlab on Ubuntu platforms. Therefore, we recommend running the Matlab portion of this tutorial from a Windows system connected via the network to the Ubuntu system running the Gazebo simulator.
 
 This code employs a **SimpleBuilder** to deploy vertiports in the area, a **USpaceOperator** to manage the operation of several drones, and a **SimpleMonitor** to analyze their accuracy executing flight plans.
 
@@ -61,18 +62,22 @@ portsLoc = [ -190.00  -119.00  +048.00    pi/4
 
 for i = 1:size(portsLoc,1)
    
-    UAVid = sprintf('BASE%02d', i);
-    builder.DeployModel('UAM/vertiport_H', UAVid, ...
+    id = sprintf('BASE%02d', i);
+    builder.DeployModel('UAM/vertiport_H', id, ...
         portsLoc(i,1:3), ...
         [0 0 portsLoc(i,4)]);
-    operator.SetVertiport(UAVid,portsLoc(i,1:3),1);
+    operator.SetVertiport(id,portsLoc(i,1:3),1);
 end
 ```
+
+In the image, we can appreciate (with some difficulty due to the distance) blue circles on the rooftops of various buildings.
 
 ![Vertiports](./img/vertiports.png)
 
 Next, we configure the aircraft performance
-and ask the **operator** to deploy a certain number of drones for us, not exceeding the number of available vertiports.
+and ask the **operator** to deploy a certain number of drones for us.
+Only one drone is allowed at each vertiport.
+This time, we will deploy as many drones as possible, not exceeding the number of available vertiports.
 
 ```matlab
 % -------------
@@ -84,8 +89,7 @@ operator.DeployFleet(size(portsLoc,1),info);
 
 ![Two drones deployed](./img/drones_deployed.png)
 
-And finally, we instruct the **monitor** to store the telemetry information transmitted by each drone, 
-and the operator to generate an operation for each drone:
+And finally, for each drone, we instruct the **monitor** to store the telemetry information transmitted, and the operator to generate an initial operation:
 
 ```matlab
 % -------------
@@ -97,14 +101,16 @@ end
 ```
 Each operation starts from the vertiport where the drone is located, towards a randomly chosen destination vertiport (with the only restriction being that it must be different from the origin). The flight plan includes the drone ascending to a height of 70 meters (plus or minus 9 meters, depending on the course to follow), flying straight towards its destination, and descending vertically to land. The ascent and descent are performed at 2m/s. The cruising speed is 10m/s. 10 meters before completing the horizontal displacement, the drone reduces its speed to 2 m/s.
 
-![Flight plan](./img/flight_plan.png)
+![Flight plan: position](./img/FP_pos.png)
+![Flight plan: velocity](./img/FP_vel.png)
 
 
 As soon as a drone informs the operator that it has completed the flight plan, the operator will assign it a new operation that will start 10 seconds later.
 
-
+It is important to note that this operator does not check if the proposed flight plan conflicts with another previously existing plan. Because the cruising altitude varies depending on the course, it is unlikely (though not impossible) that two aircraft will collide during their horizontal maneuver. However, it is highly probable that multiple aircraft will coincide in the vertical segment of the maneuver, either during takeoff or landing.
 
 ![Two drones landing at the same vertiport](./img/drones_landing.png)
 
+These drones will collide in the air, destroying the aircraft and their cargo, posing a serious danger to the surroundings.
 
 ![Two drones colliding](./img/drones_colliding.png)
