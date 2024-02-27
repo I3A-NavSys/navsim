@@ -31,11 +31,11 @@ portsLoc = [ -190.00  -119.00  +048.00    pi/4
 
 for i = 1:size(portsLoc,1)
    
-    UAVid = sprintf('BASE%02d', i);
-    builder.DeployModel('UAM/vertiport_H', UAVid, ...
+    id = sprintf('BASE%02d', i);
+    builder.DeployModel('UAM/vertiport_H', id, ...
         portsLoc(i,1:3), ...
         [0 0 portsLoc(i,4)]);
-    operator.SetVertiport(UAVid,portsLoc(i,1:3),1);
+    operator.SetVertiport(id,portsLoc(i,1:3),1);
 end
 
 
@@ -64,6 +64,9 @@ end
 
 %% 
 % pause(1)
-op = operator.ops(end);
+op = operator.ops(1);
+op.fp.PositionFigure(0.1);
+op.fp.VelocityFigure(0.1);
+
 monitor.PositionFigure(op.UAVid,op.fp);
 monitor.VelocityFigure(op.UAVid,op.fp);
