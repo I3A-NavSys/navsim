@@ -1,0 +1,286 @@
+<?xml version="1.0" ?>
+<sdf version="1.7">
+
+
+<model name="AeroTaxi">
+
+<static>false</static>
+
+
+<link name='dronelink'>
+
+
+<visual name='cockpit'>
+  <pose>1.70 0.00 1.00 0 0.7854 0</pose>
+  <geometry>
+    <box>
+      <size>1.40 1.10 1.00</size>
+    </box>
+  </geometry>
+  <material>
+    <ambient>0.3 0.3 0.3 1</ambient> 
+    <diffuse>0.3 0.3 0.3 1</diffuse>
+  </material>
+</visual>
+<collision name='cockpit_col'>
+  <pose>1.70 0.00 1.00 0 0.7854 0</pose>
+  <geometry>
+      <box>
+        <size>1.40 1.10 1.00</size>
+      </box>
+    </geometry>
+</collision>
+  
+
+<visual name='cabina'>
+  <pose>0.30 0.00 1.00 0 0 0</pose>
+  <geometry>
+    <box>
+      <size>3.00 1.50 1.80</size>
+    </box>
+  </geometry>
+  <material>
+    <ambient>0.1 0.4 0.6 1</ambient> 
+    <diffuse>0.1 0.4 0.6 1</diffuse>
+  </material>
+</visual>
+<collision name='cabina_col'>
+  <pose>0.30 0.00 1.00 0 0 0</pose>
+  <geometry>
+      <box>
+        <size>3.00 1.50 1.80</size>
+      </box>
+    </geometry>
+</collision>
+
+
+<visual name='legNW'>
+  <pose>1.40 0.90 -0.1 0.52 -0.26 0</pose>
+  <geometry>
+    <box>
+      <size>0.50 0.10 0.80</size>
+    </box>
+  </geometry>
+  <material>
+    <ambient>0.7 0.7 0.7 1</ambient> 
+    <diffuse>0.7 0.7 0.7 1</diffuse>
+  </material>
+</visual>
+<collision name='legNW_col'>
+  <pose>1.40 0.90 -0.1 0.52 -0.26 0</pose>
+  <geometry>
+      <box>
+        <size>0.50 0.10 0.80</size>
+      </box>
+    </geometry>
+</collision>
+
+
+<visual name='legNE'>
+  <pose>1.40 -0.90 -0.1 -0.52 -0.26 0</pose>
+  <geometry>
+    <box>
+      <size>0.50 0.10 0.80</size>
+    </box>
+  </geometry>
+  <material>
+    <ambient>0.7 0.7 0.7 1</ambient> 
+    <diffuse>0.7 0.7 0.7 1</diffuse>
+  </material>
+</visual>
+<collision name='legNE_col'>
+  <pose>1.40 -0.90 -0.1 -0.52 -0.26 0</pose>
+  <geometry>
+      <box>
+        <size>0.50 0.10 0.80</size>
+      </box>
+    </geometry>
+</collision>
+
+
+<visual name='legSW'>
+  <pose>-0.80 0.90 -0.1 0.52 0.26 0</pose>
+  <geometry>
+    <box>
+      <size>0.50 0.10 0.80</size>
+    </box>
+  </geometry>
+  <material>
+    <ambient>0.7 0.7 0.7 1</ambient> 
+    <diffuse>0.7 0.7 0.7 1</diffuse>
+  </material>
+</visual>
+<collision name='legSW_col'>
+  <pose>-0.80 0.90 -0.1 0.52 0.26 0</pose>
+  <geometry>
+      <box>
+        <size>0.50 0.10 0.80</size>
+      </box>
+    </geometry>
+</collision>
+
+
+<visual name='legSE'>
+  <pose>-0.80 -0.90 -0.1 -0.52 0.26 0</pose>
+  <geometry>
+    <box>
+      <size>0.50 0.10 0.80</size>
+    </box>
+  </geometry>
+  <material>
+    <ambient>0.7 0.7 0.7 1</ambient> 
+    <diffuse>0.7 0.7 0.7 1</diffuse>
+  </material>
+</visual>
+<collision name='legSE_col'>
+  <pose>-0.80 -0.90 -0.1 -0.52 0.26 0</pose>
+  <geometry>
+      <box>
+        <size>0.50 0.10 0.80</size>
+      </box>
+    </geometry>
+</collision>
+
+
+<visual name='cola'>
+  <pose>-2.00 0.00 1.50 0 0 0</pose>
+  <geometry>
+    <box>
+      <size>1.60 1.20 0.60</size>
+    </box>
+  </geometry>
+  <material>
+    <ambient>0.1 0.4 0.6 1</ambient> 
+    <diffuse>0.1 0.4 0.6 1</diffuse>
+  </material>
+</visual>
+<collision name='cola_col'>
+  <pose>-2.00 0.00 1.50 0 0 0</pose>
+  <geometry>
+      <box>
+        <size>1.60 1.20 0.60</size>
+      </box>
+    </geometry>
+</collision>
+
+
+<visual name='rotorNW'>
+  <pose>1.50 1.80 1.50 0 0 0</pose>
+  <geometry>
+    <cylinder>
+      <radius>1.25</radius>
+      <length>0.40</length>
+    </cylinder>
+  </geometry>
+  <material>
+    <ambient>1.0 1.0 1.0 1</ambient> 
+    <diffuse>1.0 1.0 1.0 1</diffuse>
+  </material>
+</visual>
+<collision name='rotorNW_col'>
+  <pose>1.50 1.80 1.50 0 0 0</pose>
+  <geometry>
+    <cylinder>
+      <radius>1.25</radius>
+      <length>0.40</length>
+    </cylinder>
+  </geometry>
+</collision>
+
+
+<visual name='rotorNE'>
+  <pose>1.50 -1.80 1.50 0 0 0</pose>
+  <geometry>
+    <cylinder>
+      <radius>1.25</radius>
+      <length>0.40</length>
+    </cylinder>
+  </geometry>
+  <material>
+    <ambient>1.0 1.0 1.0 1</ambient> 
+    <diffuse>1.0 1.0 1.0 1</diffuse>
+  </material>
+</visual>
+<collision name='rotorNE_col'>
+  <pose>1.50 -1.80 1.50 0 0 0</pose>
+  <geometry>
+    <cylinder>
+      <radius>1.25</radius>
+      <length>0.40</length>
+    </cylinder>
+  </geometry>
+</collision>
+
+
+<visual name='rotorSW'>
+  <pose>-2.10 1.80 1.50 0 0 0</pose>
+  <geometry>
+    <cylinder>
+      <radius>1.25</radius>
+      <length>0.40</length>
+    </cylinder>
+  </geometry>
+  <material>
+    <ambient>1.0 1.0 1.0 1</ambient> 
+    <diffuse>1.0 1.0 1.0 1</diffuse>
+  </material>
+</visual>
+<collision name='rotorSW_col'>
+  <pose>-2.10 1.80 1.50 0 0 0</pose>
+  <geometry>
+    <cylinder>
+      <radius>1.25</radius>
+      <length>0.40</length>
+    </cylinder>
+  </geometry>
+</collision>
+
+
+<visual name='rotorSE'>
+  <pose>-2.10 -1.80 1.50 0 0 0</pose>
+  <geometry>
+    <cylinder>
+      <radius>1.25</radius>
+      <length>0.40</length>
+    </cylinder>
+  </geometry>
+  <material>
+    <ambient>1.0 1.0 1.0 1</ambient> 
+    <diffuse>1.0 1.0 1.0 1</diffuse>
+  </material>
+</visual>
+<collision name='rotorSE_col'>
+  <pose>-2.10 -1.80 1.50 0 0 0</pose>
+  <geometry>
+    <cylinder>
+      <radius>1.25</radius>
+      <length>0.40</length>
+    </cylinder>
+  </geometry>
+</collision>
+
+
+
+
+<inertial>
+    
+    <mass>1000</mass>
+    
+<!-- Inercia para una caja de dimensiones 20x20x3 cm3
+     En realidad nuestro dron ocupa una caja de 25x25x4.5 cms -->
+
+    <inertia>                <!-- http://en.wikipedia.org/wiki/List_of_moments_of_inertia -->
+      <ixx>3000</ixx>      for a box: ixx = 1/12 * mass * (y*y + z*z)
+      <iyy>3000</iyy>      for a box: iyy = 1/12 * mass * (x*x + z*z)
+      <izz>6000</izz>      for a box: izz = 1/12 * mass * (x*x + y*y)
+      <ixy>0.0</ixy>         
+      <ixz>0.0</ixz>         
+      <iyz>0.0</iyz>
+    </inertia>
+</inertial>
+   
+</link>
+    
+</model>
+
+</sdf>

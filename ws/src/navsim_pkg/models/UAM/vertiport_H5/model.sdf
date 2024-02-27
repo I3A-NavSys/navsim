@@ -1,0 +1,89 @@
+<?xml version="1.0" ?>
+<sdf version="1.7">
+
+
+<model name="VertiPort">
+
+<static>true</static>
+
+
+<link name='link'>
+
+<visual name='barra_izq'>
+    <pose>0 -2 0.02 0 0 0</pose>
+    <geometry>
+      <box>
+        <size>5 1 0.01</size>
+      </box>
+    </geometry>
+    <material>
+      <ambient>1 1 1 1</ambient> 
+      <diffuse>1 1 1 1</diffuse>
+    </material>
+</visual>
+
+<visual name='barra_der'>
+  <pose>0 2 0.02 0 0 0</pose>
+  <geometry>
+    <box>
+      <size>5 1 .01</size>
+    </box>
+  </geometry>
+  <material>
+    <ambient>1 1 1 1</ambient> 
+    <diffuse>1 1 1 1</diffuse>
+  </material>
+</visual>
+
+<visual name='travesanho'>
+  <pose>0 0 0.02 0 0 0</pose>
+  <geometry>
+    <box>
+      <size>1 5 .01</size>
+    </box>
+  </geometry>
+  <material>
+    <ambient>1 1 1 1</ambient> 
+    <diffuse>1 1 1 1</diffuse>
+  </material>
+</visual>
+
+
+<visual name="circulo">
+    <pose>0 0 -0.03 0 0 0</pose>
+    <geometry>
+        <cylinder>
+            <radius>5</radius>
+            <length>.1</length>
+        </cylinder>
+    </geometry>
+    <material>
+        <ambient>0 0.4 1 1</ambient>  <!--color Red Green Blue Alpha [0-1] -->
+        <diffuse>0 0.4 1 1</diffuse>
+    </material>
+</visual>
+
+<collision name="circulo_col">
+    <pose>0 0 -0.03 0 0 0</pose>
+    <geometry>
+        <cylinder>
+            <radius>5</radius>
+            <length>.1</length>
+        </cylinder>
+    </geometry>
+    <surface>
+        <friction>
+            <ode>
+            <mu>0.5</mu>
+            <mu2>0.5</mu2>
+            </ode>
+        </friction>
+    </surface>
+</collision>
+
+   
+</link>
+    
+</model>
+
+</sdf>
