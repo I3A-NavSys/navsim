@@ -93,6 +93,7 @@ Then, we need to compile a ROS2 workspace containing the simulation environment:
 cd navsim/ws
 colcon build
 ```
+If the previous command fails, make sure that your user is the owner of all downloaded folders, instead of root. If not, this can be fixed using the "sudo chown -R <user:user> navsim/" command.
 
 Now we set up .bashrc to make our workspace act as a ROS overlay (leaving Humble as a ROS underlay). Also, we configure Gazebo to find our libraries:
 ```bash
