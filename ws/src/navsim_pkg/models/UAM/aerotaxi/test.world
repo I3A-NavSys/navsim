@@ -33,16 +33,16 @@
 
 <!-- UAVs -->
 
-<include>
+<!-- <include>
     <name>abejorro</name>
     <pose>-4 4 0.6 0 0 -2.3</pose>
     <uri>../../DC/abejorroC</uri>
-</include>
+</include> -->
 
 <include>
     <name>aguila</name>
     <uri>../../UAM/aerotaxi</uri>
-    <pose>0 0 1 0 0 -2.3</pose>
+    <pose>0 0 2 0 0 -2.3</pose>
 </include>
 
 
