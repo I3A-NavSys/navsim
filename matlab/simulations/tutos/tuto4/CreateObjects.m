@@ -38,6 +38,7 @@ for i = 1:size(portsLoc,1)
     operator.SetVertiport(id,portsLoc(i,1:3),1);
 end
 
+builder.DeployModel('I3A', 'I3A', [-150 -225 0], [0 0 0]);
 
 % -------------
 % Deploy fleet
@@ -63,7 +64,7 @@ end
 
 
 %% 
-% pause(1)
+pause(1)
 op = operator.ops(1);
 op.fp.PositionFigure(0.1);
 op.fp.VelocityFigure(0.1);
