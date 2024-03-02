@@ -1,0 +1,120 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+<!-- SDF 1.7 no permite que visual y colision tengan el mismo nombre -->
+
+<world name="I3A world">      
+
+<plugin name="World" filename="libWorld.so" />
+
+
+
+<!-- Area de juego -->
+<include>
+    <name>floor</name>
+    <uri>../../../DC/floor</uri>
+</include>
+
+
+<!-- bases de aterrizaje -->
+<include>
+    <name>vertiport1</name>
+    <uri>../../../UAM/vertiport_H</uri>
+    <pose>0 6 0.05 0 0 0</pose>
+</include>   
+
+
+<include>
+    <name>vertiport5</name>
+    <uri>../../../UAM/vertiport_H5</uri>
+    <pose>0 -3 0.05 0 0 0</pose>
+</include>   
+
+
+
+<!-- UAVs -->
+
+<!-- <include>
+    <name>abejorro</name>
+    <pose>-4 4 0.6 0 0 -2.3</pose>
+    <uri>../../../DC/abejorroC</uri>
+</include> -->
+
+<!-- <include>
+    <name>aguila</name>
+    <uri>../../../UAM/aerotaxi</uri>
+    <pose>0 0 2 0 0 -2.3</pose>
+</include> -->
+
+
+
+
+
+<!-- I3A -->
+<include>
+    <name>I3A</name>
+    <pose>50 -15 0 0 0 1</pose>
+    <uri>../../../I3A</uri>
+</include>
+
+
+<!-- Area -->
+<scene>
+    <ambient>0.5 0.5 0.5 1.0</ambient>
+    <shadows>true</shadows>
+    <!-- <sky>
+        <clouds>true</clouds>
+    </sky> -->
+    <origin_visual>false</origin_visual>
+</scene>
+
+<!-- 
+<include>
+    <uri>model://sun</uri>
+</include> 
+-->
+
+<light type="directional" name="sun">
+    <cast_shadows>true</cast_shadows>
+    <pose>0 0 10 0 0 0</pose>
+    <diffuse>1 1 1 1</diffuse>
+    <specular>0.2 0.2 0.2 1</specular>
+    <attenuation>
+        <range>100</range>
+        <constant>1</constant>
+    </attenuation>
+    <direction>0.5 0.1 -0.9</direction>
+</light> 
+
+
+<!-- Interface -->
+<gui fullscreen='0'>
+    <camera name='user_camera'>
+
+      <pose>-22 -11 4.56 0 0.1 0.3</pose>
+
+      <view_controller>orbit</view_controller>
+      <!-- <projection_type>orthographic</projection_type> -->
+
+    </camera>
+</gui>
+
+
+
+
+
+
+<!-- Own physics settings to speed up simulation -->
+<physics type='ode'>
+
+    <max_step_size>0.001</max_step_size>                     
+    <!-- default: 0.001 segundos simulados / paso de simulación -->
+    
+    <real_time_update_rate>1000</real_time_update_rate>
+    <!-- default: 1000 ciclos de simulación / segundo real -->
+
+</physics> 
+
+
+
+</world>
+</sdf>
