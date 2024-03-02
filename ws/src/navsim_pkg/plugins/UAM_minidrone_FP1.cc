@@ -188,12 +188,7 @@ void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
 
         rosPub_Telemetry = rosNode->create_publisher<navsim_msgs::msg::Telemetry>(
             "/NavSim/" + UAVname + "/Telemetry", 10);
-
-        // rosSub_RemoteCommand = rosNode->create_subscription<navsim_msgs::msg::RemoteCommand>(
-        //     "UAV/" + UAVname + "/RemoteCommand", 10,
-        //     std::bind(&UAM_minidrone_FP1::rosTopFn_RemoteCommand, this, 
-        //             std::placeholders::_1));
-            
+           
         rosSub_FlightPlan = rosNode->create_subscription<navsim_msgs::msg::FlightPlan>(
             "/NavSim/" + UAVname + "/FlightPlan", 2,
             std::bind(&UAM_minidrone_FP1::rosTopFn_FlightPlan, this, 
@@ -201,7 +196,6 @@ void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
 
         rosPub_NavReport = rosNode->create_publisher<navsim_msgs::msg::NavigationReport>(
             "/NavSim/" + UAVname + "/NavigationReport", 10);
-
     }
     else
     {   
@@ -290,6 +284,8 @@ void OnWorldUpdateBegin()
 
 
 void Navigation()
+// This function converts a flight plan position at certain time
+// to a navigation command (desired velocity vector and rotation)
 {
     if (fp == nullptr) return;
 
@@ -423,7 +419,7 @@ void Navigation()
 
 
 
-    // COMPUTING TARGET YAW
+    // COMPUTING TARGET ERROR YAW
     double targetYaw = YawAtTime(currentTime + targetStep);
     double errorYaw = targetYaw - currentYaw;
     while (errorYaw < -M_PI)
@@ -449,7 +445,6 @@ void Navigation()
 
 
     // CREATING COMMANDED RELATIVE VELOCITY VECTOR
-
     cmd_on   = true;
     cmd_velX = targetRelVel.X();
     cmd_velY = targetRelVel.Y();
@@ -588,58 +583,6 @@ void rosTopFn_FlightPlan(const std::shared_ptr<navsim_msgs::msg::FlightPlan> msg
         printf("%.2f  %.2f  %.2f\n", wp.pos.x, wp.pos.y, wp.pos.z);
     }
    
-}
-
-
-
-
-void rosTopFn_RemoteCommand(const std::shared_ptr<navsim_msgs::msg::RemoteCommand> msg)
-{
-    // printf("DCdrone: data received in topic Remote Pilot\n");
-    // printf("Received RemoteCommand: uav=%s, on=%d, cmd=[%f, %f, %f, %f], duration=(%d, %d)\n",
-    //        msg->uav_id.c_str(), 
-    //        msg->on, 
-    //        msg->vel.linear.x, msg->vel.linear.y, msg->vel.linear.z,
-    //        msg->vel.angular.z, 
-    //        msg->duration.sec, msg->duration.nanosec);
-    
-    // This function listen and follow remote commands
-    cmd_on   =  msg->on;
-    cmd_velX =  msg->vel.linear.x;
-    cmd_velY =  msg->vel.linear.y;
-    cmd_velZ =  msg->vel.linear.z;
-    cmd_rotZ =  msg->vel.angular.z; 
-
-    common::Time duration;
-    duration.sec  = msg->duration.sec;
-    duration.nsec = msg->duration.nanosec;
-    CommandExpTime = currentTime + duration;
-    // printf("current control time: %.3f \n", currentTime.Double());
-    // printf("command duration: %.3f \n", duration.Double());
-    // printf("command expiration time: %.3f \n\n", CommandExpTime.Double());
-
-
-
-    // Filtramos comandos fuera de rango
-
-    int velMAX = 4;
-
-    if (cmd_velX >  velMAX)
-        cmd_velX =  velMAX;
-    if (cmd_velX < -velMAX)
-        cmd_velX = -velMAX;
-    if (cmd_velY >  velMAX)
-        cmd_velY =  velMAX;
-    if (cmd_velY < -velMAX)
-        cmd_velY = -velMAX;
-    if (cmd_velZ >  velMAX)
-        cmd_velZ =  velMAX;
-    if (cmd_velZ < -velMAX)
-        cmd_velZ = -velMAX;
-    if (cmd_rotZ >  velMAX)
-        cmd_rotZ =  velMAX;
-    if (cmd_rotZ < -velMAX)
-        cmd_rotZ = -velMAX;
 }
 
 
