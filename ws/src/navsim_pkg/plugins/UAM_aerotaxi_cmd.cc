@@ -24,7 +24,6 @@ private:
 physics::ModelPtr    model;
 physics::LinkPtr     link;
 event::ConnectionPtr updateConnector;
-common::Time         currentTime;
 
 
 
@@ -109,30 +108,49 @@ Eigen::Matrix<double, 4, 1> r;  // model reference
 Eigen::Matrix<double, 4, 1> e;  // model error
 Eigen::Matrix<double, 4, 1> E;  // model acumulated error
 
-int E_max = 10000;                    // maximun model acumulated error
+int E_max = 100;                // maximun model acumulated error
 common::Time prevControlTime = 0; // Fecha de la ultima actualizacion del control de bajo nivel 
         
+
+////////////////////////////////////////////////////////////////////////
+// Aircraft sensor data
+
+common::Time  currentTime;
+
+// earth position and rotation
+// double Px = 0; 
+// double Py = 0;
+// double Pz = 0;
+double ePhi   = 0; 
+double eTheta = 0;
+double ePsi   = 0;
+
+// body linear velocity
+ignition::math::Vector3<double> linear_vel;
+
+// body angular velocity
+ignition::math::Vector3<double> angular_vel;
+    
+
 
 
 ////////////////////////////////////////////////////////////////////////
 // Navigation parameters
 
+common::Time CommandExpTime;
 bool  rotors_on = false;
 
 // AutoPilot navigation command
 bool   cmd_on   = false;          // (bool)  motores activos 
-double cmd_velX = 0.0;            // (m/s)   velocidad lineal  deseada en eje X
-double cmd_velY = 0.0;            // (m/s)   velocidad lineal  deseada en eje Y
-double cmd_velZ = 0.0;            // (m/s)   velocidad lineal  deseada en eje Z
-double cmd_rotZ = 0.0;            // (rad/s) velocidad angular deseada en eje Z
+double cmd_velX = 0;              // (m/s)   velocidad lineal  deseada en eje X
+double cmd_velY = 0;              // (m/s)   velocidad lineal  deseada en eje Y
+double cmd_velZ = 0;              // (m/s)   velocidad lineal  deseada en eje Z
+double cmd_rotZ = 0;              // (rad/s) velocidad angular deseada en eje Z
 
 // Command limits
-double cmd_velMAX = 20;
-double cmd_rotMAX =  1;
-
-
-
-common::Time CommandExpTime;
+double cmd_velMAX   = 33;    // 120 kms/h
+double cmd_rotMAX   =  4;
+double maxVarLinVel =  5;    // maximum linear  acceleration   [  m/s2]
 
 
 
@@ -195,28 +213,28 @@ void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
 
     // Poles = [-1 -1 -1 -1 -2 -2 -2 -2 -3 -3 -4 -4]
 
-    // Kx <<  -12.9861,  -45.5032,   -3.7103,  -13.0009,    5.7143,   -6.6331,    1.8930,    6.4114,
-    //         12.9861,  -45.5032,    3.7103,  -13.0009,   -5.7143,   -6.6331,   -1.8930,    6.4114,
-    //        -51.9443,  113.7581,  -14.8412,   32.5023,  -17.1429,   16.5828,    7.5721,    6.4114,
-    //         51.9443,  113.7581,   14.8412,   32.5023,   17.1429,   16.5828,   -7.5721,    6.4114;
+    Kx <<  -12.9861,  -45.5032,   -3.7103,  -13.0009,    5.7143,   -6.6331,    1.8930,    6.4114,
+            12.9861,  -45.5032,    3.7103,  -13.0009,   -5.7143,   -6.6331,   -1.8930,    6.4114,
+           -51.9443,  113.7581,  -14.8412,   32.5023,  -17.1429,   16.5828,    7.5721,    6.4114,
+            51.9443,  113.7581,   14.8412,   32.5023,   17.1429,   16.5828,   -7.5721,    6.4114;
 
-    // Ki <<   -3.1839,    0.9086,    4.2743,    3.8095,
-    //         -3.1839,   -0.9086,    4.2743,   -3.8095,
-    //          7.9597,    3.6346,    4.2743,  -11.4286,
-    //          7.9597,   -3.6346,    4.2743,   11.4286;
+    Ki <<   -3.1839,    0.9086,    4.2743,    3.8095,
+            -3.1839,   -0.9086,    4.2743,   -3.8095,
+             7.9597,    3.6346,    4.2743,  -11.4286,
+             7.9597,   -3.6346,    4.2743,   11.4286;
 
 
     // Poles = [-0.5 -0.5 -0.5 -0.5 -1 -1 -1 -1 -2 -2 -3 -3]
 
-    Kx <<   -5.1944,  -18.2013,   -2.4117,   -8.4506,    2.8571,   -1.5256,    0.4354,    3.2057,
-             5.1944,  -18.2013,    2.4117,   -8.4506,   -2.8571,   -1.5256,   -0.4354,    3.2057,
-           -20.7777,   45.5032,   -9.6468,   21.1265,   -8.5714,    3.8140,    1.7416,    3.2057,
-            20.7777,   45.5032,    9.6468,   21.1265,    8.5714,    3.8140,   -1.7416,    3.2057;
+    // Kx <<   -5.1944,  -18.2013,   -2.4117,   -8.4506,    2.8571,   -1.5256,    0.4354,    3.2057,
+    //          5.1944,  -18.2013,    2.4117,   -8.4506,   -2.8571,   -1.5256,   -0.4354,    3.2057,
+    //        -20.7777,   45.5032,   -9.6468,   21.1265,   -8.5714,    3.8140,    1.7416,    3.2057,
+    //         20.7777,   45.5032,    9.6468,   21.1265,    8.5714,    3.8140,   -1.7416,    3.2057;
 
-    Ki <<   -0.3980,    0.1136,    1.0686,    0.9524,
-            -0.3980,   -0.1136,    1.0686,   -0.9524,
-             0.9950,    0.4543,    1.0686,   -2.8571,
-             0.9950,   -0.4543,    1.0686,    2.8571;
+    // Ki <<   -0.3980,    0.1136,    1.0686,    0.9524,
+    //         -0.3980,   -0.1136,    1.0686,   -0.9524,
+    //          0.9950,    0.4543,    1.0686,   -2.8571,
+    //          0.9950,   -0.4543,    1.0686,    2.8571;
                 
 	// Linearization point
     Hs << w_hov, w_hov, w_hov, w_hov;
@@ -232,6 +250,7 @@ void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
 	u << w_hov, w_hov, w_hov, w_hov;
 
 }
+
 
 
 void Init()
@@ -261,8 +280,8 @@ void OnWorldUpdateBegin()
     // std::cout << "\x1B[2J\x1B[H";
     // printf("AeroTaxi plugin: OnWorldUpdateBegin\n");
 
-    // Get current simulation time
-    currentTime = model->GetWorld()->SimTime();
+    // Read data from aircraft sensors
+    ReadSensors();
 
     // Check ROS2 subscriptions
     CheckSubs();
@@ -276,10 +295,114 @@ void OnWorldUpdateBegin()
 
 }
 
-    
+
+
+
+void ReadSensors()
+{
+    // Get current simulation time
+    currentTime = model->GetWorld()->SimTime();
+
+    // aircraft position & rotation
+    ignition::math::Pose3<double> pose = model->WorldPose();
+    // Px = pose.X(); 
+    // Py = pose.Y();
+    // Pz = pose.Z();
+    ePhi   = pose.Roll(); 
+    eTheta = pose.Pitch();
+    ePsi   = pose.Yaw();
+
+    // body linear velocity
+    linear_vel  = model->RelativeLinearVel();
+    // body angular velocity
+    angular_vel = model->RelativeAngularVel();
+}    
+
+
 
 
 void rosTopFn_RemoteCommand(const std::shared_ptr<navsim_msgs::msg::RemoteCommand> msg)
+// This function listen and follow remote commands
+{
+    // printf("Data received in topic Remote Pilot\n");
+    // printf("Received RemoteCommand: uav=%s, on=%d, cmd=[%f, %f, %f, %f], duration=(%d, %d)\n",
+    //        msg->uav_id.c_str(), 
+    //        msg->on, 
+    //        msg->vel.linear.x, msg->vel.linear.y, msg->vel.linear.z,
+    //        msg->vel.angular.z, 
+    //        msg->duration.sec, msg->duration.nanosec);
+    
+    //Velocities commanded in horizon axes
+    ignition::math::Vector3<double> targetHorVel = ignition::math::Vector3d(
+        msg->vel.linear.x,
+        msg->vel.linear.y,     
+        msg->vel.linear.z );
+    // std::cout  << "targetHorVel:  " << targetHorVel  << " \n";
+    
+
+    // COMPUTING DRONE RELATIVE LINEAR VELOCITY
+    ignition::math::Pose3<double> pose;
+    pose.Set(0,0,0,ePhi,eTheta,0);
+    ignition::math::Quaterniond orientation = pose.Rot();
+    ignition::math::Vector3d targetRelVel = orientation.RotateVectorReverse(targetHorVel);
+    // std::cout  << "targetRelVel:  " << targetRelVel  << " \n\n";
+
+
+    // Filtramos comandos fuera de rango
+    if (targetRelVel.Length() > cmd_velMAX)
+    {
+        targetRelVel.Normalize();
+        targetRelVel *= cmd_velMAX;
+    }
+
+    // Suavizamos el comando
+    // (velocidad lineal)
+    ignition::math::Vector3<double> variationVel = targetRelVel - linear_vel;
+    if (variationVel.Length() > maxVarLinVel)
+    {
+        variationVel.Normalize();
+        variationVel *= maxVarLinVel;
+    }
+    targetRelVel = linear_vel + variationVel;
+
+    // (velocidad angular Z)
+    double targetRelWel = msg->vel.angular.z;
+    if (targetRelWel > cmd_rotMAX)
+    {
+        targetRelWel = cmd_rotMAX;
+    }
+    if (targetRelWel < -cmd_rotMAX)
+    {
+        targetRelWel = -cmd_rotMAX;
+    }
+    double factorAngVel = 1 - linear_vel.Length() / cmd_velMAX;
+    if (factorAngVel < 0 )
+    {
+        factorAngVel = 0;
+    }
+    std::cout  << "factorAngVel:  " << factorAngVel  << " \n";
+    
+    targetRelWel = targetRelWel * factorAngVel;
+    
+    
+    // CREATING COMMANDED RELATIVE VELOCITY VECTOR
+    cmd_on   =  msg->on;
+    cmd_velX =  targetRelVel.X();
+    cmd_velY =  targetRelVel.Y();
+    cmd_velZ =  targetRelVel.Z();
+    cmd_rotZ =  targetRelWel; 
+
+    common::Time duration;
+    duration.sec  = msg->duration.sec;
+    duration.nsec = msg->duration.nanosec;
+    CommandExpTime = currentTime + duration;
+    // printf("current control time: %.3f \n", currentTime.Double());
+    // printf("command duration: %.3f \n", duration.Double());
+    // printf("command expiration time: %.3f \n\n", CommandExpTime.Double());
+
+}
+
+void rosTopFn_RemoteCommand_BACKUP(const std::shared_ptr<navsim_msgs::msg::RemoteCommand> msg)
 // This function listen and follow remote commands
 {
     // printf("Data received in topic Remote Pilot\n");
@@ -299,15 +422,25 @@ void rosTopFn_RemoteCommand(const std::shared_ptr<navsim_msgs::msg::RemoteComman
 
     //Matrix of transformation from horizon axes to body axes
     Eigen::Matrix<double, 3, 3> horizon2body;
-    horizon2body = Eigen::AngleAxisd(-x(0, 0), Eigen::Vector3d::UnitX())    // roll
+    horizon2body =    Eigen::AngleAxisd(-x(0, 0), Eigen::Vector3d::UnitX())    // roll
                     * Eigen::AngleAxisd(-x(1, 0), Eigen::Vector3d::UnitY()); // pitch
 
-    // Transfrom the horizon command to body command
+    // Transform the horizon command to body command
     Eigen::Matrix<double, 3, 1> b_cmd;
     b_cmd = horizon2body * h_cmd;
-    
     // std::cout  << "b_cmd:  " << b_cmd.transpose()  << " \n\n";
 
+    
+    
+    // Filtramos comandos fuera de rango
+    double norm_b_cmd = b_cmd.norm();
+    if (norm_b_cmd > cmd_velMAX) 
+    {
+        b_cmd *= cmd_velMAX / norm_b_cmd;
+    }
+    
+    
+    
     // CREATING COMMANDED RELATIVE VELOCITY VECTOR
     cmd_on   =  msg->on;
     cmd_velX =  b_cmd(0, 0);
@@ -323,25 +456,7 @@ void rosTopFn_RemoteCommand(const std::shared_ptr<navsim_msgs::msg::RemoteComman
     // printf("command duration: %.3f \n", duration.Double());
     // printf("command expiration time: %.3f \n\n", CommandExpTime.Double());
 
-    // Filtramos comandos fuera de rango
-    if (cmd_velX >  cmd_velMAX)
-        cmd_velX =  cmd_velMAX;
-    if (cmd_velX < -cmd_velMAX)
-        cmd_velX = -cmd_velMAX;
-    if (cmd_velY >  cmd_velMAX)
-        cmd_velY =  cmd_velMAX;
-    if (cmd_velY < -cmd_velMAX)
-        cmd_velY = -cmd_velMAX;
-    if (cmd_velZ >  cmd_velMAX)
-        cmd_velZ =  cmd_velMAX;
-    if (cmd_velZ < -cmd_velMAX)
-        cmd_velZ = -cmd_velMAX;
-    if (cmd_rotZ >  cmd_rotMAX)
-        cmd_rotZ =  cmd_rotMAX;
-    if (cmd_rotZ < -cmd_rotMAX)
-        cmd_rotZ = -cmd_rotMAX;
 }
-
 
 
 
@@ -387,8 +502,8 @@ void rotorsOff()
 void ServoControl()
 {
     // This function converts 
-    // a navigation command (desired velocity vector and rotation)
-    // to speeds of the four rotors
+    // [bVx bVy bVz bWz]     a navigation command (desired velocity vector and rotation)
+    // [Wnw Wne Wsw Wse]     to speeds of the four rotors
 
     // printf("AEROTAXI plugin: ServoControl\n");
 
@@ -408,7 +523,6 @@ void ServoControl()
         commandOff();
         rotorsOff();
         return;
-        
     }
 
 
@@ -432,17 +546,6 @@ void ServoControl()
     
     prevControlTime = currentTime;
 
-
-    // Getting model status
-    ignition::math::Pose3<double> pose = model->WorldPose();
-    // printf("drone xyz =  %.2f  %.2f  %.2f \n", pose.X(), pose.Y(), pose.Z());
-    // printf("drone YPR =  %.2f  %.2f  %.2f \n", pose.Yaw(), pose.Pitch(), pose.Roll());
-    ignition::math::Vector3<double> linear_vel  = model->RelativeLinearVel();
-    ignition::math::Vector3<double> angular_vel = model->RelativeAngularVel();
-    // printf("drone         vel xyz =  %.2f  %.2f  %.2f\n",  linear_vel.X(),  linear_vel.Y(),  linear_vel.Z());
-    // printf("drone angular vel xyz =  %.2f  %.2f  %.2f\n", angular_vel.X(), angular_vel.Y(), angular_vel.Z());
-
-
     //Velocities commanded in body axes
     Eigen::Matrix<double, 3, 1> b_cmd;
     b_cmd(0, 0) = cmd_velX;     // eXdot
@@ -450,23 +553,24 @@ void ServoControl()
     b_cmd(2, 0) = cmd_velZ;     // eZdot
     // std::cout  << "b_cmd:  " << b_cmd.transpose()  << " \n\n";
 
-
 	// Assign the model state
-    x(0,0) = pose.Roll();     // ePhi
-    x(1,0) = pose.Pitch();    // eTheta
-    x(2,0) = angular_vel.X(); // bWx
-    x(3,0) = angular_vel.Y(); // bWy
-    x(4,0) = angular_vel.Z(); // bWz
-    x(5,0) = linear_vel.X();  // bXdot
-    x(6,0) = linear_vel.Y();  // bYdot
-    x(7,0) = linear_vel.Z();  // bZdot
+    x(0,0) = ePhi;
+    x(1,0) = eTheta;
+    x(2,0) = angular_vel.X();
+    x(3,0) = angular_vel.Y();
+    x(4,0) = angular_vel.Z();
+    x(5,0) = linear_vel.X();
+    x(6,0) = linear_vel.Y();
+    x(7,0) = linear_vel.Z();
     // std::cout  << "x:  " << x.transpose()  << " \n\n";
 
+
+
 	// Assign the model output
-    y(0,0) = linear_vel.X();  // bXdot
-    y(1,0) = linear_vel.Y();  // bYdot
-    y(2,0) = linear_vel.Z();  // bZdot
-    y(3,0) = angular_vel.Z(); // bWz
+    y(0,0) = linear_vel.X();
+    y(1,0) = linear_vel.Y();
+    y(2,0) = linear_vel.Z();
+    y(3,0) = angular_vel.Z();
     // std::cout  << "y:  " << y.transpose()  << " \n\n";
 
 	// Assign the model reference to be followed
