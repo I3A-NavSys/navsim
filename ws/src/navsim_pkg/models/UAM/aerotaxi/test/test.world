@@ -39,11 +39,11 @@
     <uri>../../../DC/abejorroC</uri>
 </include> -->
 
-<!-- <include>
+<include>
     <name>aguila</name>
     <uri>../../../UAM/aerotaxi</uri>
-    <pose>0 0 2 0 0 -2.3</pose>
-</include> -->
+    <pose>0 -3 20 0 0 3</pose>
+</include>
 
 
 
@@ -68,11 +68,7 @@
     <grid>true</grid>
 </scene>
 
-<!-- 
-<include>
-    <uri>model://sun</uri>
-</include> 
--->
+
 
 <light type="directional" name="sun">
     <cast_shadows>true</cast_shadows>
@@ -91,7 +87,9 @@
 <gui fullscreen='0'>
     <camera name='user_camera'>
 
-      <pose>-22 -11 4.56 0 0.1 0.3</pose>
+      <!-- <pose>-22 -11 4.56 0 0.1 0.3</pose> -->
+      <!-- <pose>-300    0  10  0  -0.112     0</pose> -->
+      <pose>   0 -300  40  0       0  1.52</pose>
 
       <view_controller>orbit</view_controller>
       <!-- <projection_type>orthographic</projection_type> -->
