@@ -35,7 +35,7 @@ rclcpp::Node::SharedPtr rosNode;
 
 rclcpp::Publisher<navsim_msgs::msg::Telemetry>::SharedPtr rosPub_Telemetry;
 common::Time prevTelemetryPubTime;
-double TelemetryPeriod = 1.0;    // seconds
+double TelemetryPeriod = 0.2;    // seconds
 
 rclcpp::Subscription<navsim_msgs::msg::RemoteCommand>::SharedPtr rosSub_RemoteCommand;
 common::Time prevCommandCheckTime;
@@ -108,7 +108,7 @@ Eigen::Matrix<double,4,1> r;  // model reference
 Eigen::Matrix<double,4,1> e;  // model error
 Eigen::Matrix<double,4,1> E;  // model acumulated error
 
-int E_max = 100;                // maximun model acumulated error
+int E_max = 150;                // maximun model acumulated error
 common::Time prevControlTime = 0; // Fecha de la ultima actualizacion del control de bajo nivel 
         
 
@@ -148,8 +148,9 @@ double cmd_rotZ = 0;         // (rad/s)  commanded angular  speed
 
 // Command limits
 double cmd_velX_MAX = 35;    // (m/s)          max forward  speed  (126 kms/h)
+double cmd_vel_step = 10;    // (m/s)          max forward  speed step
 double cmd_velY_MAX = 10;    // (m/s)          max lateral  speed
-double cmd_velZ_MAX =  5;    // (m/s)          max vertical speed
+double cmd_velZ_MAX = 10;    // (m/s)          max vertical speed
 double cmd_rotZ_MAX =  1;    // (rad/s)        max angular  speed
 
 
@@ -384,25 +385,37 @@ void rosTopFn_RemoteCommand(const std::shared_ptr<navsim_msgs::msg::RemoteComman
     // printf("command expiration time: %.3f \n\n", CommandExpTime.Double());
 
 
-    // Updated command limits
-    double current_velX_MAX = cmd_velX_MAX;
-    double current_velY_MAX = cmd_velY_MAX;
-    double current_velZ_MAX = cmd_velZ_MAX;
-    double current_rotZ_MAX = cmd_rotZ_MAX;
-
-
     // Corregimos comandos fuera de rango
-    if (cmd_velX < -current_velX_MAX)    cmd_velX = -current_velX_MAX;
-    if (cmd_velX >  current_velX_MAX)    cmd_velX =  current_velX_MAX;
+    if (cmd_velX < -cmd_velX_MAX)    cmd_velX = -cmd_velX_MAX;
+    if (cmd_velX >  cmd_velX_MAX)    cmd_velX =  cmd_velX_MAX;
 
-    if (cmd_velY < -current_velY_MAX)    cmd_velY = -current_velY_MAX;
-    if (cmd_velY >  current_velY_MAX)    cmd_velY =  current_velY_MAX;
+    if (cmd_velY < -cmd_velY_MAX)    cmd_velY = -cmd_velY_MAX;
+    if (cmd_velY >  cmd_velY_MAX)    cmd_velY =  cmd_velY_MAX;
 
-    if (cmd_velZ < -current_velZ_MAX)    cmd_velZ = -current_velZ_MAX;
-    if (cmd_velZ >  current_velZ_MAX)    cmd_velZ =  current_velZ_MAX;
+    if (cmd_velZ < -cmd_velZ_MAX)    cmd_velZ = -cmd_velZ_MAX;
+    if (cmd_velZ >  cmd_velZ_MAX)    cmd_velZ =  cmd_velZ_MAX;
 
-    if (cmd_rotZ < -current_rotZ_MAX)    cmd_rotZ = -current_rotZ_MAX;
-    if (cmd_rotZ >  current_rotZ_MAX)    cmd_rotZ =  current_rotZ_MAX;
+    if (cmd_rotZ < -cmd_rotZ_MAX)    cmd_rotZ = -cmd_rotZ_MAX;
+    if (cmd_rotZ >  cmd_rotZ_MAX)    cmd_rotZ =  cmd_rotZ_MAX;
+
+
+
+
+    // fix velocity X
+    // printf("cmd_velX: %.2f \n", cmd_velX);
+    double dif = cmd_velX - hV.X();
+    if (dif >  cmd_vel_step)    cmd_velX = hV.X() + cmd_vel_step;
+    else 
+    if (dif < -cmd_vel_step)    cmd_velX = hV.X() - cmd_vel_step;
+    // printf("cmd_velX: %.2f \n\n", cmd_velX);
+
+
+
+    // fix rotation command
+    double factor = exp(-0.065 * eV.Length());
+    // printf("cmd_velX: %.2f \n", eV.Length());
+    // printf("Factor:   %.2f \n\n", factor);
+    cmd_rotZ *= factor;
 
 
 
@@ -588,7 +601,7 @@ void ServoControl()
 
 	// Cumulative error
     E = E + (e * interval);
-    // std::cout  << "E:  " << E.transpose()  << " \n\n";
+    // std::cout  << "E:  " << E.transpose()  << " \n";
 
     if (E(0, 0) >  E_max)   E(0, 0) =  E_max;
     if (E(0, 0) < -E_max)   E(0, 0) = -E_max;
