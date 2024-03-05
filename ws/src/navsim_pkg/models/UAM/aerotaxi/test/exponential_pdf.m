@@ -1,21 +1,32 @@
+clc
+clear
+
+current_velX_MAX = 35;
+cmd_rotZ_MAX = 2;
+
 % Valores de x
-x = linspace(0, 5, 100);
+cmd_velX = linspace(0, current_velX_MAX, 100);
+
+
 
 % Valores de lambda
-lambdas = [0.5, 1, 1.5];
+lambdas = [0.065 0.1 0.2];
 
 % Graficar la función de densidad de probabilidad para diferentes valores de lambda
-figure;
+clf;
 hold on;
-for i = 1:length(lambdas)
-    lambda = lambdas(i);
-    y = lambda * exp(-lambda * x);
-    plot(x, y, 'LineWidth', 1.5, 'DisplayName', ['\lambda = ' num2str(lambda)]);
+for lambda = lambdas
+    factor = exp(-lambda * cmd_velX);
+    plot(cmd_velX, factor, 'LineWidth', 1.5, 'DisplayName', ['\lambda = ' num2str(lambda)]);
 end
 
+
+
+
+
 title('Función de densidad de probabilidad exponencial negativa');
-xlabel('x');
-ylabel('f(x)');
+xlabel('cmd_velX');
+ylabel('factor');
 legend('Location', 'best');
 grid on;
 hold off;
