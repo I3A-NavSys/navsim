@@ -14,6 +14,8 @@ elseif ispc %Windows computer
     switch getenv("USERNAME")
         case 'Rafael.Casado'
             NAVSIM_PATH = 'c:\Users\Rafael.Casado\code\navsim\';
+        case 'Aurelio.Bermudez'
+            NAVSIM_PATH = 'c:\Users\Aurelio.Bermudez\code\navsim\';            
         case 'Rafa'
             NAVSIM_PATH = 'c:\Users\Rafa\code\navsim\';
         case 'rafae'
