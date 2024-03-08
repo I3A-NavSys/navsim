@@ -117,7 +117,7 @@
     </image>
     <clip>
         <near>0.05</near>
-        <far>20</far>
+        <far>200</far>
     </clip>
   </camera>        
   <update_rate>10</update_rate>

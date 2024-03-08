@@ -39,7 +39,7 @@ double TelemetryPeriod = 0.1;    // seconds
 
 rclcpp::Subscription<navsim_msgs::msg::RemoteCommand>::SharedPtr rosSub_RemoteCommand;
 common::Time prevRosCheckTime;
-double RosCheckPeriod = 0.1;     // seconds
+double RosCheckPeriod = 0.01;     // seconds
 
 
 
@@ -247,6 +247,9 @@ void OnWorldUpdateBegin()
 
     // Get current simulation time
     currentTime = model->GetWorld()->SimTime();
+
+    // Check ROS2 subscriptions
+    CheckROS();
     
     // Platform low level control
     ServoControl();
@@ -254,9 +257,6 @@ void OnWorldUpdateBegin()
 
     // Telemetry communications
     Telemetry();
-
-    // Check ROS2 subscriptions
-    CheckROS();
 
 }
 
