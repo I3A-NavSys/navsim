@@ -32,8 +32,31 @@
       </box>
     </geometry>
 </collision>
-  
 
+<sensor name='front_camera' type='camera'>
+  <pose>-10.00 0.00 2.00 0 0.2 0</pose>
+  <always_on>1</always_on>
+  <update_rate>30</update_rate>
+  <camera>
+    <image>
+      <width> 640</width>
+      <height>480</height>
+    </image>
+    <!-- <horizontal_fov>1.047</horizontal_fov> -->
+    <horizontal_fov>2.0</horizontal_fov>
+    <clip>
+      <near>0.1</near>
+      <far>10000</far>
+    </clip>
+    
+    <save enabled="false">
+      <path>/tmp/camera_save</path>
+    </save>
+  </camera>
+  <!-- <visualize>true</visualize> -->
+</sensor>
+
+  
 <visual name='cabina'>
   <pose>0.00 0.00 0.00 0 0 0</pose>
   <geometry>
@@ -44,6 +67,19 @@
   <material>
     <ambient>0.1 0.4 0.6 1</ambient> 
     <diffuse>0.1 0.4 0.6 1</diffuse>
+  </material>
+</visual>
+
+<visual name='cabina_cristal'>
+  <pose>-0.70 0.00 0.10 0 0 0</pose>
+  <geometry>
+    <box>
+      <size>1.00 1.55 1.00</size>
+    </box>
+  </geometry>
+  <material>
+    <ambient>0.3 0.3 0.3 1</ambient> 
+    <diffuse>0.3 0.3 0.3 1</diffuse>
   </material>
 </visual>
 <collision name='cabina_col'>

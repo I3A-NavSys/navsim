@@ -149,7 +149,7 @@ function index = GetPORTindex(obj,id)
         return
     end
     for i = 1:l
-        if obj.VPs(i).id == id
+        if strcmp(obj.VPs(i).id, id)
             index = i;
             return
         end
@@ -228,6 +228,14 @@ function status = DeployUAV(obj,info,UAVid,pos,rot)
                 'navsim_msgs/Telemetry', ...
                 @obj.TelemetryCallback);
 
+        case UAVmodels.AeroTaxiCommanded  
+
+            file = fullfile(obj.models_path,'/UAM/aerotaxi/model.sdf');
+
+            uav.rosPub_RemoteCommand = ros2publisher(obj.rosNode, ...
+                ['/NavSim/' UAVid '/RemoteCommand'],      ...
+                'navsim_msgs/RemoteCommand');
+            
         otherwise
             return
     end
@@ -293,7 +301,7 @@ function RemoteCommand(obj,UAVid,on,velX,velY,velZ,rotZ,duration)
     end
 
     uav = obj.UAVs(i);
-    if uav.model ~= UAVmodels.MiniDroneCommanded
+    if uav.model ~= UAVmodels.MiniDroneCommanded  &&  uav.model ~= UAVmodels.AeroTaxiCommanded
         return
     end
 
@@ -486,7 +494,7 @@ function index = GetUAVindex(obj,id)
         return
     end
     for i = 1:l
-        if obj.UAVs(i).id == id
+        if strcmp(obj.UAVs(i).id, id)
             index = i;
             return
         end
