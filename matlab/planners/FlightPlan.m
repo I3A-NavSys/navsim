@@ -115,7 +115,6 @@ end
 
 
 
-
 function p = PositionAtTime(obj, t)
     % Check if t is out of flight plan schedule, returning not valid pos
     if t < obj.InitTime  ||  t > obj.FinishTime
@@ -212,7 +211,7 @@ end
 
 
 
-function PositionFigure(obj,id,time_step)
+function PositionFigure(obj,figName,time_step)
     % Display the flight plan trajectory
     
     %Check if the flight plan is empty
@@ -222,7 +221,6 @@ function PositionFigure(obj,id,time_step)
     end
 
     %Find if the figure is already open
-    figName = "FP" + id + ": POSITION";
     fig = findobj("Name", figName);
     if isempty(fig)
         %Display a figure with the flight plan
@@ -324,7 +322,7 @@ end
 
 
 
-function VelocityFigure(obj,id,time_step)
+function VelocityFigure(obj,figName,time_step)
     %VELOCITYFIGURE This method allow to display the flight plan instant velocity
     
     % Check if the flight plan is empty
@@ -334,11 +332,10 @@ function VelocityFigure(obj,id,time_step)
     end
 
     %Find if the figure is already open
-    fig_name = "FP" + id + ": VELOCITY";
-    fig = findobj('Type', 'Figure',"Name", fig_name);
+    fig = findobj('Type', 'Figure',"Name", figName);
     if isempty(fig)
         %Display a figure with the flight plan
-        fig = figure("Name", fig_name);
+        fig = figure("Name", figName);
         fig.Position(3:4) = [290 455];
         fig.NumberTitle = "off";
         fig.MenuBar = "none";
