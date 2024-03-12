@@ -125,8 +125,8 @@ for i = 1:size(way_data1,1)
 end
 
 % Display
-fp1.PositionFigure(1);
-fp1.VelocityFigure(1);
+fp1.PositionFigure(1,1);
+fp1.VelocityFigure(1,1);
 ```
 
 The flight plan for UAV01 involves ascending a few meters, performing a closed rectangular trajectory, and landing at the same point.
