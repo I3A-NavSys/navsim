@@ -189,10 +189,10 @@ end
 
 
 
-function fp2 = Convert2TP(fp1,id,timeStep)
+function fp2 = Convert2TP(fp1,timeStep)
     % Transform a TPV / TPV0 flight plant to a TP flightPlan
 
-    fp2 = FlightPlan(id,Waypoint.empty);
+    fp2 = FlightPlan(Waypoint.empty);
     if fp1.mode == InterpolationModes.TP
         return
     end
@@ -212,7 +212,7 @@ end
 
 
 
-function PositionFigure(obj,time_step)
+function PositionFigure(obj,id,time_step)
     % Display the flight plan trajectory
     
     %Check if the flight plan is empty
@@ -222,7 +222,7 @@ function PositionFigure(obj,time_step)
     end
 
     %Find if the figure is already open
-    figName = "FP" + obj.id + ": POSITION";
+    figName = "FP" + id + ": POSITION";
     fig = findobj("Name", figName);
     if isempty(fig)
         %Display a figure with the flight plan
@@ -324,7 +324,7 @@ end
 
 
 
-function VelocityFigure(obj,time_step)
+function VelocityFigure(obj,id,time_step)
     %VELOCITYFIGURE This method allow to display the flight plan instant velocity
     
     % Check if the flight plan is empty
@@ -334,7 +334,7 @@ function VelocityFigure(obj,time_step)
     end
 
     %Find if the figure is already open
-    fig_name = "FP" + obj.id + ": VELOCITY";
+    fig_name = "FP" + id + ": VELOCITY";
     fig = findobj('Type', 'Figure',"Name", fig_name);
     if isempty(fig)
         %Display a figure with the flight plan

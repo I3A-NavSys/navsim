@@ -525,14 +525,8 @@ function NavigationReportCallback(obj,msg)
     % disp("NavigationReport received")
 
     if msg.operator_id ~= obj.name
-        fprintf("WARNING: Operator '%s' has rceived a report from a not opetared UAV %s \n\n",obj.name,msg.uav_id);
+        fprintf("WARNING: Operator '%s' has received a report from a not operated UAV %s \n\n",obj.name,msg.uav_id);
         return
-    end
-
-    op = obj.ops(msg.plan_id);
-    if msg.uav_id ~= op.UAVid
-        fprintf("WARNING: Drone %s is executing a corrupted flight plan \n\n",msg.uav_id);
-        return;
     end
 
     if msg.fp_aborted
@@ -551,21 +545,29 @@ function NavigationReportCallback(obj,msg)
 
     if msg.fp_completed
 
+        % fprintf("%s has completed its flight plan \n",msg.uav_id);
+
+        if msg.plan_id == 0
+            return;
+        end
+        
         UAVloc = obj.GetUAVLocation(msg.uav_id);
-        if strcmp(UAVloc,op.VPdest)
-            % fprintf("%s has completed its flight plan \n",msg.uav_id);
-            obj.OperateUAV(op.UAVid);
-        else
-            fprintf("\n%s has not completed its flight plan \n",msg.uav_id);
-            % disp(msg.uav_id)
-            % disp(UAVloc)
-            % disp(op.VPdest)
+        op = obj.ops(msg.plan_id);
+        if msg.uav_id ~= op.UAVid
+            fprintf("WARNING: Drone %s is executing a corrupted flight plan \n\n",msg.uav_id);
             return;
         end
 
-
+        if strcmp(UAVloc,op.VPdest)
+            % fprintf("%s has reached its destination vertiport \n",msg.uav_id);
+            obj.OperateUAV(op.UAVid);
+        else
+            fprintf("\n%s has not reached its destination vertiport \n",msg.uav_id);
+            % disp(msg.uav_id)
+            % disp(UAVloc)
+            % disp(op.VPdest)
+        end
     end
-
 end
 
 

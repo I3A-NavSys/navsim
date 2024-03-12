@@ -66,8 +66,8 @@ end
 %% 
 pause(1)
 op = operator.ops(1);
-op.fp.PositionFigure(0.1);
-op.fp.VelocityFigure(0.1);
+op.fp.PositionFigure(1,0.1);
+op.fp.VelocityFigure(1,0.1);
 
 monitor.PositionFigure(op.UAVid,op.fp);
 monitor.VelocityFigure(op.UAVid,op.fp);
