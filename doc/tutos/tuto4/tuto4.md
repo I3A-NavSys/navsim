@@ -21,7 +21,7 @@ ros2 service list | grep Deploy
 
 ## Matlab
 
-### CreateObjects.m
+### Running the simulation
 
 Now open Matlab (in the same computer or other computer connected to the same subnetwotk).
 Navigate to `navsim/matlab/simulations/tutos/tuto4`. From here, open the script `CreateObjets.m` and execute it.
@@ -106,11 +106,18 @@ Each operation starts from the vertiport where the drone is located, towards a r
 
 
 As soon as a drone informs the operator that it has completed the flight plan, the operator will assign it a new operation that will start 10 seconds later.
+The following figure shows more than 8000 telemetry data from UAV01, collected by the monitoring service during 2 hours and 15 minutes of simulation.
 
-It is important to note that this operator does not check if the proposed flight plan conflicts with another previously existing plan. Because the cruising altitude varies depending on the course, it is unlikely (though not impossible) that two aircraft will collide during their horizontal maneuver. However, it is highly probable that multiple aircraft will coincide in the vertical segment of the maneuver, either during takeoff or landing.
+![Telemetry data](./img/telemetry.png)
+
+
+### Considerations about flight plan conflict detection and aircraft collision avoidance
+
+It is important to note that this operator does not check if the proposed flight plan conflicts with another previously existing plan. Because the cruising altitude varies depending on the course, it is unlikely (though not impossible) that two aircraft will collide during their horizontal displacement. 
+However, it is highly probable that multiple aircraft will coincide in the vertical segment of the maneuver, either during takeoff or landing.
 
 ![Two drones landing at the same vertiport](./img/drones_landing.png)
 
-These drones will collide in the air, destroying the aircraft and their cargo, posing a serious danger to the surroundings.
+These drones will collide in the air, damaging both aircraft and their cargo, posing a serious danger to the surroundings.
 
 ![Two drones colliding](./img/drones_colliding.png)
