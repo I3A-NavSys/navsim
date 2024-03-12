@@ -64,7 +64,6 @@ end
 
 
 %% 
-pause(1)
 operator.WaitTime(operator.GetTime + 50);
 
 op = operator.ops(1);
