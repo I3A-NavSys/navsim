@@ -4,7 +4,7 @@ classdef FlightPlan < handle
 
 properties
 
-id          int32;
+id          % operation identifier
 
 waypoints   Waypoint = Waypoint.empty;     
 mode        InterpolationModes;
@@ -18,8 +18,8 @@ end
 methods
 
 
-function obj = FlightPlan(id, waypoints)
-    obj.id = id;
+function obj = FlightPlan(waypoints)
+    obj.id = 0;
     obj.priority = 0;
     obj.radius   = 1;
 
@@ -115,7 +115,6 @@ end
 
 
 
-
 function p = PositionAtTime(obj, t)
     % Check if t is out of flight plan schedule, returning not valid pos
     if t < obj.InitTime  ||  t > obj.FinishTime
@@ -189,10 +188,10 @@ end
 
 
 
-function fp2 = Convert2TP(fp1,id,timeStep)
+function fp2 = Convert2TP(fp1,timeStep)
     % Transform a TPV / TPV0 flight plant to a TP flightPlan
 
-    fp2 = FlightPlan(id,Waypoint.empty);
+    fp2 = FlightPlan(Waypoint.empty);
     if fp1.mode == InterpolationModes.TP
         return
     end
@@ -212,10 +211,7 @@ end
 
 
 
-
-
-
-function PositionFigure(obj,time_step)
+function PositionFigure(obj,figName,time_step)
     % Display the flight plan trajectory
     
     %Check if the flight plan is empty
@@ -225,7 +221,6 @@ function PositionFigure(obj,time_step)
     end
 
     %Find if the figure is already open
-    figName = "FP" + obj.id + ": POSITION";
     fig = findobj("Name", figName);
     if isempty(fig)
         %Display a figure with the flight plan
@@ -327,7 +322,7 @@ end
 
 
 
-function VelocityFigure(obj,time_step)
+function VelocityFigure(obj,figName,time_step)
     %VELOCITYFIGURE This method allow to display the flight plan instant velocity
     
     % Check if the flight plan is empty
@@ -337,11 +332,10 @@ function VelocityFigure(obj,time_step)
     end
 
     %Find if the figure is already open
-    fig_name = "FP" + obj.id + ": VELOCITY";
-    fig = findobj('Type', 'Figure',"Name", fig_name);
+    fig = findobj('Type', 'Figure',"Name", figName);
     if isempty(fig)
         %Display a figure with the flight plan
-        fig = figure("Name", fig_name);
+        fig = figure("Name", figName);
         fig.Position(3:4) = [290 455];
         fig.NumberTitle = "off";
         fig.MenuBar = "none";
@@ -453,74 +447,3 @@ function DistanceFigure(fp1,fp2,time_step)
     plot(dist(:,1),dist(:,2), Color = 'green' );            
 end
 
-
-
-%------------------------------------------------------------
-% A PARTIR DE AQUI LOS METODOS NO ESTÁN CHEQUEADOS !!!
-
-
-function obj = ReverseWaypoints(obj)
-    % This method reverse the order of the waypoints 
-    % keeping the same time of the previous waypoints, 
-    % but not take into account if new section velocities 
-    % between waypoints are fulfillable
-    
-    %Check if the flight plan is empty
-    if isempty(obj.waypoints)
-        disp('The flight plan is empty');
-        return
-    end
-
-    %Reverse the flight plan
-    reversed = obj.waypoints(end:-1:1);
-
-    for i = 1:length(reversed)
-        %Change the time of the waypoints
-        reversed(i).t = obj.waypoints(end-(i-1)).t;
-    end
-
-    obj.waypoints = reversed;
-end
-
-
-
-function obj = NormalizeVelocity(obj)
-    % This method allow to normalize the velocity of the flight plan
-    % It normalize the velocity of the flight plan, 
-    % doing that the velocity between waypoints to be the same for all the flight plan
-    
-    %Check if the flight plan is empty
-    if isempty(obj.waypoints)
-        disp('The flight plan is empty');
-        return
-    end
-
-    %Init and finish time of the flight plan
-    init_time = obj.waypoints(1).t;
-    finish_time = obj.waypoints(end).t;
-
-    %Compute the total distance of the flight plan
-    total_distance = 0;
-    for i = 1:length(obj.waypoints)-1
-        total_distance = total_distance + obj.waypoints(i).distanceWithWaypoint(obj.waypoints(i+1));
-    end
-
-    %Compute mean velocity
-    mean_velocity = total_distance/(finish_time-init_time);
-
-    %Normalize the velocity of the flight plan
-    for i = 2:length(obj.waypoints)
-        %Compute the distance between waypoints
-        distance = obj.waypoints(i).distanceWithWaypoint(obj.waypoints(i-1));
-
-        %Compute the new time between waypoints
-        new_time = obj.waypoints(i-1).t + distance/mean_velocity;
-
-        %Change the time of the waypoints
-        obj.waypoints(i).t = new_time;
-    end
-end
-
-
-end % methods
-end % classde

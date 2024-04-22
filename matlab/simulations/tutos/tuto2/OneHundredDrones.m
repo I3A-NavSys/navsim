@@ -13,11 +13,14 @@ for i=0:9
     end
 end
 
+info = UAVinfo('',UAVmodels.MiniDroneCommanded);
+info.velMax = 10;
+
 operator = USpaceOperator("operator",NAVSIM_MODELS_PATH);
 for i=0:9
     for j = 0:9
         operator.DeployUAV(                ...
-            UAVmodels.MiniDroneCommanded,  ...
+            info,                          ...
             ['UAV',num2str(i),num2str(j)], ...
             [i-4.5 j-4.5 1],[0 0 0]); % rand*2*pi
     end

@@ -66,7 +66,7 @@ int currentWP = -1;
 
 double maxVarLinVel = 5;   // maximum variation in linear  velocity   [  m/s]
 double maxVarAngVel = 2;   // maximum variation in angular velocity   [rad/s]
-double targetStep = 2;     // Compute targetPos targetStep seconds later  [s]
+double targetStep   = 2;   // Compute targetPos targetStep seconds later  [s]
 
 
 // rotor engine status on/off
@@ -188,12 +188,7 @@ void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
 
         rosPub_Telemetry = rosNode->create_publisher<navsim_msgs::msg::Telemetry>(
             "/NavSim/" + UAVname + "/Telemetry", 10);
-
-        // rosSub_RemoteCommand = rosNode->create_subscription<navsim_msgs::msg::RemoteCommand>(
-        //     "UAV/" + UAVname + "/RemoteCommand", 10,
-        //     std::bind(&UAM_minidrone_FP1::rosTopFn_RemoteCommand, this, 
-        //             std::placeholders::_1));
-            
+           
         rosSub_FlightPlan = rosNode->create_subscription<navsim_msgs::msg::FlightPlan>(
             "/NavSim/" + UAVname + "/FlightPlan", 2,
             std::bind(&UAM_minidrone_FP1::rosTopFn_FlightPlan, this, 
@@ -201,7 +196,6 @@ void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
 
         rosPub_NavReport = rosNode->create_publisher<navsim_msgs::msg::NavigationReport>(
             "/NavSim/" + UAVname + "/NavigationReport", 10);
-
     }
     else
     {   
@@ -272,6 +266,8 @@ void OnWorldUpdateBegin()
     // Get current simulation time
     currentTime = model->GetWorld()->SimTime();
 
+    // Check ROS2 subscriptions
+    CheckROS();
 
     // UAV fligh plan navigation
     Navigation();
@@ -283,14 +279,13 @@ void OnWorldUpdateBegin()
     // Telemetry communication
     Telemetry();
 
-    // Check ROS2 subscriptions
-    CheckROS();
-
 }
 
 
 
 void Navigation()
+// This function converts a flight plan position at certain time
+// to a navigation command (desired velocity vector and rotation)
 {
     if (fp == nullptr) return;
 
@@ -339,16 +334,17 @@ void Navigation()
     if (currentWP != WP)
     {
 
-        printf("%s ",UAVname.c_str());
         if (WP == 0)
         {
-            // drone waiting to start the flight
-            printf("waiting at starting WP%d \n",WP);
-
             navsim_msgs::msg::Waypoint WP0 = fp->route[0];
             ignition::math::Vector3<double> initPos = ignition::math::Vector3d(WP0.pos.x,WP0.pos.y,WP0.pos.z);
             initPos = initPos - currentPos;
-            if (initPos.Length() > fp->radius)
+            if (initPos.Length() < fp->radius)
+            {
+                // drone waiting to start the flight
+                printf("%s waiting to start a FP \n",UAVname.c_str());
+            }
+            else
             {
                 // drone in an incorrect starting position
                 printf("%s discarding FP due to an incorrect starting position\n",UAVname.c_str());
@@ -359,16 +355,13 @@ void Navigation()
                 fp = nullptr;
                 return;
             }
-
         }
-        else if (WP == 1)
-            printf("starting flight to WP%d \n",WP);
         else if (WP < numWPs)
-            printf("heading WP%d \n",WP);
+            printf("%s flying to WP%d \n",UAVname.c_str(),WP);
         else
         {
             // flight plan completed
-            printf("has completed its flight plan\n");
+            printf("%s has completed its flight plan\n",UAVname.c_str());
     
             commandOff();
 
@@ -390,15 +383,21 @@ void Navigation()
 
     // Time step to analyze movement
     common::Time FPtime;
-    FPtime.sec  = route[numWPs-1].time.sec;
-    FPtime.nsec = route[numWPs-1].time.nanosec;
-
+    FPtime.sec  = route[currentWP].time.sec;
+    FPtime.nsec = route[currentWP].time.nanosec;
     double step = (FPtime - currentTime).Double();
-    if (step > targetStep)
+
+    if ( 0<currentWP && currentWP<numWPs )
     {
         step = targetStep;
     }
-  
+
+    if (step==0)
+    {
+        step = 1;   // to avoid division by zero
+    }
+
+
 
     // COMPUTING TARGET POSITION
     ignition::math::Vector3<double> targetPos = PositionAtTime(currentTime + step);
@@ -420,7 +419,7 @@ void Navigation()
 
 
 
-    // COMPUTING TARGET YAW
+    // COMPUTING TARGET ERROR YAW
     double targetYaw = YawAtTime(currentTime + targetStep);
     double errorYaw = targetYaw - currentYaw;
     while (errorYaw < -M_PI)
@@ -446,7 +445,6 @@ void Navigation()
 
 
     // CREATING COMMANDED RELATIVE VELOCITY VECTOR
-
     cmd_on   = true;
     cmd_velX = targetRelVel.X();
     cmd_velY = targetRelVel.Y();
@@ -488,17 +486,30 @@ int GetWPatTime(common::Time time)
 
 ignition::math::Vector3<double> PositionAtTime(common::Time t)
 {
+    ignition::math::Vector3<double> targetPos;
     
-    int i = GetWPatTime(t);
     int numWPs = fp->route.size();
-    
-    navsim_msgs::msg::Waypoint WP1 = fp->route[i-1];
-    ignition::math::Vector3<double> pos1 = ignition::math::Vector3d(WP1.pos.x,WP1.pos.y,WP1.pos.z);
-    ignition::math::Vector3<double> targetPos = pos1;
+    int i = GetWPatTime(t);
 
-    if (i < numWPs)
+    if ( i==0 )
     {
-        
+        // The drone is waiting to start the FP
+        navsim_msgs::msg::Waypoint WP = fp->route[0];
+        targetPos = ignition::math::Vector3d(WP.pos.x,WP.pos.y,WP.pos.z);
+    }
+
+    else if ( i==numWPs )
+    {
+        // The drone has completed the FP
+        navsim_msgs::msg::Waypoint WP = fp->route[i-1];
+        targetPos = ignition::math::Vector3d(WP.pos.x,WP.pos.y,WP.pos.z);
+    }
+
+    else
+    {
+        // The drone is executing the FP
+        navsim_msgs::msg::Waypoint WP1 = fp->route[i-1];
+        ignition::math::Vector3<double> pos1 = ignition::math::Vector3d(WP1.pos.x,WP1.pos.y,WP1.pos.z);
         navsim_msgs::msg::Waypoint WP2 = fp->route[i];
         ignition::math::Vector3<double> pos2 = ignition::math::Vector3d(WP2.pos.x,WP2.pos.y,WP2.pos.z);
 
@@ -509,7 +520,6 @@ ignition::math::Vector3<double> PositionAtTime(common::Time t)
         common::Time t2;
         t2.sec  = WP2.time.sec;
         t2.nsec = WP2.time.nanosec;
-
 
         double interpol = (t-t1).Double() / (t2-t1).Double() ;
         targetPos = pos1 + interpol * (pos2 - pos1);
@@ -578,58 +588,6 @@ void rosTopFn_FlightPlan(const std::shared_ptr<navsim_msgs::msg::FlightPlan> msg
 
 
 
-void rosTopFn_RemoteCommand(const std::shared_ptr<navsim_msgs::msg::RemoteCommand> msg)
-{
-    // printf("DCdrone: data received in topic Remote Pilot\n");
-    // printf("Received RemoteCommand: uav=%s, on=%d, cmd=[%f, %f, %f, %f], duration=(%d, %d)\n",
-    //        msg->uav_id.c_str(), 
-    //        msg->on, 
-    //        msg->vel.linear.x, msg->vel.linear.y, msg->vel.linear.z,
-    //        msg->vel.angular.z, 
-    //        msg->duration.sec, msg->duration.nanosec);
-    
-    // This function listen and follow remote commands
-    cmd_on   =  msg->on;
-    cmd_velX =  msg->vel.linear.x;
-    cmd_velY =  msg->vel.linear.y;
-    cmd_velZ =  msg->vel.linear.z;
-    cmd_rotZ =  msg->vel.angular.z; 
-
-    common::Time duration;
-    duration.sec  = msg->duration.sec;
-    duration.nsec = msg->duration.nanosec;
-    CommandExpTime = currentTime + duration;
-    // printf("current control time: %.3f \n", currentTime.Double());
-    // printf("command duration: %.3f \n", duration.Double());
-    // printf("command expiration time: %.3f \n\n", CommandExpTime.Double());
-
-
-
-    // Filtramos comandos fuera de rango
-
-    int velMAX = 4;
-
-    if (cmd_velX >  velMAX)
-        cmd_velX =  velMAX;
-    if (cmd_velX < -velMAX)
-        cmd_velX = -velMAX;
-    if (cmd_velY >  velMAX)
-        cmd_velY =  velMAX;
-    if (cmd_velY < -velMAX)
-        cmd_velY = -velMAX;
-    if (cmd_velZ >  velMAX)
-        cmd_velZ =  velMAX;
-    if (cmd_velZ < -velMAX)
-        cmd_velZ = -velMAX;
-    if (cmd_rotZ >  velMAX)
-        cmd_rotZ =  velMAX;
-    if (cmd_rotZ < -velMAX)
-        cmd_rotZ = -velMAX;
-}
-
-
-
-
 void commandOff()
 {
     cmd_on   = false;
@@ -671,11 +629,9 @@ void rotorsOff()
 
 void ServoControl()
 {
-    // This fucntion converts 
+    // This function converts 
     // a navigation command (desired velocity vector and rotation)
-    // to speeds ot the for rotors
-
-    // printf("DRONE CHALLENGE Drone plugin: ServoControl\n");
+    // to speeds of the four rotors
 
 
     if (cmd_on == false)

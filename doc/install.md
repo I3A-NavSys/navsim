@@ -115,7 +115,7 @@ clear; gazebo tatami.world
 ```
 In a diferent terminal, we check that Gazebo is sending clock information through a ROS2 topic:
 ```bash
-ros2 topic echo /NavSim/Time
+ros2 topic echo /NavSim/time
 ```
 ```text
 sec: 46

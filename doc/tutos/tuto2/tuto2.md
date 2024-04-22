@@ -24,6 +24,7 @@ Also verify that this node manages a service **/NavSim/DeployModel** for deployi
 ros2 service list | grep NavSim
 ```
 
+
 ## Matlab
 
 Now open Matlab (in the same computer or other computer connected to the same subnetwotk).
@@ -44,7 +45,15 @@ end
 
 ![100 boxes](./img/100boxes.png)
 
+
 ### Synchronized fleet of aircraft
+
+First, we select the kind of drone we will to deploy:
+
+```matlab
+info = UAVinfo('',UAVmodels.MiniDroneCommanded);
+info.velMax = 10;
+```
 
 Now, we use a **USpaceOperator** object to generate 100 drones over the boxes:
 
@@ -53,7 +62,7 @@ operator = USpaceOperator("operator",NAVSIM_MODELS_PATH);
 for i=0:9
     for j = 0:9
         operator.DeployUAV(                ...
-            UAVmodels.MiniDroneCommanded,  ...
+            info,                          ...
             ['UAV',num2str(i),num2str(j)], ...
             [i-4.5 j-4.5 1],[0 0 0]);
     end

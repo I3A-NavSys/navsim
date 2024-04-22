@@ -1,10 +1,6 @@
 clc
 clear
-pause(0.1) %ROS2 requires time to clear resources
-
 run('../../../tools/NAVSIM_PATHS');
-
-
 
 
 
@@ -30,7 +26,7 @@ way_data1 = [ 05   -190.00  -119.00  +048.05   0.00  0.00  0.00
 
 
 
-fp1  = FlightPlan(1,Waypoint.empty);
+fp1  = FlightPlan(Waypoint.empty);
 for i = 1:size(way_data1,1)
     wp = Waypoint();
     wp.t = way_data1(i,1);
@@ -39,13 +35,13 @@ for i = 1:size(way_data1,1)
     fp1.SetWaypoint(wp);
 end
 fp1.mode = "TPV0";
-fp1.PositionFigure(0.1)
-fp1.VelocityFigure(0.1)
+fp1.PositionFigure(1,0.1)
+fp1.VelocityFigure(1,0.1)
 
 
-fp2 = fp1.Convert2TP(2,0.1);
-fp2.PositionFigure(0.1)
-fp2.VelocityFigure(0.1)
+fp2 = fp1.Convert2TP(0.1);
+fp2.PositionFigure(2,0.1)
+fp2.VelocityFigure(2,0.1)
 
 
 

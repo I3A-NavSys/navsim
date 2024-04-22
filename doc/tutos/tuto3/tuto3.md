@@ -61,6 +61,13 @@ end
 
 ![Vertiports](./img/vertiports.png)
 
+We configure the performance of the drones:
+
+```matlab
+info = UAVinfo('',UAVmodels.MiniDroneFP1);
+info.velMax = 10;
+```
+
 Next, we deploy our small fleet of drones, each in a different vertiport. 
 We designate the devices as _UAV01_, _UAV02_, and _UAV03_, respectively.
 We also instruct the **monitor** to start storing the telemetry information transmitted by each of them.
@@ -75,7 +82,7 @@ fleetLoc = [ -190.00  -119.00  +048.10    pi/2
            ];
 for i = 1:size(fleetLoc,1)
     id = sprintf('UAV%02d', i);
-    operator.DeployUAV(UAVmodels.MiniDroneFP1,id, ...
+    operator.DeployUAV(info,id, ...
         fleetLoc(i,1:3), ...
         [0 0 fleetLoc(i,4)]);
     monitor.TrackUAV(id);
@@ -108,7 +115,7 @@ way_data1 = [ 05   -190.00  -119.00  +048.05
               95   -190.00  -119.00  +048.05  
               97   -190.00  -119.00  +048.05  ];
 
-fp1  = FlightPlan(1,Waypoint.empty);
+fp1  = FlightPlan(Waypoint.empty);
 
 for i = 1:size(way_data1,1)
     wp = Waypoint();
@@ -116,6 +123,10 @@ for i = 1:size(way_data1,1)
     wp.SetPosition(way_data1(i,2:4));
     fp1.SetWaypoint(wp);
 end
+
+% Display
+fp1.PositionFigure("FP1: POSITION",1);
+fp1.VelocityFigure("FP1: VELOCITY",1);
 ```
 
 The flight plan for UAV01 involves ascending a few meters, performing a closed rectangular trajectory, and landing at the same point.
@@ -135,7 +146,7 @@ way_data2 = [ 10   -152.00  -106.00  +049.05
               30   -190.00  -119.00  +051.90
               35   -190.00  -119.00  +048.10  ];
 
-fp2  = FlightPlan(2,Waypoint.empty);
+fp2  = FlightPlan(Waypoint.empty);
 for i = 1:size(way_data2,1)
     wp = Waypoint();
     wp.t = way_data2(i,1);
@@ -153,7 +164,7 @@ way_data3 = [  5   +180.00  +033.00  +050.00
               70   -190.00  -119.00  +052.00
               75   -190.00  -119.00  +048.30  ];
 
-fp3  = FlightPlan(3,Waypoint.empty);
+fp3  = FlightPlan(Waypoint.empty);
 for i = 1:size(way_data3,1)
     wp = Waypoint();
     wp.t = way_data3(i,1);
