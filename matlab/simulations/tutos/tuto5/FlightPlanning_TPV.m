@@ -35,13 +35,12 @@ for i = 1:size(way_data1,1)
     fp1.SetWaypoint(wp);
 end
 fp1.mode = "TPV0";
-fp1.PositionFigure(1,0.1)
-fp1.VelocityFigure(1,0.1)
-
+fp1.PositionFigure("FP1: POSITION",0.1);
+fp1.VelocityFigure("FP1: VELOCITY",0.1);
 
 fp2 = fp1.Convert2TP(0.1);
-fp2.PositionFigure(2,0.1)
-fp2.VelocityFigure(2,0.1)
+fp1.PositionFigure("FP2: POSITION",0.1);
+fp1.VelocityFigure("FP2: VELOCITY",0.1);
 
 
 
@@ -67,7 +66,7 @@ for i = 1:size(portsLoc,1)
     builder.DeployModel('UAM/vertiport_H', id, ...
         portsLoc(i,1:3), ...
         [0 0 portsLoc(i,4)]);
-    operator.SetVertiport(id,portsLoc(i,1:3));
+    operator.SetVertiport(id,portsLoc(i,1:3),1);
 
 end
 
@@ -85,10 +84,12 @@ fleetLoc = [ -190.00  -119.00  +048.10   -pi/2
            ];
 
 
+info = UAVinfo('',UAVmodels.MiniDroneFP1);
+info.velMax = 10;
+
 for i = 1:size(fleetLoc,1)
-   
     id = sprintf('UAV%02d', i);
-    operator.DeployUAV(UAVmodels.MiniDroneFP1,id, ...
+    operator.DeployUAV(info,id, ...
         fleetLoc(i,1:3), ...
         [0 0 fleetLoc(i,4)]);
     monitor.TrackUAV(id);
