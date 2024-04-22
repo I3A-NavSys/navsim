@@ -447,3 +447,8 @@ function DistanceFigure(fp1,fp2,time_step)
     plot(dist(:,1),dist(:,2), Color = 'green' );            
 end
 
+
+end % methods
+end % classdef
+
+
