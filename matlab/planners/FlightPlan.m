@@ -4,7 +4,7 @@ classdef FlightPlan < handle
 
 properties
 
-id          % operation identifier
+id          {mustBeNumeric}    % operation identifier
 
 waypoints   Waypoint = Waypoint.empty;     
 mode        InterpolationModes;

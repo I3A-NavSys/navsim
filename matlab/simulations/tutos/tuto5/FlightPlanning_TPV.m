@@ -39,8 +39,8 @@ fp1.PositionFigure("FP1: POSITION",0.1);
 fp1.VelocityFigure("FP1: VELOCITY",0.1);
 
 fp2 = fp1.Convert2TP(0.1);
-fp1.PositionFigure("FP2: POSITION",0.1);
-fp1.VelocityFigure("FP2: VELOCITY",0.1);
+fp2.PositionFigure("FP2: POSITION",0.1);
+fp2.VelocityFigure("FP2: VELOCITY",0.1);
 
 
 

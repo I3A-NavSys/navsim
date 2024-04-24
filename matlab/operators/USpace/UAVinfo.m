@@ -7,15 +7,20 @@ properties
     model      UAVmodels
 
     % Aircraft performance
-    velMax
+    maxForwardVel   = 0    % cruising_speed
+    maxForwardAcel  = 0
+    maxVerticalVel  = 0  
+    maxVerticalAcel = 0
+    maxAngularVel   = 0  
+    maxAngularAcel  = 0
 
     % Telemetry information
-    time
-    pos
-    vel
+    time = 0
+    pos  = 0
+    vel  = 0
 
     % Current operation number
-    op                     
+    op = 0                     
     
     % ROS2 interface
     rosPub_RemoteCommand
@@ -30,13 +35,11 @@ methods
 function obj = UAVinfo(id, model)
     obj.id    = char(id);
     obj.model = model;
-    obj.op    = 0;
 
     obj.rosPub_RemoteCommand = ros2publisher.empty;
     obj.rosPub_FlightPlan = ros2publisher.empty;
     obj.rosSub_NavigationReport = ros2subscriber.empty;
     obj.rosSub_Telemetry = ros2subscriber.empty;
-
 end
 
 
