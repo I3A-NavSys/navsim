@@ -37,7 +37,7 @@ fleetLoc = [ -190.00  -119.00  +048.10    pi/2
 
 
 info = UAVinfo('',UAVmodels.MiniDroneFP1);
-info.velMax = 10;
+info.maxForwardVel = 10;
 
 for i = 1:size(fleetLoc,1)
    

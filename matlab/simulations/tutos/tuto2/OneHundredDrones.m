@@ -14,7 +14,7 @@ for i=0:9
 end
 
 info = UAVinfo('',UAVmodels.MiniDroneCommanded);
-info.velMax = 10;
+info.maxForwardVel = 10;
 
 operator = USpaceOperator("operator",NAVSIM_MODELS_PATH);
 for i=0:9

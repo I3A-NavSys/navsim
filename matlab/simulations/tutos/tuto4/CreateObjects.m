@@ -43,7 +43,7 @@ builder.DeployModel('I3A', 'I3A', [-150 -225 0], [0 0 0]);
 % -------------
 % Deploy fleet
 info = UAVinfo('',UAVmodels.MiniDroneFP1);
-info.velMax = 10;
+info.maxForwardVel = 10;
 operator.DeployFleet(size(portsLoc,1),info);
 % operator.DeployUAV(info,'UAV01', ...
 %     operator.VPs(1).pos+[0 0 0.20], ...

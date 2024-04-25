@@ -198,7 +198,7 @@ function status = DeployUAV(obj,info,UAVid,pos,rot)
 
     uav = UAVinfo(UAVid,info.model);
     uav.pos = pos;
-    uav.velMax = info.velMax;
+    uav.maxForwardVel = info.maxForwardVel;
 
     switch info.model
 
@@ -422,7 +422,7 @@ function fp = GenerateFlightPlan(obj,op)
     wp1L.t = 0;
     wp1M.t = wp1L.t + wp1L.DistanceTo(wp1M) / 0.2;             % 0.2m/s
     wp1H.t = wp1M.t + wp1M.DistanceTo(wp1H) / 2;               % 2m/s
-    wp3.t  = wp1H.t + wp1H.DistanceTo(wp3)  / uav.velMax;
+    wp3.t  = wp1H.t + wp1H.DistanceTo(wp3)  / uav.maxForwardVel;
     wp2H.t = wp3.t  +  wp3.DistanceTo(wp2H) / 2;               % 2m/s
     wp2M.t = wp2H.t + wp2H.DistanceTo(wp2M) / 2;               % 2m/s
     wp2L.t = wp2M.t + wp2M.DistanceTo(wp2L) / 0.2;             % 0.2m/s
