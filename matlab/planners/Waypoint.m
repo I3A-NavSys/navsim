@@ -2,9 +2,13 @@ classdef Waypoint < handle
 
 properties
 
+
 % instante de tiempo
 % establecido desde un instante inicial prefijado
-t    {mustBeNumeric}    % segundos a futuro.
+t    {mustBeNumeric}    % segundos a futuro
+
+% etiqueta opcional para referirse al waypoint
+label
 
 % posicion en espacio 3D
 % establecida sobre un eje de referencia prefijado en el escenario
@@ -33,6 +37,7 @@ function obj = Waypoint()
 
     %WAYPOINT Constructor for the class
     obj.t  = 0;
+    obj.label = '';
     obj.x  = 0;
     obj.y  = 0;
     obj.z  = 0;
@@ -125,7 +130,7 @@ function angle = CourseTo(a,b)
     % Get the course from one waypoint to another
     % -X -> -  90
     % +Y ->     0
-    % +x -> +  90
+    % +X -> +  90
     % -Y -> +-180
     a.CheckWaypoint(b);
     dist = a.DistanceTo(b);

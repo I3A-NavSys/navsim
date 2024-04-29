@@ -99,11 +99,30 @@ end
 
 
 
-function Postpone(obj, timeStep)
-    % Postpone the Fligt Plan a given time 
+function PostponeFrom(obj, time, timeStep)
+    % Postpone a portion of the Fligt Plan a given timeStep, 
+    % starting from a given time
+    
+    if obj.FinishTime() < time 
+        return
+    end
+
     for i = 1:length(obj.waypoints)
+        if time <= obj.waypoints(i).t 
+            break
+        end
+    end
+
+    for i = i:length(obj.waypoints)
         obj.waypoints(i).Postpone(timeStep);
     end
+end
+
+
+
+function Postpone(obj, timeStep)
+    % Postpone the Fligt Plan a given timeStep 
+    obj.PostponeFrom(obj.InitTime(),timeStep);
 end
 
 
