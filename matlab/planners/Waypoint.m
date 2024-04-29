@@ -50,7 +50,7 @@ end
 
 
 
-function CheckWaypoint(obj,wp)
+function CheckWaypoint(~,wp)
     if ~isa(wp,'Waypoint')
        error('Error. \nValue must be a Waypoint object, not a %s.',class(wp))
     end

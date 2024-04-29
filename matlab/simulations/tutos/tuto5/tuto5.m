@@ -26,12 +26,25 @@ vp2 = portsLoc(2,1:3);
 
 % Create waypoints
 wp1H = Waypoint();
+wp1H.label = 'wp1H';
+
 wp1M = Waypoint();
+wp1M.label = 'wp1M';
+
 wp1L = Waypoint();
+wp1L.label = 'wp1L';
+
 wp3  = Waypoint();
+wp3.label = 'wp3';
+
 wp2H = Waypoint();
+wp2H.label = 'wp2H';
+
 wp2M = Waypoint();
+wp2M.label = 'wp2M';
+
 wp2L = Waypoint();
+wp2L.label = 'wp2L';
 
 % take off / landing positions
 wp1L.SetPosition(vp1+[0 0 0.25]);
@@ -51,27 +64,34 @@ wp2H.z = wp1H.z;
 wp1H.SetPosition(wp1H.Position + 2 * wp1H.DirectionTo(wp2H));
 wp3.SetPosition(wp2H.Position - 10 * wp1H.DirectionTo(wp2H));
 
-% waypoint time intervals
-wp1L.t = 0;
-wp1M.t = wp1L.t + wp1L.DistanceTo(wp1M) / 0.2;
-wp1M.SetTimeFromAtVel(wp1L,0.2);
-wp1H.t = wp1M.t + wp1M.DistanceTo(wp1H) / info.maxVerticalVel; %  3m/s
-wp3.t  = wp1H.t + wp1H.DistanceTo(wp3)  / info.maxForwardVel;  % 12m/s
-wp2H.t = wp3.t  +  wp3.DistanceTo(wp2H) / 4;                  
-wp2M.t = wp2H.t + wp2H.DistanceTo(wp2M) / info.maxVerticalVel; %  3m/s
-wp2L.t = wp2M.t + wp2M.DistanceTo(wp2L) / 0.2;               
+             
 
 % Compose the flight plan
 fp1  = FlightPlan(Waypoint.empty);
-fp1.SetWaypoint(wp1L);
-fp1.SetWaypoint(wp1M);
-fp1.SetWaypoint(wp1H);
-fp1.SetWaypoint(wp3);
-fp1.SetWaypoint(wp2H);
-fp1.SetWaypoint(wp2M);
-fp1.SetWaypoint(wp2L);
+fp1.mode = InterpolationModes.PV;
 
-fp1.mode = "TP";
+fp1.InsertWaypoint(wp1L);
+fp1.InsertWaypoint(wp1M);
+fp1.InsertWaypoint(wp1H);
+fp1.InsertWaypoint(wp3);
+fp1.InsertWaypoint(wp2H);
+fp1.InsertWaypoint(wp2M);
+fp1.InsertWaypoint(wp2L);
+
+fp1.PositionFigure("FP1: POSITION",0.01);
+fp1.VelocityFigure("FP1: VELOCITY",0.01);
+
+
+
+% waypoint time intervals
+fp1.SetTimeFromVel('wp1M',0.2);
+% wp1H.t = wp1M.t + wp1M.DistanceTo(wp1H) / info.maxVerticalVel; %  3m/s
+% wp3.t  = wp1H.t + wp1H.DistanceTo(wp3)  / info.maxForwardVel;  % 12m/s
+% wp2H.t = wp3.t  +  wp3.DistanceTo(wp2H) / 4;                  
+% wp2M.t = wp2H.t + wp2H.DistanceTo(wp2M) / info.maxVerticalVel; %  3m/s
+% wp2L.t = wp2M.t + wp2M.DistanceTo(wp2L) / 0.2;  
+
+
 fp1.PositionFigure("FP1: POSITION",0.01);
 fp1.VelocityFigure("FP1: VELOCITY",0.01);
 

@@ -18,6 +18,7 @@ end
 methods
 
 
+    
 function obj = FlightPlan(waypoints)
     obj.id = 0;
     obj.priority = 0;
@@ -59,6 +60,29 @@ end
 
 
 
+function InsertWaypoint(obj,waypoint)
+
+    if obj.mode ~= InterpolationModes.PV
+        return
+    end    
+
+    %Check if the waypoint is a Waypoint object
+    if ~isa(waypoint,'Waypoint')
+        error('The waypoint must be a Waypoint object');
+    end
+
+    if isempty(obj.waypoints)
+        waypoint.t = 0;
+    else
+        waypoint.t = obj.FinishTime + 1;
+    end
+
+    obj.SetWaypoint(waypoint);
+
+end
+
+
+
 function RemoveWaypointAtTime(obj,t)
 
     l = length(obj.waypoints);
@@ -95,6 +119,36 @@ function t = FinishTime(obj)
     else
         t = obj.waypoints(end).t;
     end        
+end
+
+
+
+function i = GetIndexFromLabel(obj, label)
+    i = 0;
+    for j = 1:length(obj.waypoints)
+        wp = obj.waypoints(j);
+        if label == wp.label
+            i = j;
+            return
+        end
+    end    
+end
+
+
+
+function SetTimeFromVel(obj, label, vel)
+    if obj.mode ~= InterpolationModes.PV
+        return
+    end
+    i = obj.GetIndexFromLabel(obj, label);
+    if i == 1
+        return
+    end
+       
+    wp1 = obj.waypoints(i-1);
+    wp2 = obj.waypoints(i);
+    t = wp1.t + wp1.DistanceTo(wp2) / vel;
+    obj.PostponeFrom(wp2.t, t-wp2.t);
 end
 
 
