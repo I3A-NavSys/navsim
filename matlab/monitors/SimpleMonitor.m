@@ -81,7 +81,7 @@ end
 
 
 
-function PositionFigure(obj,UAVid,fp)
+function PositionFigure(obj,UAVid,fp,time_step)
 
     i = obj.GetUAVindex(UAVid);
     if i == -1
@@ -94,9 +94,7 @@ function PositionFigure(obj,UAVid,fp)
         return
     end
 
-    timeStep = UAVdata(2,1) - UAVdata(1,1);
-    FPdata  = fp.Trace(timeStep);
-    
+    FPdata  = fp.Trace(time_step);
 
     % Checking figure
     figName = [UAVid ' position'];
@@ -263,7 +261,7 @@ end
 
 
 
-function VelocityFigure(obj,UAVid,fp)
+function VelocityFigure(obj,UAVid,fp,time_step)
 
     i = obj.GetUAVindex(UAVid);
     if i == -1
@@ -272,9 +270,7 @@ function VelocityFigure(obj,UAVid,fp)
 
     % UAV data
     UAVdata = obj.UAVs(i).data;
-    % timeStep = (UAVdata(2,1) - UAVdata(1,1));
-    timeStep = 0.01;
-    FPdata  = fp.Trace(timeStep);
+    FPdata  = fp.Trace(time_step);
     
 
     % Checking figure

@@ -127,7 +127,7 @@ function i = GetIndexFromLabel(obj, label)
     i = 0;
     for j = 1:length(obj.waypoints)
         wp = obj.waypoints(j);
-        if label == wp.label
+        if strcmp(label,wp.label)
             i = j;
             return
         end
@@ -140,7 +140,7 @@ function SetTimeFromVel(obj, label, vel)
     if obj.mode ~= InterpolationModes.PV
         return
     end
-    i = obj.GetIndexFromLabel(obj, label);
+    i = obj.GetIndexFromLabel(label);
     if i == 1
         return
     end
@@ -189,16 +189,18 @@ end
 
 
 function p = PositionAtTime(obj, t)
+
+    p = [NaN NaN NaN];
+
     % Check if t is out of flight plan schedule, returning not valid pos
     if t < obj.InitTime  ||  t > obj.FinishTime
-        p = [NaN NaN NaN];
-        return;
+        return
     end
 
     % search for the current waypoints
     for i = 2:length(obj.waypoints)
         if t < obj.waypoints(i).t
-            break;
+            break
         end
     end
 
@@ -206,12 +208,16 @@ function p = PositionAtTime(obj, t)
     wp2 = obj.waypoints(i);
 
     switch obj.mode
+        % case InterpolationModes.PV
         case InterpolationModes.TP
             wp3 = wp1.InterpolationTP(wp2,t);
         case InterpolationModes.TPV
             wp3 = wp1.InterpolationTPV(wp2,t);
         case InterpolationModes.TPV0
             wp3 = wp1.InterpolationTPV0(wp2,t);
+        otherwise
+            % warning('Unknown interpolation mode')
+            return
     end
     p = wp3.Position;
 

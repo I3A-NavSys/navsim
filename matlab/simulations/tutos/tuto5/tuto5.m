@@ -55,9 +55,8 @@ wp1M.SetPosition(vp1+[0 0 1]);
 wp2M.SetPosition(vp2+[0 0 1]);
 
 % take off / landing hovering positions
-angle = wp1L.CourseTo(wp2L);
 wp1H.SetPosition(wp1L.Position);
-wp1H.z = 70 + angle/20;
+wp1H.z = 60;
 wp2H.SetPosition(wp2L.Position);
 wp2H.z = wp1H.z;
 
@@ -85,11 +84,12 @@ fp1.VelocityFigure("FP1: VELOCITY",0.01);
 
 % waypoint time intervals
 fp1.SetTimeFromVel('wp1M',0.2);
-% wp1H.t = wp1M.t + wp1M.DistanceTo(wp1H) / info.maxVerticalVel; %  3m/s
-% wp3.t  = wp1H.t + wp1H.DistanceTo(wp3)  / info.maxForwardVel;  % 12m/s
-% wp2H.t = wp3.t  +  wp3.DistanceTo(wp2H) / 4;                  
-% wp2M.t = wp2H.t + wp2H.DistanceTo(wp2M) / info.maxVerticalVel; %  3m/s
-% wp2L.t = wp2M.t + wp2M.DistanceTo(wp2L) / 0.2;  
+fp1.SetTimeFromVel('wp1H',info.maxVerticalVel);
+fp1.SetTimeFromVel('wp3' ,info.maxForwardVel);
+fp1.SetTimeFromVel('wp2H',5);
+fp1.SetTimeFromVel('wp2M',info.maxVerticalVel);
+fp1.SetTimeFromVel('wp2L',0.2);
+fp1.mode = InterpolationModes.TP;
 
 
 fp1.PositionFigure("FP1: POSITION",0.01);
@@ -109,8 +109,11 @@ fp1.VelocityFigure("FP1: VELOCITY",0.01);
 % -------------
 % Simulation
 builder  = SimpleBuilder ('builder' ,NAVSIM_MODELS_PATH);
+pause(0.1)
 operator = USpaceOperator('operator',NAVSIM_MODELS_PATH);
+pause(0.1)
 monitor  = SimpleMonitor('monitor');
+pause(0.1)
 
 % vertiports
 for i = 1:size(portsLoc,1)
@@ -141,10 +144,10 @@ operator.SendFlightPlan('UAV01',fp1);
 operator.WaitTime(fp1.FinishTime);
 
 % Display
-monitor.PositionFigure('UAV01',fp1);
-monitor.VelocityFigure('UAV01',fp1);
+monitor.PositionFigure('UAV01',fp1,0.01);
+monitor.VelocityFigure('UAV01',fp1,0.01);
 
-%%
+%
 
 operator.PauseSim;
 
