@@ -25,85 +25,98 @@ vp2 = portsLoc(2,1:3);
 % Flight Plan
 
 % Create waypoints
-wp1H = Waypoint();
-wp1H.label = 'wp1H';
-
-wp1M = Waypoint();
-wp1M.label = 'wp1M';
 
 wp1L = Waypoint();
 wp1L.label = 'wp1L';
 
+wp1M = Waypoint();
+wp1M.label = 'wp1M';
+
+wp1H = Waypoint();
+wp1H.label = 'wp1H';
+
+wp2  = Waypoint();
+wp2.label = 'wp2';
+
 wp3  = Waypoint();
 wp3.label = 'wp3';
 
-wp2H = Waypoint();
-wp2H.label = 'wp2H';
+wp4  = Waypoint();
+wp4.label = 'wp4';
 
-wp2M = Waypoint();
-wp2M.label = 'wp2M';
+wp5  = Waypoint();
+wp5.label = 'wp5';
 
-wp2L = Waypoint();
-wp2L.label = 'wp2L';
+wp6H = Waypoint();
+wp6H.label = 'wp6H';
+
+wp6M = Waypoint();
+wp6M.label = 'wp6M';
+
+wp6L = Waypoint();
+wp6L.label = 'wp6L';
 
 % take off / landing positions
 wp1L.SetPosition(vp1+[0 0 0.25]);
-wp2L.SetPosition(vp2+[0 0 0.25]);
+wp6L.SetPosition(vp2+[0 0 0.25]);
 
 % take off / landing approach positions
 wp1M.SetPosition(vp1+[0 0 1]);
-wp2M.SetPosition(vp2+[0 0 1]);
+wp6M.SetPosition(vp2+[0 0 1]);
 
 % take off / landing hovering positions
 wp1H.SetPosition(wp1L.Position);
 wp1H.z = 60;
-wp2H.SetPosition(wp2L.Position);
-wp2H.z = wp1H.z;
+wp6H.SetPosition(wp6L.Position);
+wp6H.z = wp1H.z;
 
-wp1H.SetPosition(wp1H.Position + 2 * wp1H.DirectionTo(wp2H));
-wp3.SetPosition(wp2H.Position - 10 * wp1H.DirectionTo(wp2H));
+wp1H.SetPosition(wp1H.Position + 2 * wp1H.DirectionTo(wp6H));
+wp3.SetPosition(wp6H.Position - 10 * wp1H.DirectionTo(wp6H));
 
-             
+% route             
+wp2.SetPosition(wp1H.Position + [ 50  50 0]);
+wp3.SetPosition(wp2.Position  + [ 50   0 0]);
+wp4.SetPosition(wp3.Position  + [  0 -50 0]);
+wp5.SetPosition(wp4.Position  + [-50 -50 0]);
 
 % Compose the flight plan
 fp1  = FlightPlan(Waypoint.empty);
-fp1.mode = InterpolationModes.PV;
+fp1.mode = InterpolationModes.TP;
 
 fp1.InsertWaypoint(wp1L);
 fp1.InsertWaypoint(wp1M);
 fp1.InsertWaypoint(wp1H);
+fp1.InsertWaypoint(wp2);
 fp1.InsertWaypoint(wp3);
-fp1.InsertWaypoint(wp2H);
-fp1.InsertWaypoint(wp2M);
-fp1.InsertWaypoint(wp2L);
-
-fp1.PositionFigure("FP1: POSITION",0.01);
-fp1.VelocityFigure("FP1: VELOCITY",0.01);
-
-
+fp1.InsertWaypoint(wp4);
+fp1.InsertWaypoint(wp5);
+fp1.InsertWaypoint(wp6H);
+fp1.InsertWaypoint(wp6M);
+fp1.InsertWaypoint(wp6L);
 
 % waypoint time intervals
 fp1.SetTimeFromVel('wp1M',0.2);
 fp1.SetTimeFromVel('wp1H',info.maxVerticalVel);
-fp1.SetTimeFromVel('wp3' ,info.maxForwardVel);
-fp1.SetTimeFromVel('wp2H',5);
-fp1.SetTimeFromVel('wp2M',info.maxVerticalVel);
-fp1.SetTimeFromVel('wp2L',0.2);
-fp1.mode = InterpolationModes.TP;
+fp1.SetTimeFromVel('wp2' ,info.maxForwardVel-2);
+fp1.SetTimeFromVel('wp3' ,info.maxForwardVel-2);
+fp1.ApplyDubinsAt('wp3',info.maxAngularVel);
+fp1.SetTimeFromVel('wp4' ,info.maxForwardVel-2);
+fp1.SetTimeFromVel('wp5' ,info.maxForwardVel-2);
+fp1.SetTimeFromVel('wp6H',info.maxForwardVel-2);
+fp1.SetTimeFromVel('wp6M',info.maxVerticalVel);
+fp1.SetTimeFromVel('wp6L',0.2);
+
+fp1.PositionFigure("FP1: POSITION",0.1);
+fp1.VelocityFigure("FP1: VELOCITY",0.1);
 
 
-fp1.PositionFigure("FP1: POSITION",0.01);
-fp1.VelocityFigure("FP1: VELOCITY",0.01);
 
-% fp1.PostponeFrom(0.9,10)
-
-
-% 
+ 
 % fp2 = fp1.Convert2TP(0.1);
 % fp2.PositionFigure("FP2: POSITION",0.1);
 % fp2.VelocityFigure("FP2: VELOCITY",0.1);
-% 
-% 
+ 
+ 
 
 
 % -------------

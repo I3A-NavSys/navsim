@@ -61,10 +61,7 @@ end
 
 
 function InsertWaypoint(obj,waypoint)
-
-    if obj.mode ~= InterpolationModes.PV
-        return
-    end    
+% introduces a WP at the end (1s later) of the flight plan
 
     %Check if the waypoint is a Waypoint object
     if ~isa(waypoint,'Waypoint')
@@ -137,11 +134,11 @@ end
 
 
 function SetTimeFromVel(obj, label, vel)
-    if obj.mode ~= InterpolationModes.PV
+    if obj.mode ~= InterpolationModes.TP
         return
     end
     i = obj.GetIndexFromLabel(label);
-    if i == 1
+    if i <= 1
         return
     end
        
@@ -267,8 +264,43 @@ end
 
 
 
+
+
+function fp2 = Convert2TPV(fp1)
+    % Transform a TP flight plan to a TPV flight plan
+    fp2 = FlightPlan(Waypoint.empty);
+    fp2.mode = InterpolationModes.TPV;
+    fp2.radius   = fp1.radius;
+    fp2.priority = fp1.priority;
+
+    if fp1.mode ~= InterpolationModes.TP
+        return
+    end
+
+    for i = 1 : length(fp1.waypoints)
+        wp1 = fp1.waypoints(i);
+        wp2 = Waypoint();
+        wp2.t = wp1.t;
+        wp2.SetPosition(wp1.Position);
+        fp2.SetWaypoint(wp2);
+    end
+
+    for i = 1 : length(fp2.waypoints)-1
+        wpA = fp1.waypoints(i);
+        wpB = fp1.waypoints(i+1);
+
+        dir = wpA.DirectionTo(wpB);
+        vel = wpA.UniformVelocityTo(wpB);
+        wpA.SetVelocity(dir*vel);
+    end
+
+    
+end
+
+
+
 function fp2 = Convert2TP(fp1,timeStep)
-    % Transform a TPV / TPV0 flight plant to a TP flightPlan
+    % Transform a TPV / TPV0 flight plan to a TP flight plan
 
     fp2 = FlightPlan(Waypoint.empty);
     if fp1.mode == InterpolationModes.TP
@@ -286,6 +318,27 @@ function fp2 = Convert2TP(fp1,timeStep)
         wp.SetPosition(p);
         fp2.SetWaypoint(wp);
     end
+end
+
+
+
+function ApplyDubinsAt(obj,label,angvel)
+
+    if fp1.mode == InterpolationModes.TP
+        return
+    end
+    
+    i = obj.GetIndexFromLabel(label);
+    if i <= 1  ||  length(obj.waypoints) <= i
+        return
+    end
+
+    wp1 = obj.waypoints(i-1);
+    wp2 = obj.waypoints(i);    
+    wp3 = obj.waypoints(i+1);    
+
+
+    
 end
 
 
