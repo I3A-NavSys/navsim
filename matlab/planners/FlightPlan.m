@@ -264,8 +264,6 @@ end
 
 
 
-
-
 function fp2 = Convert2TPV(fp1)
     % Transform a TP flight plan to a TPV flight plan
     fp2 = FlightPlan(Waypoint.empty);
@@ -281,13 +279,14 @@ function fp2 = Convert2TPV(fp1)
         wp1 = fp1.waypoints(i);
         wp2 = Waypoint();
         wp2.t = wp1.t;
+        wp2.label = wp1.label;
         wp2.SetPosition(wp1.Position);
         fp2.SetWaypoint(wp2);
     end
 
     for i = 1 : length(fp2.waypoints)-1
-        wpA = fp1.waypoints(i);
-        wpB = fp1.waypoints(i+1);
+        wpA = fp2.waypoints(i);
+        wpB = fp2.waypoints(i+1);
 
         dir = wpA.DirectionTo(wpB);
         vel = wpA.UniformVelocityTo(wpB);
@@ -324,7 +323,7 @@ end
 
 function ApplyDubinsAt(obj,label,angvel)
 
-    if fp1.mode == InterpolationModes.TP
+    if obj.mode == InterpolationModes.TP
         return
     end
     

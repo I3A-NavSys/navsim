@@ -99,7 +99,6 @@ fp1.SetTimeFromVel('wp1M',0.2);
 fp1.SetTimeFromVel('wp1H',info.maxVerticalVel);
 fp1.SetTimeFromVel('wp2' ,info.maxForwardVel-2);
 fp1.SetTimeFromVel('wp3' ,info.maxForwardVel-2);
-fp1.ApplyDubinsAt('wp3',info.maxAngularVel);
 fp1.SetTimeFromVel('wp4' ,info.maxForwardVel-2);
 fp1.SetTimeFromVel('wp5' ,info.maxForwardVel-2);
 fp1.SetTimeFromVel('wp6H',info.maxForwardVel-2);
@@ -110,12 +109,14 @@ fp1.PositionFigure("FP1: POSITION",0.1);
 fp1.VelocityFigure("FP1: VELOCITY",0.1);
 
 
+fp2 = fp1.Convert2TPV();
 
+fp2.PositionFigure("FP2: POSITION",0.1);
+fp2.VelocityFigure("FP2: VELOCITY",0.1);
+
+fp2.ApplyDubinsAt('wp3',info.maxAngularVel);
  
 % fp2 = fp1.Convert2TP(0.1);
-% fp2.PositionFigure("FP2: POSITION",0.1);
-% fp2.VelocityFigure("FP2: VELOCITY",0.1);
- 
  
 
 
