@@ -110,13 +110,18 @@ fp1.VelocityFigure("FP1: VELOCITY",0.1);
 
 
 fp2 = fp1.Convert2TPV();
-
 fp2.PositionFigure("FP2: POSITION",0.1);
 fp2.VelocityFigure("FP2: VELOCITY",0.1);
 
-fp2.ApplyDubinsAt('wp3',info.maxAngularVel);
+fp2.ApplyDubinsAt('wp1H',1);
+fp2.ApplyDubinsAt('wp2',1);
+fp2.ApplyDubinsAt('wp3',1);
+fp2.ApplyDubinsAt('wp4',1);
+fp2.ApplyDubinsAt('wp5',1);
+fp2.ApplyDubinsAt('wp6H',1);
+fp2.PositionFigure("FP2: POSITION",0.1);
+fp2.VelocityFigure("FP2: VELOCITY",0.1);
  
-% fp2 = fp1.Convert2TP(0.1);
  
 
 
@@ -140,28 +145,34 @@ for i = 1:size(portsLoc,1)
 
 end
 
-% Deploy fleet
-%               x        y        z       rz
-fleetLoc = [ -190.00  -119.00  +048.10   -pi/2  ];
-for i = 1:size(fleetLoc,1)
-    id = sprintf('UAV%02d', i);
-    operator.DeployUAV(info,id, ...
-        fleetLoc(i,1:3), ...
-        [0 0 fleetLoc(i,4)]);
-    monitor.TrackUAV(id);
-end
+% Deploy UAV01
+operator.DeployUAV(info,'UAV01', ...
+    [ -190.00  -119.00  +048.10 ],...
+    [    0.00     0.00   -pi/2  ]);
+monitor.TrackUAV('UAV01');
 
-% Comunicate Flight Plans
 time = operator.GetTime();
 fp1.RescheduleAt(time + 10);
 operator.SendFlightPlan('UAV01',fp1);
 operator.WaitTime(fp1.FinishTime);
 
-% Display
 monitor.PositionFigure('UAV01',fp1,0.01);
 monitor.VelocityFigure('UAV01',fp1,0.01);
 
-%
+% Deploy UAV02
+operator.DeployUAV(info,'UAV02', ...
+    [ -190.00  -119.00  +048.10 ],...
+    [    0.00     0.00   -pi/2  ]);
+monitor.TrackUAV('UAV02');
+
+time = operator.GetTime();
+fp2.RescheduleAt(time + 10);
+operator.SendFlightPlan('UAV02',fp2);
+operator.WaitTime(fp2.FinishTime);
+
+monitor.PositionFigure('UAV02',fp2,0.01);
+monitor.VelocityFigure('UAV02',fp2,0.01);
+
 
 operator.PauseSim;
 

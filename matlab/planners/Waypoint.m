@@ -161,6 +161,18 @@ end
 
 
 
+function angle = AngleWith(a,b)
+    % Get the angle between the direction of two waypoints
+    a.CheckWaypoint(b);
+
+    Va = a.Velocity();
+    Vb = b.Velocity();
+    angle = acos( dot(Va,Vb) / (norm(Va) * norm(Vb)) );
+    % angled = rad2deg(angle);
+end
+
+
+
 function wp3 = InterpolationTP(wp1,wp2,t)
     % Dados dos waypoints, 
     % genera un tercer waypoint interpolando posiciones a un tiempo dado.

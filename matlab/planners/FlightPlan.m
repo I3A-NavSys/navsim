@@ -333,11 +333,29 @@ function ApplyDubinsAt(obj,label,angvel)
     end
 
     wp1 = obj.waypoints(i-1);
+    v1  = norm(wp1.Velocity);
     wp2 = obj.waypoints(i);    
+    v2  = norm(wp2.Velocity);
     wp3 = obj.waypoints(i+1);    
 
+    r = v2 / angvel;                % radius of the curve
+    angle = wp1.AngleWith(wp2);
+    d = r * tan(angle/2);           % distance to the new waypoints
 
-    
+    wp2A = Waypoint;
+    wp2A.SetPosition(wp2.Position + d * wp2.DirectionTo(wp1));
+    wp2A.SetVelocity(wp1.Velocity);
+    wp2A.t = wp1.t + wp1.DistanceTo(wp2A) / v1;
+    obj.SetWaypoint(wp2A);
+
+    wp2B = Waypoint;
+    wp2B.SetPosition(wp2.Position + d * wp2.DirectionTo(wp3));
+    wp2B.SetVelocity(wp2.Velocity);
+    wp2B.t = wp2.t + wp2.DistanceTo(wp2B) / v2;
+    obj.SetWaypoint(wp2B);
+
+    obj.RemoveWaypointAtTime(wp2.t);
+
 end
 
 
