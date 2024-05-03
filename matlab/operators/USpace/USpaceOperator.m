@@ -450,10 +450,10 @@ function SendFlightPlan(obj,UAVid,fp)
     % Check drone / FP compatibility
     uav = obj.UAVs(i);
     if uav.model == UAVmodels.MiniDroneFP1
-        if fp.mode == InterpolationModes.TP
-        else
-            return
-        end
+        % if fp.mode == InterpolationModes.TP
+        % else
+        %     return
+        % end
     else
         return
     end
