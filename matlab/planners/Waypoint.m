@@ -239,21 +239,33 @@ function wp3 = InterpolationTPV0(wp1,wp2,t)
     wp3 = Waypoint;
     wp3.t = t;
 
-    r12 = wp2.Position - wp1.Position;
-    if norm(r12)==0
+    r1 = wp1.Position;
+    v1 = wp1.Velocity;
+    r2 = wp2.Position; 
+    v2 = wp2.Velocity;
+
+
+    if norm(r2-r1)==0
         wp3.SetPosition(wp1.Position);
         return
     end
     
     t12 = wp1.TimeTo(wp2);
-    v1  = wp1.Velocity;
-    v2  = wp2.Velocity;
     
     A = [ t12^3/6   t12^4/24 
           t12^2/2   t12^3/6  ];
 
-    B = [ r12-v1*t12 
+    B = [ r2-r1-v1*t12 
             v2-v1     ];
+
+
+    % A = [ t12^3/6   t12^4/24 
+    %       t12^2/2   t12^3/6  
+    %       t12       t12^2/2  ];
+    % 
+    % B = [ r2-r1-v1*t12 
+    %       v2-v1  
+    %       0 0 0            ];
 
     if rank(A) == 2
         X = A\B;
@@ -270,6 +282,52 @@ function wp3 = InterpolationTPV0(wp1,wp2,t)
 
 end
 
+
+
+function [j1,s] = ResolveTPV0(wp1,wp2)
+    % PENDIENTE DE CHEQUEAR
+    % Dados dos waypoints con tiempo, posición, velocidad y aceleración nula
+    % obtiene yerk inicial y un jolt constante
+
+    wp1.CheckWaypoint(wp2);
+
+    r1 = wp1.Position;
+    v1 = wp1.Velocity;
+    r2 = wp2.Position; 
+    v2 = wp2.Velocity;
+
+    if norm(r2-r1)==0
+        j1 = 0;  % jerk
+        s  = 0;  % jolt
+        return
+    end
+    
+    t12 = wp1.TimeTo(wp2);
+
+
+    A = [ t12^3/6   t12^4/24 
+          t12^2/2   t12^3/6  ];
+
+    B = [ r2-r1-v1*t12 
+            v2-v1     ];
+    
+    % A = [ t12^3/6   t12^4/24 
+    %       t12^2/2   t12^3/6  
+    %       t12       t12^2/2  ];
+    % 
+    % B = [ r2-r1-v1*t12 
+    %       v2-v1  
+    %       0 0 0            ];
+
+    if rank(A) == 2
+        X = A\B;
+        j1 = X(1,:);  % jerk
+        s  = X(2,:);  % jolt
+    else
+        error('Error. Interpolación TPV sin solución')
+    end  
+
+end
 
 
 end % methods

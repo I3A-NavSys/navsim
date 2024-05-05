@@ -333,10 +333,12 @@ function ApplyDubinsAt(obj,label,angvel)
     end
 
     wp1 = obj.waypoints(i-1);
-    v1  = norm(wp1.Velocity);
     wp2 = obj.waypoints(i);    
+    wp3 = obj.waypoints(i+1);
+
+    v1  = norm(wp1.Velocity);
     v2  = norm(wp2.Velocity);
-    wp3 = obj.waypoints(i+1);    
+    v3  = norm(wp3.Velocity);
 
     r = v2 / angvel;                % radius of the curve
     angle = wp1.AngleWith(wp2);
@@ -358,11 +360,13 @@ function ApplyDubinsAt(obj,label,angvel)
     wp2B.label = strcat(wp2.label,'_B');
     wp2B.SetPosition(wp2.Position + d * wp2.DirectionTo(wp3));
     wp2B.SetVelocity(wp2.Velocity);
-    wp2B.t = wp2.t + wp2.DistanceTo(wp2B) / v2;
     wp2B.t = wp2A.t + s/v2 ;
     obj.SetWaypoint(wp2B);
 
     obj.RemoveWaypointAtTime(wp2.t);
+
+    t3 = wp2B.t + wp2B.DistanceTo(wp3) * 4 / (3*v2 + v3);
+    obj.PostponeFrom(wp3.t, t3-wp3.t);
 
 end
 
@@ -495,8 +499,8 @@ function VelocityFigure(obj,figName,time_step)
         fig = figure("Name", figName);
         fig.Position(3:4) = [290 455];
         fig.NumberTitle = "off";
-        fig.MenuBar = "none";
-        fig.ToolBar = "none";
+        % fig.MenuBar = "none";
+        % fig.ToolBar = "none";
     else
         %Select the figure
         figure(fig)
