@@ -341,17 +341,25 @@ function ApplyDubinsAt(obj,label,angvel)
     r = v2 / angvel;                % radius of the curve
     angle = wp1.AngleWith(wp2);
     d = r * tan(angle/2);           % distance to the new waypoints
+    s = r * angle;                  % curved distance covered
+
+    if d > wp1.DistanceTo(wp2) || d > wp2.DistanceTo(wp3)
+       return  % there is not space for dubins maneuvre
+    end
 
     wp2A = Waypoint;
+    wp2A.label = strcat(wp2.label,'_A');
     wp2A.SetPosition(wp2.Position + d * wp2.DirectionTo(wp1));
-    wp2A.SetVelocity(wp1.Velocity);
-    wp2A.t = wp1.t + wp1.DistanceTo(wp2A) / v1;
+    wp2A.SetVelocity(wp1.DirectionTo(wp2) * v2 );
+    wp2A.t = wp1.t + wp1.DistanceTo(wp2A) * 4 / (3*v1 + v2);
     obj.SetWaypoint(wp2A);
 
     wp2B = Waypoint;
+    wp2B.label = strcat(wp2.label,'_B');
     wp2B.SetPosition(wp2.Position + d * wp2.DirectionTo(wp3));
     wp2B.SetVelocity(wp2.Velocity);
     wp2B.t = wp2.t + wp2.DistanceTo(wp2B) / v2;
+    wp2B.t = wp2A.t + s/v2 ;
     obj.SetWaypoint(wp2B);
 
     obj.RemoveWaypointAtTime(wp2.t);
