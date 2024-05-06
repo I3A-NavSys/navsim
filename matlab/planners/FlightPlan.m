@@ -208,8 +208,6 @@ function p = PositionAtTime(obj, t)
         % case InterpolationModes.PV
         case InterpolationModes.TP
             wp3 = wp1.InterpolationTP(wp2,t);
-        case InterpolationModes.TPV
-            wp3 = wp1.InterpolationTPV(wp2,t);
         case InterpolationModes.TPV0
             wp3 = wp1.InterpolationTPV0(wp2,t);
         otherwise
@@ -245,8 +243,6 @@ function v = VelocityAtTime(obj, t)
         % case InterpolationModes.PV
         case InterpolationModes.TP
             wp3 = wp1.InterpolationTP(wp2,t);
-        case InterpolationModes.TPV
-            wp3 = wp1.InterpolationTPV(wp2,t);
         case InterpolationModes.TPV0
             wp3 = wp1.InterpolationTPV0(wp2,t);
         otherwise
@@ -304,10 +300,10 @@ end
 
 
 
-function fp2 = Convert2TPV(fp1)
+function fp2 = Convert2TPV0(fp1)
     % Transform a TP flight plan to a TPV flight plan
     fp2 = FlightPlan(Waypoint.empty);
-    fp2.mode = InterpolationModes.TPV;
+    fp2.mode = InterpolationModes.TPV0;
     fp2.radius   = fp1.radius;
     fp2.priority = fp1.priority;
 
@@ -576,7 +572,7 @@ function VelocityFigure(obj,figName,time_step)
         '-', ...
         LineWidth = 2, ...
         Color = color )
-    if obj.mode == InterpolationModes.TPV
+    if obj.mode == InterpolationModes.TPV0
         plot([obj.waypoints(:).t], [obj.waypoints(:).vx], 'o',...
             MarkerSize = 5, ...
             MarkerFaceColor = 'white', ...
@@ -593,7 +589,7 @@ function VelocityFigure(obj,figName,time_step)
         '-', ...
         LineWidth = 2, ...
         Color = color )
-    if obj.mode == InterpolationModes.TPV
+    if obj.mode == InterpolationModes.TPV0
         plot([obj.waypoints(:).t], [obj.waypoints(:).vy], 'o',...
             MarkerSize = 5, ...
             MarkerFaceColor = 'white', ...
@@ -611,7 +607,7 @@ function VelocityFigure(obj,figName,time_step)
         '-', ...
         LineWidth = 2, ...
         Color = color )
-    if obj.mode == InterpolationModes.TPV
+    if obj.mode == InterpolationModes.TPV0
         plot([obj.waypoints(:).t], [obj.waypoints(:).vz], 'o',...
             MarkerSize = 5, ...
             MarkerFaceColor = 'white', ...

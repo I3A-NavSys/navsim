@@ -108,7 +108,7 @@ fp1.PositionFigure("FP1: POSITION",0.01);
 fp1.VelocityFigure("FP1: VELOCITY",0.01);
 
 
-fp2 = fp1.Convert2TPV();
+fp2 = fp1.Convert2TPV0();
 fp2.mode = InterpolationModes.TPV0;
 % fp2.PositionFigure("FP2: POSITION",0.1);
 % fp2.VelocityFigure("FP2: VELOCITY",0.1);
