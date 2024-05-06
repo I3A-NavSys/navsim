@@ -24,7 +24,7 @@ wp3.SetPosition([200 0 0]);
 
 wp4  = Waypoint();
 wp4.label = 'wp4';
-wp4.t = 40;
+wp4.t = 30;
 wp4.SetPosition([300 0 0]);
 
 
@@ -44,8 +44,12 @@ fp1.VelocityFigure("FP1: VELOCITY",0.01);
 fp2 = fp1.Convert2TPV();
 fp2.mode = InterpolationModes.TPV0;
 
-[j1,s] = ResolveTPV0(fp2.waypoints(2),fp2.waypoints(3))
 
+
+
+[j1,s] = fp2.waypoints(3).ResolveTPV0(fp2.waypoints(4))
+
+wp = fp2.waypoints(3).InterpolationTPV0(fp2.waypoints(4),30)
 
 
 % fp2.ApplyDubinsAt('wp2',0.2);

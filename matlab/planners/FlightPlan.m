@@ -222,6 +222,43 @@ end
 
 
 
+function v = VelocityAtTime(obj, t)
+
+    v = [NaN NaN NaN];
+
+    % Check if t is out of flight plan schedule, returning not valid pos
+    if t < obj.InitTime  ||  t > obj.FinishTime
+        return
+    end
+
+    % search for the current waypoints
+    for i = 2:length(obj.waypoints)
+        if t < obj.waypoints(i).t
+            break
+        end
+    end
+
+    wp1 = obj.waypoints(i-1);
+    wp2 = obj.waypoints(i);
+
+    switch obj.mode
+        % case InterpolationModes.PV
+        case InterpolationModes.TP
+            wp3 = wp1.InterpolationTP(wp2,t);
+        case InterpolationModes.TPV
+            wp3 = wp1.InterpolationTPV(wp2,t);
+        case InterpolationModes.TPV0
+            wp3 = wp1.InterpolationTPV0(wp2,t);
+        otherwise
+            % warning('Unknown interpolation mode')
+            return
+    end
+    v = wp3.Velocity;
+
+end
+
+
+
 function tr = Trace(obj, timeStep)
     % This method expands the flight plan behavior over time
     
@@ -233,12 +270,15 @@ function tr = Trace(obj, timeStep)
     for i = 1:length(instants)
         p = obj.PositionAtTime(tr(i,1));
         tr(i,2:4) = p;
+        v = obj.VelocityAtTime(tr(i,1));
+        tr(i,5:7) = v;
     end
+    tr(end,5:7) = [0 0 0];
 
-    %Get velocity in time instants
-    for i = 1:length(instants)-1
-        tr(i,5:7) = (tr(i+1,2:4) - tr(i,2:4)) / timeStep;
-    end
+    % %Get velocity in time instants
+    % for i = 1:length(instants)-1
+    %     tr(i,5:7) = (tr(i+1,2:4) - tr(i,2:4)) / timeStep;
+    % end
 end
 
 
@@ -484,7 +524,7 @@ end
 
 
 function VelocityFigure(obj,figName,time_step)
-    %VELOCITYFIGURE This method allow to display the flight plan instant velocity
+    % Display the flight plan instant velocity
     
     % Check if the flight plan is empty
     if isempty(obj.waypoints)
