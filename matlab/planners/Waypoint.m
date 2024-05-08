@@ -197,10 +197,8 @@ end
 
 
 function wp3 = InterpolationTPV0(wp1,wp2,t3)
-    % PENDIENTE DE CHEQUEAR
     % Dados dos waypoints con tiempo, posición, velocidad y aceleración nula
     % interpola un tercer waypoint a un tiempo dado
-    % asumiendo un yerk inicial y un jolt constante
 
     wp1.CheckWaypoint(wp2);
 
@@ -249,10 +247,9 @@ end
 
 
 
-function [j1,s,k] = ResolveTPV0(wp1,wp2)
-    % PENDIENTE DE CHEQUEAR
-    % Dados dos waypoints con tiempo, posición, velocidad y aceleración nula
-    % obtiene yerk inicial y un jolt constante
+function [d1,d2,d3] = ResolveTPV0(wp1,wp2)
+    % Dados dos waypoints con tiempo, posición, velocidad y aceleración nula 
+    % obtiene las 3 derivadas siguientes que ejecutan dicho movimiento
 
     wp1.CheckWaypoint(wp2);
 
@@ -262,10 +259,9 @@ function [j1,s,k] = ResolveTPV0(wp1,wp2)
     v2 = wp2.Velocity;
 
     if norm(r2-r1)==0
-        j1 = [0 0 0];  % jerk
-        s  = [0 0 0];  % jolt
-        k  = [0 0 0];  % jolt_dot
-
+        d1 = [0 0 0];  % jerk
+        d2 = [0 0 0];  % jolt
+        d3 = [0 0 0];  % jolt_dot
         return
     end
     
@@ -279,15 +275,16 @@ function [j1,s,k] = ResolveTPV0(wp1,wp2)
           v2-v1  
           0 0 0            ];
 
-    if rank(A) == 3
-        X = A\B;
-        j1 = X(1,:);  % jerk
-        s  = X(2,:);  % jolt
-        k  = X(3,:);  % jolt_dot
 
-    else
+    if rank(A) < 3
         error('Error. Interpolación TPV sin solución')
     end  
+
+
+    X = A\B;
+    d1 = X(1,:);  % jerk
+    d2 = X(2,:);  % jolt
+    d3 = X(3,:);  % jolt_dot
 
 end
 
