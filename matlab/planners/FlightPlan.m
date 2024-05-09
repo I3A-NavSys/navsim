@@ -133,20 +133,20 @@ end
 
 
 
-function SetTimeFromVel(obj, label, vel)
-    if obj.mode ~= InterpolationModes.TP
-        return
-    end
-    i = obj.GetIndexFromLabel(label);
-    if i <= 1
-        return
-    end
-       
-    wp1 = obj.waypoints(i-1);
-    wp2 = obj.waypoints(i);
-    t = wp1.t + wp1.DistanceTo(wp2) / vel;
-    obj.PostponeFrom(wp2.t, t-wp2.t);
-end
+% function SetTimeFromVel(obj, label, vel)
+%     if obj.mode ~= InterpolationModes.TP
+%         return
+%     end
+%     i = obj.GetIndexFromLabel(label);
+%     if i <= 1
+%         return
+%     end
+% 
+%     wp1 = obj.waypoints(i-1);
+%     wp2 = obj.waypoints(i);
+%     t = wp1.t + wp1.DistanceTo(wp2) / vel;
+%     obj.PostponeFrom(wp2.t, t-wp2.t);
+% end
 
 
 
@@ -270,11 +270,6 @@ function tr = Trace(obj, timeStep)
         tr(i,5:7) = v;
     end
     tr(end,5:7) = [0 0 0];
-
-    % %Get velocity in time instants
-    % for i = 1:length(instants)-1
-    %     tr(i,5:7) = (tr(i+1,2:4) - tr(i,2:4)) / timeStep;
-    % end
 end
 
 
@@ -300,16 +295,12 @@ end
 
 
 
-function fp2 = Convert2TPV0(fp1)
-    % Transform a TP flight plan to a TPV flight plan
+function fp2 = Copy(fp1)
+    % Dado un plan, genera una copia independiente 
     fp2 = FlightPlan(Waypoint.empty);
-    fp2.mode = InterpolationModes.TPV0;
+    fp2.mode = fp1.mode;
     fp2.radius   = fp1.radius;
     fp2.priority = fp1.priority;
-
-    if fp1.mode ~= InterpolationModes.TP
-        return
-    end
 
     for i = 1 : length(fp1.waypoints)
         wp1 = fp1.waypoints(i);
@@ -317,19 +308,27 @@ function fp2 = Convert2TPV0(fp1)
         wp2.t = wp1.t;
         wp2.label = wp1.label;
         wp2.SetPosition(wp1.Position);
+        wp2.SetVelocity(wp1.Velocity);
+        wp2.mandatory = wp1.mandatory;
         fp2.SetWaypoint(wp2);
     end
+end
 
-    for i = 1 : length(fp2.waypoints)-1
-        wpA = fp2.waypoints(i);
-        wpB = fp2.waypoints(i+1);
+
+
+function SetUniformVelocities(obj)
+    % Para cada waypoint asigna su vector velocidad 
+    % asumiendo movimiento rectilíneo y uniforme
+
+    for i = 1 : length(obj.waypoints)-1
+        wpA = obj.waypoints(i);
+        wpB = obj.waypoints(i+1);
 
         dir = wpA.DirectionTo(wpB);
         vel = wpA.UniformVelocityTo(wpB);
         wpA.SetVelocity(dir*vel);
     end
-
-    
+    wpB.SetVelocity([0 0 0]);
 end
 
 
@@ -357,12 +356,51 @@ end
 
 
 
-function ApplyDubinsAt(obj,label,angvel)
+function SmoothVertex(obj,label,angvel)
+% genera una curva en dicho vertice
 
-    if obj.mode == InterpolationModes.TP
+    i = obj.GetIndexFromLabel(label);
+    if i <= 1  ||  length(obj.waypoints) <= i
         return
     end
-    
+
+    wp1 = obj.waypoints(i-1);
+    wp2 = obj.waypoints(i);    
+    wp3 = obj.waypoints(i+1);
+
+    v1  = norm(wp1.Velocity);
+    v2  = norm(wp2.Velocity);
+
+    r = (v1+v2)/2 / angvel;         % radius of the curve
+    angle = wp1.AngleWith(wp2);
+    d = r * tan(angle/2);           % distance to the new waypoints
+
+    if d+1 > wp1.DistanceTo(wp2) || d+1 > wp2.DistanceTo(wp3)
+       return  % there is not space to include the curve
+    end
+
+    wp2A = Waypoint;
+    wp2A.label = strcat(wp2.label,'_A');
+    wp2A.SetPosition(wp2.Position + d * wp2.DirectionTo(wp1));
+    wp2A.SetVelocity(wp1.Velocity);
+    wp2A.t = wp2.t - d/v2;
+    obj.SetWaypoint(wp2A);
+
+    wp2B = Waypoint;
+    wp2B.label = strcat(wp2.label,'_B');
+    wp2B.SetPosition(wp2.Position + d * wp2.DirectionTo(wp3));
+    wp2B.SetVelocity(wp2.Velocity);
+    wp2B.t = wp2.t + d/v2 ;
+    obj.SetWaypoint(wp2B);
+
+    obj.RemoveWaypointAtTime(wp2.t);
+
+end
+
+
+
+function ApplyConstantDubinsAt(obj,label,angvel)
+
     i = obj.GetIndexFromLabel(label);
     if i <= 1  ||  length(obj.waypoints) <= i
         return
@@ -388,8 +426,10 @@ function ApplyDubinsAt(obj,label,angvel)
     wp2A = Waypoint;
     wp2A.label = strcat(wp2.label,'_A');
     wp2A.SetPosition(wp2.Position + d * wp2.DirectionTo(wp1));
-    wp2A.SetVelocity(wp1.DirectionTo(wp2) * v2 );
-    wp2A.t = wp1.t + wp1.DistanceTo(wp2A) * 4 / (3*v1 + v2);
+%    wp2A.SetVelocity(wp1.DirectionTo(wp2) * v2 );
+    % wp2A.t = wp1.t + wp1.DistanceTo(wp2A) * 4 / (3*v1 + v2);
+    wp2A.SetVelocity(wp1.velocity);
+    wp2A.t = wp2.t - d/v2;
     obj.SetWaypoint(wp2A);
 
     wp2B = Waypoint;
