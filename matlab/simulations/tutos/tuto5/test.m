@@ -4,20 +4,22 @@ run('../../../tools/NAVSIM_PATHS');
 
 % -------------
 % Flight Plan
+% ejemplo de maniobra de giro en angulo recto
+% mantenemos velocidad de 10 m/s
 
 % Create waypoints
 
 wp1 = Waypoint();
 wp1.label = 'wp1';
-wp1.SetPosition([ 0  0  0 ]);
-wp1.SetVelocity([ 2  0  0 ]);
+wp1.SetPosition([  0  0  0 ]);
+wp1.SetVelocity([ 10  0  0 ]);
 wp1.t = 0;
 
 wp2  = Waypoint();
 wp2.label = 'wp2';
-wp2.SetPosition([ 10 10  0 ]);
-wp2.SetVelocity([  0  2  0 ]);
-wp2.t = 8;
+wp2.SetPosition([ 100 100  0 ]);
+wp2.SetVelocity([   0  10  0 ]);
+wp2.t = 16.45;
 
 
 [d1,d2,d3] = wp1.ResolveTPV0(wp2)

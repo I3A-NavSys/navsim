@@ -1,14 +1,17 @@
 clc;  clear
 
 r  = [  0  0  0 ];
-v  = [  2  0  0 ];
+v  = [ 10  0  0 ];
 a  = [  0  0  0 ];
 
-r2 = [ 10 10  0 ];
-v2 = [  0  2  0 ];
-a2 = [  0  0  0 ];
+r2 = [ 100 100  0 ];
+v2 = [   0  10  0 ];
+a2 = [   0   0  0 ];
 
-t = 8;
+t = 13;
+% t = 100 * pi/2 / 10
+% t = 16.45;
+% t = 20;
 
 A = [ t^3/6   t^4/24   t^5/120 
       t^2/2   t^3/6    t^4/24 
@@ -40,30 +43,38 @@ for i = 1:length(tt)
     aa(i,:) = a + x1*t + 1/2*x2*t^2 + 1/6*x3*t^3 ;
 end
 
-rr(end,:)
-vv(end,:)
-aa(end,:)
+% rr(end,:)
+% vv(end,:)
+% aa(end,:)
 
 
 figure(1)
+clf
 plot(tt,rr)
 grid on
 
 figure(2)
+clf
 plot(tt,vv)
+hold on
+plot(tt,sqrt(vv(:,1).^2 + vv(:,2).^2 + vv(:,3).^2),LineWidth=2,Color='k')
 grid on
 
 figure(3)
+clf
 plot(tt,aa)
 grid on
 
 
 figure(4)
+clf
 plot3(rr(:,1),rr(:,2),rr(:,3),LineWidth=2)
-axis([-10 10 -10 10 -10 10])
 grid on
 xlabel('X')
 ylabel('Y')
 zlabel('Z')
 
-viscircles([0 10],10)
+viscircles([0 100],100);
+axis equal
+axis([0 100 0 100 0 10])
+view(2)
