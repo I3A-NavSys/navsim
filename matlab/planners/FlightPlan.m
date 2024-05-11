@@ -356,8 +356,12 @@ end
 
 
 
-function SmoothVertex(obj,label,angvel)
-% genera una curva en dicho vertice
+function SmoothWaypoint(obj,label,ang_vel,lin_acel)
+    % suaviza un waypoint descomponiendolo en dos
+    % el intervalo entre ambos se obtiene de forma que no se exceda ciertas
+    %   velocidad angular maxima
+
+    % genera una curva en dicho vertice
 
     i = obj.GetIndexFromLabel(label);
     if i <= 1  ||  length(obj.waypoints) <= i
@@ -368,84 +372,106 @@ function SmoothVertex(obj,label,angvel)
     wp2 = obj.waypoints(i);    
     wp3 = obj.waypoints(i+1);
 
+    angle = wp1.AngleWith(wp2);
+    tc = angle / ang_vel;     % time spent in the curve
+    % r = v / angvel;         % radius of the curve
+    % d = r * tan(angle/2);   % distance to the new waypoints
+
     v1  = norm(wp1.Velocity);
     v2  = norm(wp2.Velocity);
+    ts  = abs(v2-v1)/lin_acel;
 
-    r = (v1+v2)/2 / angvel;         % radius of the curve
-    angle = wp1.AngleWith(wp2);
-    d = r * tan(angle/2);           % distance to the new waypoints
+    interval = max([tc ts]);
+    obj.ExpandWaypoint(label,interval)
 
-    if d+1 > wp1.DistanceTo(wp2) || d+1 > wp2.DistanceTo(wp3)
-       return  % there is not space to include the curve
+end
+
+
+
+function ExpandWaypoint(obj,label,interval)
+% descompone un waypoint en dos, separados un intervalo dado
+
+    i = obj.GetIndexFromLabel(label);
+    if i <= 1  ||  length(obj.waypoints) <= i
+        return
+    end
+
+    wp1 = obj.waypoints(i-1);
+    wp2 = obj.waypoints(i);    
+    wp3 = obj.waypoints(i+1);
+
+    step = interval/2;
+    if step >= wp2.t - wp1.t || step >= wp3.t - wp2.t
+       return  % there is not time enough to include the curve
     end
 
     wp2A = Waypoint;
     wp2A.label = strcat(wp2.label,'_A');
-    wp2A.SetPosition(wp2.Position + d * wp2.DirectionTo(wp1));
+    wp2A.SetPosition(wp2.Position - wp1.Velocity * step);
     wp2A.SetVelocity(wp1.Velocity);
-    wp2A.t = wp2.t - d/v2;
-    obj.SetWaypoint(wp2A);
+    wp2A.t = wp2.t - step;
 
     wp2B = Waypoint;
     wp2B.label = strcat(wp2.label,'_B');
-    wp2B.SetPosition(wp2.Position + d * wp2.DirectionTo(wp3));
+    wp2B.SetPosition(wp2.Position + wp2.Velocity * step);
     wp2B.SetVelocity(wp2.Velocity);
-    wp2B.t = wp2.t + d/v2 ;
-    obj.SetWaypoint(wp2B);
+    wp2B.t = wp2.t + step;
 
     obj.RemoveWaypointAtTime(wp2.t);
+    obj.SetWaypoint(wp2A);
+    obj.SetWaypoint(wp2B);
 
 end
 
 
 
-function ApplyConstantDubinsAt(obj,label,angvel)
-
-    i = obj.GetIndexFromLabel(label);
-    if i <= 1  ||  length(obj.waypoints) <= i
-        return
-    end
-
-    wp1 = obj.waypoints(i-1);
-    wp2 = obj.waypoints(i);    
-    wp3 = obj.waypoints(i+1);
-
-    v1  = norm(wp1.Velocity);
-    v2  = norm(wp2.Velocity);
-    v3  = norm(wp3.Velocity);
-
-    r = v2 / angvel;                % radius of the curve
-    angle = wp1.AngleWith(wp2);
-    d = r * tan(angle/2);           % distance to the new waypoints
-    s = r * angle;                  % curved distance covered
-
-    if d > wp1.DistanceTo(wp2) || d > wp2.DistanceTo(wp3)
-       return  % there is not space for dubins maneuvre
-    end
-
-    wp2A = Waypoint;
-    wp2A.label = strcat(wp2.label,'_A');
-    wp2A.SetPosition(wp2.Position + d * wp2.DirectionTo(wp1));
-%    wp2A.SetVelocity(wp1.DirectionTo(wp2) * v2 );
-    % wp2A.t = wp1.t + wp1.DistanceTo(wp2A) * 4 / (3*v1 + v2);
-    wp2A.SetVelocity(wp1.velocity);
-    wp2A.t = wp2.t - d/v2;
-    obj.SetWaypoint(wp2A);
-
-    wp2B = Waypoint;
-    wp2B.label = strcat(wp2.label,'_B');
-    wp2B.SetPosition(wp2.Position + d * wp2.DirectionTo(wp3));
-    wp2B.SetVelocity(wp2.Velocity);
-    wp2B.t = wp2A.t + s/v2 ;
-    obj.SetWaypoint(wp2B);
-
-    obj.RemoveWaypointAtTime(wp2.t);
-
-    t3 = wp2B.t + wp2B.DistanceTo(wp3) * 4 / (3*v2 + v3);
-    obj.PostponeFrom(wp3.t, t3-wp3.t);
-
-end
-
+% function ApplyConstantDubinsAt(obj,label,angvel)
+% 
+%     i = obj.GetIndexFromLabel(label);
+%     if i <= 1  ||  length(obj.waypoints) <= i
+%         return
+%     end
+% 
+%     wp1 = obj.waypoints(i-1);
+%     wp2 = obj.waypoints(i);    
+%     wp3 = obj.waypoints(i+1);
+% 
+%     v1  = norm(wp1.Velocity);
+%     v2  = norm(wp2.Velocity);
+%     v3  = norm(wp3.Velocity);
+% 
+%     r = v2 / angvel;                % radius of the curve
+%     angle = wp1.AngleWith(wp2);
+%     d = r * tan(angle/2);           % distance to the new waypoints
+%     s = r * angle;                  % curved distance covered
+% 
+%     if d > wp1.DistanceTo(wp2) || d > wp2.DistanceTo(wp3)
+%        return  % there is not space for dubins maneuvre
+%     end
+% 
+%     wp2A = Waypoint;
+%     wp2A.label = strcat(wp2.label,'_A');
+%     wp2A.SetPosition(wp2.Position + d * wp2.DirectionTo(wp1));
+% %    wp2A.SetVelocity(wp1.DirectionTo(wp2) * v2 );
+%     % wp2A.t = wp1.t + wp1.DistanceTo(wp2A) * 4 / (3*v1 + v2);
+%     wp2A.SetVelocity(wp1.velocity);
+%     wp2A.t = wp2.t - d/v2;
+%     obj.SetWaypoint(wp2A);
+% 
+%     wp2B = Waypoint;
+%     wp2B.label = strcat(wp2.label,'_B');
+%     wp2B.SetPosition(wp2.Position + d * wp2.DirectionTo(wp3));
+%     wp2B.SetVelocity(wp2.Velocity);
+%     wp2B.t = wp2A.t + s/v2 ;
+%     obj.SetWaypoint(wp2B);
+% 
+%     obj.RemoveWaypointAtTime(wp2.t);
+% 
+%     t3 = wp2B.t + wp2B.DistanceTo(wp3) * 4 / (3*v2 + v3);
+%     obj.PostponeFrom(wp3.t, t3-wp3.t);
+% 
+% end
+% 
 
 
 function PositionFigure(obj,figName,time_step)

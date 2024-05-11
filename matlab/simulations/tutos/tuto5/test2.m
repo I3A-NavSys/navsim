@@ -31,7 +31,7 @@ wp2.SetPosition([1000 1000 1000]);
 
 wp3  = Waypoint();
 wp3.label = 'wp3';
-wp3.t = 40;
+wp3.t = 38;
 wp3.SetPosition([1000 2000 1000]);
 
 wp4  = Waypoint();
@@ -79,20 +79,34 @@ fp2.mode = InterpolationModes.TPV0;
 fp2.PositionFigure("FP2: POSITION",0.01);
 fp2.VelocityFigure("FP2: VELOCITY",0.01);
 
-
-fp2.SmoothVertex('wpA1',0.4);
-fp2.SmoothVertex('wp1',0.4);
-fp2.SmoothVertex('wp5',0.4);
-fp2.SmoothVertex('wpB1',0.4);
+fp2.SmoothWaypoint('wpA1',0.4,3);
 fp2.PositionFigure("FP2: POSITION",0.01);
 fp2.VelocityFigure("FP2: VELOCITY",0.01);
 
-
-fp2.waypoints(1).SetVelocity([0 0 0]);
+fp2.SmoothWaypoint('wp1' ,0.4,3);
 fp2.PositionFigure("FP2: POSITION",0.01);
 fp2.VelocityFigure("FP2: VELOCITY",0.01);
 
+fp2.SmoothWaypoint('wp2',0.4,10);
+fp2.PositionFigure("FP2: POSITION",0.01);
+fp2.VelocityFigure("FP2: VELOCITY",0.01);
 
-fp2.waypoints(14).t = 100;
+fp2.SmoothWaypoint('wp3',0.4,10);
+fp2.PositionFigure("FP2: POSITION",0.01);
+fp2.VelocityFigure("FP2: VELOCITY",0.01);
+
+fp2.SmoothWaypoint('wp4',0.4,20);
+fp2.PositionFigure("FP2: POSITION",0.01);
+fp2.VelocityFigure("FP2: VELOCITY",0.01);
+
+fp2.SmoothWaypoint('wp5' ,0.4,10);
+fp2.PositionFigure("FP2: POSITION",0.01);
+fp2.VelocityFigure("FP2: VELOCITY",0.01);
+
+fp2.SmoothWaypoint('wpB1',0.4,10);
+fp2.PositionFigure("FP2: POSITION",0.01);
+fp2.VelocityFigure("FP2: VELOCITY",0.01);
+
+fp2.SmoothWaypoint('wpB0',0.4,20);
 fp2.PositionFigure("FP2: POSITION",0.01);
 fp2.VelocityFigure("FP2: VELOCITY",0.01);
