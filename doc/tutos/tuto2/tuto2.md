@@ -52,7 +52,7 @@ First, we select the kind of drone we will to deploy:
 
 ```matlab
 info = UAVinfo('',UAVmodels.MiniDroneCommanded);
-info.velMax = 10;
+info.maxForwardVel = 10;
 ```
 
 Now, we use a **USpaceOperator** object to generate 100 drones over the boxes:
