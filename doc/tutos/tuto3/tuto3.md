@@ -65,7 +65,7 @@ We configure the performance of the drones:
 
 ```matlab
 info = UAVinfo('',UAVmodels.MiniDroneFP1);
-info.velMax = 10;
+info.maxForwardVel = 10;
 ```
 
 Next, we deploy our small fleet of drones, each in a different vertiport. 
@@ -204,15 +204,16 @@ Now is the time to evaluate what happened.
 We request the **monitor** for the temporal graphs of the position and velocity of each drone during the execution of the flight plan.
 
 ```matlab
-monitor.PositionFigure('UAV01',fp1);
-monitor.VelocityFigure('UAV01',fp1);
+monitor.PositionFigure('UAV01',fp1,0.1);
+monitor.VelocityFigure('UAV01',fp1,0.1);
 [medE,maxE,t] = monitor.PathFollowingError('UAV01',fp1);
 
-monitor.PositionFigure('UAV02',fp2);
-monitor.VelocityFigure('UAV02',fp2);
+monitor.PositionFigure('UAV02',fp2,0.1);
+monitor.VelocityFigure('UAV02',fp2,0.1);
 
-monitor.PositionFigure('UAV03',fp3);
-monitor.VelocityFigure('UAV03',fp3);
+monitor.PositionFigure('UAV03',fp3,0.1);
+monitor.VelocityFigure('UAV03',fp3,0.1);
+
 ```
 
 We can see how _UAV01_ has followed its flight plan very precisely. 
