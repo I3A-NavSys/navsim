@@ -68,6 +68,8 @@ for i = 1:size(portsLoc,1)
         [0 0 portsLoc(i,4)]);
     operator.SetVertiport(id,portsLoc(i,1:3),1);
 end
+builder.DeployModel('I3A', 'I3A', [-150 -225 0], [0 0 0]);
+
 ```
 
 In the image, we can appreciate (with some difficulty due to the distance) blue circles on the rooftops of various buildings.
@@ -83,7 +85,7 @@ This time, we will deploy as many drones as possible, not exceeding the number o
 % -------------
 % Deploy fleet
 info = UAVinfo('',UAVmodels.MiniDroneFP1);
-info.velMax = 10;
+info.maxForwardVel = 10;
 operator.DeployFleet(size(portsLoc,1),info);
 ```
 
@@ -100,6 +102,17 @@ for UAVid = operator.FleetIds
 end
 ```
 Each operation starts from the vertiport where the drone is located, towards a randomly chosen destination vertiport (with the only restriction being that it must be different from the origin). The flight plan includes the drone ascending to a height of 70 meters (plus or minus 9 meters, depending on the course to follow), flying straight towards its destination, and descending vertically to land. The ascent and descent are performed at 2m/s. The cruising speed is 10m/s. 10 meters before completing the horizontal displacement, the drone reduces its speed to 2 m/s.
+
+```matlab
+operator.WaitTime(operator.GetTime + 50);
+
+op = operator.ops(1);
+op.fp.PositionFigure("OP1 FP: POSITION",0.1);
+op.fp.VelocityFigure("OP1 FP: VELOCITY",0.1);
+
+monitor.PositionFigure(op.UAVid,op.fp,0.1);
+monitor.VelocityFigure(op.UAVid,op.fp,0.1);
+```
 
 ![Flight plan: position](./img/FP_pos.png)
 ![Flight plan: velocity](./img/FP_vel.png)
