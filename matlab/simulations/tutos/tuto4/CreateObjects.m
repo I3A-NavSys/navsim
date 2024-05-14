@@ -67,8 +67,8 @@ end
 operator.WaitTime(operator.GetTime + 50);
 
 op = operator.ops(1);
-op.fp.PositionFigure("OP1 FP: POSITION",1);
-op.fp.VelocityFigure("OP1 FP: VELOCITY",1);
+op.fp.PositionFigure("OP1 FP: POSITION",0.1);
+op.fp.VelocityFigure("OP1 FP: VELOCITY",0.1);
 
-monitor.PositionFigure(op.UAVid,op.fp);
-monitor.VelocityFigure(op.UAVid,op.fp);
+monitor.PositionFigure(op.UAVid,op.fp,0.1);
+monitor.VelocityFigure(op.UAVid,op.fp,0.1);

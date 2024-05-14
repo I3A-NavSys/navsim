@@ -107,8 +107,8 @@ operator.SendFlightPlan('UAV01',fp2);
 operator.WaitTime(fp2.FinishTime);
 
 % Display
-monitor.PositionFigure('UAV01',fp1);
-monitor.VelocityFigure('UAV01',fp1);
+monitor.PositionFigure('UAV01',fp1,0.1);
+monitor.VelocityFigure('UAV01',fp1,0.1);
 
 %%
 

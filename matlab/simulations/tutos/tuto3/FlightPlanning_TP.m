@@ -81,15 +81,15 @@ operator.WaitTime(max([fp1.FinishTime fp2.FinishTime fp3.FinishTime]));
 % operator.RemoveUAV('UAV03');
 operator.PauseSim;
 
-monitor.PositionFigure('UAV01',fp1);
-monitor.VelocityFigure('UAV01',fp1);
+monitor.PositionFigure('UAV01',fp1,0.1);
+monitor.VelocityFigure('UAV01',fp1,0.1);
 [medE,maxE,t] = monitor.PathFollowingError('UAV01',fp1);
 
-monitor.PositionFigure('UAV02',fp2);
-monitor.VelocityFigure('UAV02',fp2);
+monitor.PositionFigure('UAV02',fp2,0.1);
+monitor.VelocityFigure('UAV02',fp2,0.1);
 
-monitor.PositionFigure('UAV03',fp3);
-monitor.VelocityFigure('UAV03',fp3);
+monitor.PositionFigure('UAV03',fp3,0.1);
+monitor.VelocityFigure('UAV03',fp3,0.1);
 
 
 
