@@ -11,23 +11,21 @@ run('../../../tools/NAVSIM_PATHS');
 
 wp1 = Waypoint();
 wp1.label = 'wp1';
-wp1.SetPosition([  0  0  0 ]);
-wp1.SetVelocity([ 10  0  0 ]);
+wp1.pos = [  0  0  0 ];
+wp1.vel = [ 10  0  0 ];
 wp1.t = 0;
 
 wp2  = Waypoint();
 wp2.label = 'wp2';
-wp2.SetPosition([ 100 100  0 ]);
-wp2.SetVelocity([   0  10  0 ]);
+wp2.pos = [ 100 100  0 ];
+wp2.vel = [   0  10  0 ];
 wp2.t = 20;
 
 
-[d1,d2,d3] = wp1.ResolveTPV0(wp2)
-wp = wp1.InterpolationTPV0(wp2,0)
+wp1.SetFlyableMovement(wp2)
 
 % Compose the flight plan
 fp1  = FlightPlan(Waypoint.empty);
-fp1.mode = InterpolationModes.TPV0;
 fp1.SetWaypoint(wp1);
 fp1.SetWaypoint(wp2);
 

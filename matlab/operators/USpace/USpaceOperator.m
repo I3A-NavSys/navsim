@@ -401,22 +401,22 @@ function fp = GenerateFlightPlan(obj,op)
     wp2L = Waypoint();
     
     % take off / landing positions
-    wp1L.SetPosition(vp1+[0 0 0.25]);
-    wp2L.SetPosition(vp2+[0 0 0.25]);
+    wp1L.pos = vp1 + [0 0 0.25];
+    wp2L.pos = vp2 + [0 0 0.25];
 
     % take off / landing approach positions
-    wp1M.SetPosition(vp1+[0 0 1]);
-    wp2M.SetPosition(vp2+[0 0 1]);
+    wp1M.pos = vp1 + [0 0 1];
+    wp2M.pos = vp2 + [0 0 1];
 
     % take off / landing hovering positions
     angle = wp1L.CourseTo(wp2L);
-    wp1H.SetPosition(wp1L.Position);
-    wp1H.z = 70 + angle/20;
-    wp2H.SetPosition(wp2L.Position);
-    wp2H.z = wp1H.z;
+    wp1H.pos = wp1L.pos;
+    wp1H.pos(3) = 70 + angle/20;
+    wp2H.pos = wp2L.pos;
+    wp2H.pos(3) = wp1H.pos(3);
 
-    wp1H.SetPosition(wp1H.Position + 2 * wp1H.DirectionTo(wp2H));
-    wp3.SetPosition(wp2H.Position - 10 * wp1H.DirectionTo(wp2H));
+    wp1H.pos = wp1H.pos +  2 * wp1H.DirectionTo(wp2H);
+    wp3.pos  = wp2H.pos - 10 * wp1H.DirectionTo(wp2H);
 
     % waypoint time intervals
     wp1L.t = 0;
@@ -464,7 +464,7 @@ function SendFlightPlan(obj,UAVid,fp)
     msg.uav_id      = char(uav.id);
     msg.operator_id = char(obj.name);
     msg.priority    = int8(fp.priority);
-    msg.mode        = char(fp.mode);
+    % msg.mode        = char(fp.mode);
     msg.radius      = fp.radius;
 
     for i = 1:length(fp.waypoints)
@@ -472,13 +472,13 @@ function SendFlightPlan(obj,UAVid,fp)
         msg.route(i).time.sec = int32(floor(t));
         msg.route(i).time.nanosec = uint32(rem(t,1)*1E9);
 
-        msg.route(i).pos.x = fp.waypoints(i).x;
-        msg.route(i).pos.y = fp.waypoints(i).y;
-        msg.route(i).pos.z = fp.waypoints(i).z;
+        msg.route(i).pos.x = fp.waypoints(i).pos(1);
+        msg.route(i).pos.y = fp.waypoints(i).pos(2);
+        msg.route(i).pos.z = fp.waypoints(i).pos(3);
 
-        msg.route(i).vel.x = fp.waypoints(i).vx;
-        msg.route(i).vel.y = fp.waypoints(i).vy;
-        msg.route(i).vel.z = fp.waypoints(i).vz;
+        msg.route(i).vel.x = fp.waypoints(i).vel(1);
+        msg.route(i).vel.y = fp.waypoints(i).vel(2);
+        msg.route(i).vel.z = fp.waypoints(i).vel(3);
 
     end
     send(uav.rosPub_FlightPlan,msg);

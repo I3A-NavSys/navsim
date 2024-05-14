@@ -120,7 +120,7 @@ fp1  = FlightPlan(Waypoint.empty);
 for i = 1:size(way_data1,1)
     wp = Waypoint();
     wp.t = way_data1(i,1);
-    wp.SetPosition(way_data1(i,2:4));
+    wp.pos = way_data1(i,2:4);
     fp1.SetWaypoint(wp);
 end
 
@@ -150,7 +150,7 @@ fp2  = FlightPlan(Waypoint.empty);
 for i = 1:size(way_data2,1)
     wp = Waypoint();
     wp.t = way_data2(i,1);
-    wp.SetPosition(way_data2(i,2:4));
+    wp.pos = way_data2(i,2:4);
     fp2.SetWaypoint(wp);
 end
 
@@ -168,7 +168,7 @@ fp3  = FlightPlan(Waypoint.empty);
 for i = 1:size(way_data3,1)
     wp = Waypoint();
     wp.t = way_data3(i,1);
-    wp.SetPosition(way_data3(i,2:4));
+    wp.pos = way_data3(i,2:4);
     fp3.SetWaypoint(wp);
 end
 ```

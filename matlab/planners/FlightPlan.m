@@ -5,11 +5,8 @@ classdef FlightPlan < handle
 properties
 
 id          {mustBeNumeric}    % operation identifier
-
 waypoints   Waypoint = Waypoint.empty;     
-mode        InterpolationModes;
 radius      {mustBeNumeric}    % safety bubble for conflict management
-
 priority    int8;
 
 end
@@ -31,7 +28,6 @@ function obj = FlightPlan(waypoints)
             obj.SetWaypoint(waypoints(i));
         end
     end
-    obj.mode = "TP";
 end
 
 
@@ -185,12 +181,12 @@ end
 
 
 
-function p = PositionAtTime(obj, t)
-
-    p = [NaN NaN NaN];
+function wp2 = StatusAtTime(obj, t)
 
     % Check if t is out of flight plan schedule, returning not valid pos
     if t < obj.InitTime  ||  t > obj.FinishTime
+        wp2 = Waypoint;
+        wp2.pos = [NaN NaN NaN];
         return
     end
 
@@ -202,54 +198,7 @@ function p = PositionAtTime(obj, t)
     end
 
     wp1 = obj.waypoints(i-1);
-    wp2 = obj.waypoints(i);
-
-    switch obj.mode
-        % case InterpolationModes.PV
-        case InterpolationModes.TP
-            wp3 = wp1.InterpolationTP(wp2,t);
-        case InterpolationModes.TPV0
-            wp3 = wp1.InterpolationTPV0(wp2,t);
-        otherwise
-            % warning('Unknown interpolation mode')
-            return
-    end
-    p = wp3.Position;
-
-end
-
-
-
-function v = VelocityAtTime(obj, t)
-
-    v = [NaN NaN NaN];
-
-    % Check if t is out of flight plan schedule, returning not valid pos
-    if t < obj.InitTime  ||  t > obj.FinishTime
-        return
-    end
-
-    % search for the current waypoints
-    for i = 2:length(obj.waypoints)
-        if t < obj.waypoints(i).t
-            break
-        end
-    end
-
-    wp1 = obj.waypoints(i-1);
-    wp2 = obj.waypoints(i);
-
-    switch obj.mode
-        % case InterpolationModes.PV
-        case InterpolationModes.TP
-            wp3 = wp1.InterpolationTP(wp2,t);
-        case InterpolationModes.TPV0
-            wp3 = wp1.InterpolationTPV0(wp2,t);
-        otherwise
-            % warning('Unknown interpolation mode')
-            return
-    end
-    v = wp3.Velocity;
+    wp2 = wp1.Interpolation(t);
 
 end
 
@@ -264,10 +213,9 @@ function tr = Trace(obj, timeStep)
    
     %Get position in time instants
     for i = 1:length(instants)
-        p = obj.PositionAtTime(tr(i,1));
-        tr(i,2:4) = p;
-        v = obj.VelocityAtTime(tr(i,1));
-        tr(i,5:7) = v;
+        wp = obj.StatusAtTime(tr(i,1));
+        tr(i,2:4) = wp.pos;
+        tr(i,5:7) = wp.vel;
     end
     tr(end,5:7) = [0 0 0];
 end
@@ -287,9 +235,9 @@ function dist = DistanceTo(fp1, fp2, timeStep)
     %Get position in time instants
     for i = 1:length(instants)
         t = dist(i,1);
-        p1 = fp1.PositionAtTime(t);
-        p2 = fp2.PositionAtTime(t);
-        dist(i,2) = norm(p2-p1);
+        wp1 = fp1.StatusAtTime(t);
+        wp2 = fp2.StatusAtTime(t);
+        dist(i,2) = norm(wp2.pos-wp1.pos);
     end
 end
 
@@ -298,7 +246,6 @@ end
 function fp2 = Copy(fp1)
     % Dado un plan, genera una copia independiente 
     fp2 = FlightPlan(Waypoint.empty);
-    fp2.mode = fp1.mode;
     fp2.radius   = fp1.radius;
     fp2.priority = fp1.priority;
 
@@ -307,8 +254,12 @@ function fp2 = Copy(fp1)
         wp2 = Waypoint();
         wp2.t = wp1.t;
         wp2.label = wp1.label;
-        wp2.SetPosition(wp1.Position);
-        wp2.SetVelocity(wp1.Velocity);
+        wp2.pos  = wp1.pos;
+        wp2.vel  = wp1.vel;
+        wp2.acel = wp1.acel;
+        wp2.jerk = wp1.jerk;
+        wp2.jolt = wp1.jolt;
+        wp2.snap = wp1.snap;
         wp2.mandatory = wp1.mandatory;
         fp2.SetWaypoint(wp2);
     end
@@ -316,19 +267,16 @@ end
 
 
 
-function SetUniformVelocities(obj)
+function SetLinearMovement(obj)
     % Para cada waypoint asigna su vector velocidad 
     % asumiendo movimiento rectilíneo y uniforme
 
     for i = 1 : length(obj.waypoints)-1
         wpA = obj.waypoints(i);
         wpB = obj.waypoints(i+1);
-
-        dir = wpA.DirectionTo(wpB);
-        vel = wpA.UniformVelocityTo(wpB);
-        wpA.SetVelocity(dir*vel);
+        wpA.SetLinearMovement(wpB);
     end
-    wpB.SetVelocity([0 0 0]);
+    wpB.Stop();
 end
 
 
@@ -337,19 +285,12 @@ function fp2 = Convert2TP(fp1,timeStep)
     % Transform a TPV / TPV0 flight plan to a TP flight plan
 
     fp2 = FlightPlan(Waypoint.empty);
-    if fp1.mode == InterpolationModes.TP
-        return
-    end
-    
     fp2.radius   = fp1.radius;
     fp2.priority = fp1.priority;
 
     %Get position in time instants
     for i = fp1.InitTime : timeStep : fp1.FinishTime
-        wp = Waypoint();
-        wp.t = i;
-        p = fp1.PositionAtTime(i);
-        wp.SetPosition(p);
+        wp = fp1.StatusAtTime(i);
         fp2.SetWaypoint(wp);
     end
 end
@@ -370,15 +311,14 @@ function SmoothWaypoint(obj,label,ang_vel,lin_acel)
 
     wp1 = obj.waypoints(i-1);
     wp2 = obj.waypoints(i);    
-    wp3 = obj.waypoints(i+1);
 
     angle = wp1.AngleWith(wp2);
     tc = angle / ang_vel;     % time spent in the curve
     % r = v / angvel;         % radius of the curve
     % d = r * tan(angle/2);   % distance to the new waypoints
 
-    v1  = norm(wp1.Velocity);
-    v2  = norm(wp2.Velocity);
+    v1  = norm(wp1.vel);
+    v2  = norm(wp2.vel);
     ts  = abs(v2-v1)/lin_acel;
 
     interval = max([tc ts]);
@@ -407,15 +347,17 @@ function ExpandWaypoint(obj,label,interval)
 
     wp2A = Waypoint;
     wp2A.label = strcat(wp2.label,'_A');
-    wp2A.SetPosition(wp2.Position - wp1.Velocity * step);
-    wp2A.SetVelocity(wp1.Velocity);
+    wp2A.pos = wp2.pos - wp1.vel * step;
+    wp2A.vel = wp1.vel;
     wp2A.t = wp2.t - step;
 
     wp2B = Waypoint;
     wp2B.label = strcat(wp2.label,'_B');
-    wp2B.SetPosition(wp2.Position + wp2.Velocity * step);
-    wp2B.SetVelocity(wp2.Velocity);
+    wp2B.pos = wp2.pos + wp2.vel * step;
+    wp2B.vel = wp2.vel;
     wp2B.t = wp2.t + step;
+
+    wp2A.SetFlyableMovement(wp2B);
 
     obj.RemoveWaypointAtTime(wp2.t);
     obj.SetWaypoint(wp2A);
@@ -423,55 +365,6 @@ function ExpandWaypoint(obj,label,interval)
 
 end
 
-
-
-% function ApplyConstantDubinsAt(obj,label,angvel)
-% 
-%     i = obj.GetIndexFromLabel(label);
-%     if i <= 1  ||  length(obj.waypoints) <= i
-%         return
-%     end
-% 
-%     wp1 = obj.waypoints(i-1);
-%     wp2 = obj.waypoints(i);    
-%     wp3 = obj.waypoints(i+1);
-% 
-%     v1  = norm(wp1.Velocity);
-%     v2  = norm(wp2.Velocity);
-%     v3  = norm(wp3.Velocity);
-% 
-%     r = v2 / angvel;                % radius of the curve
-%     angle = wp1.AngleWith(wp2);
-%     d = r * tan(angle/2);           % distance to the new waypoints
-%     s = r * angle;                  % curved distance covered
-% 
-%     if d > wp1.DistanceTo(wp2) || d > wp2.DistanceTo(wp3)
-%        return  % there is not space for dubins maneuvre
-%     end
-% 
-%     wp2A = Waypoint;
-%     wp2A.label = strcat(wp2.label,'_A');
-%     wp2A.SetPosition(wp2.Position + d * wp2.DirectionTo(wp1));
-% %    wp2A.SetVelocity(wp1.DirectionTo(wp2) * v2 );
-%     % wp2A.t = wp1.t + wp1.DistanceTo(wp2A) * 4 / (3*v1 + v2);
-%     wp2A.SetVelocity(wp1.velocity);
-%     wp2A.t = wp2.t - d/v2;
-%     obj.SetWaypoint(wp2A);
-% 
-%     wp2B = Waypoint;
-%     wp2B.label = strcat(wp2.label,'_B');
-%     wp2B.SetPosition(wp2.Position + d * wp2.DirectionTo(wp3));
-%     wp2B.SetVelocity(wp2.Velocity);
-%     wp2B.t = wp2A.t + s/v2 ;
-%     obj.SetWaypoint(wp2B);
-% 
-%     obj.RemoveWaypointAtTime(wp2.t);
-% 
-%     t3 = wp2B.t + wp2B.DistanceTo(wp3) * 4 / (3*v2 + v3);
-%     obj.PostponeFrom(wp3.t, t3-wp3.t);
-% 
-% end
-% 
 
 
 function PositionFigure(obj,figName,time_step)
@@ -506,7 +399,7 @@ function PositionFigure(obj,figName,time_step)
     color = [0 0.7 1];
  
     %Display Position 3D
-    XYZtile = nexttile([3,3]);
+    nexttile([3,3]);
     title("Position 3D")
     hold on
     grid on
@@ -521,14 +414,15 @@ function PositionFigure(obj,figName,time_step)
         '-', ...
         LineWidth = 2, ...
         Color = color );
-    plot3([obj.waypoints(:).x], [obj.waypoints(:).y], [obj.waypoints(:).z], ...
-        'o',...
-        MarkerSize = 5, ...
-        MarkerFaceColor = 'white', ...
-        MarkerEdgeColor = color )
-       
+    for vertice = obj.waypoints
+        plot3(vertice.pos(1), vertice.pos(2), vertice.pos(3), ...
+            'o',...
+            MarkerSize = 5, ...
+            MarkerFaceColor = 'white', ...
+            MarkerEdgeColor = color )
+    end   
     %Display Position X versus time
-    Xtile   = nexttile([1,2]);
+    nexttile([1,2]);
     title("Position versus time");
     hold on
     grid on
@@ -539,14 +433,15 @@ function PositionFigure(obj,figName,time_step)
         '-', ...
         LineWidth = 2, ...
         Color = color )
-    plot([obj.waypoints(:).t], [obj.waypoints(:).x], ...
-        'o',...
-        MarkerSize = 5, ...
-        MarkerFaceColor = 'w', ...
-        MarkerEdgeColor = color )
-
+    for vertice = obj.waypoints
+        plot(vertice.t, vertice.pos(1), ...
+            'o',...
+            MarkerSize = 5, ...
+            MarkerFaceColor = 'w', ...
+            MarkerEdgeColor = color )
+    end
     %Display Position Y versus time
-    Ytile   = nexttile([1,2]);
+    nexttile([1,2]);
     % title("Position Y");
     hold on
     grid on
@@ -557,14 +452,16 @@ function PositionFigure(obj,figName,time_step)
         '-', ...
         LineWidth = 2, ...
         Color = color )
-    plot([obj.waypoints(:).t], [obj.waypoints(:).y], ...
-        'o',...
-        MarkerSize = 5, ...
-        MarkerFaceColor = 'white', ...
-        MarkerEdgeColor = color )
+    for vertice = obj.waypoints
+        plot(vertice.t, vertice.pos(2), ...
+            'o',...
+            MarkerSize = 5, ...
+            MarkerFaceColor = 'w', ...
+            MarkerEdgeColor = color )
+    end
 
     %Display Position Z versus time
-    Ztile   = nexttile([1,2]);
+    nexttile([1,2]);
     % title("Position Z");
     hold on
     grid on
@@ -575,11 +472,13 @@ function PositionFigure(obj,figName,time_step)
         '-', ...
         LineWidth = 2, ...
         Color = color )
-    plot([obj.waypoints(:).t], [obj.waypoints(:).z], ...
-        'o',...
-        MarkerSize = 5, ...
-        MarkerFaceColor = 'white', ...
-        MarkerEdgeColor = color )
+    for vertice = obj.waypoints
+        plot(vertice.t, vertice.pos(3), ...
+            'o',...
+            MarkerSize = 5, ...
+            MarkerFaceColor = 'w', ...
+            MarkerEdgeColor = color )
+    end
 
 end
 
@@ -616,7 +515,7 @@ function VelocityFigure(obj,figName,time_step)
     color = [0 0.7 1];
 
     %Display instant velocity
-    Vtile = nexttile([1,2]);
+    nexttile([1,2]);
     title("Velocity versus time")
     hold on
     grid on
@@ -629,7 +528,7 @@ function VelocityFigure(obj,figName,time_step)
         Color = color )
 
     %Display Velocity X versus time
-    Xtile   = nexttile([1,2]);
+    nexttile([1,2]);
     hold on
     grid on
     ylabel("vx [m/s]");
@@ -638,15 +537,17 @@ function VelocityFigure(obj,figName,time_step)
         '-', ...
         LineWidth = 2, ...
         Color = color )
-    if obj.mode == InterpolationModes.TPV0
-        plot([obj.waypoints(:).t], [obj.waypoints(:).vx], 'o',...
+
+    for vertice = obj.waypoints
+        plot(vertice.t, vertice.vel(1), ...
+            'o',...
             MarkerSize = 5, ...
             MarkerFaceColor = 'white', ...
             MarkerEdgeColor = color )
     end
 
     %Display Position Y versus time
-    Ytile   = nexttile([1,2]);
+    nexttile([1,2]);
     hold on
     grid on
     ylabel("vy [m/s]");
@@ -655,15 +556,17 @@ function VelocityFigure(obj,figName,time_step)
         '-', ...
         LineWidth = 2, ...
         Color = color )
-    if obj.mode == InterpolationModes.TPV0
-        plot([obj.waypoints(:).t], [obj.waypoints(:).vy], 'o',...
+
+    for vertice = obj.waypoints
+        plot(vertice.t, vertice.vel(2), ...
+            'o',...
             MarkerSize = 5, ...
             MarkerFaceColor = 'white', ...
             MarkerEdgeColor = color )
     end
 
     %Display Position Z versus time
-    Ztile   = nexttile([1,2]);
+    nexttile([1,2]);
     hold on
     grid on
     ylabel("vz [m/s]");
@@ -673,8 +576,11 @@ function VelocityFigure(obj,figName,time_step)
         '-', ...
         LineWidth = 2, ...
         Color = color )
-    if obj.mode == InterpolationModes.TPV0
-        plot([obj.waypoints(:).t], [obj.waypoints(:).vz], 'o',...
+
+
+    for vertice = obj.waypoints
+        plot(vertice.t, vertice.vel(3), ...
+            'o',...
             MarkerSize = 5, ...
             MarkerFaceColor = 'white', ...
             MarkerEdgeColor = color )
