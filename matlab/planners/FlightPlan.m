@@ -281,13 +281,10 @@ end
 
 
 
-function SetFlyableMovement(obj)
-    % Para cada waypoint con
-    % tiempo, posición, y velocidad determinados, 
-    % y aceleración nula 
-    % obtiene las 3 derivadas siguientes que ejecutan dicho movimiento
+function SmoothLinearMovement(obj,ang_vel,lin_acel)
+    % Suaviza los waypoints intermedios
 
-    for i = 1 : length(obj.waypoints)-1
+    for i = 2 : length(obj.waypoints)-1
         wpA = obj.waypoints(i);
         wpB = obj.waypoints(i+1);
         wpA.SetFlyableMovement(wpB);

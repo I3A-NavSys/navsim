@@ -29,11 +29,8 @@ vp2 = portsLoc(2,1:3);
 wp1L = Waypoint();
 wp1L.label = 'wp1L';
 
-% wp1M = Waypoint();
-% wp1M.label = 'wp1M';
-
-wp1H = Waypoint();
-wp1H.label = 'wp1H';
+wp1 = Waypoint();
+wp1.label = 'wp1';
 
 wp2  = Waypoint();
 wp2.label = 'wp2';
@@ -47,60 +44,50 @@ wp4.label = 'wp4';
 wp5  = Waypoint();
 wp5.label = 'wp5';
 
-wp6H = Waypoint();
-wp6H.label = 'wp6H';
-
-% wp6M = Waypoint();
-% wp6M.label = 'wp6M';
+wp6 = Waypoint();
+wp6.label = 'wp6';
 
 wp6L = Waypoint();
 wp6L.label = 'wp6L';
 
 % take off / landing positions
-wp1L.pos = vp1 + [0 0 0.25];
-wp6L.pos = vp2 + [0 0 0.25];
-
-% take off / landing approach positions
-% wp1M.pos = vp1 + [0 0 1];
-% wp6M.pos = vp2 + [0 0 1];
+wp1L.pos = vp1 + [0 0 0.10];
+wp6L.pos = vp2 + [0 0 0.10];
 
 % take off / landing hovering positions
-wp1H.pos = wp1L.pos;
-wp1H.pos(3) = 60;
-wp6H.pos = wp6L.pos;
-wp6H.pos(3) = wp1H.pos(3);
-
-wp1H.pos = wp1H.pos + 2  * wp1H.DirectionTo(wp6H);
-wp3.pos  = wp6H.pos - 10 * wp1H.DirectionTo(wp6H);
+wp1.pos = wp1L.pos;
+wp1.pos(3) = 70;
+wp6.pos = wp6L.pos;
+wp6.pos(3) = wp1.pos(3);
 
 % route             
-wp2.pos = wp1H.pos + [ 100  100 0];
+wp2.pos = wp1.pos  + [ 100  100 0];
 wp3.pos = wp2.pos  + [ 100    0 0];
 wp4.pos = wp3.pos  + [   0 -100 0];
 wp5.pos = wp4.pos  + [-100 -100 0];
 
+wp1.pos = wp1.pos + 20 * wp1.DirectionTo(wp2);
+wp6.pos = wp6.pos - 20 * wp5.DirectionTo(wp6);
+
+
 % Compose the flight plan
 fp1  = FlightPlan(Waypoint.empty);
 fp1.InsertWaypoint(wp1L);
-% fp1.InsertWaypoint(wp1M);
-fp1.InsertWaypoint(wp1H);
+fp1.InsertWaypoint(wp1);
 fp1.InsertWaypoint(wp2);
 fp1.InsertWaypoint(wp3);
 fp1.InsertWaypoint(wp4);
 fp1.InsertWaypoint(wp5);
-fp1.InsertWaypoint(wp6H);
-% fp1.InsertWaypoint(wp6M);
+fp1.InsertWaypoint(wp6);
 fp1.InsertWaypoint(wp6L);
 
 % waypoint time intervals
-fp1.SetTimeFromVel('wp1M',2);
-% fp1.SetTimeFromVel('wp1H',2);
+fp1.SetTimeFromVel('wp1' ,2);
 fp1.SetTimeFromVel('wp2' ,8);
 fp1.SetTimeFromVel('wp3' ,10);
 fp1.SetTimeFromVel('wp4' ,12);
 fp1.SetTimeFromVel('wp5' ,10);
-fp1.SetTimeFromVel('wp6H',8);
-% fp1.SetTimeFromVel('wp6M',2);
+fp1.SetTimeFromVel('wp6' ,8);
 fp1.SetTimeFromVel('wp6L',2);
 
 fp1.SetLinearMovement;
@@ -109,44 +96,36 @@ fp1.VelocityFigure("FP1: VELOCITY",0.01);
 
 
 fp2 = fp1.Copy();
-fp2.SetFlyableMovement;
+fp2.waypoints(1).pos = fp2.waypoints(1).pos - [0.5 0 0];
 fp2.PositionFigure("FP2: POSITION",0.1);
 fp2.VelocityFigure("FP2: VELOCITY",0.1);
 
-
-fp2.SmoothWaypoint('wp1M',0.4,3);
-fp2.PositionFigure("FP2: POSITION",0.1);
-fp2.VelocityFigure("FP2: VELOCITY",0.1);
-
-fp2.SmoothWaypoint('wp1H',0.4,3);
+ang_vel = 0.5;
+lin_acel =0.4;
+fp2.SmoothWaypoint('wp1',ang_vel,lin_acel);
 fp2.PositionFigure("FP2: POSITION",0.1);
 fp2.VelocityFigure("FP2: VELOCITY",0.1);
  
-fp2.SmoothWaypoint('wp2',0.4,3);
+fp2.SmoothWaypoint('wp2',ang_vel,lin_acel);
 fp2.PositionFigure("FP2: POSITION",0.1);
 fp2.VelocityFigure("FP2: VELOCITY",0.1);
 
-fp2.SmoothWaypoint('wp3',0.4,3);
+fp2.SmoothWaypoint('wp3',ang_vel,lin_acel);
 fp2.PositionFigure("FP2: POSITION",0.1);
 fp2.VelocityFigure("FP2: VELOCITY",0.1);
 
-fp2.SmoothWaypoint('wp4',0.4,3);
+fp2.SmoothWaypoint('wp4',ang_vel,lin_acel);
 fp2.PositionFigure("FP2: POSITION",0.1);
 fp2.VelocityFigure("FP2: VELOCITY",0.1);
 
-fp2.SmoothWaypoint('wp5',0.4,3);
+fp2.SmoothWaypoint('wp5',ang_vel,lin_acel);
 fp2.PositionFigure("FP2: POSITION",0.1);
 fp2.VelocityFigure("FP2: VELOCITY",0.1);
 
-fp2.SmoothWaypoint('wp6H',0.4,3);
+fp2.SmoothWaypoint('wp6',ang_vel,lin_acel);
 fp2.PositionFigure("FP2: POSITION",0.01);
 fp2.VelocityFigure("FP2: VELOCITY",0.01);
  
-fp2.SmoothWaypoint('wp6M',0.4,3);
-fp2.PositionFigure("FP2: POSITION",0.01);
-fp2.VelocityFigure("FP2: VELOCITY",0.01);
- 
-
 
 % -------------
 % Simulation
@@ -168,31 +147,32 @@ for i = 1:size(portsLoc,1)
 
 end
 
-% Deploy UAV01
+% Deploy UAVs
 operator.DeployUAV(info,'UAV01', ...
     [ -190.00  -119.00  +048.10 ],...
-    [    0.00     0.00   -pi/2  ]);
+    [    0.00     0.00     pi/4  ]);
 monitor.TrackUAV('UAV01');
 
-time = operator.GetTime();
-fp1.RescheduleAt(time + 10);
-operator.SendFlightPlan('UAV01',fp1);
-operator.WaitTime(fp1.FinishTime);
-
-monitor.PositionFigure('UAV01',fp1,0.01);
-monitor.VelocityFigure('UAV01',fp1,0.01);
-
-% Deploy UAV02
 operator.DeployUAV(info,'UAV02', ...
-    [ -190.00  -119.00  +048.10 ],...
-    [    0.00     0.00   -pi/2  ]);
+    [ -190.50  -119.00  +048.10 ],...
+    [    0.00     0.00     pi/4 ]);
 monitor.TrackUAV('UAV02');
 
-time = operator.GetTime();
-fp2.RescheduleAt(time + 10);
-operator.SendFlightPlan('UAV02',fp2);
-operator.WaitTime(fp2.FinishTime);
 
+
+time = operator.GetTime();
+
+fp1.RescheduleAt(time + 10);
+operator.SendFlightPlan('UAV01',fp1);
+
+fp2.RescheduleAt(time + 10.1);
+fp3 = fp2.Convert2TP(0.25);
+operator.SendFlightPlan('UAV02',fp3);
+
+
+operator.WaitTime(fp3.FinishTime);
+monitor.PositionFigure('UAV01',fp1,0.01);
+monitor.VelocityFigure('UAV01',fp1,0.01);
 monitor.PositionFigure('UAV02',fp2,0.01);
 monitor.VelocityFigure('UAV02',fp2,0.01);
 
