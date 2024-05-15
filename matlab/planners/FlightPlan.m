@@ -129,20 +129,20 @@ end
 
 
 
-% function SetTimeFromVel(obj, label, vel)
-%     if obj.mode ~= InterpolationModes.TP
-%         return
-%     end
-%     i = obj.GetIndexFromLabel(label);
-%     if i <= 1
-%         return
-%     end
-% 
-%     wp1 = obj.waypoints(i-1);
-%     wp2 = obj.waypoints(i);
-%     t = wp1.t + wp1.DistanceTo(wp2) / vel;
-%     obj.PostponeFrom(wp2.t, t-wp2.t);
-% end
+function SetTimeFromVel(obj, label, vel)
+    i = obj.GetIndexFromLabel(label);
+    if i <= 1
+        return
+    end
+
+    wp1 = obj.waypoints(i-1);
+    wp2 = obj.waypoints(i);
+
+    % wp1.Stop;
+    % wp1.vel = vel * wp1.DirectionTo(wp2);
+    t = wp1.t + wp1.DistanceTo(wp2) / vel;
+    obj.PostponeFrom(wp2.t, t-wp2.t);
+end
 
 
 
@@ -281,6 +281,22 @@ end
 
 
 
+function SetFlyableMovement(obj)
+    % Para cada waypoint con
+    % tiempo, posición, y velocidad determinados, 
+    % y aceleración nula 
+    % obtiene las 3 derivadas siguientes que ejecutan dicho movimiento
+
+    for i = 1 : length(obj.waypoints)-1
+        wpA = obj.waypoints(i);
+        wpB = obj.waypoints(i+1);
+        wpA.SetFlyableMovement(wpB);
+    end
+    wpB.Stop();
+end
+
+
+
 function fp2 = Convert2TP(fp1,timeStep)
     % Transform a TPV / TPV0 flight plan to a TP flight plan
 
@@ -300,9 +316,7 @@ end
 function SmoothWaypoint(obj,label,ang_vel,lin_acel)
     % suaviza un waypoint descomponiendolo en dos
     % el intervalo entre ambos se obtiene de forma que no se exceda ciertas
-    %   velocidad angular maxima
-
-    % genera una curva en dicho vertice
+    % aceleracion lineal y velocidad angular maximas
 
     i = obj.GetIndexFromLabel(label);
     if i <= 1  ||  length(obj.waypoints) <= i

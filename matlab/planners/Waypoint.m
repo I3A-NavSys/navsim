@@ -125,7 +125,9 @@ end
 
 
 function SetFlyableMovement(wp1,wp2)
-    % Dados dos waypoints con tiempo, posición, velocidad y aceleración nula 
+    % Dados dos waypoints con 
+    % tiempo, posición, y velocidad determinados
+    % y aceleración nula 
     % obtiene las 3 derivadas siguientes que ejecutan dicho movimiento
 
     wp1.CheckWaypoint(wp2);

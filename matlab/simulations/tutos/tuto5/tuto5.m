@@ -29,8 +29,8 @@ vp2 = portsLoc(2,1:3);
 wp1L = Waypoint();
 wp1L.label = 'wp1L';
 
-wp1M = Waypoint();
-wp1M.label = 'wp1M';
+% wp1M = Waypoint();
+% wp1M.label = 'wp1M';
 
 wp1H = Waypoint();
 wp1H.label = 'wp1H';
@@ -50,93 +50,101 @@ wp5.label = 'wp5';
 wp6H = Waypoint();
 wp6H.label = 'wp6H';
 
-wp6M = Waypoint();
-wp6M.label = 'wp6M';
+% wp6M = Waypoint();
+% wp6M.label = 'wp6M';
 
 wp6L = Waypoint();
 wp6L.label = 'wp6L';
 
 % take off / landing positions
-wp1L.SetPosition(vp1+[0 0 0.25]);
-wp6L.SetPosition(vp2+[0 0 0.25]);
+wp1L.pos = vp1 + [0 0 0.25];
+wp6L.pos = vp2 + [0 0 0.25];
 
 % take off / landing approach positions
-wp1M.SetPosition(vp1+[0 0 1]);
-wp6M.SetPosition(vp2+[0 0 1]);
+% wp1M.pos = vp1 + [0 0 1];
+% wp6M.pos = vp2 + [0 0 1];
 
 % take off / landing hovering positions
-wp1H.SetPosition(wp1L.Position);
-wp1H.z = 60;
-wp6H.SetPosition(wp6L.Position);
-wp6H.z = wp1H.z;
+wp1H.pos = wp1L.pos;
+wp1H.pos(3) = 60;
+wp6H.pos = wp6L.pos;
+wp6H.pos(3) = wp1H.pos(3);
 
-wp1H.SetPosition(wp1H.Position + 2 * wp1H.DirectionTo(wp6H));
-wp3.SetPosition(wp6H.Position - 10 * wp1H.DirectionTo(wp6H));
+wp1H.pos = wp1H.pos + 2  * wp1H.DirectionTo(wp6H);
+wp3.pos  = wp6H.pos - 10 * wp1H.DirectionTo(wp6H);
 
 % route             
-wp2.SetPosition(wp1H.Position + [ 100  100 0]);
-wp3.SetPosition(wp2.Position  + [ 100    0 0]);
-wp4.SetPosition(wp3.Position  + [   0 -100 0]);
-wp5.SetPosition(wp4.Position  + [-100 -100 0]);
+wp2.pos = wp1H.pos + [ 100  100 0];
+wp3.pos = wp2.pos  + [ 100    0 0];
+wp4.pos = wp3.pos  + [   0 -100 0];
+wp5.pos = wp4.pos  + [-100 -100 0];
 
 % Compose the flight plan
 fp1  = FlightPlan(Waypoint.empty);
-fp1.mode = InterpolationModes.TP;
-
 fp1.InsertWaypoint(wp1L);
-fp1.InsertWaypoint(wp1M);
+% fp1.InsertWaypoint(wp1M);
 fp1.InsertWaypoint(wp1H);
 fp1.InsertWaypoint(wp2);
 fp1.InsertWaypoint(wp3);
 fp1.InsertWaypoint(wp4);
 fp1.InsertWaypoint(wp5);
 fp1.InsertWaypoint(wp6H);
-fp1.InsertWaypoint(wp6M);
+% fp1.InsertWaypoint(wp6M);
 fp1.InsertWaypoint(wp6L);
 
 % waypoint time intervals
-fp1.SetTimeFromVel('wp1M',0.2);
-fp1.SetTimeFromVel('wp1H',2);
+fp1.SetTimeFromVel('wp1M',2);
+% fp1.SetTimeFromVel('wp1H',2);
 fp1.SetTimeFromVel('wp2' ,8);
 fp1.SetTimeFromVel('wp3' ,10);
 fp1.SetTimeFromVel('wp4' ,12);
 fp1.SetTimeFromVel('wp5' ,10);
 fp1.SetTimeFromVel('wp6H',8);
-fp1.SetTimeFromVel('wp6M',2);
-fp1.SetTimeFromVel('wp6L',0.2);
+% fp1.SetTimeFromVel('wp6M',2);
+fp1.SetTimeFromVel('wp6L',2);
+
+fp1.SetLinearMovement;
 fp1.PositionFigure("FP1: POSITION",0.01);
 fp1.VelocityFigure("FP1: VELOCITY",0.01);
 
 
-fp2 = fp1.Convert2TPV0();
-fp2.mode = InterpolationModes.TPV0;
-% fp2.PositionFigure("FP2: POSITION",0.1);
-% fp2.VelocityFigure("FP2: VELOCITY",0.1);
-% 
-fp2.ApplyDubinsAt('wp1H',1);
-% fp2.PositionFigure("FP2: POSITION",0.1);
-% fp2.VelocityFigure("FP2: VELOCITY",0.1);
-% 
-fp2.ApplyDubinsAt('wp2',0.5);
-% fp2.PositionFigure("FP2: POSITION",0.1);
-% fp2.VelocityFigure("FP2: VELOCITY",0.1);
+fp2 = fp1.Copy();
+fp2.SetFlyableMovement;
+fp2.PositionFigure("FP2: POSITION",0.1);
+fp2.VelocityFigure("FP2: VELOCITY",0.1);
 
-fp2.ApplyDubinsAt('wp3',0.5);
-% fp2.PositionFigure("FP2: POSITION",0.1);
-% fp2.VelocityFigure("FP2: VELOCITY",0.1);
 
-fp2.ApplyDubinsAt('wp4',0.5);
-% fp2.PositionFigure("FP2: POSITION",0.1);
-% fp2.VelocityFigure("FP2: VELOCITY",0.1);
-% 
-fp2.ApplyDubinsAt('wp5',0.5);
-% fp2.PositionFigure("FP2: POSITION",0.1);
-% fp2.VelocityFigure("FP2: VELOCITY",0.1);
-% 
-fp2.ApplyDubinsAt('wp6H',0.5);
+fp2.SmoothWaypoint('wp1M',0.4,3);
+fp2.PositionFigure("FP2: POSITION",0.1);
+fp2.VelocityFigure("FP2: VELOCITY",0.1);
+
+fp2.SmoothWaypoint('wp1H',0.4,3);
+fp2.PositionFigure("FP2: POSITION",0.1);
+fp2.VelocityFigure("FP2: VELOCITY",0.1);
+ 
+fp2.SmoothWaypoint('wp2',0.4,3);
+fp2.PositionFigure("FP2: POSITION",0.1);
+fp2.VelocityFigure("FP2: VELOCITY",0.1);
+
+fp2.SmoothWaypoint('wp3',0.4,3);
+fp2.PositionFigure("FP2: POSITION",0.1);
+fp2.VelocityFigure("FP2: VELOCITY",0.1);
+
+fp2.SmoothWaypoint('wp4',0.4,3);
+fp2.PositionFigure("FP2: POSITION",0.1);
+fp2.VelocityFigure("FP2: VELOCITY",0.1);
+
+fp2.SmoothWaypoint('wp5',0.4,3);
+fp2.PositionFigure("FP2: POSITION",0.1);
+fp2.VelocityFigure("FP2: VELOCITY",0.1);
+
+fp2.SmoothWaypoint('wp6H',0.4,3);
 fp2.PositionFigure("FP2: POSITION",0.01);
 fp2.VelocityFigure("FP2: VELOCITY",0.01);
  
+fp2.SmoothWaypoint('wp6M',0.4,3);
+fp2.PositionFigure("FP2: POSITION",0.01);
+fp2.VelocityFigure("FP2: VELOCITY",0.01);
  
 
 
