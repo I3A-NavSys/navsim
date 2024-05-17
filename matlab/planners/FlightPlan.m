@@ -34,7 +34,6 @@ end
 
 function SetWaypoint(obj,waypoint)
     
-    %Check if the waypoint is a Waypoint object
     if ~isa(waypoint,'Waypoint')
         error('The waypoint must be a Waypoint object');
     end
@@ -59,7 +58,6 @@ end
 function InsertWaypoint(obj,waypoint)
 % introduces a WP at the end (1s later) of the flight plan
 
-    %Check if the waypoint is a Waypoint object
     if ~isa(waypoint,'Waypoint')
         error('The waypoint must be a Waypoint object');
     end
@@ -159,9 +157,13 @@ function PostponeFrom(obj, time, timeStep)
             break
         end
     end
-
-    for i = i:length(obj.waypoints)
-        obj.waypoints(i).Postpone(timeStep);
+    if i > 1
+        if timeStep < obj.waypoints(i).TimeTo(obj.waypoints(i-1))
+            return      % there is not time enough in the past
+        end
+    end
+    for j = i:length(obj.waypoints)
+        obj.waypoints(j).Postpone(timeStep);
     end
 end
 

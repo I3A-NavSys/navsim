@@ -95,6 +95,11 @@ fp1.PositionFigure("FP1: POSITION",0.01);
 fp1.VelocityFigure("FP1: VELOCITY",0.01);
 
 
+fp1.PostponeFrom(10,-50);
+
+
+
+
 fp2 = fp1.Copy();
 fp2.waypoints(1).pos = fp2.waypoints(1).pos - [0.5 0 0];
 fp2.PositionFigure("FP2: POSITION",0.1);
