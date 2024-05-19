@@ -66,7 +66,7 @@ int currentWP = -1;
 
 double maxVarLinVel = 5;   // maximum variation in linear  velocity   [  m/s]
 double maxVarAngVel = 2;   // maximum variation in angular velocity   [rad/s]
-double targetStep   = 2;   // Compute targetPos targetStep seconds later  [s]
+double targetStep   = 1.5; // Compute targetPos targetStep seconds later  [s]
 
 
 // rotor engine status on/off
