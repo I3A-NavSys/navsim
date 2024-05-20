@@ -119,7 +119,7 @@ fp2.waypoints(2).pos = fp2.waypoints(2).pos + [0.5 0 0];
 % fp2.PositionFigure("FP2: POSITION",0.1);
 % fp2.VelocityFigure("FP2: VELOCITY",0.1);
 
-ang_vel = 0.5;
+ang_vel = 0.2;
 lin_acel =0.4;
 
 
@@ -152,8 +152,8 @@ fp2.SmoothWaypoint('wp6',ang_vel,lin_acel);
 % fp2.VelocityFigure("FP2: VELOCITY",0.01);
  
 fp2.SmoothWaypoint('wp6L',ang_vel,lin_acel);
-% fp2.PositionFigure("FP2: POSITION",0.1);
-% fp2.VelocityFigure("FP2: VELOCITY",0.1);
+fp2.PositionFigure("FP2: POSITION",0.1);
+fp2.VelocityFigure("FP2: VELOCITY",0.1);
 
 
 % -------------
@@ -194,7 +194,7 @@ time = operator.GetTime();
 fp1.RescheduleAt(time + 10);
 operator.SendFlightPlan('UAV01',fp1);
 pause(0.2);
-fp2.RescheduleAt(time + 11.1);
+fp2.RescheduleAt(time + 12);
 % fp3 = fp2.Convert2TP(0.25);
 operator.SendFlightPlan('UAV02',fp2);
 
