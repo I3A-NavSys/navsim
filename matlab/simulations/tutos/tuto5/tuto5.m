@@ -114,7 +114,8 @@ fp1.PostponeFrom(10,-50);
 
 
 fp2 = fp1.Copy();
-fp2.waypoints(1).pos = fp2.waypoints(1).pos - [0.5 0 0];
+fp2.waypoints(1).pos = fp2.waypoints(1).pos + [0.5 0 0];
+fp2.waypoints(2).pos = fp2.waypoints(2).pos + [0.5 0 0];
 % fp2.PositionFigure("FP2: POSITION",0.1);
 % fp2.VelocityFigure("FP2: VELOCITY",0.1);
 
@@ -182,7 +183,7 @@ operator.DeployUAV(info,'UAV01', ...
 monitor.TrackUAV('UAV01');
 
 operator.DeployUAV(info,'UAV02', ...
-    [ -190.50  -119.00  +048.10 ],...
+    [ -189.50  -119.00  +048.10 ],...
     [    0.00     0.00     pi/4 ]);
 monitor.TrackUAV('UAV02');
 
@@ -192,13 +193,13 @@ time = operator.GetTime();
 
 fp1.RescheduleAt(time + 10);
 operator.SendFlightPlan('UAV01',fp1);
+pause(0.2);
+fp2.RescheduleAt(time + 11.1);
+% fp3 = fp2.Convert2TP(0.25);
+operator.SendFlightPlan('UAV02',fp2);
 
-fp2.RescheduleAt(time + 10.2);
-fp3 = fp2.Convert2TP(0.25);
-operator.SendFlightPlan('UAV02',fp3);
 
-
-operator.WaitTime(fp3.FinishTime);
+operator.WaitTime(fp2.FinishTime);
 monitor.PositionFigure('UAV01',fp1,0.01);
 monitor.VelocityFigure('UAV01',fp1,0.01);
 monitor.PositionFigure('UAV02',fp2,0.01);
