@@ -64,9 +64,9 @@ navsim_msgs::msg::FlightPlan::SharedPtr fp = nullptr;
 
 int currentWP = -1;  
 
-double maxVarLinVel = 5;   // maximum variation in linear  velocity   [  m/s]
-double maxVarAngVel = 0.1; // maximum variation in angular velocity   [rad/s]
-double targetStep   = 1;   // Compute targetPos targetStep seconds later  [s]
+double maxVarLinVel = 6;    // maximum variation in linear  velocity   [  m/s]
+double maxVarAngVel = 0.2;  // maximum variation in angular velocity   [rad/s]
+double targetStep   = 1;  // Compute targetPos targetStep seconds later  [s]
 
 
 // rotor engine status on/off
