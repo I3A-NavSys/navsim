@@ -325,17 +325,25 @@ function SmoothWaypoint(obj,label,ang_vel,lin_acel)
     wp1 = obj.waypoints(i-1);
     wp2 = obj.waypoints(i);    
 
-    angle = wp1.AngleWith(wp2);
-    tc = angle / ang_vel;     % time spent in the curve
-    % r = v / angvel;         % radius of the curve
-    % d = r * tan(angle/2);   % distance to the new waypoints
+    if wp2.mandatory
+        
+        wp1.SetFlyableMovement(wp2);
+        
+    else
 
-    v1  = norm(wp1.vel);
-    v2  = norm(wp2.vel);
-    ts  = abs(v2-v1)/lin_acel;
-
-    interval = max([tc ts]);
-    obj.ExpandWaypoint(label,interval)
+        angle = wp1.AngleWith(wp2);
+        tc = angle / ang_vel;     % time spent in the curve
+        % r = v / angvel;         % radius of the curve
+        % d = r * tan(angle/2);   % distance to the new waypoints
+    
+        v1  = norm(wp1.vel);
+        v2  = norm(wp2.vel);
+        ts  = abs(v2-v1)/lin_acel;
+    
+        interval = max([tc ts]);
+        obj.ExpandWaypoint(label,interval)
+        
+    end
 
 end
 

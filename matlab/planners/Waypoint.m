@@ -13,7 +13,7 @@ jolt = [0 0 0];    % jolt          (m/s4)
 snap = [0 0 0];    % snap          (m/s5)
 
 % transito obligado
-mandatory = true;
+mandatory = false;
 
 end
 
