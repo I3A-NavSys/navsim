@@ -64,9 +64,9 @@ navsim_msgs::msg::FlightPlan::SharedPtr fp = nullptr;
 
 int currentWP = -1;  
 
-double maxVarLinVel = 5;    // maximum variation in linear  velocity   [  m/cycle]
-double maxVarAngVel = 1;    // maximum variation in angular velocity   [rad/cycle]
-double targetStep   = 1.5;  // Compute targetPos targetStep seconds later  [s]
+double maxVarLinVel = 5;    // maximum variation in linear  velocity   [  m/s]
+double maxVarAngVel = 0;    // maximum variation in angular velocity   [rad/s]
+double targetStep   = 2;    // Correct position in targetStep time     [s]
 
 
 // rotor engine status on/off
@@ -330,7 +330,7 @@ void Navigation()
     ignition::math::Pose3<double> pose = model->WorldPose();
     ignition::math::Vector3<double> currentPos = pose.Pos();
     double currentYaw = pose.Yaw();
-    ignition::math::Vector3<double> currentAbsVel = model->WorldLinearVel();
+    ignition::math::Vector3<double> currentVel = model->WorldLinearVel();
 
 
     // Navigation status has changed?
@@ -402,28 +402,46 @@ void Navigation()
 
 
 
-    // COMPUTING TARGET POSITION
-    ignition::math::Vector3<double> targetPos = PositionAtTime(currentTime + step);
+    // COMPUTING DESIRED POSITION / VELOCITY
+    ignition::math::Vector3<double> desPos = PositionAtTime(currentTime);
+    ignition::math::Vector3<double> desVel = VelocityAtTime(currentTime);
 
-    // COMPUTING TARGET ABSOLUTE LINEAR VELOCITY (to achieve targetPos in 'targetStep' seconds)
-    ignition::math::Vector3<double> targetAbsVel = (targetPos - currentPos) / step;
-    ignition::math::Vector3<double> variationAbsVel = targetAbsVel - currentAbsVel;
-    if (variationAbsVel.Length() > maxVarLinVel)
+    // COMPUTING CORRECTION VELOCITY (to achieve dPos in 'targetStep' seconds)
+    ignition::math::Vector3<double> crVel = (desPos - currentPos) / step;
+
+    // COMPUTING COMMANDED VELOCITY
+    ignition::math::Vector3<double> cmdVel = desVel + crVel;
+
+    // SMOOTHING COMMANDED VELOCITY
+    ignition::math::Vector3<double> varVel = cmdVel - currentVel;
+    if (varVel.Length() > maxVarLinVel)
     {
-        variationAbsVel.Normalize();
-        variationAbsVel *= maxVarLinVel;
+        varVel.Normalize();
+        varVel *= maxVarLinVel;
     }
-    targetAbsVel = currentAbsVel + variationAbsVel;
+    cmdVel = currentVel + varVel;
 
 
     // COMPUTING DRONE RELATIVE LINEAR VELOCITY
     ignition::math::Quaterniond orientation = pose.Rot();
-    ignition::math::Vector3d targetRelVel = orientation.RotateVectorReverse(targetAbsVel);
+    ignition::math::Vector3d cmdRelVel = orientation.RotateVectorReverse(cmdVel);
 
 
 
     // COMPUTING TARGET ERROR YAW
-    double targetYaw = YawAtTime(currentTime + targetStep);
+    ignition::math::Vector3<double> targetDir = cmdVel;
+    targetDir.Z() = 0;
+
+    double targetYaw;
+    if (targetDir.Length() == 0)
+    {
+        targetYaw = model->WorldPose().Yaw();
+    }
+    else
+    {
+        targetYaw = atan2(targetDir.Y(), targetDir.X());
+    }
+
     double errorYaw = targetYaw - currentYaw;
     while (errorYaw < -M_PI)
     {
@@ -444,14 +462,15 @@ void Navigation()
     if (maxVarAngVel < currentWel)
     {
         currentWel = maxVarAngVel;
+        
     }
 
 
     // CREATING COMMANDED RELATIVE VELOCITY VECTOR
     cmd_on   = true;
-    cmd_velX = targetRelVel.X();
-    cmd_velY = targetRelVel.Y();
-    cmd_velZ = targetRelVel.Z();
+    cmd_velX = cmdRelVel.X();
+    cmd_velY = cmdRelVel.Y();
+    cmd_velZ = cmdRelVel.Z();
     cmd_rotZ = currentWel; 
 
     common::Time duration;
@@ -546,14 +565,12 @@ ignition::math::Vector3<double> VelocityAtTime(common::Time t2)
     if ( i==0 )
     {
         // The drone is waiting to start the FP
-        navsim_msgs::msg::Waypoint WP = fp->route[0];
         v2 = ignition::math::Vector3d(0,0,0);
     }
 
     else if ( i==numWPs )
     {
         // The drone has completed the FP
-        navsim_msgs::msg::Waypoint WP = fp->route[i-1];
         v2 = ignition::math::Vector3d(0,0,0);
     }
 
@@ -584,34 +601,34 @@ ignition::math::Vector3<double> VelocityAtTime(common::Time t2)
 
 
 
-double YawAtTime(common::Time t)
-{
-
-    int i = GetWPatTime(t);
-    int numWPs = fp->route.size();
-    if (i == numWPs)
-    {
-        i--;
-    }
-    
-    navsim_msgs::msg::Waypoint WP1 = fp->route[i-1];
-    ignition::math::Vector3<double> prevWPpos = ignition::math::Vector3d(WP1.pos.x,WP1.pos.y,WP1.pos.z);
-
-    navsim_msgs::msg::Waypoint WP2 = fp->route[i];
-    ignition::math::Vector3<double> currentWPpos = ignition::math::Vector3d(WP2.pos.x,WP2.pos.y,WP2.pos.z);
-    
-    ignition::math::Vector3<double> targetDir = currentWPpos - prevWPpos;
-    targetDir.Z() = 0;
-
-    double targetYaw;
-    if (targetDir.Length() < 1)
-         targetYaw = model->WorldPose().Yaw();
-    else
-        targetYaw = atan2(targetDir.Y(), targetDir.X());
-
-    return targetYaw;
-
-}
+// double YawAtTime(common::Time t)
+// {
+//
+//     int i = GetWPatTime(t);
+//     int numWPs = fp->route.size();
+//     if (i == numWPs)
+//     {
+//         i--;
+//     }
+//    
+//     navsim_msgs::msg::Waypoint WP1 = fp->route[i-1];
+//     ignition::math::Vector3<double> prevWPpos = ignition::math::Vector3d(WP1.pos.x,WP1.pos.y,WP1.pos.z);
+//
+//     navsim_msgs::msg::Waypoint WP2 = fp->route[i];
+//     ignition::math::Vector3<double> currentWPpos = ignition::math::Vector3d(WP2.pos.x,WP2.pos.y,WP2.pos.z);
+//    
+//     ignition::math::Vector3<double> targetDir = currentWPpos - prevWPpos;
+//     targetDir.Z() = 0;
+//
+//     double targetYaw;
+//     if (targetDir.Length() < 1)
+//          targetYaw = model->WorldPose().Yaw();
+//     else
+//         targetYaw = atan2(targetDir.Y(), targetDir.X());
+//
+//     return targetYaw;
+//
+// }
 
 
 
