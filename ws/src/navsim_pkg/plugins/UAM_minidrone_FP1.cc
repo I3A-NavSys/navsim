@@ -232,6 +232,7 @@ void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
 
 
 
+
 void Init()
 {
     // printf("DC Navigation event: Init\n");
@@ -254,6 +255,7 @@ void Init()
 ////////////////////////////
 
 }
+
 
 
 
@@ -280,6 +282,7 @@ void OnWorldUpdateBegin()
     Telemetry();
 
 }
+
 
 
 
@@ -533,51 +536,50 @@ ignition::math::Vector3<double> PositionAtTime(common::Time t2)
 
 
 
-// ignition::math::Vector3<double> PositionAtTime(common::Time t)
-// {
-//     ignition::math::Vector3<double> targetPos;
-// 
-//     int numWPs = fp->route.size();
-//     int i = GetWPatTime(t);
-// 
-//     if ( i==0 )
-//     {
-//         // The drone is waiting to start the FP
-//         navsim_msgs::msg::Waypoint WP = fp->route[0];
-//         targetPos = ignition::math::Vector3d(WP.pos.x,WP.pos.y,WP.pos.z);
-//     }
-// 
-//     else if ( i==numWPs )
-//     {
-//         // The drone has completed the FP
-//         navsim_msgs::msg::Waypoint WP = fp->route[i-1];
-//         targetPos = ignition::math::Vector3d(WP.pos.x,WP.pos.y,WP.pos.z);
-//     }
-// 
-//     else
-//     {
-//         // The drone is executing the FP
-//         navsim_msgs::msg::Waypoint WP1 = fp->route[i-1];
-//         ignition::math::Vector3<double> pos1 = ignition::math::Vector3d(WP1.pos.x,WP1.pos.y,WP1.pos.z);
-//         navsim_msgs::msg::Waypoint WP2 = fp->route[i];
-//         ignition::math::Vector3<double> pos2 = ignition::math::Vector3d(WP2.pos.x,WP2.pos.y,WP2.pos.z);
-// 
-//         common::Time t1;
-//         t1.sec  = WP1.time.sec;
-//         t1.nsec = WP1.time.nanosec;
-// 
-//         common::Time t2;
-//         t2.sec  = WP2.time.sec;
-//         t2.nsec = WP2.time.nanosec;
-// 
-//         double interpol = (t-t1).Double() / (t2-t1).Double() ;
-//         targetPos = pos1 + interpol * (pos2 - pos1);
-// 
-//     }
-// 
-//     return targetPos;
-//
-// }
+ignition::math::Vector3<double> VelocityAtTime(common::Time t2)
+{
+    ignition::math::Vector3<double> v2;
+    
+    int numWPs = fp->route.size();
+    int i = GetWPatTime(t2);
+
+    if ( i==0 )
+    {
+        // The drone is waiting to start the FP
+        navsim_msgs::msg::Waypoint WP = fp->route[0];
+        v2 = ignition::math::Vector3d(0,0,0);
+    }
+
+    else if ( i==numWPs )
+    {
+        // The drone has completed the FP
+        navsim_msgs::msg::Waypoint WP = fp->route[i-1];
+        v2 = ignition::math::Vector3d(0,0,0);
+    }
+
+    else
+    {
+        // The drone is executing the FP
+        navsim_msgs::msg::Waypoint WP1 = fp->route[i-1];
+ 
+        common::Time t1;
+        t1.sec  = WP1.time.sec;
+        t1.nsec = WP1.time.nanosec;
+        double t = (t2-t1).Double();
+
+        ignition::math::Vector3<double> v1 = ignition::math::Vector3d(WP1.vel.x, WP1.vel.y, WP1.vel.z);
+        ignition::math::Vector3<double> a1 = ignition::math::Vector3d(WP1.acel.x,WP1.acel.y,WP1.acel.z);
+        ignition::math::Vector3<double> j1 = ignition::math::Vector3d(WP1.jerk.x,WP1.jerk.y,WP1.jerk.z);
+        ignition::math::Vector3<double> l1 = ignition::math::Vector3d(WP1.jolt.x,WP1.jolt.y,WP1.jolt.z);
+        ignition::math::Vector3<double> s1 = ignition::math::Vector3d(WP1.snap.x,WP1.snap.y,WP1.snap.z);
+
+        v2 = v1 + a1*t + j1*pow(t,2)/2 + l1*pow(t,3)/6 + s1*pow(t,4)/24 ;
+
+    }
+    
+    return v2;
+
+}
 
 
 
