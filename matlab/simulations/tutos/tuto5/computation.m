@@ -72,10 +72,10 @@ wp3.pos = wp2.pos  + [ 200    0 0];
 wp4.pos = wp3.pos  + [   0 -200 0];
 wp5.pos = wp4.pos  + [-100 -100 0];
 
-% desplazamos los puntos de inicio y fin de ruta 20 metros
-% para que el despegue y el aterrizaje no sean completamente verticales
-wp1.pos = wp1.pos + 20 * wp1.DirectionTo(wp2);
-wp6.pos = wp6.pos + 20 * wp6.DirectionTo(wp5);
+% % desplazamos los puntos de inicio y fin de ruta 20 metros
+% % para que el despegue y el aterrizaje no sean completamente verticales
+% wp1.pos = wp1.pos + 20 * wp1.DirectionTo(wp2);
+% wp6.pos = wp6.pos + 20 * wp6.DirectionTo(wp5);
 
 % Compose the flight plan
 fp1  = FlightPlan(Waypoint.empty);
@@ -119,8 +119,8 @@ fp2.PositionFigure("FP2: POSITION",0.1);
 fp2.VelocityFigure("FP2: VELOCITY",0.1);
 
 %asumimos velocidad angular y aceleración lineal finitas
-ang_vel = 0.2;
-lin_acel =0.5;
+ang_vel = 0.1;
+lin_acel =0.4;
 
 % suavizamos el arranque del dron
 fp2.SmoothWaypoint('wp1P',ang_vel,lin_acel);

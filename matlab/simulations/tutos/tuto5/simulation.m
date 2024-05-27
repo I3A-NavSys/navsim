@@ -1,4 +1,7 @@
-% -------------
+
+clear builder operator monitor;
+clc
+
 % Simulation
 
 builder  = SimpleBuilder ('builder' ,NAVSIM_MODELS_PATH);
