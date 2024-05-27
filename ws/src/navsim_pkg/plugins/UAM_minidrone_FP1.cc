@@ -65,7 +65,7 @@ navsim_msgs::msg::FlightPlan::SharedPtr fp = nullptr;
 int currentWP = -1;  
 
 double maxVarLinVel = 5;    // maximum variation in linear  velocity   [  m/s]
-double maxVarAngVel = 0;    // maximum variation in angular velocity   [rad/s]
+double maxVarAngVel = 1;    // maximum variation in angular velocity   [rad/s]
 double targetStep   = 2;    // Correct position in targetStep time     [s]
 
 
