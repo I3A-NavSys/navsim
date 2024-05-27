@@ -154,9 +154,8 @@ function PositionFigure(obj,UAVid,fp,time_step)
     xlabel("t [s]");
     ylabel("error [m]");
 
-    plot([fp.InitTime fp.FinishTime], [fp.radius fp.radius], ...
-        "--", ...
-        Color = 'red' )
+    plot([fp.InitTime fp.FinishTime], [fp.radius fp.radius], "--", Color = 'red' )
+    % plot([fp.InitTime fp.FinishTime], [25 25], ".", Color = 'white' )
 
     timeValues  = [];
     errorValues = [];

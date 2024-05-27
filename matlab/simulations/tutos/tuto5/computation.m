@@ -67,10 +67,10 @@ wp6.pos(3) = wp1.pos(3);
 
 % route             
 wp2.pos = wp1.pos  + [ 100  100 0];
-wp3.pos = wp2.pos  + [ 200    0 0];
-% wp3.mandatory = true;
-wp4.pos = wp3.pos  + [   0 -200 0];
-wp5.pos = wp4.pos  + [-100 -100 0];
+wp3.pos = wp2.pos  + [   0  200 0];
+wp4.pos = wp3.pos  + [ 200    0 0];
+wp5.pos = wp4.pos  + [   0 -300 0];
+wp5.mandatory = true;
 
 % % desplazamos los puntos de inicio y fin de ruta 20 metros
 % % para que el despegue y el aterrizaje no sean completamente verticales
@@ -79,6 +79,7 @@ wp5.pos = wp4.pos  + [-100 -100 0];
 
 % Compose the flight plan
 fp1  = FlightPlan(Waypoint.empty);
+fp1.radius = 2;
 fp1.InsertWaypoint(wp1L);
 wp1P.t = fp1.FinishTime + 5;
 fp1.SetWaypoint(wp1P);
@@ -98,7 +99,7 @@ fp1.SetTimeFromVel('wp1' ,2);
 fp1.SetTimeFromVel('wp2' ,8);
 fp1.SetTimeFromVel('wp3' ,8);
 fp1.SetTimeFromVel('wp4' ,8);
-fp1.SetTimeFromVel('wp5' ,8);
+fp1.SetTimeFromVel('wp5' ,6);
 fp1.SetTimeFromVel('wp6' ,8);
 fp1.SetTimeFromVel('wp6L',2);
 
