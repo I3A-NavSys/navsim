@@ -70,7 +70,7 @@ wp2.pos = wp1.pos  + [ 100  100 0];
 wp3.pos = wp2.pos  + [   0  200 0];
 wp4.pos = wp3.pos  + [ 200    0 0];
 wp5.pos = wp4.pos  + [   0 -300 0];
-wp5.mandatory = true;
+% wp5.mandatory = true;
 
 % % desplazamos los puntos de inicio y fin de ruta 20 metros
 % % para que el despegue y el aterrizaje no sean completamente verticales
@@ -80,16 +80,16 @@ wp5.mandatory = true;
 % Compose the flight plan
 fp1  = FlightPlan(Waypoint.empty);
 fp1.radius = 2;
-fp1.InsertWaypoint(wp1L);
+fp1.AppendWaypoint(wp1L);
 wp1P.t = fp1.FinishTime + 5;
 fp1.SetWaypoint(wp1P);
-fp1.InsertWaypoint(wp1);
-fp1.InsertWaypoint(wp2);
-fp1.InsertWaypoint(wp3);
-fp1.InsertWaypoint(wp4);
-fp1.InsertWaypoint(wp5);
-fp1.InsertWaypoint(wp6);
-fp1.InsertWaypoint(wp6L);
+fp1.AppendWaypoint(wp1);
+fp1.AppendWaypoint(wp2);
+fp1.AppendWaypoint(wp3);
+fp1.AppendWaypoint(wp4);
+fp1.AppendWaypoint(wp5);
+fp1.AppendWaypoint(wp6);
+fp1.AppendWaypoint(wp6L);
 wp6P.t = fp1.FinishTime + 5;
 fp1.SetWaypoint(wp6P);
 
@@ -99,19 +99,19 @@ fp1.SetTimeFromVel('wp1' ,2);
 fp1.SetTimeFromVel('wp2' ,8);
 fp1.SetTimeFromVel('wp3' ,8);
 fp1.SetTimeFromVel('wp4' ,8);
-fp1.SetTimeFromVel('wp5' ,6);
+fp1.SetTimeFromVel('wp5' ,8);
 fp1.SetTimeFromVel('wp6' ,8);
 fp1.SetTimeFromVel('wp6L',2);
 
 % Asignamos el vector velocidad de cada waypoint para conseguir un
 % movimiento rectilineo uniforme
-fp1.SetLinearMovement;
+fp1.SetV0000;
 fp1.PositionFigure("FP1: POSITION",0.01);
 fp1.VelocityFigure("FP1: VELOCITY",0.01);
 
 
 % Vamos a hacer una copia de la ruta anterior con intención de suavizarla
-fp2 = fp1.Copy();
+fp2 = fp1.Copy;
 % Desplazamos ligeramente el par de puntos de inicio 
 % para que los dos drones no colisionen en el despegue
 fp2.waypoints(1).pos = fp2.waypoints(1).pos + [0.5 0 0];
@@ -119,42 +119,50 @@ fp2.waypoints(2).pos = fp2.waypoints(2).pos + [0.5 0 0];
 fp2.PositionFigure("FP2: POSITION",0.1);
 fp2.VelocityFigure("FP2: VELOCITY",0.1);
 
+
+
+
+
+
+
+
+
 %asumimos velocidad angular y aceleración lineal finitas
 ang_vel = 0.1;
 lin_acel =0.4;
 
 % suavizamos el arranque del dron
-fp2.SmoothWaypoint('wp1P',ang_vel,lin_acel);
+fp2.SmoothVertexMaintainingDuration('wp1P',ang_vel,lin_acel);
 fp2.PositionFigure("FP2: POSITION",0.1);
 fp2.VelocityFigure("FP2: VELOCITY",0.1);
 
 %suavizamos el final del ascenso
-fp2.SmoothWaypoint('wp1',ang_vel,lin_acel);
+fp2.SmoothVertexMaintainingDuration('wp1',ang_vel,lin_acel);
 fp2.PositionFigure("FP2: POSITION",0.1);
 fp2.VelocityFigure("FP2: VELOCITY",0.1);
  
 %suavizamos el paso por el waypoint 2
-fp2.SmoothWaypoint('wp2',ang_vel,lin_acel);
+fp2.SmoothVertexMaintainingDuration('wp2',ang_vel,lin_acel);
 fp2.PositionFigure("FP2: POSITION",0.1);
 fp2.VelocityFigure("FP2: VELOCITY",0.1);
 
-fp2.SmoothWaypoint('wp3',ang_vel,lin_acel);
+fp2.SmoothVertexMaintainingDuration('wp3',ang_vel,lin_acel);
 fp2.PositionFigure("FP2: POSITION",0.1);
 fp2.VelocityFigure("FP2: VELOCITY",0.1);
 
-fp2.SmoothWaypoint('wp4',ang_vel,lin_acel);
+fp2.SmoothVertexMaintainingDuration('wp4',ang_vel,lin_acel);
 fp2.PositionFigure("FP2: POSITION",0.1);
 fp2.VelocityFigure("FP2: VELOCITY",0.1);
 
-fp2.SmoothWaypoint('wp5',ang_vel,lin_acel);
+fp2.SmoothVertex('wp5',ang_vel,lin_acel);
 fp2.PositionFigure("FP2: POSITION",0.1);
 fp2.VelocityFigure("FP2: VELOCITY",0.1);
 
-fp2.SmoothWaypoint('wp6',ang_vel,lin_acel);
+fp2.SmoothVertexMaintainingDuration('wp6',ang_vel,lin_acel);
 fp2.PositionFigure("FP2: POSITION",0.01);
 fp2.VelocityFigure("FP2: VELOCITY",0.01);
  
-fp2.SmoothWaypoint('wp6L',ang_vel,lin_acel);
+fp2.SmoothVertexMaintainingDuration('wp6L',ang_vel,lin_acel);
 fp2.PositionFigure("FP2: POSITION",0.1);
 fp2.VelocityFigure("FP2: VELOCITY",0.1);
 

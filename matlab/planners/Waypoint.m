@@ -109,7 +109,7 @@ end
 
 
 
-function SetLinearMovement(wp1,wp2)
+function SetV0000(wp1,wp2)
     % Set uniform straight velocity from A to B
     wp1.CheckWaypoint(wp2);
 
@@ -124,18 +124,19 @@ end
 
 
 
-function SetFlyableMovement(wp1,wp2)
+function SetJLS(wp1,wp2)
     % Dados dos waypoints con 
-    % tiempo, posición, y velocidad determinados
-    % y aceleración nula 
+    % tiempo, posición, velocidad y aceleración determinados
     % obtiene las 3 derivadas siguientes que ejecutan dicho movimiento
 
     wp1.CheckWaypoint(wp2);
 
     r1 = wp1.pos;
     v1 = wp1.vel;
+    a1 = wp1.acel;
     r2 = wp2.pos; 
     v2 = wp2.vel;
+    a2 = wp2.acel;
 
     if norm(r2-r1)==0
         wp1.Stop();
@@ -149,7 +150,7 @@ function SetFlyableMovement(wp1,wp2)
           t12       t12^2/2    t12^3/6  ];
     B = [ r2-r1-v1*t12 
           v2-v1  
-          0 0 0            ];
+          a2-a1            ];
     if rank(A) < 3
         error('Error. Interpolation not possible')
     end  
@@ -194,54 +195,6 @@ function wp2 = Interpolation(wp1,t2)
 
 end
 
-
- 
-% function wp3 = InterpolationTP(wp1,wp2,t3)
-%     % Dados dos waypoints, 
-%     % genera un tercer waypoint interpolando posiciones a un tiempo dado.
-%     % Equivale a realizar un movimiento rectilíneo y uniforme.
-%     wp1.CheckWaypoint(wp2);
-% 
-%     wp3 = Waypoint;
-%     wp3.t = t3;
-% 
-%     r1 = wp1.Position;
-%     v1 = wp1.DirectionTo(wp2) * wp1.UniformVelocityTo(wp2);
-%     t = wp1.TimeTo(wp3);
-% 
-%     r3 = r1 + v1*t;
-%     v3 = v1;
-% 
-%     wp3.SetPosition(r3);
-%     wp3.SetVelocity(v3);
-% 
-% end
- 
-
-
-% function wp3 = InterpolationTPV0(wp1,wp2,t3)
-%     % Dados dos waypoints con tiempo, posición, velocidad y aceleración nula
-%     % interpola un tercer waypoint a un tiempo dado
-% 
-%     wp1.CheckWaypoint(wp2);
-% 
-%     wp3 = Waypoint;
-%     wp3.t = t3;
-% 
-%     r1 = wp1.Position;
-%     v1 = wp1.Velocity;
-% 
-%     [d1,d2,d3] = ResolveTPV0(wp1,wp2);
-% 
-%     t13 = wp1.TimeTo(wp3);
-%     r3 = r1 + v1*t13              + 1/6*d1*t13^3 + 1/24*d2*t13^4 + 1/120*d3*t13^5 ;
-%     v3 = v1        + 1/2*d1*t13^2 + 1/6*d2*t13^3 + 1/24*d3*t13^4 ;
-%     a3 =    d1*t13 + 1/2*d2*t13^2 + 1/6*d3*t13^3 ;
-% 
-%     wp3.SetPosition(r3);
-%     wp3.SetVelocity(v3);
-% 
-% end
 
 
 

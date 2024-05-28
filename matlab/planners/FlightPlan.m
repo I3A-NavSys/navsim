@@ -14,6 +14,9 @@ end
 
 methods
 
+%-------------------------------------------------------------------
+% ROUTE COMPOSITION
+
 
     
 function obj = FlightPlan(waypoints)
@@ -55,7 +58,7 @@ end
 
 
 
-function InsertWaypoint(obj,waypoint)
+function AppendWaypoint(obj,waypoint)
 % introduces a WP at the end (1s later) of the flight plan
 
     if ~isa(waypoint,'Waypoint')
@@ -92,6 +95,48 @@ end
 
 
 
+function i = GetIndexFromLabel(obj, label)
+    i = 0;
+    for j = 1:length(obj.waypoints)
+        wp = obj.waypoints(j);
+        if strcmp(label,wp.label)
+            i = j;
+            return
+        end
+    end    
+end
+
+
+
+function fp2 = Copy(fp1)
+    % Dado un plan, genera una copia independiente 
+    fp2 = FlightPlan(Waypoint.empty);
+    fp2.radius   = fp1.radius;
+    fp2.priority = fp1.priority;
+
+    for i = 1 : length(fp1.waypoints)
+        wp1 = fp1.waypoints(i);
+        wp2 = Waypoint();
+        wp2.t = wp1.t;
+        wp2.label = wp1.label;
+        wp2.pos  = wp1.pos;
+        wp2.vel  = wp1.vel;
+        wp2.acel = wp1.acel;
+        wp2.jerk = wp1.jerk;
+        wp2.jolt = wp1.jolt;
+        wp2.snap = wp1.snap;
+        wp2.mandatory = wp1.mandatory;
+        fp2.SetWaypoint(wp2);
+    end
+end
+
+
+
+%-------------------------------------------------------------------
+% TIME MANAGEMENT
+
+
+
 function t = InitTime(obj)
 %time of the first waypoint
     if isempty(obj.waypoints)
@@ -110,19 +155,6 @@ function t = FinishTime(obj)
     else
         t = obj.waypoints(end).t;
     end        
-end
-
-
-
-function i = GetIndexFromLabel(obj, label)
-    i = 0;
-    for j = 1:length(obj.waypoints)
-        wp = obj.waypoints(j);
-        if strcmp(label,wp.label)
-            i = j;
-            return
-        end
-    end    
 end
 
 
@@ -183,6 +215,12 @@ end
 
 
 
+
+%-------------------------------------------------------------------
+% FLIGHT PLAN BEHAVIOUR
+
+
+
 function wp2 = StatusAtTime(obj, t)
 
     % Check if t is out of flight plan schedule, returning not valid pos
@@ -224,98 +262,47 @@ end
 
 
 
-function dist = DistanceTo(fp1, fp2, timeStep)
-    % This method obstains relative distance between two flight plans over time
-    
-    initTime   = min(fp1.InitTime,  fp2.InitTime);
-    finishTime = max(fp1.FinishTime,fp2.FinishTime);
-    
-    instants = initTime : timeStep : finishTime;
-    dist = zeros(length(instants),2);
-    dist(:,1) = instants;
-   
-    %Get position in time instants
-    for i = 1:length(instants)
-        t = dist(i,1);
-        wp1 = fp1.StatusAtTime(t);
-        wp2 = fp2.StatusAtTime(t);
-        dist(i,2) = norm(wp2.pos-wp1.pos);
-    end
-end
+%-------------------------------------------------------------------
+% ROUTE MANAGEMENT
 
 
 
-function fp2 = Copy(fp1)
-    % Dado un plan, genera una copia independiente 
-    fp2 = FlightPlan(Waypoint.empty);
-    fp2.radius   = fp1.radius;
-    fp2.priority = fp1.priority;
-
-    for i = 1 : length(fp1.waypoints)
-        wp1 = fp1.waypoints(i);
-        wp2 = Waypoint();
-        wp2.t = wp1.t;
-        wp2.label = wp1.label;
-        wp2.pos  = wp1.pos;
-        wp2.vel  = wp1.vel;
-        wp2.acel = wp1.acel;
-        wp2.jerk = wp1.jerk;
-        wp2.jolt = wp1.jolt;
-        wp2.snap = wp1.snap;
-        wp2.mandatory = wp1.mandatory;
-        fp2.SetWaypoint(wp2);
-    end
-end
-
-
-
-function SetLinearMovement(obj)
+function SetV0000(obj)
     % Para cada waypoint asigna su vector velocidad 
     % asumiendo movimiento rectilíneo y uniforme
 
     for i = 1 : length(obj.waypoints)-1
         wpA = obj.waypoints(i);
         wpB = obj.waypoints(i+1);
-        wpA.SetLinearMovement(wpB);
+        wpA.SetV0000(wpB);
     end
     wpB.Stop();
 end
 
 
 
-function SmoothLinearMovement(obj,ang_vel,lin_acel)
-    % Suaviza los waypoints intermedios
+function SetJLS(obj)
+    % Para cada waypoint con
+    % tiempo, posición, velocidad y aceleración determinados
+    % obtiene las 3 derivadas siguientes que ejecutan dicho movimiento
 
     for i = 2 : length(obj.waypoints)-1
         wpA = obj.waypoints(i);
         wpB = obj.waypoints(i+1);
-        wpA.SetFlyableMovement(wpB);
+        wpA.SetJLS(wpB);
     end
     wpB.Stop();
 end
 
 
 
-function fp2 = Convert2TP(fp1,timeStep)
-    % Transform a TPV / TPV0 flight plan to a TP flight plan
-
-    fp2 = FlightPlan(Waypoint.empty);
-    fp2.radius   = fp1.radius;
-    fp2.priority = fp1.priority;
-
-    %Get position in time instants
-    for i = fp1.InitTime : timeStep : fp1.FinishTime
-        wp = fp1.StatusAtTime(i);
-        fp2.SetWaypoint(wp);
-    end
-end
 
 
 
-function SmoothWaypoint(obj,label,ang_vel,lin_acel)
-    % suaviza un waypoint descomponiendolo en dos
-    % el intervalo entre ambos se obtiene de forma que no se exceda ciertas
-    % aceleracion lineal y velocidad angular maximas
+function SmoothVertex(obj,label,ang_vel,lin_acel)
+    % Curva el vertice entre dos rectas
+    % manteniendo velocidad y acortando el tiempo de vuelo.
+    % Para ello descompone dicho waypoint en dos.
 
     i = obj.GetIndexFromLabel(label);
     if i <= 1  ||  length(obj.waypoints) <= i
@@ -324,27 +311,71 @@ function SmoothWaypoint(obj,label,ang_vel,lin_acel)
 
     wp1 = obj.waypoints(i-1);
     wp2 = obj.waypoints(i);    
-
     if wp2.mandatory
-        
-        wp1.SetFlyableMovement(wp2);
-        
-    else
-
-        angle = wp1.AngleWith(wp2);
-        tc = angle / ang_vel;     % time spent in the curve
-        % r = v / angvel;         % radius of the curve
-        % d = r * tan(angle/2);   % distance to the new waypoints
-    
-        v1  = norm(wp1.vel);
-        v2  = norm(wp2.vel);
-        ts  = abs(v2-v1)/lin_acel;
-    
-        interval = max([tc ts]);
-        obj.ExpandWaypoint(label,interval)
-        
+        return
     end
 
+    angle = wp1.AngleWith(wp2);
+
+    v1  = norm(wp1.vel);
+    v2  = norm(wp2.vel);
+    v   = (v1+v2) / 2;
+    
+    r = v / ang_vel;         % radius of the curve
+    d = r * tan(angle/2);   % distance to the new waypoints
+    step = d / v;
+
+    wp2A = Waypoint;
+    wp2A.label = strcat(wp2.label,'_A');
+    wp2A.pos = wp2.pos - wp1.vel * step;
+    wp2A.vel = wp1.vel;
+    wp2A.t = wp2.t - step;
+
+    wp2B = Waypoint;
+    wp2B.label = strcat(wp2.label,'_B');
+    wp2B.pos = wp2.pos + wp2.vel * step;
+    wp2B.vel = wp2.vel;
+    wp2B.t = wp2A.t + angle/ang_vel +0.8;
+    % solución
+    % fijamos el SNAP a cero y ponemos el tiempo como variable
+
+    wp2A.SetJLS(wp2B);
+
+    obj.RemoveWaypointAtTime(wp2.t);
+    obj.SetWaypoint(wp2A);
+    obj.SetWaypoint(wp2B);
+
+end
+
+
+
+
+function SmoothVertexMaintainingDuration(obj,label,ang_vel,lin_acel)
+    % Curva el vertice entre dos rectas
+    % reduciendo velocidad y manteniendo el tiempo de vuelo.
+    % Para ello descompone dicho waypoint en dos.
+
+    i = obj.GetIndexFromLabel(label);
+    if i <= 1  ||  length(obj.waypoints) <= i
+        return
+    end
+
+    wp1 = obj.waypoints(i-1);
+    wp2 = obj.waypoints(i);    
+    if wp2.mandatory
+        return
+    end
+
+    angle = wp1.AngleWith(wp2);
+    tc = angle / ang_vel;     % time spent in the curve
+
+    v1  = norm(wp1.vel);
+    v2  = norm(wp2.vel);
+    ts  = abs(v2-v1)/lin_acel;
+
+    interval = max([tc ts]);
+    obj.ExpandWaypoint(label,interval)
+        
 end
 
 
@@ -378,13 +409,44 @@ function ExpandWaypoint(obj,label,interval)
     wp2B.vel = wp2.vel;
     wp2B.t = wp2.t + step;
 
-    wp2A.SetFlyableMovement(wp2B);
+    wp2A.SetJLS(wp2B);
 
     obj.RemoveWaypointAtTime(wp2.t);
     obj.SetWaypoint(wp2A);
     obj.SetWaypoint(wp2B);
 
 end
+
+
+
+%-------------------------------------------------------------------
+% CONFLICT DETECTION
+
+
+
+function dist = DistanceTo(fp1, fp2, timeStep)
+    % This method obstains relative distance between two flight plans over time
+    
+    initTime   = min(fp1.InitTime,  fp2.InitTime);
+    finishTime = max(fp1.FinishTime,fp2.FinishTime);
+    
+    instants = initTime : timeStep : finishTime;
+    dist = zeros(length(instants),2);
+    dist(:,1) = instants;
+   
+    %Get position in time instants
+    for i = 1:length(instants)
+        t = dist(i,1);
+        wp1 = fp1.StatusAtTime(t);
+        wp2 = fp2.StatusAtTime(t);
+        dist(i,2) = norm(wp2.pos-wp1.pos);
+    end
+end
+
+
+
+%-------------------------------------------------------------------
+% FIGURES
 
 
 
