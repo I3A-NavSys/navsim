@@ -126,8 +126,9 @@ end
 
 function SetJLS(wp1,wp2)
     % Dados dos waypoints con 
-    % tiempo, posición, velocidad y aceleración determinados
-    % obtiene las 3 derivadas siguientes que ejecutan dicho movimiento
+    %   t1 pos1 vel1 acel1
+    %   t2 pos2 vel2 acel2
+    % obtiene jerk1, jolt1 y snap1 para ejecutar dicho movimiento
 
     wp1.CheckWaypoint(wp2);
 
@@ -162,6 +163,54 @@ function SetJLS(wp1,wp2)
 
 end
 
+
+
+function SetJL0_T(wp1,wp2)
+    % Dados dos waypoints con 
+    %   t1 pos1 vel1 acel1
+    %      pos2 vel2 acel2
+    % obtiene 
+    %   jerk1 jolt1 snap1=0
+    %   t2
+    % para ejecutar dicho movimiento
+
+    wp1.CheckWaypoint(wp2);
+
+    r1 = wp1.pos;
+    v1 = wp1.vel;
+    a1 = wp1.acel;
+    r2 = wp2.pos; 
+    v2 = wp2.vel;
+    a2 = wp2.acel;
+
+    if norm(r2-r1)==0
+        wp1.Stop();
+        return
+    end
+    
+    t12 = wp1.TimeTo(wp2);
+
+    A = [ t12^3/6   t12^4/24   t12^5/120 
+          t12^2/2   t12^3/6    t12^4/24 
+          t12       t12^2/2    t12^3/6  ];
+    B = [ r2-r1-v1*t12 
+          v2-v1  
+          a2-a1            ];
+    if rank(A) < 3
+        error('Error. Interpolation not possible')
+    end  
+
+    X = A\B;
+    wp1.jerk = X(1,:);
+    wp1.jolt = X(2,:);
+    wp1.snap = X(3,:);
+
+
+
+
+
+
+end
 
 
 function wp2 = Interpolation(wp1,t2)
