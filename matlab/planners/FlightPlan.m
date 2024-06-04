@@ -286,16 +286,12 @@ function SetJLS(obj)
     % tiempo, posición, velocidad y aceleración determinados
     % obtiene las 3 derivadas siguientes que ejecutan dicho movimiento
 
-    for i = 2 : length(obj.waypoints)-1
+    for i = 1 : length(obj.waypoints)-1
         wpA = obj.waypoints(i);
         wpB = obj.waypoints(i+1);
         wpA.SetJLS(wpB);
     end
-    wpB.Stop();
 end
-
-
-
 
 
 
@@ -335,7 +331,7 @@ function SmoothVertex(obj,label,ang_vel,lin_acel)
     wp2B.label = strcat(wp2.label,'_B');
     wp2B.pos = wp2.pos + wp2.vel * step;
     wp2B.vel = wp2.vel;
-    wp2B.t = wp2A.t + angle/ang_vel +0.8;
+    wp2B.t = wp2A.t + angle/ang_vel + 0.0;
     % solución
     % fijamos el SNAP a cero y ponemos el tiempo como variable
 
