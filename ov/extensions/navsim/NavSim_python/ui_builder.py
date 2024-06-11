@@ -11,6 +11,7 @@
 import numpy as np
 import omni.timeline
 import omni.ui as ui
+import logging
 from omni.isaac.core.objects.cuboid import FixedCuboid
 from omni.isaac.core.prims import XFormPrim
 from omni.isaac.core.utils.stage import get_current_stage, add_reference_to_stage
@@ -19,7 +20,7 @@ from omni.isaac.ui.element_wrappers import CollapsableFrame, StateButton
 from omni.isaac.ui.element_wrappers.core_connectors import LoadButton, ResetButton
 from omni.isaac.ui.ui_utils import get_style
 from omni.usd import StageEventType
-from pxr import Sdf, UsdLux
+from pxr import Sdf, UsdLux, UsdGeom
 
 from .scenario import ExampleScenario
 
@@ -160,9 +161,14 @@ class UIBuilder:
 
         # Create a cuboid
         self._cuboid_list = []
+        abejorro_usd_path = "C:/Users/ikern/Documents/Repositorios/navsim/ov/abejorro/abejorro.usd"
+        abejorro_ref_path = "/World/abejorro"
 
-        add_reference_to_stage(usd_path="/home/user/navsim/ov/abejorro/abejorro.usd", prim_path="/World/abejorro" + str(0) + str(0))
-        world.scene.add(XFormPrim(prim_path="/World/abejorro/abejorro" + str(0) + str(0), position=np.array([0, 0, 0.75])))
+        add_reference_to_stage(usd_path = abejorro_usd_path, prim_path = abejorro_ref_path + str(0) + str(0))
+
+        prim = get_current_stage().GetPrimAtPath(abejorro_ref_path + str(0) + str(0))
+
+        logger = logging.getLogger(__name__)
 
         for i in range(10):
             for j in range(10):
@@ -171,7 +177,6 @@ class UIBuilder:
                 )
         # Add user-loaded objects to the World
         world.scene.add(self._cuboid_list[0])
-            
 
     def _setup_scenario(self):
         """
