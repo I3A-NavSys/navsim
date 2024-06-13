@@ -205,11 +205,6 @@ function SetJL0_T(wp1,wp2)
     wp1.jolt = X(2,:);
     wp1.snap = X(3,:);
 
-
-
-
-
-
 end
 
 

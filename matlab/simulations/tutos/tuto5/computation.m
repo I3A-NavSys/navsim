@@ -121,40 +121,35 @@ fp2.VelocityFigure("FP2: VELOCITY",0.1);
 
 
 
-
-
-
-
-
-
 %asumimos velocidad angular y aceleración lineal finitas
 ang_vel = 0.1;
 lin_acel =0.4;
 
-% suavizamos el arranque del dron
+% suavizamos 
+
 fp2.SmoothVertexMaintainingDuration('wp1P',ang_vel,lin_acel);
 fp2.PositionFigure("FP2: POSITION",0.1);
 fp2.VelocityFigure("FP2: VELOCITY",0.1);
 
-%suavizamos el final del ascenso
+
 fp2.SmoothVertexMaintainingDuration('wp1',ang_vel,lin_acel);
 fp2.PositionFigure("FP2: POSITION",0.1);
 fp2.VelocityFigure("FP2: VELOCITY",0.1);
  
-%suavizamos el paso por el waypoint 2
-fp2.SmoothVertexMaintainingDuration('wp2',ang_vel,lin_acel);
+
+fp2.SmoothVertexMaintainingSpeed('wp2',ang_vel);
 fp2.PositionFigure("FP2: POSITION",0.1);
 fp2.VelocityFigure("FP2: VELOCITY",0.1);
 
-fp2.SmoothVertexMaintainingDuration('wp3',ang_vel,lin_acel);
+fp2.SmoothVertexMaintainingSpeed('wp3',ang_vel);
 fp2.PositionFigure("FP2: POSITION",0.1);
 fp2.VelocityFigure("FP2: VELOCITY",0.1);
 
-fp2.SmoothVertexMaintainingDuration('wp4',ang_vel,lin_acel);
+fp2.SmoothVertexMaintainingSpeed('wp4',ang_vel);
 fp2.PositionFigure("FP2: POSITION",0.1);
 fp2.VelocityFigure("FP2: VELOCITY",0.1);
 
-fp2.SmoothVertex('wp5',ang_vel,lin_acel);
+fp2.SmoothVertexMaintainingSpeed('wp5',ang_vel);
 fp2.PositionFigure("FP2: POSITION",0.1);
 fp2.VelocityFigure("FP2: VELOCITY",0.1);
 

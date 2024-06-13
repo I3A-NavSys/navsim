@@ -56,7 +56,7 @@ fp2.RescheduleAt(time + 10.2);
 operator.SendFlightPlan('UAV02',fp2);
 
 
-operator.WaitTime(fp2.FinishTime);
+operator.WaitTime(max(fp1.FinishTime,fp2.FinishTime));
 monitor.PositionFigure('UAV01',fp1,0.01);
 monitor.VelocityFigure('UAV01',fp1,0.01);
 monitor.PositionFigure('UAV02',fp2,0.01);

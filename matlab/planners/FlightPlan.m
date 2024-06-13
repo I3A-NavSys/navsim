@@ -295,7 +295,7 @@ end
 
 
 
-function SmoothVertex(obj,label,ang_vel,lin_acel)
+function SmoothVertexMaintainingSpeed(obj,label,ang_vel)
     % Curva el vertice entre dos rectas
     % manteniendo velocidad y acortando el tiempo de vuelo.
     % Para ello descompone dicho waypoint en dos.
@@ -315,11 +315,11 @@ function SmoothVertex(obj,label,ang_vel,lin_acel)
 
     v1  = norm(wp1.vel);
     v2  = norm(wp2.vel);
-    v   = (v1+v2) / 2;
+    v   = mean([v1 v2]);
     
     r = v / ang_vel;         % radius of the curve
-    d = r * tan(angle/2);   % distance to the new waypoints
-    step = d / v;
+    d = r * tan(angle/2);    % distance to the new waypoints
+    step = d / v;            % time to the decomposed waypoints
 
     wp2A = Waypoint;
     wp2A.label = strcat(wp2.label,'_A');
@@ -331,15 +331,33 @@ function SmoothVertex(obj,label,ang_vel,lin_acel)
     wp2B.label = strcat(wp2.label,'_B');
     wp2B.pos = wp2.pos + wp2.vel * step;
     wp2B.vel = wp2.vel;
-    wp2B.t = wp2A.t + angle/ang_vel + 0.0;
-    % solución
-    % fijamos el SNAP a cero y ponemos el tiempo como variable
+    wp2B_t_init = wp2.t + step;
+   
+    t2_min = wp2A.t + angle/ang_vel;
+    t2_max = wp2B_t_init;
 
-    wp2A.SetJLS(wp2B);
+    while t2_max-t2_min > 0.05
+        % [t2_min t2_max]
+
+        wp2B.t = mean([t2_min t2_max])
+        wp2A.SetJLS(wp2B);
+        
+        tAB_med = mean([wp2A.t wp2B.t]);
+        status = wp2A.Interpolation(tAB_med);
+        v_med = norm(status.vel);
+        if v_med < v
+            t2_max = wp2B.t;
+        else
+            t2_min = wp2B.t;
+        end
+    end
+
 
     obj.RemoveWaypointAtTime(wp2.t);
     obj.SetWaypoint(wp2A);
     obj.SetWaypoint(wp2B);
+
+    obj.PostponeFrom(wp2B.t + 0.001, wp2B.t-wp2B_t_init);
 
 end
 
