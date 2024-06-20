@@ -8,19 +8,24 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 #
 
-import numpy as np
+
 import omni.timeline
 import omni.ui as ui
-import logging
-from omni.isaac.core.objects.cuboid import FixedCuboid
-from omni.isaac.core.prims import XFormPrim
-from omni.isaac.core.utils.stage import get_current_stage, add_reference_to_stage
-from omni.isaac.core.world import World
+
+import numpy as np
+
+from omni.isaac.core.utils.stage import get_current_stage
+
 from omni.isaac.ui.element_wrappers import CollapsableFrame, StateButton
 from omni.isaac.ui.element_wrappers.core_connectors import LoadButton, ResetButton
 from omni.isaac.ui.ui_utils import get_style
 from omni.usd import StageEventType
-from pxr import Sdf, UsdLux, UsdGeom
+
+from omni.isaac.core.world import World
+from omni.isaac.core.prims import XFormPrim
+from omni.isaac.core.objects.cuboid import FixedCuboid
+from omni.isaac.core.utils.stage import get_current_stage, add_reference_to_stage
+from pxr import UsdGeom, Gf, UsdLux, Sdf
 
 from .scenario import ExampleScenario
 
@@ -133,15 +138,6 @@ class UIBuilder:
     def _on_init(self):
         self._scenario = ExampleScenario()
 
-    def _add_light_to_stage(self):
-        """
-        A new stage does not have a light by default.  This function creates a spherical light
-        """
-        sphereLight = UsdLux.SphereLight.Define(get_current_stage(), Sdf.Path("/World/SphereLight"))
-        sphereLight.CreateRadiusAttr(2)
-        sphereLight.CreateIntensityAttr(100000)
-        XFormPrim(str(sphereLight.GetPath())).set_world_pose([6.5, 0, 12])
-
     def _setup_scene(self):
         """
         This function is attached to the Load Button as the setup_scene_fn callback.
@@ -161,22 +157,37 @@ class UIBuilder:
 
         # Create a cuboid
         self._cuboid_list = []
-        abejorro_usd_path = "C:/Users/ikern/Documents/Repositorios/navsim/ov/abejorro/abejorro.usd"
+        abejorro_usd_path = "C:/Users/ikern/Documents/Repositorios/navsim/ov/extensions/navsim/assets/abejorro.usd"
         abejorro_ref_path = "/World/abejorro"
-
-        add_reference_to_stage(usd_path = abejorro_usd_path, prim_path = abejorro_ref_path + str(0) + str(0))
-
-        prim = get_current_stage().GetPrimAtPath(abejorro_ref_path + str(0) + str(0))
-
-        logger = logging.getLogger(__name__)
 
         for i in range(10):
             for j in range(10):
                 self._cuboid_list.append(
                     FixedCuboid("/World/Cubes/cube_" + str(i) + str(j), position=np.array([i, j, 0.25]), size=0.5)
                 )
+
+                add_reference_to_stage(usd_path = abejorro_usd_path, prim_path = abejorro_ref_path + str(i) + str(j))
+                prim = get_current_stage().GetPrimAtPath(abejorro_ref_path + str(i) + str(j))
+                xformable = UsdGeom.Xformable(prim)
+
+                for op in xformable.GetOrderedXformOps():
+                    if op.GetOpType() == UsdGeom.XformOp.TypeTranslate:
+                        op.Set(Gf.Vec3f(i, j, 0.55))
+                        
+                    if op.GetOpType() == UsdGeom.XformOp.TypeOrient:
+                        op.Set(Gf.Quatd(1.0, 0.0, 0.0, 0.0))
+
         # Add user-loaded objects to the World
         world.scene.add(self._cuboid_list[0])
+
+    def _add_light_to_stage(self):
+        """
+        A new stage does not have a light by default.  This function creates a spherical light
+        """
+        sphereLight = UsdLux.SphereLight.Define(get_current_stage(), Sdf.Path("/World/SphereLight"))
+        sphereLight.CreateRadiusAttr(2)
+        sphereLight.CreateIntensityAttr(100000)
+        XFormPrim(str(sphereLight.GetPath())).set_world_pose([6.5, 0, 12])
 
     def _setup_scenario(self):
         """
