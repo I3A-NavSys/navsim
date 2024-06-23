@@ -1,16 +1,20 @@
 import sys
 import os
-
-# Añadir el directorio principal al sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 if os.name == 'nt':
     os.system('cls')
 else:
     os.system('clear')
 
+# Añadir el directorio principal al sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+
+##############################################################################
+
+
 from operators.USpaceOperator import USpaceOperator
-from planners.FlightPlan import Waypoint
+from planners.Waypoint import Waypoint
+from planners.FlightPlan import FlightPlan
 
 # Crear una instancia de UspaceOperator
 op = USpaceOperator("Operador Uno")
