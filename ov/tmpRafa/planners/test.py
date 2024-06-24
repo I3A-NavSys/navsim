@@ -18,23 +18,19 @@ from planners.Waypoint import Waypoint
 from planners.FlightPlan import FlightPlan
 
 
-# Crear algunos waypoints de prueba
-wp1 = Waypoint(label='WP1', t=0, pos=[0, 0, 0], vel=[1, 1, 0])
-wp2 = Waypoint(label='WP2', t=2, pos=[2, 2, 0], vel=[1, 1, 0])
-wp3 = Waypoint(label='WP3', t=4, pos=[4, 4, 0], vel=[1, 1, 0])
+# Crear waypoints
+waypoint1 = Waypoint(label='WP1', t= 0,  pos=[  0,   0, 0], vel=[10,  1, 0])
+waypoint2 = Waypoint(label='WP2', t=10,  pos=[100, 100, 0], vel=[ 0, 10, 0])
 
-# Crear un plan de vuelo con los waypoints
-fp = FlightPlan([wp1, wp2])
 
-# Añadir un waypoint al final del plan de vuelo
-fp.AppendWaypoint(wp3)
 
-# Imprimir el plan de vuelo
-print("Flight Plan Waypoints:")
+
+
+# Crear plan de vuelo
+fp = FlightPlan([waypoint1, waypoint2])
+fp.SetJLS()
+
+# Mostrar la posición 3D del plan de vuelo
 fp.Print()
+fp.PositionFigure('Flight Path 3D', 0.1)
 
-fp.RemoveWaypointAtTime(0)
-print("Flight Plan Waypoints:")
-fp.Print()
-
-print(fp)
