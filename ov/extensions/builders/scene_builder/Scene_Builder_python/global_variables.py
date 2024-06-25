@@ -7,6 +7,6 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 #
 
-EXTENSION_TITLE = "NavSim"
+EXTENSION_TITLE = "Scene Builder"
 
 EXTENSION_DESCRIPTION = ""

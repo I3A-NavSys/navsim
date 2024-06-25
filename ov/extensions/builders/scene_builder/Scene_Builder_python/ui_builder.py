@@ -27,8 +27,6 @@ from omni.isaac.core.objects.cuboid import FixedCuboid
 from omni.isaac.core.utils.stage import get_current_stage, add_reference_to_stage
 from pxr import UsdGeom, Gf, UsdLux, Sdf
 
-from .scenario import ExampleScenario
-
 
 class UIBuilder:
     def __init__(self):
@@ -59,13 +57,7 @@ class UIBuilder:
         Args:
             event (omni.timeline.TimelineEventType): Event Type
         """
-        if event.type == int(omni.timeline.TimelineEventType.STOP):
-            # When the user hits the stop button through the UI, they will inevitably discover edge cases where things break
-            # For complete robustness, the user should resolve those edge cases here
-            # In general, for extensions based off this template, there is no value to having the user click the play/stop
-            # button instead of using the Load/Reset/Run buttons provided.
-            self._scenario_state_btn.reset()
-            self._scenario_state_btn.enabled = False
+        pass
 
     def on_physics_step(self, step: float):
         """Callback for Physics Step.
@@ -105,7 +97,7 @@ class UIBuilder:
         with world_controls_frame:
             with ui.VStack(style=get_style(), spacing=5, height=0):
                 self._load_btn = LoadButton(
-                    "Load Button", "LOAD", setup_scene_fn=self._setup_scene, setup_post_load_fn=self._setup_scenario
+                    "Load Button", "LOAD", setup_scene_fn=self._setup_scene
                 )
                 self._load_btn.set_world_settings(physics_dt=1 / 60.0, rendering_dt=1 / 60.0)
                 self.wrapped_ui_elements.append(self._load_btn)
@@ -116,27 +108,12 @@ class UIBuilder:
                 self._reset_btn.enabled = False
                 self.wrapped_ui_elements.append(self._reset_btn)
 
-        run_scenario_frame = CollapsableFrame("Run Scenario")
-
-        with run_scenario_frame:
-            with ui.VStack(style=get_style(), spacing=5, height=0):
-                self._scenario_state_btn = StateButton(
-                    "Run Scenario",
-                    "RUN",
-                    "STOP",
-                    on_a_click_fn=self._on_run_scenario_a_text,
-                    on_b_click_fn=self._on_run_scenario_b_text,
-                    physics_callback_fn=self._update_scenario,
-                )
-                self._scenario_state_btn.enabled = False
-                self.wrapped_ui_elements.append(self._scenario_state_btn)
-
     ######################################################################################
     # Functions Below This Point Support The Provided Example And Can Be Deleted/Replaced
     ######################################################################################
 
     def _on_init(self):
-        self._scenario = ExampleScenario()
+        pass
 
     def _setup_scene(self):
         """
@@ -157,7 +134,7 @@ class UIBuilder:
 
         # Create a cuboid
         self._cuboid_list = []
-        abejorro_usd_path = "C:/Users/ikern/Documents/Repositorios/navsim/ov/extensions/navsim/assets/abejorro.usd"
+        abejorro_usd_path = "C:/Users/ikern/Documents/Repositorios/navsim/ov/extensions/assets/abejorro.usd"
         abejorro_ref_path = "/World/abejorro"
 
         for i in range(10):
@@ -189,25 +166,6 @@ class UIBuilder:
         sphereLight.CreateIntensityAttr(100000)
         XFormPrim(str(sphereLight.GetPath())).set_world_pose([6.5, 0, 12])
 
-    def _setup_scenario(self):
-        """
-        This function is attached to the Load Button as the setup_post_load_fn callback.
-        The user may assume that their assets have been loaded by their setup_scene_fn callback, that
-        their objects are properly initialized, and that the timeline is paused on timestep 0.
-
-        In this example, a scenario is initialized which will move each robot joint one at a time in a loop while moving the
-        provided prim in a circle around the robot.
-        """
-        self._reset_scenario()
-
-        # UI management
-        self._scenario_state_btn.reset()
-        self._scenario_state_btn.enabled = True
-        self._reset_btn.enabled = True
-
-    def _reset_scenario(self):
-        self._scenario.teardown_scenario()
-
     def _on_post_reset_btn(self):
         """
         This function is attached to the Reset Button as the post_reset_fn callback.
@@ -216,11 +174,6 @@ class UIBuilder:
         They may also assume that objects that were added to the World.Scene have been moved to their default positions.
         I.e. the cube prim will move back to the position it was in when it was created in self._setup_scene().
         """
-        self._reset_scenario()
-
-        # UI management
-        self._scenario_state_btn.reset()
-        self._scenario_state_btn.enabled = True
 
     def _update_scenario(self, step: float):
         """This function is attached to the Run Scenario StateButton.
@@ -231,8 +184,7 @@ class UIBuilder:
         Args:
             step (float): The dt of the current physics step
         """
-        self._scenario.update_scenario(step)
-
+        
     def _on_run_scenario_a_text(self):
         """
         This function is attached to the Run Scenario StateButton.
@@ -268,6 +220,4 @@ class UIBuilder:
         self._reset_ui()
 
     def _reset_ui(self):
-        self._scenario_state_btn.reset()
-        self._scenario_state_btn.enabled = False
         self._reset_btn.enabled = False
