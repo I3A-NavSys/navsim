@@ -66,7 +66,8 @@ function [errorMed,errorMax,timeMax] = PathFollowingError(obj,UAVid,fp)
             break
         end
         posUAV = UAVdata(i,2:4);
-        posFP  = fp.PositionAtTime(t);
+        wp = fp.StatusAtTime(t);
+        posFP = wp.pos;
         posError = norm(posFP - posUAV);
         if posError > errorMax
            errorMax = posError;
