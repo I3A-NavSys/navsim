@@ -236,7 +236,7 @@ There is also a small error observed at the end, when it finishes the rectangle 
 ![UAV01 vel](./img/UAV01_velocity.png)
 
 
-The second drone makes an error of more than two meters, which it struggles to correct. 
+The second drone makes an error of almost 5 meters, which it struggles to correct. 
 The reason is that it is required to achieve a speed of 4 m/s while rotating 180º. 
 It almost eliminates the error when it reaches its destination and has to descend.
 
@@ -246,9 +246,8 @@ It almost eliminates the error when it reaches its destination and has to descen
 The third drone has to cover the longest distance. 
 After ascending, it begins horizontal movement at a speed of 6 m/s. 
 It makes an error of just 2 meters since it doesn't have to rotate simultaneously. 
-Afterward, the flight plan requires it to increase its speed to 8 m/s. 
-The biggest error occurs upon arrival, as we haven't programmed the flight plan for a gradual deceleration. 
-Still, it makes only a couple of meters of error. 
+Afterward, the flight plan requires it to increase its speed to 8.5 m/s. 
+The biggest error (13 m) occurs upon arrival, as we haven't programmed the flight plan for a gradual deceleration. 
 
 ![UAV03 pos](./img/UAV03_position.png)
 ![UAV03 vel](./img/UAV03_velocity.png)
