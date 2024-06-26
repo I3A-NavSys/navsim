@@ -9,7 +9,7 @@ from pxr import UsdGeom, Gf, UsdLux, Sdf
 class Scenes:
     def one_hundred_drones(self):
         world = World()
-        self._add_light_to_stage()
+        self.add_light_to_stage()
         world.scene.add_default_ground_plane()
 
         # Create a cuboid
@@ -37,7 +37,7 @@ class Scenes:
         # Add user-loaded objects to the World
         world.scene.add(self._cuboid_list[0])
     
-    def _add_light_to_stage(self):
+    def add_light_to_stage(self):
         """
         A new stage does not have a light by default.  This function creates a spherical light
         """
