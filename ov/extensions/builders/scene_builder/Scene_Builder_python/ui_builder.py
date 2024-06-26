@@ -16,7 +16,7 @@ import numpy as np
 
 from omni.isaac.core.utils.stage import get_current_stage
 
-from omni.isaac.ui.element_wrappers import CollapsableFrame, StateButton
+from omni.isaac.ui.element_wrappers import CollapsableFrame, DropDown
 from omni.isaac.ui.element_wrappers.core_connectors import LoadButton, ResetButton
 from omni.isaac.ui.ui_utils import get_style
 from omni.usd import StageEventType
@@ -96,6 +96,12 @@ class UIBuilder:
 
         with world_controls_frame:
             with ui.VStack(style=get_style(), spacing=5, height=0):
+                self._scene_selector_dropdown = DropDown(
+                    "Select Scene", "SELECT", self._scene_list
+                )
+                self._scene_selector_dropdown.repopulate()
+                self.wrapped_ui_elements.append(self._scene_selector_dropdown)
+
                 self._load_btn = LoadButton(
                     "Load Button", "LOAD", setup_scene_fn=self._setup_scene
                 )
@@ -114,6 +120,9 @@ class UIBuilder:
 
     def _on_init(self):
         pass
+
+    def _scene_list(self):
+        return ["Example 1", "Example 2", "Example 3"]
 
     def _setup_scene(self):
         """
