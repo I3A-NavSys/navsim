@@ -1,106 +1,22 @@
-# 03: Executing Time/Position-based Flight Plans
-
-## Gazebo
-
-First, we open a scenario in the Gazebo simulator:
-
-```bash
-cd
-cd code/navsim/ws/src/navsim_pkg/worlds
-gazebo generated_city.world
-```
-Gazebo shows a small city of 500x500 meters in which blocks represent buildings.
-You can zoom out to observe the whole city.
-
-![City](./img/city.png)
+# 03: Executing flight plans based on straight segments
 
 
-As in the previous tutorials, in a new terminal, verify that the ROS2 **/World** node is running correctly:
-```bash
-ros2 node list
-```
+## Routes computation
 
-Also verify that this node manages a service **/NavSim/DeployModel** for deploying objects in the area:
-```bash
-ros2 service list | grep Deploy
-```
-
-## Matlab
-
-### CreateObject.m
-
-Now open Matlab (in the same computer or other computer connected to the same subnetwotk).
-Navigate to `navsim/matlab/simulations/tutos/tuto3`. From here, open the script `CreateObjets.m` and execute it.
-
-
-This code employs a **SimpleBuilder** to deploy vertiports in the area, a **USpaceOperator** to manage the operation of several drones, and a **SimpleMonitor** to analyze their accuracy executing flight plans.
-
-```matlab
-builder  = SimpleBuilder ('builder' ,NAVSIM_MODELS_PATH);
-operator = USpaceOperator('operator',NAVSIM_MODELS_PATH);
-monitor  = SimpleMonitor('monitor');
-```
-First, we place 3 vertiports on the rooftops of 3 buildings. If we restore the camera to its original position, we can see two of them in the foreground. The third vertiport is located on one of the buildings in the background to the right of the screen.
-
-```matlab
-% -------------
-% Set vertiports
-%               x        y        z       rz
-portsLoc = [ -190.00  -119.00  +048.00    pi/2
-             -152.00  -106.00  +049.00    pi/2
-             +180.00  +033.00  +050.00    00
-           ];
-
-for i = 1:size(portsLoc,1)
-    id = sprintf('BASE%02d', i);
-    builder.DeployModel('UAM/vertiport_H', id, ...
-        portsLoc(i,1:3), ...
-        [0 0 portsLoc(i,4)]);
-end
-```
-
-![Vertiports](./img/vertiports.png)
-
-We configure the performance of the drones:
-
-```matlab
-info = UAVinfo('',UAVmodels.MiniDroneFP1);
-info.velMax = 10;
-```
-
-Next, we deploy our small fleet of drones, each in a different vertiport. 
-We designate the devices as _UAV01_, _UAV02_, and _UAV03_, respectively.
-We also instruct the **monitor** to start storing the telemetry information transmitted by each of them.
-
-```matlab
-%% -------------
-% Deploy fleet
-%               x        y        z       rz
-fleetLoc = [ -190.00  -119.00  +048.10    pi/2
-             -152.00  -106.00  +049.10    pi/2
-             +180.00  +033.00  +050.10    -0.9*pi
-           ];
-for i = 1:size(fleetLoc,1)
-    id = sprintf('UAV%02d', i);
-    operator.DeployUAV(info,id, ...
-        fleetLoc(i,1:3), ...
-        [0 0 fleetLoc(i,4)]);
-    monitor.TrackUAV(id);
-end
-```
-
-![UAV deployed](./img/UAV02_init_pos.png)
+Open Matlab and navigate to `navsim/matlab/simulations/tutos/tuto3`.
+Open the script `computation.m` and execute it to create several flight plans.
 
 
 
-### FlightPlannig_TP.m
 
-Now, open the script `FlightPlannig_TP.m` and execute it. 
-
-First, we create a flight plan for each drone. 
-A TP (Time/Position) flight plan is a sequence of waypoints that reflect positions the device should be at specific moments. 
-Of course, the waypoints are ordered chronologically, even if they were inserted in a different order. 
+We define a matrix with 8 rows. Each row includes a time tag and a 3D position in which the drone should be at that specific moment. Next, a loop introduces eight waypoints in the flight plan using that data.
+Of course, the waypoints are ordered chronologically, even if they were inserted in a different order.
 Inserting a waypoint overwrites another existing one at the same time.
+
+The method **SetV0000** generates the velocity vector for each waypoint to achieve the next waypoint in the sequence employing the required time.
+
+Finally, we show position and velocity figures.
+
 
 ```matlab
 % -------------
@@ -123,6 +39,8 @@ for i = 1:size(way_data1,1)
     wp.pos = way_data1(i,2:4);
     fp1.SetWaypoint(wp);
 end
+
+fp1.SetV0000();
 
 % Display
 fp1.PositionFigure("FP1: POSITION",1);
@@ -173,13 +91,108 @@ for i = 1:size(way_data3,1)
 end
 ```
 
-Once we have designed the flight plans, we transmit them to the drones. 
-Before doing that, we reset the simulation time to prevent the plans from becoming outdated. 
-At this point, we ask the operator to wait until the drones have finished executing their respective flight plans. 
-Then, if desired, we can remove them from the scenario. Finally, we stop the simulation.
+
+## Executing the simulation
+
+
+### Gazebo
+
+First, we open a scenario in the Gazebo simulator (in the same computer or other computer connected to the same subnetwotk):
+```bash
+cd
+cd code/navsim/ws/src/navsim_pkg/worlds
+gazebo generated_city.world
+```
+Gazebo shows a small city of 500x500 meters in which blocks represent buildings.
+You can zoom out to observe the whole city.
+
+![City](./img/city.png)
+
+
+As in the previous tutorials, in a new terminal, verify that the ROS2 **/World** node is running correctly:
+```bash
+ros2 node list
+```
+
+Also verify that this node manages a service **/NavSim/DeployModel** for deploying objects in the area:
+```bash
+ros2 service list | grep Deploy
+```
+
+### Matlab
+
+Now, open the script `simulation.m` and execute it. 
+
+This code employs a **SimpleBuilder** to deploy vertiports in the area, a **USpaceOperator** to manage the operation of several drones, and a **SimpleMonitor** to analyze their accuracy executing flight plans.
 
 > In some parts of the code, pauses are incorporated with the `pause( )` command.
 > This is done to allow time for ROS2 nodes to wake up and handle pending requests before continuing with the program.
+
+
+```matlab
+builder  = SimpleBuilder ('builder' ,NAVSIM_MODELS_PATH);
+operator = USpaceOperator('operator',NAVSIM_MODELS_PATH);
+monitor  = SimpleMonitor('monitor');
+```
+
+Next, we place 3 vertiports on the rooftops of 3 buildings. In Gazebo, if we restore the camera to its original position, we can see two of them in the foreground. The third vertiport is located on one of the buildings in the background to the right of the screen.
+
+```matlab
+% -------------
+% Set vertiports
+
+%               x        y        z       rz
+portsLoc = [ -190.00  -119.00  +048.00    pi/2
+             -152.00  -106.00  +049.00    pi/2
+             +180.00  +033.00  +050.00    00
+           ];
+
+for i = 1:size(portsLoc,1)
+    id = sprintf('BASE%02d', i);
+    builder.DeployModel('UAM/vertiport_H', id, ...
+        portsLoc(i,1:3), ...
+        [0 0 portsLoc(i,4)]);
+end
+```
+
+![Vertiports](./img/vertiports.png)
+
+
+We configure the performance of the drones:
+
+```matlab
+info = UAVinfo('',UAVmodels.MiniDroneFP1);
+info.velMax = 10;
+```
+
+Next, we deploy our small fleet of drones, each in a different vertiport.
+We designate the devices as _UAV01_, _UAV02_, and _UAV03_, respectively.
+We also instruct the **monitor** to start storing the telemetry information transmitted by each of them.
+
+```matlab
+%% -------------
+% Deploy fleet
+%               x        y        z       rz
+fleetLoc = [ -190.00  -119.00  +048.10    pi/2
+             -152.00  -106.00  +049.10    pi/2
+             +180.00  +033.00  +050.10    -0.9*pi
+           ];
+for i = 1:size(fleetLoc,1)
+    id = sprintf('UAV%02d', i);
+    operator.DeployUAV(info,id, ...
+        fleetLoc(i,1:3), ...
+        [0 0 fleetLoc(i,4)]);
+    monitor.TrackUAV(id);
+end
+```
+
+![UAV deployed](./img/UAV02_init_pos.png)
+
+
+We transmit each flight plan to the respective drone.
+Before doing that, we reset the simulation time to prevent the plans from becoming outdated. 
+At this point, we ask the operator to wait until the drones have finished executing their respective flight plans. 
+Then, if desired, we can remove them from the scenario. Finally, we stop the simulation.
 
 ```matlab
 % -------------
@@ -204,6 +217,7 @@ Now is the time to evaluate what happened.
 We request the **monitor** for the temporal graphs of the position and velocity of each drone during the execution of the flight plan.
 
 ```matlab
+% Show results
 monitor.PositionFigure('UAV01',fp1);
 monitor.VelocityFigure('UAV01',fp1);
 [medE,maxE,t] = monitor.PathFollowingError('UAV01',fp1);
@@ -216,8 +230,8 @@ monitor.VelocityFigure('UAV03',fp3);
 ```
 
 We can see how _UAV01_ has followed its flight plan very precisely. 
-The sudden change in horizontal speed (from 0 to 2 m/s) resulted in an error of only 2 meters, which it corrected after 10 seconds of maneuvering. After that, each 90º turn has caused an error of approximately 1 meter.
-There is also a small error observed at the end, when it finishes the rectangle and has to brake abruptly to descend to the ground.
+The sudden change in horizontal speed (from 0 to 2 m/s) resulted in an error of only 2 meters, which it corrected after 20 seconds of maneuvering. After that, each 90º turn has caused an error of approximately 2.5 meters.
+There is also a small error observed at the end, when it finishes the rectangle and has to brake abruptly to descend to the ground (out of the vertiport).
 ![UAV01 pos](./img/UAV01_position.png)
 ![UAV01 vel](./img/UAV01_velocity.png)
 
