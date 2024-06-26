@@ -1,4 +1,7 @@
-clc 
+clc
+clear
+run('../../../tools/NAVSIM_PATHS');
+
 
 % -------------
 %Create a Flight Plan for the drone 1
@@ -22,9 +25,12 @@ for i = 1:size(way_data1,1)
     fp1.SetWaypoint(wp);
 end
 
+fp1.SetV0000;
+
 % Display
 fp1.PositionFigure("FP1: POSITION",1);
 fp1.VelocityFigure("FP1: VELOCITY",1);
+
 
 % -------------
 %Create a Flight Plan for the drone 2
@@ -43,6 +49,8 @@ for i = 1:size(way_data2,1)
     wp.pos = way_data2(i,2:4);
     fp2.SetWaypoint(wp);
 end
+
+fp2.SetV0000;
 
 % -------------
 %Create a Flight Plan for the drone 3
@@ -63,34 +71,5 @@ for i = 1:size(way_data3,1)
     fp3.SetWaypoint(wp);
 end
 
-
-
-% -------------
-%Comunicate Flight Plans
-operator.ResetSim;
-operator.SendFlightPlan('UAV01',fp1);
-operator.SendFlightPlan('UAV02',fp2);
-operator.SendFlightPlan('UAV03',fp3);
-
-
-
-%%
-operator.WaitTime(max([fp1.FinishTime fp2.FinishTime fp3.FinishTime]));
-% operator.RemoveUAV('UAV01');
-% operator.RemoveUAV('UAV02');
-% operator.RemoveUAV('UAV03');
-operator.PauseSim;
-
-monitor.PositionFigure('UAV01',fp1,0.1);
-monitor.VelocityFigure('UAV01',fp1,0.1);
-[medE,maxE,t] = monitor.PathFollowingError('UAV01',fp1);
-
-monitor.PositionFigure('UAV02',fp2,0.1);
-monitor.VelocityFigure('UAV02',fp2,0.1);
-
-monitor.PositionFigure('UAV03',fp3,0.1);
-monitor.VelocityFigure('UAV03',fp3,0.1);
-
-
-
+fp3.SetV0000;
 
