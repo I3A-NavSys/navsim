@@ -183,8 +183,9 @@ function PositionFigure(obj,UAVid,fp,time_step)
     xlim([fp.InitTime fp.FinishTime])
     ax = gca; 
     ax.XAxis.Visible = 'off';
-
-
+    
+    disp(['Position error area (m^2) for ', UAVid]);
+    disp(trapz(timeValues, errorValues));
 
     %Display Position X versus time
     Xtile   = nexttile([1,2]);

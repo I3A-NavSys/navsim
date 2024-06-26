@@ -18,6 +18,8 @@ elseif ispc %Windows computer
             NAVSIM_PATH = 'c:\Users\Aurelio.Bermudez\code\navsim\';            
         case 'Rafa'
             NAVSIM_PATH = 'c:\Users\Rafa\code\navsim\';
+        case 'Aurelio'
+            NAVSIM_PATH = 'c:\Users\Aurelio\code\navsim\';            
         case 'rafae'
             NAVSIM_PATH = 'c:\Users\rafae\code\navsim\';
         otherwise
