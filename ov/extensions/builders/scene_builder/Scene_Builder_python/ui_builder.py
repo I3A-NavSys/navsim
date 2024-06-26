@@ -8,25 +8,17 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 #
 
-
-import omni.timeline
 import omni.ui as ui
 
-import numpy as np
+import omni.timeline
 
-from omni.isaac.core.utils.stage import get_current_stage
+from omni.usd import StageEventType
 
 from omni.isaac.ui.element_wrappers import CollapsableFrame, DropDown
 from omni.isaac.ui.element_wrappers.core_connectors import LoadButton, ResetButton
 from omni.isaac.ui.ui_utils import get_style
-from omni.usd import StageEventType
 
-from omni.isaac.core.world import World
-from omni.isaac.core.prims import XFormPrim
-from omni.isaac.core.objects.cuboid import FixedCuboid
-from omni.isaac.core.utils.stage import get_current_stage, add_reference_to_stage
-from pxr import UsdGeom, Gf, UsdLux, Sdf
-
+from .scenes import Scenes
 
 class UIBuilder:
     def __init__(self):
@@ -103,7 +95,7 @@ class UIBuilder:
                 self.wrapped_ui_elements.append(self._scene_selector_dropdown)
 
                 self._load_btn = LoadButton(
-                    "Load Button", "LOAD", setup_scene_fn=self._setup_scene
+                    "Load Button", "LOAD", setup_scene_fn=self._scenes.one_hundred_drones
                 )
                 self._load_btn.set_world_settings(physics_dt=1 / 60.0, rendering_dt=1 / 60.0)
                 self.wrapped_ui_elements.append(self._load_btn)
@@ -119,61 +111,10 @@ class UIBuilder:
     ######################################################################################
 
     def _on_init(self):
-        pass
+        self._scenes = Scenes()
 
     def _scene_list(self):
-        return ["Example 1", "Example 2", "Example 3"]
-
-    def _setup_scene(self):
-        """
-        This function is attached to the Load Button as the setup_scene_fn callback.
-        On pressing the Load Button, a new instance of World() is created and then this function is called.
-        The user should now load their assets onto the stage and add them to the World Scene.
-
-        In this example, a new stage is loaded explicitly, and all assets are reloaded.
-        If the user is relying on hot-reloading and does not want to reload assets every time,
-        they may perform a check here to see if their desired assets are already on the stage,
-        and avoid loading anything if they are.  In this case, the user would still need to add
-        their assets to the World (which has low overhead).  See commented code section in this function.
-        """
-        
-        world = World()
-        self._add_light_to_stage()
-        world.scene.add_default_ground_plane()
-
-        # Create a cuboid
-        self._cuboid_list = []
-        abejorro_usd_path = "C:/Users/ikern/Documents/Repositorios/navsim/ov/extensions/assets/abejorro.usd"
-        abejorro_ref_path = "/World/abejorro"
-
-        for i in range(10):
-            for j in range(10):
-                self._cuboid_list.append(
-                    FixedCuboid("/World/Cubes/cube_" + str(i) + str(j), position=np.array([i, j, 0.25]), size=0.5)
-                )
-
-                add_reference_to_stage(usd_path = abejorro_usd_path, prim_path = abejorro_ref_path + str(i) + str(j))
-                prim = get_current_stage().GetPrimAtPath(abejorro_ref_path + str(i) + str(j))
-                xformable = UsdGeom.Xformable(prim)
-
-                for op in xformable.GetOrderedXformOps():
-                    if op.GetOpType() == UsdGeom.XformOp.TypeTranslate:
-                        op.Set(Gf.Vec3f(i, j, 0.55))
-                        
-                    if op.GetOpType() == UsdGeom.XformOp.TypeOrient:
-                        op.Set(Gf.Quatd(1.0, 0.0, 0.0, 0.0))
-
-        # Add user-loaded objects to the World
-        world.scene.add(self._cuboid_list[0])
-
-    def _add_light_to_stage(self):
-        """
-        A new stage does not have a light by default.  This function creates a spherical light
-        """
-        sphereLight = UsdLux.SphereLight.Define(get_current_stage(), Sdf.Path("/World/SphereLight"))
-        sphereLight.CreateRadiusAttr(2)
-        sphereLight.CreateIntensityAttr(100000)
-        XFormPrim(str(sphereLight.GetPath())).set_world_pose([6.5, 0, 12])
+        return ["100 Drones", "Example 2", "Example 3"]
 
     def _on_post_reset_btn(self):
         """
