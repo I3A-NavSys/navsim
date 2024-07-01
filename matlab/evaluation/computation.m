@@ -5,10 +5,10 @@ run('../tools/NAVSIM_PATHS');
 % -------------
 % Vertiports location
 %               x        y        z       rz
-portsLoc = [ -190.00  -119.00  +048.00    pi/2   ];
-%             -152.00  -106.00  +049.00    pi/2   ];
+portsLoc = [ -190.00  -119.00  +048.00    pi/2  
+             -152.00  -106.00  +049.00    pi/2   ];
 vp1 = portsLoc(1,1:3);
-%vp2 = portsLoc(2,1:3);
+vp2 = portsLoc(2,1:3);
 
 
 % -------------
@@ -17,8 +17,7 @@ vp1 = portsLoc(1,1:3);
 % Create waypoints
 % Definiremos 6 waypoints a una altura determinada. 
 % Además, el primero y el último tendran otros dos puntos debajo de ellos en las zonas de despegue y aterrizaje.
-% Cada par esta ubicado en el mismo lugar, pero en distinto tiempo 
-% (para que el dron haga una pausa).
+% Cada par esta ubicado en el mismo lugar, pero en distinto tiempo (para que el dron haga una pausa).
 
 wp1L = Waypoint;        % low waypoint
 wp1L.label = 'wp1L';
@@ -56,19 +55,19 @@ wp4P.label = 'wp4P';
 wp1L.pos = vp1 + [0 0 0.10];
 wp1P.pos = wp1L.pos;
 % Ubicamos un par de puntos 10 cms por encima del vertipuerto de aterrizaje
-wp4L.pos = vp1 + [0 0 0.10];
+wp4L.pos = vp2 + [0 0 0.10];
 wp4P.pos = wp4L.pos;
 
 % take off / landing hovering positions
 wp1.pos = wp1L.pos;
 wp1.pos(3) = 70;
-wp4.pos = wp1L.pos;
+wp4.pos = wp4L.pos;
 wp4.pos(3) = wp1.pos(3);
 
 % route             
 wp2.pos = wp1.pos  + [   0  200 0];
-wp3.pos = wp2.pos  + [ 200    0 0];
-wp4.pos = wp1.pos;
+wp3.pos = wp2.pos  + [ 500    0 0];
+%wp4.pos = wp1.pos;
 
 % % desplazamos los puntos de inicio y fin de ruta 20 metros
 % % para que el despegue y el aterrizaje no sean completamente verticales
@@ -104,54 +103,46 @@ fp1.PositionFigure("FP1: POSITION",0.01);
 fp1.VelocityFigure("FP1: VELOCITY",0.01);
 
 
-% % Vamos a hacer una copia de la ruta anterior con intención de suavizarla
-% fp2 = fp1.Copy;
-% % Desplazamos ligeramente el par de puntos de inicio 
-% % para que los dos drones no colisionen en el despegue
-% fp2.waypoints(1).pos = fp2.waypoints(1).pos + [0.5 0 0];
-% fp2.waypoints(2).pos = fp2.waypoints(2).pos + [0.5 0 0];
-% fp2.PositionFigure("FP2: POSITION",0.1);
-% fp2.VelocityFigure("FP2: VELOCITY",0.1);
-% 
-% 
-% 
-% %asumimos velocidad angular y aceleración lineal finitas
-% ang_vel = 0.1;
-% lin_acel =0.4;
-% 
-% % suavizamos 
-% 
-% fp2.SmoothVertexMaintainingDuration('wp1P',ang_vel,lin_acel);
-% fp2.PositionFigure("FP2: POSITION",0.1);
-% fp2.VelocityFigure("FP2: VELOCITY",0.1);
-% 
-% 
-% fp2.SmoothVertexMaintainingDuration('wp1',ang_vel,lin_acel);
-% fp2.PositionFigure("FP2: POSITION",0.1);
-% fp2.VelocityFigure("FP2: VELOCITY",0.1);
-% 
-% 
-% fp2.SmoothVertexMaintainingSpeed('wp2',ang_vel);
-% fp2.PositionFigure("FP2: POSITION",0.1);
-% fp2.VelocityFigure("FP2: VELOCITY",0.1);
-% 
-% fp2.SmoothVertexMaintainingSpeed('wp3',ang_vel);
-% fp2.PositionFigure("FP2: POSITION",0.1);
-% fp2.VelocityFigure("FP2: VELOCITY",0.1);
-% 
-% fp2.SmoothVertexMaintainingSpeed('wp4',ang_vel);
-% fp2.PositionFigure("FP2: POSITION",0.1);
-% fp2.VelocityFigure("FP2: VELOCITY",0.1);
-% 
-% fp2.SmoothVertexMaintainingSpeed('wp5',ang_vel);
-% fp2.PositionFigure("FP2: POSITION",0.1);
-% fp2.VelocityFigure("FP2: VELOCITY",0.1);
-% 
-% fp2.SmoothVertexMaintainingDuration('wp6',ang_vel,lin_acel);
-% fp2.PositionFigure("FP2: POSITION",0.01);
-% fp2.VelocityFigure("FP2: VELOCITY",0.01);
-% 
-% fp2.SmoothVertexMaintainingDuration('wp6L',ang_vel,lin_acel);
-% fp2.PositionFigure("FP2: POSITION",0.1);
-% fp2.VelocityFigure("FP2: VELOCITY",0.1);
-% 
+% Vamos a hacer una copia de la ruta anterior con intención de suavizarla
+fp2 = fp1.Copy;
+% Desplazamos ligeramente el par de puntos de inicio 
+% para que los dos drones no colisionen en el despegue
+fp2.waypoints(1).pos = fp2.waypoints(1).pos + [0.5 0 0];
+fp2.waypoints(2).pos = fp2.waypoints(2).pos + [0.5 0 0];
+fp2.PositionFigure("FP2: POSITION",0.1);
+fp2.VelocityFigure("FP2: VELOCITY",0.1);
+
+
+
+%asumimos velocidad angular y aceleración lineal finitas
+ang_vel = 0.1;
+lin_acel =0.4;
+
+% suavizamos 
+
+fp2.SmoothVertexMaintainingDuration('wp1P',ang_vel,lin_acel);
+fp2.PositionFigure("FP2: POSITION",0.1);
+fp2.VelocityFigure("FP2: VELOCITY",0.1);
+
+
+fp2.SmoothVertexMaintainingDuration('wp1',ang_vel,lin_acel);
+fp2.PositionFigure("FP2: POSITION",0.1);
+fp2.VelocityFigure("FP2: VELOCITY",0.1);
+
+
+fp2.SmoothVertexMaintainingSpeed('wp2',ang_vel);
+fp2.PositionFigure("FP2: POSITION",0.1);
+fp2.VelocityFigure("FP2: VELOCITY",0.1);
+
+fp2.SmoothVertexMaintainingSpeed('wp3',ang_vel);
+fp2.PositionFigure("FP2: POSITION",0.1);
+fp2.VelocityFigure("FP2: VELOCITY",0.1);
+
+fp2.SmoothVertexMaintainingDuration('wp4',ang_vel,lin_acel);
+fp2.PositionFigure("FP2: POSITION",0.01);
+fp2.VelocityFigure("FP2: VELOCITY",0.01);
+
+fp2.SmoothVertexMaintainingDuration('wp4L',ang_vel,lin_acel);
+fp2.PositionFigure("FP2: POSITION",0.1);
+fp2.VelocityFigure("FP2: VELOCITY",0.1);
+
