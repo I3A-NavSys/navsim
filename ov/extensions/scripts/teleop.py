@@ -1,13 +1,17 @@
-import carb
-from carb.input import KeyboardEventType
+import omni.appwindow
+import carb.input
 
+from carb.input import KeyboardEventType, KeyboardEvent
 from omni.kit.scripting import BehaviorScript
-
-from pxr import Sdf, Usd, UsdGeom, Gf
+from pxr import Sdf
 
 class UamMinidrone(BehaviorScript):
     def on_init(self):
-        self.xform = UsdGeom.Xformable(self.prim)
+        #Get Keyboard
+        app_window = omni.appwindow.get_default_app_window()
+        self.keyboard = app_window.get_keyboard()
+        input = carb.input.acquire_input_interface()
+        self.keyboard_sub_id = input.subscribe_to_keyboard_events(self.keyboard, self.on_keyboard_input)
 
         # Mass
         self.mass_attr = self.prim.GetAttribute("physics:mass")
@@ -20,9 +24,10 @@ class UamMinidrone(BehaviorScript):
         self.torque_atr = self.prim.CreateAttribute("physxForce:torque", Sdf.ValueTypeNames.Float3)
         self.torque_atr = self.prim.GetAttribute("physxForce:torque")
 
-        # Apply gravity force
-        gravity = (0, 0, self.mass_attr.Get() * 9.81)
-        self.force_atr.Set(gravity)
+        # Apply gravity force and initialize linear force
+        self.gravity_force = self.mass_attr.Get() * 9.81
+        self.force_atr.Set((0, 0, self.gravity_force))
+        self.linear_force = 0
 
     def on_destroy(self):
         pass
@@ -37,13 +42,17 @@ class UamMinidrone(BehaviorScript):
         pass
 
     def on_update(self, current_time: float, delta_time: float):
-        pose: Gf.Matrix4d = self.xform.GetLocalTransformation()           
+        self.force_atr.Set((0, 0, self.gravity_force + self.linear_force))
 
-        # Position XYZ
-        self.pos = pose.ExtractTranslation()
-        pos_formatted = tuple("{:.2f}".format(value) for value in self.pos)      
+    def on_keyboard_input(self, e: carb.input.KeyboardEvent):
+        # Increase upward force
+        if e.input == carb.input.KeyboardInput.W:
+            if e.type == KeyboardEventType.KEY_PRESS or e.type == KeyboardEventType.KEY_REPEAT:
+                if self.linear_force <= 1:
+                    self.linear_force += 0.1
 
-        # Rotation XYZ
-        rotation: Gf.Rotation = pose.ExtractRotation()      
-        self.rot = rotation.Decompose(Gf.Vec3d.XAxis(), Gf.Vec3d.YAxis(), Gf.Vec3d.ZAxis())
-        rot_formatted = tuple("{:.0f}".format(value) for value in self.rot)
+        # Decrease upward force
+        elif e.input == carb.input.KeyboardInput.S:
+            if e.type == KeyboardEventType.KEY_PRESS or e.type == KeyboardEventType.KEY_REPEAT:
+                if self.linear_force > 0:
+                    self.linear_force -= 0.1
