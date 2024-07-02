@@ -53,17 +53,17 @@ operator.SendFlightPlan('UAV01',fp1);
 
 pause(0.2);
 
-% fp2.RescheduleAt(time + 10.2);
-% % fp3 = fp2.Convert2TP(0.25);
-% operator.SendFlightPlan('UAV02',fp2);
+fp2.RescheduleAt(time + 10.2);
+% fp3 = fp2.Convert2TP(0.25);
+operator.SendFlightPlan('UAV02',fp2);
 
 
-% operator.WaitTime(max(fp1.FinishTime,fp2.FinishTime));
-operator.WaitTime(fp1.FinishTime);
+operator.WaitTime(max(fp1.FinishTime,fp2.FinishTime));
+% operator.WaitTime(fp1.FinishTime);
 monitor.PositionFigure('UAV01',fp1,0.01);
 monitor.VelocityFigure('UAV01',fp1,0.01);
-% monitor.PositionFigure('UAV02',fp2,0.01);
-% monitor.VelocityFigure('UAV02',fp2,0.01);
+monitor.PositionFigure('UAV02',fp2,0.01);
+monitor.VelocityFigure('UAV02',fp2,0.01);
 
 
 operator.PauseSim;
