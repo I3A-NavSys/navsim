@@ -2,7 +2,7 @@ import sys
 import os
 
 # Victor imports for the parallel work
-import threading
+from multiprocessing import Process
 import time
 
 # ####################################################################################################
@@ -11,8 +11,7 @@ import time
 
 def count():
     for i in range(20):
-        print(i)
-        print()
+        print('\n',i)
 
         time.sleep(1)
 
@@ -51,19 +50,20 @@ fp.Print()
 
 # ####################################################################################################
 # By Victor
-# START - Main thread
+# START - Main
+if __name__ == '__main__':
+    # Create needed processes
+    graphP = Process(target=fp.PositionFigure, args=('Flight Path 3D', 0.1))
 
-# Create needed threads
-graphT = threading.Thread(target=fp.PositionFigure, args=('Flight Path 3D', 0.1))
+    # Start those processes
+    graphP.start()
 
-# Start those threads
-graphT.start()
+    # Run parallel work
+    count()
+    print('\nEnd of parent process')
 
-# Run parallel work
-count()
-print('\nEnd of main thread')
+    graphP.join()
+    print('\nEnd of graph process')
 
-graphT.join()
-
-# END - Main thread
+# END - Main
 # ####################################################################################################
