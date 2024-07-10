@@ -10,7 +10,7 @@ from mpl_toolkits.mplot3d import Axes3D  # Necesario para gráficos 3D
 
 
 
-from planners.Waypoint import Waypoint
+from Waypoint import Waypoint
 
 
 

@@ -31,8 +31,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 
 
-from planners.Waypoint import Waypoint
-from planners.FlightPlan import FlightPlan
+from Waypoint import Waypoint
+from FlightPlan import FlightPlan
 
 
 # Crear waypoints
