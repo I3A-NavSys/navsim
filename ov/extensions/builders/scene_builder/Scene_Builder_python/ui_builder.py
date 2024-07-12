@@ -14,9 +14,10 @@ import omni.timeline
 
 from omni.usd import StageEventType
 
-from omni.isaac.ui.element_wrappers import CollapsableFrame, DropDown
+from omni.isaac.ui.element_wrappers import CollapsableFrame, DropDown, CheckBox, TextBlock
 from omni.isaac.ui.element_wrappers.core_connectors import LoadButton, ResetButton
 from omni.isaac.ui.ui_utils import get_style
+from omni.isaac.core.utils.stage import get_current_stage
 
 from .scenes import Scenes
 
@@ -95,7 +96,8 @@ class UIBuilder:
                 self.wrapped_ui_elements.append(self._scene_selector_dropdown)
 
                 self._load_btn = LoadButton(
-                    "Load Button", "LOAD", setup_scene_fn=self._scenes.one_hundred_drones
+                    "Load Button", "LOAD", setup_scene_fn=self._scenes.one_hundred_drones,
+                    setup_post_load_fn=self._repop_drone_selector   # To tell the drone selector to start selecting
                 )
                 self._load_btn.set_world_settings(physics_dt=1 / 60.0, rendering_dt=1 / 60.0)
                 self.wrapped_ui_elements.append(self._load_btn)
@@ -106,6 +108,68 @@ class UIBuilder:
                 self._reset_btn.enabled = False
                 self.wrapped_ui_elements.append(self._reset_btn)
 
+
+        # This is the Set Command frame, where the command is built
+        set_command_frame = CollapsableFrame("Set Command", collapsed=False)
+        
+        with set_command_frame:
+            with ui.VStack(style=get_style(), spacing=5, height=0):
+                # Manipulable drone selector
+                self._drone_selector_dropdown = DropDown("Select Drone", "SELECT", self._get_manipulable_UAVs)
+                self._drone_selector_dropdown.enabled = False
+                self.wrapped_ui_elements.append(self._drone_selector_dropdown)
+
+                # Command parameters
+                ui.Spacer(height=10)
+                ui.Label("Command parameters:")
+
+                # On
+                self._on_checkbox = CheckBox("\tOn", default_value=False, 
+                    tooltip="Tells the drone to execute a command")
+                self.wrapped_ui_elements.append(self._on_checkbox)
+
+                # Movement
+                ui.Spacer(height=5)
+                ui.Label("\tMovement:")
+
+                # X velocity
+                with ui.HStack():
+                    ui.Label("\t\tX velocity")
+                    self._x_velocity_slider = ui.FloatSlider(min=-1, max=1)
+                
+                # Y velocity
+                with ui.HStack():
+                    ui.Label("\t\tY velocity")
+                    self._y_velocity_slider = ui.FloatSlider(min=-1, max=1)
+
+                # Z velocity
+                with ui.HStack():
+                    ui.Label("\t\tZ velocity")
+                    self._z_velocity_slider = ui.FloatSlider(min=-1, max=1)
+
+                # Rotation
+                ui.Spacer(height=5)
+                ui.Label("\tRotation:")
+
+                # Z rotation
+                with ui.HStack():
+                    ui.Label("\t\tZ rotation")
+                    self._z_rotation_slider = ui.FloatSlider(min=-1, max=1)
+
+                # Time duration
+                ui.Spacer(height=5)
+                with ui.HStack():
+                    ui.Label("\tTime duration:")
+                    self._time_duration_field = ui.IntField()
+
+                # Send command
+                ui.Spacer(height=15)
+                self._send_command_button = ui.Button(text="SET COMMAND", clicked_fn=self._get_command_info)
+
+                # Error message when no drone is selected
+                self._command_fail_textBlock = TextBlock(label="ERROR:", text="There is no drone selected")
+                self._command_fail_textBlock.visible = False
+
     ######################################################################################
     # Functions Below This Point Support The Provided Example And Can Be Deleted/Replaced
     ######################################################################################
@@ -115,6 +179,85 @@ class UIBuilder:
 
     def _scene_list(self):
         return ["100 Drones", "Example 2", "Example 3"]
+    
+
+    # -- FUNTION _get_manipulable_UAVs -------------------------------------------------------------------------------------
+    # This function is used to get the drones that are manipulable, that is, able to receive and execute commands
+    # The current implementation is done by means of using the CustomData field from the prim
+    # The idea is to do it creating a new attribute within the Raw USD properties and checking it
+    # ----------------------------------------------------------------------------------------------------------------------
+    def _get_manipulable_UAVs(self):
+        manipulable_UAVs = []
+        stage = get_current_stage()
+
+        # If UAVs are located within a parent prim as /World/abejorros
+        if stage.GetPrimAtPath("/World/abejorros").IsValid():
+            abejorros = stage.GetPrimAtPath("/World/abejorros")
+
+            for abejorro in abejorros.GetChildren():
+                abej_custom_data = abejorro.GetCustomData()
+
+                if abej_custom_data.get("manipulable") is not None:
+                    manipulable_UAVs.append(abejorro.GetName())
+
+        # If UAVs are NOT located within a specific parent prim
+        else:
+            world = stage.GetPrimAtPath("/World")
+            
+            for prim in world.GetChildren():
+                prim_custom_data = prim.GetCustomData()
+
+                if prim_custom_data.get("manipulable") is not None:
+                    manipulable_UAVs.append(prim.GetName())
+
+        return manipulable_UAVs
+    
+
+    # -- FUNCTION _repop_drone_selector ------------------------------------------------------------------------------------
+    # This method is called once the scene is loaded
+    # It enables the drone dropdown selector and starts looking for manipulables drones
+    # ----------------------------------------------------------------------------------------------------------------------
+    def _repop_drone_selector(self):
+        self._drone_selector_dropdown.enabled = True
+        self._drone_selector_dropdown.repopulate()
+
+
+    # -- FUNTION _get_command_info -----------------------------------------------------------------------------------------
+    # This function is in charge of building the command message
+    # It checks if a drone is selected and the search for the required parameters
+    # If the 'On' parameter is set to False, it will return just {'On': False}
+    # Otherwise, it will get the rest of the param
+    # ----------------------------------------------------------------------------------------------------------------------
+    def _get_command_info(self):
+        if self._drone_selector_dropdown.get_selection() is not None:
+            command_info = {}
+
+            command_info["On"] = self._on_checkbox.get_value()
+            
+            if command_info["On"]:
+                x_vel = round(self._x_velocity_slider.model.get_value_as_float(), 2)
+                y_vel = round(self._y_velocity_slider.model.get_value_as_float(), 2)
+                z_vel = round(self._z_velocity_slider.model.get_value_as_float(), 2)
+
+                z_rot = round(self._z_rotation_slider.model.get_value_as_float(), 2)
+
+                time = self._time_duration_field.model.get_value_as_int()
+
+                command_info["vel"] = {"linear": {"x": x_vel, "y": y_vel, "z": z_vel}, "angular": {"z": z_rot}}
+                command_info["duration"] = {"sec": time}
+
+            # Call to set_command function from Iker
+            # TODO
+
+            # Debug
+            print(command_info)
+
+            # HIDE the error message when no drone is selected
+            self._command_fail_textBlock.visible = False
+
+        else:
+            # SHOW error message when no drone is selected
+            self._command_fail_textBlock.visible = True
 
     def _on_post_reset_btn(self):
         """
