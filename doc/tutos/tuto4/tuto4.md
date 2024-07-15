@@ -299,6 +299,6 @@ In contrast, _UAV02_ has executed the smoothed maneuver perfectly. It has experi
 ![UAV02 pos](./img/UAV02_position.png)
 ![UAV02 vel](./img/UAV02_velocity.png)
 
-La posición final de ambos drones en el vertipuerto de destino resume la situación. El _UAV01_ ha aterrizado fuera de la zona habilitada para ello, mientras que el _UAV02_ lo ha hecho correctamente.
+The final position of both drones at the destination vertiport summarizes the situation. _UAV01_ has landed outside the designated landing area, whereas _UAV02_ has landed correctly.
 
 ![Landing positions](./img/landing_positions.png)
