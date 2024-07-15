@@ -7,16 +7,22 @@ from omni.isaac.core.utils.stage import get_current_stage, add_reference_to_stag
 from pxr import UsdGeom, Gf, UsdLux, Sdf
 
 import random
+# Path import is used to get paths from the working directory so that we can use this code as an omniverse extension no matter the machine where it is running
+# This way threre is no need for changing absolute paths
+from pathlib import Path
 
 class Scenes:
     def one_hundred_drones(self):
+        # Root dir
+        self._root_dir = Path(__file__).resolve().parent.parent.parent.parent.parent.parent
+
         world = World()
         self.add_light_to_stage()
         world.scene.add_default_ground_plane()
 
         # Create a cuboid
         self._cuboid_list = []
-        abejorro_usd_path = "C:/Users/ikern/Documents/Repositorios/navsim/ov/extensions/assets/abejorro.usd"
+        abejorro_usd_path = self.get_abejorro_usd_path()
         abejorro_ref_path = "/World/abejorros/abejorro"
 
         for i in range(10):
@@ -58,3 +64,7 @@ class Scenes:
 
         if rand >= 0.5:
             prim.SetCustomDataByKey("manipulable", True)
+
+    def get_abejorro_usd_path(self):
+        path = self._root_dir / "ov" / "extensions" / "assets" / "abejorro.usd"
+        return path.as_posix()
