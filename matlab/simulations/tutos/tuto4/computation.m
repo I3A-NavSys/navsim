@@ -14,63 +14,53 @@ vp2 = portsLoc(2,1:3);
 % -------------
 % Flight Plan
 
-% Create waypoints
-% Definiremos 6 waypoints a una altura determinada. 
-% Además, el primero y el último tendran otros dos puntos debajo de ellos en las zonas de despegue y aterrizaje.
-% Cada par esta ubicado en el mismo lugar, pero en distinto tiempo 
-% (para que el dron haga una pausa).
+% Ubicamos un par de puntos 10 cms por encima del vertipuerto de despegue
 
 wp1L = Waypoint;        % low waypoint
 wp1L.label = 'wp1L';
+wp1L.pos = vp1 + [0 0 0.10];
+
 
 wp1P = Waypoint;        % pause waypoint
 wp1P.label = 'wp1P';
+wp1P.pos = wp1L.pos;
 
 wp1 = Waypoint;
 wp1.label = 'wp1';
+wp1.pos = wp1L.pos;
+wp1.pos(3) = 70;
 
-wp2  = Waypoint;
+wp2 = Waypoint;
 wp2.label = 'wp2';
+wp2.pos = wp1.pos + [100 100 0];
 
-wp3  = Waypoint;
+wp3 = Waypoint;
 wp3.label = 'wp3';
+wp3.pos = wp2.pos + [0 200 0];
 
 wp4  = Waypoint;
 wp4.label = 'wp4';
+wp4.pos = wp3.pos + [200 0 0];
 
 wp5  = Waypoint;
 wp5.label = 'wp5';
-
-wp6 = Waypoint;
-wp6.label = 'wp6';
+wp5.pos = wp4.pos + [0 -300 0];
 
 wp6L = Waypoint;
 wp6L.label = 'wp6L';
+wp6L.pos = vp2 + [0 0 0.10];
 
 wp6P = Waypoint;
 wp6P.label = 'wp6P';
-
-
-% take off / landing positions
-% Ubicamos un par de puntos 10 cms por encima del vertipuerto de despegue
-wp1L.pos = vp1 + [0 0 0.10];
-wp1P.pos = wp1L.pos;
-% Ubicamos un par de puntos 10 cms por encima del vertipuerto de aterrizaje
-wp6L.pos = vp2 + [0 0 0.10];
 wp6P.pos = wp6L.pos;
 
-% take off / landing hovering positions
-wp1.pos = wp1L.pos;
-wp1.pos(3) = 70;
+wp6 = Waypoint;
+wp6.label = 'wp6';
 wp6.pos = wp6L.pos;
 wp6.pos(3) = wp1.pos(3);
 
-% route             
-wp2.pos = wp1.pos  + [ 100  100 0];
-wp3.pos = wp2.pos  + [   0  200 0];
-wp4.pos = wp3.pos  + [ 200    0 0];
-wp5.pos = wp4.pos  + [   0 -300 0];
-% wp5.mandatory = true;
+
+
 
 % % desplazamos los puntos de inicio y fin de ruta 20 metros
 % % para que el despegue y el aterrizaje no sean completamente verticales

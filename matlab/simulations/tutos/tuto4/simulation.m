@@ -57,10 +57,12 @@ operator.SendFlightPlan('UAV02',fp2);
 
 
 operator.WaitTime(max(fp1.FinishTime,fp2.FinishTime));
+operator.PauseSim;
+
 monitor.PositionFigure('UAV01',fp1,0.01);
 monitor.VelocityFigure('UAV01',fp1,0.01);
 monitor.PositionFigure('UAV02',fp2,0.01);
 monitor.VelocityFigure('UAV02',fp2,0.01);
 
 
-operator.PauseSim;
+
