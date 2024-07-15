@@ -24,7 +24,7 @@ ros2 service list | grep Deploy
 ### Running the simulation
 
 Now open Matlab (in the same computer or other computer connected to the same subnetwotk).
-Navigate to `navsim/matlab/simulations/tutos/tuto4`. From here, open the script `CreateObjets.m` and execute it.
+Navigate to `navsim/matlab/simulations/tutos/tuto5`. From here, open the script `CreateObjets.m` and execute it.
 
 >We are experiencing issues with accessing ROS2 communications from Matlab on Ubuntu platforms. Therefore, we recommend running the Matlab portion of this tutorial from a Windows system connected via the network to the Ubuntu system running the Gazebo simulator.
 

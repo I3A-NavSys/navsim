@@ -30,5 +30,5 @@ NAVSIM is a **U-Space** service development tool. It provides:
 - [Tutorial 1:](./doc/tutos/tuto1/tuto1.md) Running your first simulation with Matlab connection
 - [Tutorial 2:](./doc/tutos/tuto2/tuto2.md) Running 100 drones
 - [Tutorial 3:](./doc/tutos/tuto3/tuto3.md) Executing flight plans based on straight segments
-- [Tutorial 4:](./doc/tutos/tuto3/tuto4.md) Executing smoothed flight plans
-- [Tutorial 5:](./doc/tutos/tuto4/tuto5.md) Generation of a fleet of autonomous drones operating in the city
+- [Tutorial 4:](./doc/tutos/tuto4/tuto4.md) Executing smoothed flight plans
+- [Tutorial 5:](./doc/tutos/tuto5/tuto5.md) Generation of a fleet of autonomous drones operating in the city
