@@ -60,10 +60,12 @@ class Scenes:
 
     # This function is for testing purposes, it just assign a random drone a variable to indicate that it is able to receive commands
     def set_random_manipulable_UAV(self, prim):
-        rand = random.randint(0, 1)
+        prim.CreateAttribute("NavSim:Manipulable", Sdf.ValueTypeNames.Bool)
 
+        rand = random.randint(0, 1)
         if rand >= 0.5:
-            prim.SetCustomDataByKey("manipulable", True)
+            manipulable_att = prim.GetAttribute("NavSim:Manipulable")
+            manipulable_att.Set(True)
 
     def get_abejorro_usd_path(self):
         path = self._root_dir / "ov" / "extensions" / "assets" / "abejorro.usd"

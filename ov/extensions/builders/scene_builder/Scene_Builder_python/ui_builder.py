@@ -183,8 +183,6 @@ class UIBuilder:
 
     # -- FUNTION _get_manipulable_UAVs -------------------------------------------------------------------------------------
     # This function is used to get the drones that are manipulable, that is, able to receive and execute commands
-    # The current implementation is done by means of using the CustomData field from the prim
-    # The idea is to do it creating a new attribute within the Raw USD properties and checking it
     # ----------------------------------------------------------------------------------------------------------------------
     def _get_manipulable_UAVs(self):
         manipulable_UAVs = []
@@ -195,9 +193,9 @@ class UIBuilder:
             abejorros = stage.GetPrimAtPath("/World/abejorros")
 
             for abejorro in abejorros.GetChildren():
-                abej_custom_data = abejorro.GetCustomData()
+                manipulable_att = abejorro.GetAttribute("NavSim:Manipulable")
 
-                if abej_custom_data.get("manipulable") is not None:
+                if manipulable_att.Get():
                     manipulable_UAVs.append(abejorro.GetName())
 
         # If UAVs are NOT located within a specific parent prim
@@ -205,9 +203,9 @@ class UIBuilder:
             world = stage.GetPrimAtPath("/World")
             
             for prim in world.GetChildren():
-                prim_custom_data = prim.GetCustomData()
+                manipulable_att = abejorro.GetAttribute("NavSim:Manipulable")
 
-                if prim_custom_data.get("manipulable") is not None:
+                if manipulable_att.Get():
                     manipulable_UAVs.append(prim.GetName())
 
         return manipulable_UAVs
