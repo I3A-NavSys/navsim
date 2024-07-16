@@ -72,6 +72,8 @@ for i = 1:size(way_data2,1)
     fp2.SetWaypoint(wp);
 end
 
+fp2.SetV0000();
+
 % -------------
 %Create a Flight Plan for the drone 3
 %              t      x        y        z    
@@ -89,6 +91,8 @@ for i = 1:size(way_data3,1)
     wp.pos = way_data3(i,2:4);
     fp3.SetWaypoint(wp);
 end
+
+fp3.SetV0000();
 ```
 
 
