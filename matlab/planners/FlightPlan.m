@@ -307,6 +307,7 @@ function SmoothVertexMaintainingSpeed(obj,label,ang_vel)
 
     wp1 = obj.waypoints(i-1);
     wp2 = obj.waypoints(i);    
+    wp3 = obj.waypoints(i+1);    
     if wp2.mandatory
         return
     end
@@ -339,7 +340,7 @@ function SmoothVertexMaintainingSpeed(obj,label,ang_vel)
     while t2_max-t2_min > 0.05
         % [t2_min t2_max]
 
-        wp2B.t = mean([t2_min t2_max])
+        wp2B.t = mean([t2_min t2_max]);
         wp2A.SetJLS(wp2B);
         
         tAB_med = mean([wp2A.t wp2B.t]);
@@ -352,6 +353,9 @@ function SmoothVertexMaintainingSpeed(obj,label,ang_vel)
         end
     end
 
+    if wp2A.t < wp1.t  ||  wp3.t < wp2B.t
+       return  % there is not time enough to include the curve
+    end
 
     obj.RemoveWaypointAtTime(wp2.t);
     obj.SetWaypoint(wp2A);
@@ -460,7 +464,19 @@ end
 
 
 %-------------------------------------------------------------------
-% FIGURES
+% OUTPUT (CONSOLE AND FIGURES)
+
+
+function Print(obj)
+    fprintf("FP: %d\n",obj.id);
+    for wp = obj.waypoints
+        fprintf("[%06.2f]" ,wp.t);
+        fprintf("  %+06.2f",wp.pos(1));
+        fprintf("  %+06.2f",wp.pos(2));
+        fprintf("  %+06.2f",wp.pos(3));
+        fprintf("    '%s'\n" ,wp.label);
+    end
+end
 
 
 

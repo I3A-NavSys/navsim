@@ -361,7 +361,15 @@ function OperateUAV(obj, UAVid)
     % elige vertipuerto de destino
     op.VPdest = op.VPsource;
     while op.VPdest == op.VPsource
-        v2 = randi(length(obj.VPs));
+        v2 = randi(length(obj.VPs));            
+        
+        
+        
+        v2 = 3;
+        
+        
+        
+        
         op.VPdest = obj.VPs(v2).id;
     end
 
@@ -390,50 +398,114 @@ function fp = GenerateFlightPlan(obj,op)
     vp1 = obj.VPs(obj.GetPORTindex(op.VPsource)).pos;
     vp2 = obj.VPs(obj.GetPORTindex(op.VPdest)).pos;
     
-    % Create flight plan with 5 waypoints
-    fp  = FlightPlan(Waypoint.empty);
-    wp1H = Waypoint();
-    wp1M = Waypoint();
-    wp1L = Waypoint();
-    wp3  = Waypoint();
-    wp2H = Waypoint();
-    wp2M = Waypoint();
-    wp2L = Waypoint();
+    % Create waypoints
+
+    %take off positions
+    wpA1 = Waypoint();      
+    wpA1.label = 'wpA1';
+    wpA1.pos = vp1 + [0 0 0.25];
+
+    wpA2 = Waypoint();
+    wpA2.label = 'wpA2';
+    wpA2.pos = wpA1.pos;
+
+
+    % landing position
+    wpB1 = Waypoint();      
+    wpB1.label = 'wpB1';
+    wpB1.pos = vp2 + [0 0 0.25];
+
+    wpB2 = Waypoint();      
+    wpB2.label = 'wpB2';
+    wpB2.pos = wpB1.pos;
+
+
+    %intermediate positions
+    angle = wpA1.CourseTo(wpB1);
+    altitude = 70 + angle/20;
+
+    wpA3 = Waypoint();      
+    wpA3.label = 'wpA3';
+    wpA3.pos = wpA1.pos;
+    wpA3.pos(3) = altitude - 10;
+
+    wpB3 = Waypoint();      
+    wpB3.label = 'wpB3';
+    wpB3.pos = wpB1.pos;
+    wpB3.pos(3) = altitude - 10;
+
+
+    wpA4 = Waypoint();      
+    wpA4.label = 'wpA4';
+    wpA4.pos = wpA1.pos;
+    wpA4.pos(3) = altitude;
+
+    wpB4 = Waypoint();      
+    wpB4.label = 'wpB4';
+    wpB4.pos = wpB1.pos;
+    wpB4.pos(3) = altitude;
     
-    % take off / landing positions
-    wp1L.pos = vp1 + [0 0 0.25];
-    wp2L.pos = vp2 + [0 0 0.25];
+    wpA5 = Waypoint();      
+    wpA5.label = 'wpA5';
+    wpA5.pos = wpA4.pos + 10 * wpA4.DirectionTo(wpB4);
 
-    % take off / landing approach positions
-    wp1M.pos = vp1 + [0 0 1];
-    wp2M.pos = vp2 + [0 0 1];
+    wpB5 = Waypoint();      
+    wpB5.label = 'wpB5';
+    wpB5.pos = wpB4.pos + 10 * wpB4.DirectionTo(wpA4);
 
-    % take off / landing hovering positions
-    angle = wp1L.CourseTo(wp2L);
-    wp1H.pos = wp1L.pos;
-    wp1H.pos(3) = 70 + angle/20;
-    wp2H.pos = wp2L.pos;
-    wp2H.pos(3) = wp1H.pos(3);
 
-    wp1H.pos = wp1H.pos +  2 * wp1H.DirectionTo(wp2H);
-    wp3.pos  = wp2H.pos - 10 * wp1H.DirectionTo(wp2H);
-
+    % compose the flight plan
+    fp = FlightPlan(Waypoint.empty);
+    fp.radius = 2;
+    fp.AppendWaypoint(wpA1);
+    wpA2.t = fp.FinishTime + 5;
+    fp.SetWaypoint(wpA2);
+    fp.AppendWaypoint(wpA3);
+    fp.AppendWaypoint(wpA4);
+    fp.AppendWaypoint(wpA5);
+    fp.AppendWaypoint(wpB5);
+    fp.AppendWaypoint(wpB4);
+    fp.AppendWaypoint(wpB3);
+    fp.AppendWaypoint(wpB2);
+    wpB1.t = fp.FinishTime + 5;
+    fp.SetWaypoint(wpB1);
+    
     % waypoint time intervals
-    wp1L.t = 0;
-    wp1M.t = wp1L.t + wp1L.DistanceTo(wp1M) / 0.2;             % 0.2m/s
-    wp1H.t = wp1M.t + wp1M.DistanceTo(wp1H) / 2;               % 2m/s
-    wp3.t  = wp1H.t + wp1H.DistanceTo(wp3)  / uav.maxForwardVel;
-    wp2H.t = wp3.t  +  wp3.DistanceTo(wp2H) / 2;               % 2m/s
-    wp2M.t = wp2H.t + wp2H.DistanceTo(wp2M) / 2;               % 2m/s
-    wp2L.t = wp2M.t + wp2M.DistanceTo(wp2L) / 0.2;             % 0.2m/s
+    % establecemos el tiempo de cada waypoint en función de la velocidad de desplazamiento deseada
+    fp.SetTimeFromVel('wpA3', 2);
+    fp.SetTimeFromVel('wpA4', 2);
+    fp.SetTimeFromVel('wpA5', 2);
+    fp.SetTimeFromVel('wpB5', 8);
+    fp.SetTimeFromVel('wpB4', 2);
+    fp.SetTimeFromVel('wpB3', 2);
+    fp.SetTimeFromVel('wpB2', 2);
 
-    fp.SetWaypoint(wp1L);
-    fp.SetWaypoint(wp1M);
-    fp.SetWaypoint(wp1H);
-    fp.SetWaypoint(wp3);
-    fp.SetWaypoint(wp2H);
-    fp.SetWaypoint(wp2M);
-    fp.SetWaypoint(wp2L);
+    fp.SetV0000;
+    % fp.Print;
+    % fp.PositionFigure("FP: POSITION",0.01);
+    % fp.VelocityFigure("FP: VELOCITY",0.01);
+
+    ang_vel  = 1.0;
+    lin_acel = 1.0;
+
+    fp.SmoothVertexMaintainingDuration('wpA2',ang_vel,lin_acel);
+    fp.SmoothVertexMaintainingDuration('wpB2',ang_vel,lin_acel);
+    % fp.Print;
+    % fp.PositionFigure("FP: POSITION",0.01);
+    % fp.VelocityFigure("FP: VELOCITY",0.01);
+      
+    fp.SmoothVertexMaintainingSpeed('wpA4',ang_vel);
+    fp.SmoothVertexMaintainingSpeed('wpB4',ang_vel);
+    % fp.Print;
+    % fp.PositionFigure("FP: POSITION",0.01);
+    % fp.VelocityFigure("FP: VELOCITY",0.01);
+
+    fp.SmoothVertexMaintainingDuration('wpA5',ang_vel,lin_acel);
+    fp.SmoothVertexMaintainingDuration('wpB5',ang_vel,lin_acel);
+    % fp.Print;
+    % fp.PositionFigure("FP: POSITION",0.01);
+    % fp.VelocityFigure("FP: VELOCITY",0.01);
+
     
 end
 

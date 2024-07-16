@@ -193,7 +193,11 @@ ros2 service list | grep Deploy
 
 ### Matlab
 
-Now, open the script `simulation.m` and execute it. 
+
+Now open Matlab (in the same computer or other computer connected to the same subnetwotk).
+Navigate to `navsim/matlab/simulations/tutos/tuto4`. From here, open the script `simulation.m` and execute it. 
+
+>We are experiencing issues with accessing ROS2 communications from Matlab on Ubuntu platforms. Therefore, we recommend running the Matlab portion of this tutorial from a Windows system connected via the network to the Ubuntu system running the Gazebo simulator.
 
 This code employs a **SimpleBuilder** to deploy vertiports in the area, a **USpaceOperator** to manage the operation of several drones, and a **SimpleMonitor** to analyze their accuracy executing flight plans.
 

@@ -44,10 +44,10 @@ builder.DeployModel('I3A', 'I3A', [-150 -225 0], [0 0 0]);
 % Deploy fleet
 info = UAVinfo('',UAVmodels.MiniDroneFP1);
 info.maxForwardVel = 10;
-operator.DeployFleet(size(portsLoc,1),info);
-% operator.DeployUAV(info,'UAV01', ...
-%     operator.VPs(1).pos+[0 0 0.20], ...
-%     [0 0 0]);
+% operator.DeployFleet(size(portsLoc,1),info);
+operator.DeployUAV(info,'UAV01', ...
+    operator.VPs(1).pos+[0 0 0.20], ...
+    [0 0 0]);
 
 
 
@@ -64,11 +64,13 @@ end
 
 
 %% 
-operator.WaitTime(operator.GetTime + 50);
-
-op = operator.ops(1);
-op.fp.PositionFigure("OP1 FP: POSITION",0.1);
-op.fp.VelocityFigure("OP1 FP: VELOCITY",0.1);
-
-monitor.PositionFigure(op.UAVid,op.fp,0.1);
-monitor.VelocityFigure(op.UAVid,op.fp,0.1);
+% % operator.WaitTime(operator.GetTime + 50);
+% op = operator.ops(1);
+% operator.WaitTime(op.fp.FinishTime + 1);
+% operator.PauseSim;
+% 
+% op.fp.PositionFigure("OP1 FP: POSITION",0.1);
+% op.fp.VelocityFigure("OP1 FP: VELOCITY",0.1);
+% 
+% monitor.PositionFigure(op.UAVid,op.fp,0.1);
+% monitor.VelocityFigure(op.UAVid,op.fp,0.1);
