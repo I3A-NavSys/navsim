@@ -6,6 +6,8 @@ import numpy as np
 
 import math
 
+import carb
+
 class UamMinidrone(BehaviorScript):
     def on_init(self):
         # Get dynamic control interface
@@ -172,6 +174,10 @@ class UamMinidrone(BehaviorScript):
         self.w_rotor_NW = self.u[1, 0]
         self.w_rotor_SE = self.u[2, 0]
         self.w_rotor_SW = self.u[3, 0]
+
+        # Apply thrust force
+        handle = self.dc.get_rigid_body("/abejorro")
+        self.dc.apply_body_force(handle, carb._carb.Float3(10, 0, 0), carb._carb.Float3(0, 0, 0), True)
 
     def rotors_off(self):
         # Turn off rotors
