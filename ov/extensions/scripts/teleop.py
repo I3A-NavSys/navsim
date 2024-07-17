@@ -54,5 +54,5 @@ class UamMinidrone(BehaviorScript):
         # Decrease upward force
         elif e.input == carb.input.KeyboardInput.S:
             if e.type == KeyboardEventType.KEY_PRESS or e.type == KeyboardEventType.KEY_REPEAT:
-                if self.linear_force > 0:
+                if self.linear_force > -1:
                     self.linear_force -= 0.1

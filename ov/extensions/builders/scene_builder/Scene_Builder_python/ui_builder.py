@@ -19,6 +19,8 @@ from omni.isaac.ui.element_wrappers.core_connectors import LoadButton, ResetButt
 from omni.isaac.ui.ui_utils import get_style
 from omni.isaac.core.utils.stage import get_current_stage
 
+from pxr import Sdf
+
 from .scenes import Scenes
 
 class UIBuilder:
@@ -244,8 +246,15 @@ class UIBuilder:
                 command_info["vel"] = {"linear": {"x": x_vel, "y": y_vel, "z": z_vel}, "angular": {"z": z_rot}}
                 command_info["duration"] = {"sec": time}
 
+            # TEMPORAL
+
             # Call to set_command function from Iker
-            # TODO
+            manipulable_UAVs = self._get_manipulable_UAVs()
+            prim_path = "/World/abejorros/" + manipulable_UAVs[self._drone_selector_dropdown.get_selection_index()]
+            stage = get_current_stage()
+            drone = stage.GetPrimAtPath(prim_path)
+
+            # TEMPORAL
 
             # Debug
             print(command_info)
