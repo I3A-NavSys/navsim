@@ -68,5 +68,5 @@ class Scenes:
             manipulable_att.Set(True)
 
     def get_abejorro_usd_path(self):
-        path = self._root_dir / "ov" / "extensions" / "assets" / "abejorro.usd"
+        path = self._root_dir / "ov" / "extensions" / "assets" / "abejorro_original.usd"
         return path.as_posix()
