@@ -1,5 +1,6 @@
 from omni.kit.scripting import BehaviorScript
-from omni.isaac.dynamic_control import _dynamic_control
+from omni.isaac.core.prims import RigidPrimView
+from omni.isaac.core.utils import rotations
 from pxr import UsdGeom, Gf
 
 import numpy as np
@@ -10,8 +11,8 @@ import carb
 
 class UamMinidrone(BehaviorScript):
     def on_init(self):
-        # Get dynamic control interface
-        self.dc = _dynamic_control.acquire_dynamic_control_interface()
+        # Get rigid body prims
+        self.drone_rbp = RigidPrimView("/abejorro")
 
         # Get xformable from prim
         self.xform = UsdGeom.Xformable(self.prim)
@@ -104,17 +105,19 @@ class UamMinidrone(BehaviorScript):
         pass
 
     def on_update(self, current_time: float, delta_time: float):
-        # Get pose
-        drone = self.dc.get_rigid_body("/abejorro")
-        pose = self.dc.get_rigid_body_pose(drone)
+        # Get position and orientation
+        position, orientation = self.drone_rbp.get_world_poses()
+
+        # Transform orientation from quaternions to Euler angles
+        orientation = rotations.quat_to_euler_angles(orientation[0])
 
         # Get linear and angular velocity
-        linear_vel = self.prim.GetAttribute("physics:velocity").Get()
-        angular_vel = self.prim.GetAttribute("physics:angularVelocity").Get()
+        linear_vel = self.drone_rbp.get_linear_velocities()[0]
+        angular_vel = self.drone_rbp.get_angular_velocities()[0]
 
         # Assign model state
-        self.x[0, 0] = pose.r[0] # ePhi
-        self.x[1, 0] = pose.r[1] # eTheta
+        self.x[0, 0] = orientation[0] # ePhi
+        self.x[1, 0] = orientation[1] # eTheta
         self.x[2, 0] = angular_vel[0] # bWx
         self.x[3, 0] = angular_vel[1] # bWy
         self.x[4, 0] = angular_vel[2] # bWz
@@ -176,8 +179,7 @@ class UamMinidrone(BehaviorScript):
         self.w_rotor_SW = self.u[3, 0]
 
         # Apply thrust force
-        handle = self.dc.get_rigid_body("/abejorro")
-        self.dc.apply_body_force(handle, carb._carb.Float3(10, 0, 0), carb._carb.Float3(0, 0, 0), True)
+        self.drone_rbp.apply_forces(np.array([0.0, 0.0, 3.0]))
 
     def rotors_off(self):
         # Turn off rotors
