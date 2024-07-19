@@ -1,6 +1,7 @@
 from omni.kit.scripting import BehaviorScript
 from omni.isaac.core.prims import RigidPrimView
 from omni.isaac.core.utils import rotations
+
 from pxr import UsdGeom, Gf
 
 import numpy as np
@@ -13,6 +14,7 @@ class UamMinidrone(BehaviorScript):
     def on_init(self):
         # Get rigid body prims
         self.drone_rbp = RigidPrimView("/abejorro")
+        self.prims_initialized = False
 
         # Get xformable from prim
         self.xform = UsdGeom.Xformable(self.prim)
@@ -102,9 +104,14 @@ class UamMinidrone(BehaviorScript):
         pass
 
     def on_stop(self):
-        pass
+        self.prims_initialized = False
 
     def on_update(self, current_time: float, delta_time: float):
+        # Initialize rigid body prim
+        if self.prims_initialized == False:
+            self.drone_rbp.initialize()
+            self.prims_initialized = True
+            
         # Get position and orientation
         position, orientation = self.drone_rbp.get_world_poses()
 
@@ -132,9 +139,9 @@ class UamMinidrone(BehaviorScript):
         self.y[3, 0] = angular_vel[2] # bWz
 
         # Assign reference
-        self.r[0, 0] = 1
+        self.r[0, 0] = 0
         self.r[1, 0] = 0
-        self.r[2, 0] = 0
+        self.r[2, 0] = 1
         self.r[3, 0] = 0
 
         # Error between output and reference
@@ -179,7 +186,7 @@ class UamMinidrone(BehaviorScript):
         self.w_rotor_SW = self.u[3, 0]
 
         # Apply thrust force
-        self.drone_rbp.apply_forces(np.array([0.0, 0.0, 3.0]))
+        self.drone_rbp.apply_forces(np.array([1.0, 0.0, 3.0]))
 
     def rotors_off(self):
         # Turn off rotors
