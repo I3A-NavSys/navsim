@@ -189,7 +189,7 @@ class Joystick_controller:
 
                 x_dir_vel = fordward_vector * joy_force[0]
                 y_dir_vel = left_vector * joy_force[1]
-                z_dir_vel = Gf.Vec3f(0,0, current_z_vel)
+                z_dir_vel = Gf.Vec3f(0,0, self._vel_att.Get()[2])
 
                 self._vel_to_apply = x_dir_vel + y_dir_vel + z_dir_vel
 
