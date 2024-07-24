@@ -141,7 +141,7 @@ class UamMinidrone(BehaviorScript):
         self.y[2, 0] = linear_vel[2] # bZdot
         self.y[3, 0] = angular_vel[2] # bWz
 
-        # Assign reference
+        # Assign reference (m/s)
         self.r[0, 0] = 0
         self.r[1, 0] = 0
         self.r[2, 0] = 1
