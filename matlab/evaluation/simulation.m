@@ -35,15 +35,15 @@ info.maxAngularAcel  =  1;    % rad/s2
 
 % Deploy UAVs
 
-% operator.DeployUAV(info,'UAV01', ...
-%     [ -190.00  -119.00  +048.10 ],...
-%     [    0.00     0.00     pi/4  ]);
-% monitor.TrackUAV('UAV01');
-% 
-% operator.DeployUAV(info,'UAV02', ...
-%     [ -189.50  -119.00  +048.10 ],...
-%     [    0.00     0.00     pi/4 ]);
-% monitor.TrackUAV('UAV02');
+operator.DeployUAV(info,'UAV01', ...
+    [ -190.00  -119.00  +048.10 ],...
+    [    0.00     0.00     pi/4  ]);
+monitor.TrackUAV('UAV01');
+
+operator.DeployUAV(info,'UAV02', ...
+    [ -189.50  -119.00  +048.10 ],...
+    [    0.00     0.00     pi/4 ]);
+monitor.TrackUAV('UAV02');
 
 
 % operator.DeployUAV(info,'UAV03', ...
@@ -68,15 +68,15 @@ info.maxAngularAcel  =  1;    % rad/s2
 % monitor.TrackUAV('UAV06');
 
 
-operator.DeployUAV(info,'UAV07', ...
-    [ -200.00  -176.00  +010.10 ],...
-    [    0.00     0.00     pi/4 ]);
-monitor.TrackUAV('UAV07');
-
-operator.DeployUAV(info,'UAV08', ...
-    [ -199.50  -176.00  +010.10 ],...
-    [    0.00     0.00     pi/4 ]);
-monitor.TrackUAV('UAV08');
+% operator.DeployUAV(info,'UAV07', ...
+%     [ -200.00  -176.00  +010.10 ],...
+%     [    0.00     0.00     pi/4 ]);
+% monitor.TrackUAV('UAV07');
+% 
+% operator.DeployUAV(info,'UAV08', ...
+%     [ -199.50  -176.00  +010.10 ],...
+%     [    0.00     0.00     pi/4 ]);
+% monitor.TrackUAV('UAV08');
 
 
 % operator.DeployUAV(info,'UAV09', ...
@@ -92,21 +92,21 @@ monitor.TrackUAV('UAV08');
 
 %% fp1 & fp2
 
-% time = operator.GetTime();
-% 
-% fp1.RescheduleAt(time + 10);
-% operator.SendFlightPlan('UAV01',fp1);
-% 
-% pause(0.2);
-% 
-% fp2.RescheduleAt(time + 10.2);
-% operator.SendFlightPlan('UAV02',fp2);
-% 
-% operator.WaitTime(max(fp1.FinishTime,fp2.FinishTime));
-% monitor.PositionFigure('UAV01',fp1,0.01);
-% monitor.VelocityFigure('UAV01',fp1,0.01);
-% monitor.PositionFigure('UAV02',fp2,0.01);
-% monitor.VelocityFigure('UAV02',fp2,0.01);
+time = operator.GetTime();
+
+fp1.RescheduleAt(time + 10);
+operator.SendFlightPlan('UAV01',fp1);
+
+pause(0.2);
+
+fp2.RescheduleAt(time + 10.2);
+operator.SendFlightPlan('UAV02',fp2);
+
+operator.WaitTime(max(fp1.FinishTime,fp2.FinishTime));
+monitor.PositionFigure('UAV01',fp1,0.01);
+monitor.VelocityFigure('UAV01',fp1,0.01);
+monitor.PositionFigure('UAV02',fp2,0.01);
+monitor.VelocityFigure('UAV02',fp2,0.01);
 
 %% fp3 & fp4
 
@@ -124,7 +124,7 @@ monitor.TrackUAV('UAV08');
 % monitor.PositionFigure('UAV03',fp3,0.01);
 % monitor.VelocityFigure('UAV03',fp3,0.01);
 % monitor.PositionFigure('UAV04',fp4,0.01);
-% monitor.VelocityFigure('UAV05',fp4,0.01);
+% monitor.VelocityFigure('UAV04',fp4,0.01);
 
 
 %% fp5 & fp6
@@ -147,21 +147,21 @@ monitor.TrackUAV('UAV08');
 
 %% fp7 & fp8
 
-time = operator.GetTime();
-
-fp7.RescheduleAt(time + 10);
-operator.SendFlightPlan('UAV07',fp7);
-
-pause(0.2);
-
-fp8.RescheduleAt(time + 10.2);
-operator.SendFlightPlan('UAV08',fp8);
-
-operator.WaitTime(max(fp7.FinishTime,fp8.FinishTime));
-monitor.PositionFigure('UAV07',fp5,0.01);
-monitor.VelocityFigure('UAV07',fp5,0.01);
-monitor.PositionFigure('UAV08',fp6,0.01);
-monitor.VelocityFigure('UAV09',fp6,0.01);
+% time = operator.GetTime();
+% 
+% fp7.RescheduleAt(time + 10);
+% operator.SendFlightPlan('UAV07',fp7);
+% 
+% pause(0.2);
+% 
+% fp8.RescheduleAt(time + 10.2);
+% operator.SendFlightPlan('UAV08',fp8);
+% 
+% operator.WaitTime(max(fp7.FinishTime,fp8.FinishTime));
+% monitor.PositionFigure('UAV07',fp7,0.01);
+% monitor.VelocityFigure('UAV07',fp7,0.01);
+% monitor.PositionFigure('UAV08',fp8,0.01);
+% monitor.VelocityFigure('UAV08',fp8,0.01);
 
 %% fp9 & fp10
 
@@ -170,15 +170,15 @@ monitor.VelocityFigure('UAV09',fp6,0.01);
 % fp9.RescheduleAt(time + 10);
 % operator.SendFlightPlan('UAV09',fp9);
 % 
-% pause(0.2);
+% pause(1);
 % 
-% fp10.RescheduleAt(time + 10.2);
-% operator.SendFlightPlan('UAV06',fp10);
+% fp10.RescheduleAt(time + 11);
+% operator.SendFlightPlan('UAV10',fp10);
 % 
 % operator.WaitTime(max(fp9.FinishTime,fp10.FinishTime));
-% monitor.PositionFigure('UAV09',fp5,0.01);
-% monitor.VelocityFigure('UAV09',fp5,0.01);
-% monitor.PositionFigure('UAV10',fp6,0.01);
-% monitor.VelocityFigure('UAV10',fp6,0.01);
-
-operator.PauseSim;
+% monitor.PositionFigure('UAV09',fp9,0.01);
+% monitor.VelocityFigure('UAV09',fp9,0.01);
+% monitor.PositionFigure('UAV10',fp10,0.01);
+% monitor.VelocityFigure('UAV10',fp10,0.01);
+% 
+% operator.PauseSim;
