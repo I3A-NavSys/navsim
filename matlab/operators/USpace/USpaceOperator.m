@@ -362,14 +362,6 @@ function OperateUAV(obj, UAVid)
     op.VPdest = op.VPsource;
     while op.VPdest == op.VPsource
         v2 = randi(length(obj.VPs));            
-        
-        
-        
-        v2 = 3;
-        
-        
-        
-        
         op.VPdest = obj.VPs(v2).id;
     end
 
@@ -444,15 +436,23 @@ function fp = GenerateFlightPlan(obj,op)
     wpB4.label = 'wpB4';
     wpB4.pos = wpB1.pos;
     wpB4.pos(3) = altitude;
+
+    if wpA4.DistanceTo(wpB4) > 80
+        largeFP = true;
+    else
+        largeFP = false;
+    end
+       
+    if largeFP
+        wpA5 = Waypoint();      
+        wpA5.label = 'wpA5';
+        wpA5.pos = wpA4.pos + 20 * wpA4.DirectionTo(wpB4);
     
-    wpA5 = Waypoint();      
-    wpA5.label = 'wpA5';
-    wpA5.pos = wpA4.pos + 10 * wpA4.DirectionTo(wpB4);
-
-    wpB5 = Waypoint();      
-    wpB5.label = 'wpB5';
-    wpB5.pos = wpB4.pos + 10 * wpB4.DirectionTo(wpA4);
-
+        wpB5 = Waypoint();      
+        wpB5.label = 'wpB5';
+        wpB5.pos = wpB4.pos + 20 * wpB4.DirectionTo(wpA4);
+    end
+    
 
     % compose the flight plan
     fp = FlightPlan(Waypoint.empty);
@@ -462,8 +462,10 @@ function fp = GenerateFlightPlan(obj,op)
     fp.SetWaypoint(wpA2);
     fp.AppendWaypoint(wpA3);
     fp.AppendWaypoint(wpA4);
-    fp.AppendWaypoint(wpA5);
-    fp.AppendWaypoint(wpB5);
+    if largeFP
+        fp.AppendWaypoint(wpA5);
+        fp.AppendWaypoint(wpB5);
+    end
     fp.AppendWaypoint(wpB4);
     fp.AppendWaypoint(wpB3);
     fp.AppendWaypoint(wpB2);
@@ -474,38 +476,33 @@ function fp = GenerateFlightPlan(obj,op)
     % establecemos el tiempo de cada waypoint en función de la velocidad de desplazamiento deseada
     fp.SetTimeFromVel('wpA3', 2);
     fp.SetTimeFromVel('wpA4', 2);
-    fp.SetTimeFromVel('wpA5', 2);
-    fp.SetTimeFromVel('wpB5', 8);
+    if largeFP
+        fp.SetTimeFromVel('wpA5', 2);
+        fp.SetTimeFromVel('wpB5', 8);
+    end
     fp.SetTimeFromVel('wpB4', 2);
     fp.SetTimeFromVel('wpB3', 2);
     fp.SetTimeFromVel('wpB2', 2);
 
     fp.SetV0000;
-    % fp.Print;
-    % fp.PositionFigure("FP: POSITION",0.01);
-    % fp.VelocityFigure("FP: VELOCITY",0.01);
 
-    ang_vel  = 1.0;
-    lin_acel = 1.0;
+    ang_vel  = 0.8;
+    lin_acel = 0.8;
 
     fp.SmoothVertexMaintainingDuration('wpA2',ang_vel,lin_acel);
     fp.SmoothVertexMaintainingDuration('wpB2',ang_vel,lin_acel);
-    % fp.Print;
-    % fp.PositionFigure("FP: POSITION",0.01);
-    % fp.VelocityFigure("FP: VELOCITY",0.01);
       
     fp.SmoothVertexMaintainingSpeed('wpA4',ang_vel);
     fp.SmoothVertexMaintainingSpeed('wpB4',ang_vel);
+
+    if largeFP
+        fp.SmoothVertexMaintainingDuration('wpA5',ang_vel,lin_acel);
+        fp.SmoothVertexMaintainingDuration('wpB5',ang_vel,lin_acel);
+    end
+
     % fp.Print;
     % fp.PositionFigure("FP: POSITION",0.01);
     % fp.VelocityFigure("FP: VELOCITY",0.01);
-
-    fp.SmoothVertexMaintainingDuration('wpA5',ang_vel,lin_acel);
-    fp.SmoothVertexMaintainingDuration('wpB5',ang_vel,lin_acel);
-    % fp.Print;
-    % fp.PositionFigure("FP: POSITION",0.01);
-    % fp.VelocityFigure("FP: VELOCITY",0.01);
-
     
 end
 
