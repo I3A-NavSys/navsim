@@ -17,6 +17,7 @@ You can zoom out to observe the whole city.
 
 As in the previous tutorials, in a new terminal, verify that the ROS2 **/World** node is running a service **/NavSim/DeployModel** for deploying objects in the area:
 
+
 ```bash
 ros2 node list
 ros2 service list | grep Deploy
@@ -105,16 +106,16 @@ for UAVid = operator.FleetIds
     operator.OperateUAV(UAVid);
 end
 ```
-Each operation starts from the vertiport where the drone is located, towards a randomly chosen destination vertiport (with the only restriction being that it must be different from the origin). The flight plan includes the drone ascending to a height of 70 meters (plus or minus 9 meters, depending on the course to follow), flying straight towards its destination, and descending vertically to land. The ascent and descent are performed at 2m/s. The cruising speed is 10m/s. 10 meters before completing the horizontal displacement, the drone reduces its speed to 2 m/s.
+Each operation starts from the vertiport where the drone is located, towards a randomly chosen destination vertiport (with the only restriction being that it must be different from the origin). The flight plan includes the drone ascending to a height of 70 meters (plus or minus 9 meters, depending on the course to follow), flying straight towards its destination, and descending vertically to land. The ascent and descent are performed at 2m/s. The cruising speed is 8m/s. 20 meters before completing the horizontal displacement, the drone reduces its speed to 2 m/s.
 
 ![Flight plan: position](./img/FP_pos.png)
 ![Flight plan: velocity](./img/FP_vel.png)
 
 
 As soon as a drone informs the operator that it has completed the flight plan, the operator will assign it a new operation that will start 10 seconds later.
-The following figure shows more than 8000 telemetry data from UAV01, collected by the monitoring service during 2 hours and 15 minutes of simulation.
+The following figure shows more than 10000 telemetry data from UAV01, collected by the monitoring service during 3 hours of simulation.
 
-![Telemetry data](./img/telemetry.png)
+![Telemetry data](./img/telemetry.jpg)
 
 
 ### Considerations about flight plan conflict detection and aircraft collision avoidance
