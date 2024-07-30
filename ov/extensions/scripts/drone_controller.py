@@ -205,10 +205,9 @@ class UamMinidrone(BehaviorScript):
         drag_rotor_SE = np.array([0.0, 0.0, self.kMDR * math.pow(self.w_rotor_SE, 2)])
         drag_rotor_SW = np.array([0.0, 0.0, self.kMDR * math.pow(self.w_rotor_SW, 2)])
 
-        self.drone_rbp.apply_forces_and_torques_at_pos(drag_rotor_NE, positions=self.pos_NE, is_global=False)
-        self.drone_rbp.apply_forces_and_torques_at_pos(drag_rotor_NW, positions=self.pos_NW, is_global=False)
-        self.drone_rbp.apply_forces_and_torques_at_pos(drag_rotor_SE, positions=self.pos_SE, is_global=False)
-        self.drone_rbp.apply_forces_and_torques_at_pos(drag_rotor_SW, positions=self.pos_SW, is_global=False)
+        drag_CM = drag_rotor_NE - drag_rotor_NW - drag_rotor_SE + drag_rotor_SW
+
+        self.drone_rbp.apply_forces_and_torques_at_pos(torques=drag_CM, positions=self.pos_CM, is_global=False)
 
         # Apply air friction force
         friction_force_CM = np.array([-self.kFDx * linear_vel[0] * math.fabs(linear_vel[0]),
@@ -222,7 +221,7 @@ class UamMinidrone(BehaviorScript):
                                        -self.kMDy * angular_vel[1] * math.fabs(angular_vel[1]),
                                        -self.kMDz * angular_vel[2] * math.fabs(angular_vel[2])])
         
-        self.drone_rbp.apply_forces_and_torques_at_pos(friction_moment_CM, positions=self.pos_CM, is_global=False)
+        self.drone_rbp.apply_forces_and_torques_at_pos(torques=friction_moment_CM, positions=self.pos_CM, is_global=False)
         
     def rotors_off(self):
         # Turn off rotors
