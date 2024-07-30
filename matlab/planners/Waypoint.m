@@ -139,12 +139,13 @@ function SetJLS(wp1,wp2)
     v2 = wp2.vel;
     a2 = wp2.acel;
 
-    if norm(r2-r1)==0
+    t12 = wp1.TimeTo(wp2);
+    
+    if norm(r2-r1)==0 && t12==0
         wp1.Stop();
         return
     end
     
-    t12 = wp1.TimeTo(wp2);
 
     A = [ t12^3/6   t12^4/24   t12^5/120 
           t12^2/2   t12^3/6    t12^4/24 
