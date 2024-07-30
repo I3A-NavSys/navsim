@@ -9,8 +9,8 @@ pos  = [0 0 0];    % position      (m)
 vel  = [0 0 0];    % velocity      (m/s)
 acel = [0 0 0];    % aceleration   (m/s2)
 jerk = [0 0 0];    % jerk          (m/s3)
-jolt = [0 0 0];    % jolt          (m/s4)
-snap = [0 0 0];    % snap          (m/s5)
+snap = [0 0 0];    % snap          (m/s4)
+crkl = [0 0 0];    % crackle       (m/s5)
 
 % transito obligado
 mandatory = false;
@@ -38,8 +38,8 @@ function Stop(obj)
     obj.vel  = [0 0 0];
     obj.acel = [0 0 0];
     obj.jerk = [0 0 0];
-    obj.jolt = [0 0 0];
     obj.snap = [0 0 0];
+    obj.crkl = [0 0 0];
 end
 
 
@@ -128,7 +128,7 @@ function SetJLS(wp1,wp2)
     % Dados dos waypoints con 
     %   t1 pos1 vel1 acel1
     %   t2 pos2 vel2 acel2
-    % obtiene jerk1, jolt1 y snap1 para ejecutar dicho movimiento
+    % obtiene jerk1, snap1 y crackle para ejecutar dicho movimiento
 
     wp1.CheckWaypoint(wp2);
 
@@ -159,8 +159,8 @@ function SetJLS(wp1,wp2)
 
     X = A\B;
     wp1.jerk = X(1,:);
-    wp1.jolt = X(2,:);
-    wp1.snap = X(3,:);
+    wp1.snap = X(2,:);
+    wp1.crkl = X(3,:);
 
 end
 
@@ -171,7 +171,7 @@ function SetJL0_T(wp1,wp2)
     %   t1 pos1 vel1 acel1
     %      pos2 vel2 acel2
     % obtiene 
-    %   jerk1 jolt1 snap1=0
+    %   jerk1 snap1 crackle1=0
     %   t2
     % para ejecutar dicho movimiento
 
@@ -203,8 +203,8 @@ function SetJL0_T(wp1,wp2)
 
     X = A\B;
     wp1.jerk = X(1,:);
-    wp1.jolt = X(2,:);
-    wp1.snap = X(3,:);
+    wp1.snap = X(2,:);
+    wp1.crkl = X(3,:);
 
 end
 
@@ -220,23 +220,23 @@ function wp2 = Interpolation(wp1,t2)
     v1 = wp1.vel;
     a1 = wp1.acel;
     j1 = wp1.jerk;
-    l1 = wp1.jolt;
     s1 = wp1.snap;
+    c1 = wp1.crkl;
     t12= wp1.TimeTo(wp2);
    
-    r2 = r1 + v1*t12 + 1/2*a1*t12^2 + 1/6*j1*t12^3 + 1/24*l1*t12^4 + 1/120*s1*t12^5 ;
-    v2 = v1 + a1*t12 + 1/2*j1*t12^2 + 1/6*l1*t12^3 + 1/24*s1*t12^4 ;
-    a2 = a1 + j1*t12 + 1/2*l1*t12^2 + 1/6*s1*t12^3 ;
-    j2 = j1 + l1*t12 + 1/2*s1*t12^2 ;
-    l2 = l1 + s1*t12 ;
-    s2 = s1 ;
+    r2 = r1 + v1*t12 + 1/2*a1*t12^2 + 1/6*j1*t12^3 + 1/24*s1*t12^4 + 1/120*c1*t12^5 ;
+    v2 = v1 + a1*t12 + 1/2*j1*t12^2 + 1/6*s1*t12^3 + 1/24*c1*t12^4 ;
+    a2 = a1 + j1*t12 + 1/2*s1*t12^2 + 1/6*c1*t12^3 ;
+    j2 = j1 + s1*t12 + 1/2*c1*t12^2 ;
+    s2 = s1 + c1*t12 ;
+    c2 = c1 ;
 
     wp2.pos  = r2;
     wp2.vel  = v2;
     wp2.acel = a2;
     wp2.jerk = j2;
-    wp2.jolt = l2;
     wp2.snap = s2;
+    wp2.crkl = c2;
 
 end
 

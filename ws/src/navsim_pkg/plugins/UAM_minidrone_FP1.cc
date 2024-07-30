@@ -541,10 +541,10 @@ ignition::math::Vector3<double> PositionAtTime(common::Time t2)
         ignition::math::Vector3<double> v1 = ignition::math::Vector3d(WP1.vel.x, WP1.vel.y, WP1.vel.z);
         ignition::math::Vector3<double> a1 = ignition::math::Vector3d(WP1.acel.x,WP1.acel.y,WP1.acel.z);
         ignition::math::Vector3<double> j1 = ignition::math::Vector3d(WP1.jerk.x,WP1.jerk.y,WP1.jerk.z);
-        ignition::math::Vector3<double> l1 = ignition::math::Vector3d(WP1.jolt.x,WP1.jolt.y,WP1.jolt.z);
         ignition::math::Vector3<double> s1 = ignition::math::Vector3d(WP1.snap.x,WP1.snap.y,WP1.snap.z);
+        ignition::math::Vector3<double> c1 = ignition::math::Vector3d(WP1.crkl.x,WP1.crkl.y,WP1.crkl.z);
 
-        r2 = r1 + v1*t + a1*pow(t,2)/2 + j1*pow(t,3)/6 + l1*pow(t,4)/24 + s1*pow(t,5)/120 ;
+        r2 = r1 + v1*t + a1*pow(t,2)/2 + j1*pow(t,3)/6 + s1*pow(t,4)/24 + c1*pow(t,5)/120 ;
 
     }
     
@@ -587,10 +587,10 @@ ignition::math::Vector3<double> VelocityAtTime(common::Time t2)
         ignition::math::Vector3<double> v1 = ignition::math::Vector3d(WP1.vel.x, WP1.vel.y, WP1.vel.z);
         ignition::math::Vector3<double> a1 = ignition::math::Vector3d(WP1.acel.x,WP1.acel.y,WP1.acel.z);
         ignition::math::Vector3<double> j1 = ignition::math::Vector3d(WP1.jerk.x,WP1.jerk.y,WP1.jerk.z);
-        ignition::math::Vector3<double> l1 = ignition::math::Vector3d(WP1.jolt.x,WP1.jolt.y,WP1.jolt.z);
         ignition::math::Vector3<double> s1 = ignition::math::Vector3d(WP1.snap.x,WP1.snap.y,WP1.snap.z);
+        ignition::math::Vector3<double> c1 = ignition::math::Vector3d(WP1.crkl.x,WP1.crkl.y,WP1.crkl.z);
 
-        v2 = v1 + a1*t + j1*pow(t,2)/2 + l1*pow(t,3)/6 + s1*pow(t,4)/24 ;
+        v2 = v1 + a1*t + j1*pow(t,2)/2 + s1*pow(t,3)/6 + c1*pow(t,4)/24 ;
 
     }
     

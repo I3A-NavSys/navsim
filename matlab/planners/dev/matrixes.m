@@ -27,7 +27,7 @@ end
 
 X  = A\B;
 d1 = X(1,:);  % jerk
-d2 = X(2,:);  % jolt
+d2 = X(2,:);  % snap
 r2 = X(3,:)   % distancia recorrida
 
 
@@ -51,8 +51,8 @@ end
 
 X = A\B;
 d1  = X(1,:);  % jerk
-d2  = X(2,:);  % jolt
-d3  = X(3,:);  % jolt_dot
+d2  = X(2,:);  % snap
+d3  = X(3,:);  % crackle
 
 
 tt = 0:0.01:t;

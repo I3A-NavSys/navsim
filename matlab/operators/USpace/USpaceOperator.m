@@ -557,13 +557,13 @@ function SendFlightPlan(obj,UAVid,fp)
         msg.route(i).jerk.y = fp.waypoints(i).jerk(2);
         msg.route(i).jerk.z = fp.waypoints(i).jerk(3);
 
-        msg.route(i).jolt.x = fp.waypoints(i).jolt(1);
-        msg.route(i).jolt.y = fp.waypoints(i).jolt(2);
-        msg.route(i).jolt.z = fp.waypoints(i).jolt(3);
-
         msg.route(i).snap.x = fp.waypoints(i).snap(1);
         msg.route(i).snap.y = fp.waypoints(i).snap(2);
         msg.route(i).snap.z = fp.waypoints(i).snap(3);
+
+        msg.route(i).crkl.x = fp.waypoints(i).crkl(1);
+        msg.route(i).crkl.y = fp.waypoints(i).crkl(2);
+        msg.route(i).crkl.z = fp.waypoints(i).crkl(3);
 
     end
     send(uav.rosPub_FlightPlan,msg);

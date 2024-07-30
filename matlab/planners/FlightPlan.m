@@ -123,8 +123,8 @@ function fp2 = Copy(fp1)
         wp2.vel  = wp1.vel;
         wp2.acel = wp1.acel;
         wp2.jerk = wp1.jerk;
-        wp2.jolt = wp1.jolt;
         wp2.snap = wp1.snap;
+        wp2.crkl = wp1.crkl;
         wp2.mandatory = wp1.mandatory;
         fp2.SetWaypoint(wp2);
     end
