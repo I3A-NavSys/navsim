@@ -187,6 +187,9 @@ function PositionFigure(obj,UAVid,fp,time_step)
     disp(['Position error area (m^2) for ', UAVid]);
     disp(trapz(timeValues, errorValues));
 
+    disp(['Flight time (s) for ', UAVid]);
+    disp(fp.FinishTime - fp.InitTime);
+
     %Display Position X versus time
     Xtile   = nexttile([1,2]);
     title("Position versus time");

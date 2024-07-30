@@ -23,6 +23,8 @@ from pxr import Sdf
 
 from .scenes import Scenes
 
+from .joystick_controller import Joystick_controller
+
 class UIBuilder:
     def __init__(self):
         # Frames are sub-windows that can contain multiple UI elements
@@ -172,12 +174,40 @@ class UIBuilder:
                 self._command_fail_textBlock = TextBlock(label="ERROR:", text="There is no drone selected")
                 self._command_fail_textBlock.visible = False
 
+        # This is the Joystick Controller frame
+        joystick_controller_frame = CollapsableFrame("Joystick controller", collapsed=False)
+        
+        with joystick_controller_frame:
+            with ui.VStack(style=get_style(), spacing=5, height=0):
+                # Drone selector
+                self._joys_drone_select_dropdown = DropDown("Select drone", "SELECT", self._get_manipulable_UAVs)
+                self._joys_drone_select_dropdown.enabled = False
+                # self.wrapped_ui_elements.append(self._joys_drone_select_dropdown)
+
+                # TextBlock
+                text1 = "To control a drone via joystick, select the preferred drone using the dropdown above, then press START button and start the simulation by clicking on the play button from isaac sim interface."
+                text2 = "\n\n"
+                text3 = "Once you have finished, press STOP button to finish the drone control, then you end the simulation with the stop button from isaac sim interface."
+                text4 = "If some error appears mentioning something about the reference to the joystick in the code, it is because you have to disconnect and connect again the joystick to the computer"
+                self._joys_textblock = TextBlock(label="INFO", text=text1 + text2 + text3 + text2 + text4)
+
+                # Start button
+                self._joys_start_button = ui.Button("START", clicked_fn=self._start_controlling)
+                self._joys_start_button.enabled = False
+
+                # Stop button
+                self._joys_stop_button = ui.Button("STOP", clicked_fn=self._stop_controlling)
+                self._joys_stop_button.enabled = False
+
     ######################################################################################
     # Functions Below This Point Support The Provided Example And Can Be Deleted/Replaced
     ######################################################################################
 
     def _on_init(self):
         self._scenes = Scenes()
+
+        # Create an instance of Joystick_controller
+        self._joystick_controller = Joystick_controller()
 
     def _scene_list(self):
         return ["100 Drones", "Example 2", "Example 3"]
@@ -220,6 +250,13 @@ class UIBuilder:
     def _repop_drone_selector(self):
         self._drone_selector_dropdown.enabled = True
         self._drone_selector_dropdown.repopulate()
+
+        # Joystick Controller frame
+        self._joys_drone_select_dropdown.enabled = True
+        self._joys_drone_select_dropdown.repopulate()
+
+        self._joys_start_button.enabled = True
+        self._joys_stop_button.enabled = True
 
 
     # -- FUNTION _get_command_info -----------------------------------------------------------------------------------------
@@ -265,6 +302,22 @@ class UIBuilder:
         else:
             # SHOW error message when no drone is selected
             self._command_fail_textBlock.visible = True
+
+
+    # -- FUNTION _start_controlling -----------------------------------------------------------------------------------------
+    # This function is called when the START button from the Joystick Controller is pressed
+    # It just calls to the start method from the Joystick_controller.py
+    # ----------------------------------------------------------------------------------------------------------------------
+    def _start_controlling(self):
+        drone = get_current_stage().GetPrimAtPath("/World/abejorros/" + self._joys_drone_select_dropdown.get_selection())
+        self._joystick_controller.start(drone)
+
+
+    # -- FUNTION _stop_controlling -----------------------------------------------------------------------------------------
+    # It is the same as _start_controlling but with a the stop method
+    # ----------------------------------------------------------------------------------------------------------------------
+    def _stop_controlling(self):
+        self._joystick_controller.stop()
 
     def _on_post_reset_btn(self):
         """

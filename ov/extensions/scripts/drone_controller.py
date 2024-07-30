@@ -46,15 +46,18 @@ class UamMinidrone(BehaviorScript):
         self.w_min = 0
 
         # Rotor position 15cm from the center of mass, with 45º of inclination respect to the axes
-        self.pos_CM = [   0.0,    0.0, 0.0]
-        self.pos_NE = [ 0.075, -0.075, 0.0]
-        self.pos_NW = [ 0.075,  0.075, 0.0]
-        self.pos_SE = [-0.075, -0.075, 0.0]
-        self.pos_SW = [-0.075,  0.075, 0.0]
+        self.pos_CM = np.array([0.0,     0.0,   0.0])
+        self.pos_NE = np.array([0.075,  -0.075, 0.0])
+        self.pos_NW = np.array([0.075,   0.075, 0.0])
+        self.pos_SE = np.array([-0.075, -0.075, 0.0])
+        self.pos_SW = np.array([-0.075,  0.075, 0.0])
 
         # Aero-dynamic thrust force constant
         self.kFT = 1.7179e-05
         self.w_hov = math.sqrt(mass * g / 4 / self.kFT)
+
+        # Aero-dynamic drag force constant
+        self.kMDR = 3.6714e-08
 
         # Aero-dynamic drag force constant per axis
         self.kFDx = 1.1902e-04
@@ -138,7 +141,7 @@ class UamMinidrone(BehaviorScript):
         self.y[2, 0] = linear_vel[2] # bZdot
         self.y[3, 0] = angular_vel[2] # bWz
 
-        # Assign reference
+        # Assign reference (m/s)
         self.r[0, 0] = 0
         self.r[1, 0] = 0
         self.r[2, 0] = 1
@@ -186,8 +189,41 @@ class UamMinidrone(BehaviorScript):
         self.w_rotor_SW = self.u[3, 0]
 
         # Apply thrust force
-        self.drone_rbp.apply_forces(np.array([1.0, 0.0, 3.0]))
+        thrust_rotor_NE = np.array([0.0, 0.0, self.kFT * math.pow(self.w_rotor_NE, 2)])
+        thrust_rotor_NW = np.array([0.0, 0.0, self.kFT * math.pow(self.w_rotor_NW, 2)])
+        thrust_rotor_SE = np.array([0.0, 0.0, self.kFT * math.pow(self.w_rotor_SE, 2)])
+        thrust_rotor_SW = np.array([0.0, 0.0, self.kFT * math.pow(self.w_rotor_SW, 2)])
 
+        self.drone_rbp.apply_forces_and_torques_at_pos(thrust_rotor_NE, positions=self.pos_NE, is_global=False)
+        self.drone_rbp.apply_forces_and_torques_at_pos(thrust_rotor_NW, positions=self.pos_NW, is_global=False)
+        self.drone_rbp.apply_forces_and_torques_at_pos(thrust_rotor_SE, positions=self.pos_SE, is_global=False)
+        self.drone_rbp.apply_forces_and_torques_at_pos(thrust_rotor_SW, positions=self.pos_SW, is_global=False)
+
+        # Apply drag moment
+        drag_rotor_NE = np.array([0.0, 0.0, self.kMDR * math.pow(self.w_rotor_NE, 2)])
+        drag_rotor_NW = np.array([0.0, 0.0, self.kMDR * math.pow(self.w_rotor_NW, 2)])
+        drag_rotor_SE = np.array([0.0, 0.0, self.kMDR * math.pow(self.w_rotor_SE, 2)])
+        drag_rotor_SW = np.array([0.0, 0.0, self.kMDR * math.pow(self.w_rotor_SW, 2)])
+
+        self.drone_rbp.apply_forces_and_torques_at_pos(drag_rotor_NE, positions=self.pos_NE, is_global=False)
+        self.drone_rbp.apply_forces_and_torques_at_pos(drag_rotor_NW, positions=self.pos_NW, is_global=False)
+        self.drone_rbp.apply_forces_and_torques_at_pos(drag_rotor_SE, positions=self.pos_SE, is_global=False)
+        self.drone_rbp.apply_forces_and_torques_at_pos(drag_rotor_SW, positions=self.pos_SW, is_global=False)
+
+        # Apply air friction force
+        friction_force_CM = np.array([-self.kFDx * linear_vel[0] * math.fabs(linear_vel[0]),
+                                      -self.kFDy * linear_vel[1] * math.fabs(linear_vel[1]),
+                                      -self.kFDz * linear_vel[2] * math.fabs(linear_vel[2])])
+        
+        self.drone_rbp.apply_forces_and_torques_at_pos(friction_force_CM, positions=self.pos_CM, is_global=False)
+
+        # Apply air friction moment
+        friction_moment_CM = np.array([-self.kMDx * angular_vel[0] * math.fabs(angular_vel[0]),
+                                       -self.kMDy * angular_vel[1] * math.fabs(angular_vel[1]),
+                                       -self.kMDz * angular_vel[2] * math.fabs(angular_vel[2])])
+        
+        self.drone_rbp.apply_forces_and_torques_at_pos(friction_moment_CM, positions=self.pos_CM, is_global=False)
+        
     def rotors_off(self):
         # Turn off rotors
         self.w_rotor_NE = 0
