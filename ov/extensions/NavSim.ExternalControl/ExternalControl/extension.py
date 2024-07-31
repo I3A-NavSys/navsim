@@ -42,7 +42,7 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
 
     
     def build_ui(self):
-        self._window = ui.Window("NavSim - External UAV control", width=300, height=300)
+        self._window = ui.Window("NavSim - External UAV control", width=300, height=300, raster_policy=ui.RasterPolicy.NEVER)
 
         with self._window.frame:
 
