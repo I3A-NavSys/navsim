@@ -125,6 +125,27 @@ class UamMinidrone(BehaviorScript):
     def navigation(self):
         pass
 
+    def command_off(self):
+        self.cmd_on = False
+        self.cmd_vel_x = 0
+        self.cmd_vel_y = 0
+        self.cmd_vel_z = 0
+        self.cmd_rot_z = 0
+
+    def hover(self):
+        self.command_off()
+        self.cmd_on = True
+
+    def rotors_off(self):
+        self.w_rotor_NE = 0
+        self.w_rotor_NW = 0
+        self.w_rotor_SE = 0
+        self.w_rotor_SW = 0
+        self.rotors_on = False
+
+        # Control reset
+        self.E = np.zeros((4, 1))
+
     def servo_control(self, current_time: float, delta_time: float):
         # Initialize rigid body prim
         if self.prims_initialized == False:
