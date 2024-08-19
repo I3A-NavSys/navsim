@@ -41,6 +41,15 @@ class UamMinidrone(BehaviorScript):
         self.w_rotor_SE : float
         self.w_rotor_SW : float
 
+        # Linear & angular velocities
+        self.linear_vel = []
+        self.angular_vel = []
+
+        # Pose variables
+        self.position = []
+        self.orientation = []
+        self.orientation_qt = []
+
         # Angular speed limits
         self.w_max = 628.3185
         self.w_min = 0
@@ -110,36 +119,40 @@ class UamMinidrone(BehaviorScript):
         self.prims_initialized = False
 
     def on_update(self, current_time: float, delta_time: float):
+        self.servo_control(current_time, delta_time)
+        self.platform_dynamics(current_time, delta_time)
+
+    def servo_control(self, current_time: float, delta_time: float):
         # Initialize rigid body prim
         if self.prims_initialized == False:
             self.drone_rbp.initialize()
             self.prims_initialized = True
             
         # Get position and orientation
-        position, orientation = self.drone_rbp.get_world_poses()
+        self.position, self.orientation_qt = self.drone_rbp.get_world_poses()
 
         # Transform orientation from quaternions to Euler angles
-        orientation = rotations.quat_to_euler_angles(orientation[0])
+        self.orientation = rotations.quat_to_euler_angles(self.orientation_qt[0])
 
         # Get linear and angular velocity
-        linear_vel = self.drone_rbp.get_linear_velocities()[0]
-        angular_vel = self.drone_rbp.get_angular_velocities()[0]
+        self.linear_vel = self.drone_rbp.get_linear_velocities()[0]
+        self.angular_vel = self.drone_rbp.get_angular_velocities()[0]
 
         # Assign model state
-        self.x[0, 0] = orientation[0] # ePhi
-        self.x[1, 0] = orientation[1] # eTheta
-        self.x[2, 0] = angular_vel[0] # bWx
-        self.x[3, 0] = angular_vel[1] # bWy
-        self.x[4, 0] = angular_vel[2] # bWz
-        self.x[5, 0] = linear_vel[0] # bXdot
-        self.x[6, 0] = linear_vel[1] # bYdot
-        self.x[7, 0] = linear_vel[2] # bZdot
+        self.x[0, 0] = self.orientation[0] # ePhi
+        self.x[1, 0] = self.orientation[1] # eTheta
+        self.x[2, 0] = self.angular_vel[0] # bWx
+        self.x[3, 0] = self.angular_vel[1] # bWy
+        self.x[4, 0] = self.angular_vel[2] # bWz
+        self.x[5, 0] = self.linear_vel[0] # bXdot
+        self.x[6, 0] = self.linear_vel[1] # bYdot
+        self.x[7, 0] = self.linear_vel[2] # bZdot
 
         # Assign model output
-        self.y[0, 0] = linear_vel[0] # bXdot
-        self.y[1, 0] = linear_vel[1] # bYdot
-        self.y[2, 0] = linear_vel[2] # bZdot
-        self.y[3, 0] = angular_vel[2] # bWz
+        self.y[0, 0] = self.linear_vel[0] # bXdot
+        self.y[1, 0] = self.linear_vel[1] # bYdot
+        self.y[2, 0] = self.linear_vel[2] # bZdot
+        self.y[3, 0] = self.angular_vel[2] # bWz
 
         # Assign reference (m/s)
         self.r[0, 0] = 0
@@ -188,6 +201,7 @@ class UamMinidrone(BehaviorScript):
         self.w_rotor_SE = self.u[2, 0]
         self.w_rotor_SW = self.u[3, 0]
 
+    def platform_dynamics(self, current_time: float, delta_time: float):
         # Apply thrust force
         thrust_rotor_NE = np.array([0.0, 0.0, self.kFT * math.pow(self.w_rotor_NE, 2)])
         thrust_rotor_NW = np.array([0.0, 0.0, self.kFT * math.pow(self.w_rotor_NW, 2)])
@@ -210,19 +224,19 @@ class UamMinidrone(BehaviorScript):
         self.drone_rbp.apply_forces_and_torques_at_pos(torques=drag_CM, positions=self.pos_CM, is_global=False)
 
         # Apply air friction force
-        friction_force_CM = np.array([-self.kFDx * linear_vel[0] * math.fabs(linear_vel[0]),
-                                      -self.kFDy * linear_vel[1] * math.fabs(linear_vel[1]),
-                                      -self.kFDz * linear_vel[2] * math.fabs(linear_vel[2])])
+        friction_force_CM = np.array([-self.kFDx * self.linear_vel[0] * math.fabs(self.linear_vel[0]),
+                                      -self.kFDy * self.linear_vel[1] * math.fabs(self.linear_vel[1]),
+                                      -self.kFDz * self.linear_vel[2] * math.fabs(self.linear_vel[2])])
         
         self.drone_rbp.apply_forces_and_torques_at_pos(friction_force_CM, positions=self.pos_CM, is_global=False)
 
         # Apply air friction moment
-        friction_moment_CM = np.array([-self.kMDx * angular_vel[0] * math.fabs(angular_vel[0]),
-                                       -self.kMDy * angular_vel[1] * math.fabs(angular_vel[1]),
-                                       -self.kMDz * angular_vel[2] * math.fabs(angular_vel[2])])
+        friction_moment_CM = np.array([-self.kMDx * self.angular_vel[0] * math.fabs(self.angular_vel[0]),
+                                       -self.kMDy * self.angular_vel[1] * math.fabs(self.angular_vel[1]),
+                                       -self.kMDz * self.angular_vel[2] * math.fabs(self.angular_vel[2])])
         
         self.drone_rbp.apply_forces_and_torques_at_pos(torques=friction_moment_CM, positions=self.pos_CM, is_global=False)
-        
+
     def rotors_off(self):
         # Turn off rotors
         self.w_rotor_NE = 0
