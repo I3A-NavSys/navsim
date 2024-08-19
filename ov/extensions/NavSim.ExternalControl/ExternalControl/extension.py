@@ -1,6 +1,7 @@
 import omni.ext
 import omni.ui as ui
 
+from omni.isaac.ui.ui_utils import dropdown_builder
 from omni.isaac.ui.element_wrappers import *
 from omni.isaac.core.utils.stage import get_current_stage
 
@@ -8,6 +9,8 @@ import asyncio
 import omni.kit.app
 from .ExternalController import ExternalController
 from omni.ui import color as cl
+
+import carb.events
 
 
 class NavsimExternalcontrolExtension(omni.ext.IExt):
@@ -25,11 +28,19 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
 
 
     def create_vars(self):
+        # UI window
+        self.window = ui.Window("NavSim - External UAV control", width=300, height=300, raster_policy=ui.RasterPolicy.NEVER)   # The ui.RasterPolicy.NEVER is to always update plots line drawing
+
         # Plot data
         self.x_lv_plot_data = [0.0, 0.0]
         self.y_lv_plot_data = [0.0, 0.0]
         self.z_lv_plot_data = [0.0, 0.0]
         self.z_av_plot_data = [0.0, 0.0]
+
+        # Plots appereance
+        self.plots_appearance = 1
+        self.build_plots = False
+        self.sub = omni.kit.app.get_app().get_update_event_stream().create_subscription_to_pop(self.build_plots_container, name="Plots_building")
 
         # Control variable
         self.stop_update_plot = True
@@ -42,9 +53,7 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
 
     
     def build_ui(self):
-        self._window = ui.Window("NavSim - External UAV control", width=300, height=300, raster_policy=ui.RasterPolicy.NEVER)
-
-        with self._window.frame:
+        with self.window.frame:
 
             with ui.ScrollingFrame():
 
@@ -63,14 +72,14 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
                     ui.Spacer(height=10)
 
                     # Controls power
-                    self.controls_power = CollapsableFrame(title="Controls power", collapsed=False)
+                    self.controls_power = ui.CollapsableFrame(title="Controls power", collapsed=False)
 
                     with self.controls_power:
-                        with ui.VStack():
+                        with ui.VStack(style={"margin": 1}):
                             with ui.HStack():
                                 # Linear velocity (m/s)
                                 ui.Label("Linear velocity (m/s)")
-                                self.linear_vel_power = ui.FloatSlider(min=0.5, max=4, step=0.5, precision=1)
+                                self.linear_vel_power = ui.FloatSlider(min=0.5, max=4, step=0.5, precision=1, style={"background_color": cl(0.13), "secondary_color": cl(0.3), "draw_mode": ui.SliderDrawMode.FILLED})
                                 self.linear_vel_power.model.set_value(1)
 
                             ui.Spacer(height=10)
@@ -78,27 +87,39 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
                             with ui.HStack():
                                 # Angular velocity (rad/s)
                                 ui.Label("Angular velocity (rad/s)")
-                                self.angular_vel_power = ui.FloatSlider(min=0.5, max=3, step=0.5, precision=1)
+                                self.angular_vel_power = ui.FloatSlider(min=0.5, max=3, step=0.5, precision=1, style={"background_color": cl(0.13), "secondary_color": cl(0.3), "draw_mode": ui.SliderDrawMode.FILLED})
                                 self.angular_vel_power.model.set_value(1)
 
                     # Controls ploting
-                    self.controls_ploting = CollapsableFrame(title="Drone control visualization", collapsed=False)
+                    self.controls_ploting = ui.CollapsableFrame(title="Drone control visualization", collapsed=False)
 
                     with self.controls_ploting:
-                        with ui.VStack():
+                        self.plots_container = ui.VStack()
+
+                        with self.plots_container:
+                            with ui.HStack():
+                                ui.Label("Plots appearance")
+                                self.plots_appearance_combo_box = ui.ComboBox(self.plots_appearance, "Rows", "Group", "Stack", style={"margin": 15})
+                                self.plots_appearance_combo_box.model.add_item_changed_fn(self.change_plot_distribution)
+
+                            ui.Separator(height=10)
+
                             with ui.HStack(spacing=5):
                                 # Control buttons
                                 ui.Button("START", clicked_fn=self.start_update, height=5)
                                 ui.Button("STOP", clicked_fn=self.stop_update, height=5)
                                 ui.Button("RESET", clicked_fn=self.reset_plot, height=5)
 
-                            ui.Spacer(height=10)
-                            
-                            # Plots
-                            # self.first_way()
-                            self.second_way()
-                            # self.third_way()
+                            match self.plots_appearance:
+                                case 0:
+                                    self.first_way()
 
+                                case 1:
+                                    self.second_way()
+
+                                case 2:
+                                    self.third_way()
+                            
 
     def get_manipulable_prims(self, prim=None):
         # Needed list containing the names of the manipulable prims for the dropdown selector
@@ -133,6 +154,54 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
     def refresh_drone_selector(self):
         self.drone_selector_dropdown.enabled = True
         self.drone_selector_dropdown.repopulate()
+
+    
+    def change_plot_distribution(self, model, index):        
+        item = model.get_item_value_model(index).as_int
+
+        match item:
+            case 0:
+                self.plots_appearance = 0
+
+            case 1:
+                self.plots_appearance = 1
+
+            case 2:
+                self.plots_appearance = 2
+
+        self.stop_update()
+        self.build_plots = True
+
+
+    def build_plots_container(self, e: carb.events.IEvent):
+        if self.build_plots:
+            self.build_plots = False
+
+            self.plots_container.clear()
+
+            with self.plots_container:
+                with ui.HStack():
+                    ui.Label("Plots appearance")
+                    self.plots_appearance_combo_box = ui.ComboBox(self.plots_appearance, "Rows", "Group", "Stack", style={"margin": 15})
+                    self.plots_appearance_combo_box.model.add_item_changed_fn(self.change_plot_distribution)
+
+                ui.Separator(height=10)
+
+                with ui.HStack(spacing=5):
+                    # Control buttons
+                    ui.Button("START", clicked_fn=self.start_update, height=5)
+                    ui.Button("STOP", clicked_fn=self.stop_update, height=5)
+                    ui.Button("RESET", clicked_fn=self.reset_plot, height=5)
+
+                match self.plots_appearance:
+                    case 0:
+                        self.first_way()
+
+                    case 1:
+                        self.second_way()
+
+                    case 2:
+                        self.third_way()
 
 
     async def update_plot(self):
@@ -250,6 +319,8 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
     def first_way(self):
         self.TRDW = False
 
+        ui.Spacer(height=20)
+
         # X linear vel
         self.x_linear_vel_label = ui.Label("X linear velocity (m/s)", alignment=ui.Alignment.CENTER)
         self.x_max_lvl = ui.Label("1.0")
@@ -286,6 +357,8 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
     def second_way(self):
         self.TRDW = False
 
+        ui.Spacer(height=14)
+
         with ui.HStack(spacing=5):
             with ui.VStack():
                 # X linear vel
@@ -308,7 +381,7 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
                 self.z_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_lv_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl("#4C73E2")})
                 self.z_min_lvl = ui.Label("-1.0")
             
-        ui.Spacer(height=10)
+        ui.Spacer(height=20)
 
         # Z angular vel
         self.z_angular_vel_label = ui.Label("Z angular velocity (rad/s)", alignment=ui.Alignment.CENTER)
@@ -319,6 +392,8 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
 
     def third_way(self):
         self.TRDW = True
+
+        ui.Spacer(height=18)
 
         self.x_linear_vel_label = ui.Label("Linear velocity (m/s)", alignment=ui.Alignment.CENTER)
         self.x_max_lvl = ui.Label("1.0")
