@@ -121,6 +121,9 @@ class UamMinidrone(BehaviorScript):
     def on_update(self, current_time: float, delta_time: float):
         self.servo_control(current_time, delta_time)
         self.platform_dynamics(current_time, delta_time)
+    
+    def navigation(self):
+        pass
 
     def servo_control(self, current_time: float, delta_time: float):
         # Initialize rigid body prim
