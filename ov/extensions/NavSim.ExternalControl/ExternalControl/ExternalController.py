@@ -64,6 +64,15 @@ class ExternalController:
             self.joystick.stop()
             self.keyboard.stop()
 
+            # New values for those attributes
+            self._vel_to_apply = Gf.Vec3f(0,0,0)
+            self._ang_vel_to_apply = Gf.Vec3f(0,0,0)
+
+            # Reset attributes
+            self._vel_att.Set(self._vel_to_apply)
+            self._ang_vel_att.Set(self._ang_vel_to_apply)
+            self.prim.GetAttribute("physxForce:force").Set(Gf.Vec3f(0,0,0))
+
 
     # -- FUNCTION get_grav_deacc --------------------------------------------------------------------------------
     # This method simply gets the inputs from both the joystick and the keyboard, then decide which one to use
@@ -206,7 +215,7 @@ class ExternalController:
             gravity = False
 
         # if joy_force[2] > 0: joy_force[2] = 0     # Avoid down force
-        inputs = self.inputs * -self.linear_vel_limit          # Revert axis and set maximum limit
+        inputs = self.inputs[:3] * -self.linear_vel_limit          # Revert axis and set maximum limit
 
         # Get vector directions
         fordward_vector = self.get_fordward_vector(0)

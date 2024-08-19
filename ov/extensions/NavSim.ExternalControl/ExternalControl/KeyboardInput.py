@@ -1,8 +1,7 @@
 import omni.appwindow
 import carb.input
 
-from carb.input import KeyboardEventType, KeyboardEvent
-from pxr import Sdf
+from carb.input import KeyboardEventType
 
 class KeyboardInput:
     def __init__(self):
@@ -11,6 +10,7 @@ class KeyboardInput:
         self.keyboard = self.app_window.get_keyboard()
         self.input = carb.input.acquire_input_interface()
         self.inputs = [0,0,0,0]
+        self.acc = 0.03
         
 
     def start(self):
@@ -25,52 +25,57 @@ class KeyboardInput:
         # Fordward
         if e.input == carb.input.KeyboardInput.W:
             if e.type == KeyboardEventType.KEY_PRESS:
-                self.inputs[0] = -0.25
+                self.inputs[0] = -0.1
             elif e.type == KeyboardEventType.KEY_REPEAT:
-                self.inputs[0] = -1
+                if self.inputs[0] > -1:
+                    self.inputs[0] -= self.acc
             else:
                 self.inputs[0] = 0.0
 
         # Backwards
         if e.input == carb.input.KeyboardInput.S:
             if e.type == KeyboardEventType.KEY_PRESS:
-                self.inputs[0] = 0.25
+                self.inputs[0] = 0.1
             elif e.type == KeyboardEventType.KEY_REPEAT:
-                self.inputs[0] = 1
+                if self.inputs[0] < 1:
+                    self.inputs[0] += self.acc
             else:
                 self.inputs[0] = 0.0
 
         # Leftside
         if e.input == carb.input.KeyboardInput.A:
             if e.type == KeyboardEventType.KEY_PRESS:
-                self.inputs[1] = -0.25
+                self.inputs[1] = -0.1
             elif e.type == KeyboardEventType.KEY_REPEAT:
-                self.inputs[1] = -1
+                if self.inputs[1] > -1:
+                    self.inputs[1] -= self.acc
             else:
                 self.inputs[1] = 0.0
 
         # Rightside
         if e.input == carb.input.KeyboardInput.D:
             if e.type == KeyboardEventType.KEY_PRESS:
-                self.inputs[1] = 0.25
+                self.inputs[1] = 0.1
             elif e.type == KeyboardEventType.KEY_REPEAT:
-                self.inputs[1] = 1
+                if self.inputs[1] < 1:
+                    self.inputs[1] += self.acc
             else:
                 self.inputs[1] = 0.0
 
         # Up
         if e.input == carb.input.KeyboardInput.UP:
             if e.type == KeyboardEventType.KEY_PRESS:
-                self.inputs[2] = -0.25
+                self.inputs[2] = -0.1
             elif e.type == KeyboardEventType.KEY_REPEAT:
-                self.inputs[2] = -1
+                if self.inputs[2] > -1:
+                    self.inputs[2] -= self.acc
             else:
                 self.inputs[2] = 0.0
 
-        # Rightside
+        # Down
         if e.input == carb.input.KeyboardInput.DOWN:
             if e.type == KeyboardEventType.KEY_PRESS:
-                self.inputs[2] = 0.25
+                self.inputs[2] = 0.1
             elif e.type == KeyboardEventType.KEY_REPEAT:
                 self.inputs[2] = 1
             else:
