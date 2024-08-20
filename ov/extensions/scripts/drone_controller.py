@@ -2,13 +2,13 @@ from omni.kit.scripting import BehaviorScript
 from omni.isaac.core.prims import RigidPrimView
 from omni.isaac.core.utils import rotations
 
-from pxr import UsdGeom, Gf
+from pxr import UsdGeom
+
+from .msgs.flight_plan_msg import FlightPlanMsg
 
 import numpy as np
 
 import math
-
-import carb
 
 class UamMinidrone(BehaviorScript):
     def on_init(self):
@@ -105,6 +105,9 @@ class UamMinidrone(BehaviorScript):
         self.E_max = 15 # Maximum acumulated error
         self.prev_control_time = 0 # Time of last low level control update
         self.rotors_on = False
+
+        # Flight plan example
+        self.fp = FlightPlanMsg()
 
     def on_destroy(self):
         pass

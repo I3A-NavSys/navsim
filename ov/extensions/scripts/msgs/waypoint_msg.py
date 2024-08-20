@@ -1,6 +1,6 @@
-from point_msg import PointMsg
-from vector3_msg import Vector3Msg
-from time_msg import TimeMsg
+from .point_msg import PointMsg
+from .vector3_msg import Vector3Msg
+from .time_msg import TimeMsg
 
 class WaypointMsg:
     def __init__(self) -> None:
