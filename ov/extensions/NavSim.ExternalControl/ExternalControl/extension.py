@@ -169,7 +169,6 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
             case 2:
                 self.plots_appearance = 2
 
-        self.stop_update()
         self.build_plots = True
 
 
