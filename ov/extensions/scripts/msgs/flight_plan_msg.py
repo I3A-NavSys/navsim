@@ -1,4 +1,4 @@
-from waypoint_msg import WaypointMsg
+from .waypoint_msg import WaypointMsg
 
 class FlightPlanMsg:
     def __init__(self) -> None:
