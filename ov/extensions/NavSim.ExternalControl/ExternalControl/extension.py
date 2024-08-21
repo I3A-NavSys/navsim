@@ -128,7 +128,7 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
         # First iteration
         if prim is None:
             stage = get_current_stage()
-            prim = stage.GetPrimAtPath("/World")
+            prim = stage.GetPseudoRoot()
 
             self.manipulable_prims.clear()
 

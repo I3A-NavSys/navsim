@@ -117,7 +117,7 @@ class UIBuilder:
         with set_command_frame:
             with ui.VStack(style=get_style(), spacing=5, height=0):
                 # Manipulable drone selector
-                self._drone_selector_dropdown = DropDown("Select Drone", "SELECT", self._get_manipulable_UAVs)
+                self._drone_selector_dropdown = DropDown("Select Drone", "SELECT", self.get_manipulable_prims)
                 self._drone_selector_dropdown.enabled = False
                 self.wrapped_ui_elements.append(self._drone_selector_dropdown)
 
@@ -186,31 +186,34 @@ class UIBuilder:
     # -- FUNTION _get_manipulable_UAVs -------------------------------------------------------------------------------------
     # This function is used to get the drones that are manipulable, that is, able to receive and execute commands
     # ----------------------------------------------------------------------------------------------------------------------
-    def _get_manipulable_UAVs(self):
-        manipulable_UAVs = []
-        stage = get_current_stage()
+    def get_manipulable_prims(self, prim=None):
+        # Needed list containing the names of the manipulable prims for the dropdown selector
+        manipulable_prims = []
 
-        # If UAVs are located within a parent prim as /World/abejorros
-        if stage.GetPrimAtPath("/World/abejorros").IsValid():
-            abejorros = stage.GetPrimAtPath("/World/abejorros")
+        # First iteration
+        if prim is None:
+            stage = get_current_stage()
+            prim = stage.GetPseudoRoot()
 
-            for abejorro in abejorros.GetChildren():
-                manipulable_att = abejorro.GetAttribute("NavSim:Manipulable")
+            self.manipulable_prims.clear()
 
-                if manipulable_att.Get():
-                    manipulable_UAVs.append(abejorro.GetName())
+        # Check current prim
+        if prim.GetAttribute("NavSim:Manipulable").IsValid() and prim.GetAttribute("NavSim:Manipulable").Get():
+            manipulable_prims.append(prim.GetName())
+            self.manipulable_prims.append(prim)
 
-        # If UAVs are NOT located within a specific parent prim
-        else:
-            world = stage.GetPrimAtPath("/World")
+        # Check prim's children
+        for child in prim.GetAllChildren():
+            # First check children
+            if len(child.GetAllChildren()) > 0:
+                manipulable_prims += self.get_manipulable_prims(child)
             
-            for prim in world.GetChildren():
-                manipulable_att = abejorro.GetAttribute("NavSim:Manipulable")
+            # Then check current child
+            elif child.GetAttribute("NavSim:Manipulable").IsValid() and child.GetAttribute("NavSim:Manipulable").Get():
+                manipulable_prims.append(child.GetName())
+                self.manipulable_prims.append(prim)
 
-                if manipulable_att.Get():
-                    manipulable_UAVs.append(prim.GetName())
-
-        return manipulable_UAVs
+        return manipulable_prims
     
 
     # -- FUNCTION _repop_drone_selector ------------------------------------------------------------------------------------
