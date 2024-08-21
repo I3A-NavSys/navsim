@@ -178,6 +178,7 @@ class UIBuilder:
 
     def _on_init(self):
         self._scenes = Scenes()
+        self.manipulable_prims = []
 
     def _scene_list(self):
         return ["100 Drones", "Example 2", "Example 3"]
