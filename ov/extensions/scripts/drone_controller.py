@@ -263,14 +263,3 @@ class UamMinidrone(BehaviorScript):
                                        -self.kMDz * self.angular_vel[2] * math.fabs(self.angular_vel[2])])
         
         self.drone_rbp.apply_forces_and_torques_at_pos(torques=friction_moment_CM, positions=self.pos_CM, is_global=False)
-
-    def rotors_off(self):
-        # Turn off rotors
-        self.w_rotor_NE = 0
-        self.w_rotor_NW = 0
-        self.w_rotor_SE = 0
-        self.w_rotor_SW = 0
-        self.rotors_on = False
-
-        # Reset control
-        self.E = [0, 0, 0, 0]
