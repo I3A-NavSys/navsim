@@ -12,6 +12,15 @@ from omni.ui import color as cl
 
 import carb.events
 
+import matplotlib
+try:
+    matplotlib.use("Qt5Agg")
+
+except ModuleNotFoundError:
+    import omni.kit.pipapi
+    omni.kit.pipapi.install("PyQt5")
+
+import matplotlib.pyplot as plt
 
 class NavsimExternalcontrolExtension(omni.ext.IExt):
     def on_startup(self, ext_id):
@@ -51,12 +60,11 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
         # Instance of ExternalController
         self.external_control = ExternalController()
 
-    
+
     def build_ui(self):
         with self.window.frame:
 
             with ui.ScrollingFrame():
-
                 with ui.VStack(spacing=10, height=0):
                     ui.Spacer(height=10)
 
@@ -96,29 +104,7 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
                     with self.controls_ploting:
                         self.plots_container = ui.VStack()
 
-                        with self.plots_container:
-                            with ui.HStack():
-                                ui.Label("Plots appearance")
-                                self.plots_appearance_combo_box = ui.ComboBox(self.plots_appearance, "Rows", "Group", "Stack", style={"margin": 15})
-                                self.plots_appearance_combo_box.model.add_item_changed_fn(self.change_plot_distribution)
-
-                            ui.Separator(height=10)
-
-                            with ui.HStack(spacing=5):
-                                # Control buttons
-                                ui.Button("START", clicked_fn=self.start_update, height=5)
-                                ui.Button("STOP", clicked_fn=self.stop_update, height=5)
-                                ui.Button("RESET", clicked_fn=self.reset_plot, height=5)
-
-                            match self.plots_appearance:
-                                case 0:
-                                    self.first_way()
-
-                                case 1:
-                                    self.second_way()
-
-                                case 2:
-                                    self.third_way()
+                        self.build_plot_container_content()
                             
 
     def get_manipulable_prims(self, prim=None):
@@ -136,17 +122,18 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
         if prim.GetAttribute("NavSim:Manipulable").IsValid() and prim.GetAttribute("NavSim:Manipulable").Get():
             manipulable_prims.append(prim.GetName())
             self.manipulable_prims.append(prim)
-
-        # Check prim's children
-        for child in prim.GetAllChildren():
-            # First check children
-            if len(child.GetAllChildren()) > 0:
-                manipulable_prims += self.get_manipulable_prims(child)
-            
-            # Then check current child
-            elif child.GetAttribute("NavSim:Manipulable").IsValid() and child.GetAttribute("NavSim:Manipulable").Get():
-                manipulable_prims.append(child.GetName())
-                self.manipulable_prims.append(prim)
+        
+        else:
+            # Check prim's children
+            for child in prim.GetAllChildren():
+                # First check children
+                if len(child.GetAllChildren()) > 0:
+                    manipulable_prims += self.get_manipulable_prims(child)
+                
+                # Then check current child
+                elif child.GetAttribute("NavSim:Manipulable").IsValid() and child.GetAttribute("NavSim:Manipulable").Get():
+                    manipulable_prims.append(child.GetName())
+                    self.manipulable_prims.append(prim)
 
         return manipulable_prims
     
@@ -178,29 +165,59 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
 
             self.plots_container.clear()
 
-            with self.plots_container:
-                with ui.HStack():
-                    ui.Label("Plots appearance")
-                    self.plots_appearance_combo_box = ui.ComboBox(self.plots_appearance, "Rows", "Group", "Stack", style={"margin": 15})
-                    self.plots_appearance_combo_box.model.add_item_changed_fn(self.change_plot_distribution)
+            self.build_plot_container_content()
 
-                ui.Separator(height=10)
 
-                with ui.HStack(spacing=5):
-                    # Control buttons
-                    ui.Button("START", clicked_fn=self.start_update, height=5)
-                    ui.Button("STOP", clicked_fn=self.stop_update, height=5)
-                    ui.Button("RESET", clicked_fn=self.reset_plot, height=5)
+    def build_plot_container_content(self):
+        with self.plots_container:
+            ui.Spacer(height=10)
+            
+            with ui.HStack():
+                ui.Label("Plots appearance", alignment=ui.Alignment.LEFT)
+                self.plots_appearance_combo_box = ui.ComboBox(self.plots_appearance, "Rows", "Group", "Stack")
+                self.plots_appearance_combo_box.model.add_item_changed_fn(self.change_plot_distribution)
 
-                match self.plots_appearance:
-                    case 0:
-                        self.first_way()
+            match self.plots_appearance:
+                case 0:
+                    ui.Spacer(height=6)
 
-                    case 1:
-                        self.second_way()
+                case 1:
+                    pass
 
-                    case 2:
-                        self.third_way()
+                case 2:
+                    ui.Spacer(height=6)
+
+            with ui.HStack():
+                ui.Label("Track position", alignment=ui.Alignment.LEFT)
+                self.track_checkbox = ui.CheckBox()
+
+            match self.plots_appearance:
+                case 0:
+                    ui.Spacer(height=14)
+
+                case 1:
+                    pass
+
+                case 2:
+                    ui.Spacer(height=9)
+
+            ui.Separator(height=10)
+
+            with ui.HStack(spacing=5):
+                # Control buttons
+                ui.Button("START", clicked_fn=self.start_update, height=5)
+                ui.Button("STOP", clicked_fn=self.stop_update, height=5)
+                ui.Button("RESET", clicked_fn=self.reset_plot, height=5)
+
+            match self.plots_appearance:
+                case 0:
+                    self.first_way()
+
+                case 1:
+                    self.second_way()
+
+                case 2:
+                    self.third_way()
 
 
     async def update_plot(self):
@@ -285,6 +302,10 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
             # Start external control
             self.external_control.start(drone)
 
+            # Check if prim's pos must be tracked
+            if self.track_checkbox.model.get_value_as_bool():
+                asyncio.ensure_future(self.track_prim_pos(drone))
+
             # Start the coroutine that updates the plots
             asyncio.ensure_future(self.update_plot())
 
@@ -315,10 +336,112 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
         self.z_av_plot.set_data(*self.z_av_plot_data)
 
     
+    async def track_prim_pos(self, drone):
+        # Create the matplotlib figure and the corresponding plot
+        plt_fig = plt.figure()
+        track_plot = plt_fig.add_subplot(111, projection="3d")
+
+        # Indicate the axes name
+        track_plot.set_xlabel("X AXES")
+        track_plot.set_ylabel("Y AXES")
+        track_plot.set_zlabel("Z AXES")
+
+        # Write a title for the plot
+        track_plot.set_title("Drone Position")
+
+        # Stablish the initial limits
+        track_plot.set_xlim3d(-1, 1)
+        track_plot.set_ylim3d(-1, 1)
+        track_plot.set_zlim3d(-1, 1)
+
+        # Create the position lists to show over time
+        x_pos_track = []
+        y_pos_track = []
+        z_pos_track = []
+
+        # Store initial position
+        drone_pos = drone.GetAttribute("xformOp:translate").Get()
+        x_pos_track.append(drone_pos[0])
+        y_pos_track.append(drone_pos[1])
+        z_pos_track.append(drone_pos[2])
+        
+
+        line, = track_plot.plot(x_pos_track, y_pos_track, z_pos_track)
+
+        while not self.stop_update_plot:
+            # Get the current position
+            drone_pos = drone.GetAttribute("xformOp:translate").Get()
+
+            # If position (all coordinates) is changed
+            if drone_pos[0] != x_pos_track[-1] and drone_pos[1] != y_pos_track[-1] and drone_pos[2] != z_pos_track[-1]:
+                # Add the position components to the corresponding list
+                x_pos_track.append(drone_pos[0])
+                y_pos_track.append(drone_pos[1])
+                z_pos_track.append(drone_pos[2])
+
+                # Update plot data
+                line.set_data(x_pos_track, y_pos_track)
+                line.set_3d_properties(z_pos_track)
+
+                # Update plot limits
+                track_plot_lims = self.get_matplotlib_plot_limits(track_plot)
+                new_limits = self.update_track_plot_lims(track_plot_lims, drone_pos)
+
+                track_plot.set_xlim3d(*new_limits[0])
+                track_plot.set_ylim3d(*new_limits[1])
+                track_plot.set_zlim3d(*new_limits[2])
+
+                plt.draw()
+                plt.pause(0.01)
+            
+            await asyncio.sleep(0.2)
+
+        # TODO
+        # Once the tracking has finished, we can save the plot, present it versus time, etc
+        
+        track_plot.cla()
+        plt.close(plt_fig)
+
+    
+    def get_matplotlib_plot_limits(self, plot):
+        try:
+            z_lim = plot.get_zlim3d()
+            x_lim = plot.get_xlim3d()
+            y_lim = plot.get_ylim3d()
+
+            return [x_lim, y_lim, z_lim]
+        except:
+            x_lim = plot.get_xlim3d()
+            y_lim = plot.get_ylim3d()
+
+            return (x_lim, y_lim)
+        
+
+    def update_track_plot_lims(self, track_plot_lims, new_pos):
+        if new_pos[0] < track_plot_lims[0][0]:
+            track_plot_lims[0] = [new_pos[0], track_plot_lims[0][1]]
+
+        if new_pos[0] > track_plot_lims[0][1]:
+            track_plot_lims[0] = [track_plot_lims[0][0], new_pos[0]]
+
+        if new_pos[1] < track_plot_lims[1][0]:
+            track_plot_lims[1] = [new_pos[1], track_plot_lims[1][1]]
+
+        if new_pos[1] > track_plot_lims[1][1]:
+            track_plot_lims[1] = [track_plot_lims[1][0], new_pos[1]]
+
+        if new_pos[2] < track_plot_lims[2][0]:
+            track_plot_lims[2] = [new_pos[2], track_plot_lims[2][0]]
+
+        if new_pos[2] > track_plot_lims[2][1]:
+            track_plot_lims[2] = [track_plot_lims[2][0], new_pos[2]]
+
+        return track_plot_lims
+
     def first_way(self):
         self.TRDW = False
 
-        ui.Spacer(height=20)
+        ui.Spacer(height=16)
 
         # X linear vel
         self.x_linear_vel_label = ui.Label("X linear velocity (m/s)", alignment=ui.Alignment.CENTER)
@@ -392,7 +515,7 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
     def third_way(self):
         self.TRDW = True
 
-        ui.Spacer(height=18)
+        ui.Spacer(height=14)
 
         self.x_linear_vel_label = ui.Label("Linear velocity (m/s)", alignment=ui.Alignment.CENTER)
         self.x_max_lvl = ui.Label("1.0")
