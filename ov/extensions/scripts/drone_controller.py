@@ -2,12 +2,10 @@ from omni.kit.scripting import BehaviorScript
 from omni.isaac.core.prims import RigidPrimView
 from omni.isaac.core.utils import rotations
 
-from pxr import UsdGeom
+from pxr import UsdGeom, Gf
 
 from .msgs.flight_plan_msg import FlightPlanMsg
 from .msgs.waypoint_msg import WaypointMsg
-from .msgs.point_msg import PointMsg
-from .msgs.vector3_msg import Vector3Msg
 
 import numpy as np
 
@@ -123,12 +121,12 @@ class UamMinidrone(BehaviorScript):
                          [40, 0, 0, 1]]
 
         for data in waypoint_data:
-            pos = PointMsg(data[1], data[2], data[3])
-            vel = Vector3Msg(0, 0, 0)
-            accel = Vector3Msg(0, 0, 0)
-            jerk = Vector3Msg(0, 0, 0)
-            snap = Vector3Msg(0, 0, 0)
-            crkl = Vector3Msg(0, 0, 0)
+            pos = Gf.Vec3d(data[1], data[2], data[3])
+            vel = Gf.Vec3d(0, 0, 0)
+            accel = Gf.Vec3d(0, 0, 0)
+            jerk = Gf.Vec3d(0, 0, 0)
+            snap = Gf.Vec3d(0, 0, 0)
+            crkl = Gf.Vec3d(0, 0, 0)
             waypoint = WaypointMsg(pos, vel, accel, jerk, snap, crkl, data[0])
             self.fp.route.append(waypoint)
 
@@ -149,13 +147,30 @@ class UamMinidrone(BehaviorScript):
         self.platform_dynamics(current_time, delta_time)
 
         # TEST
-        
+        self.get_current_wp_index(current_time)
     
     def navigation(self):
         pass
 
-    def get_waypoint_at_time(self, time: float):
-        pass
+    # Get the index of the route list where the current waypoint is stored
+    def get_current_wp_index(self, time: float) -> int:
+        for i in range(len(self.fp.route)):
+            if time < self.fp.route[i].time:
+                break
+        return i
+    
+    def get_wp_pos_at_time(self, time: float) -> Gf.Vec3d:
+        wp_i = self.get_waypoint_at_time(time)
+
+        # If the drone is on the first waypoint
+        if wp_i == 0:
+            return Gf.Vec3d(self.fp.route[0].pos[0], self.fp.route[0].pos[1], self.fp.route[0].pos[2])
+
+        elif wp_i == len(self.fp.route)-1:
+             return Gf.Vec3d(self.fp.route[wp_i].pos[0], self.fp.route[wp_i].pos[1], self.fp.route[wp_i].pos[2])
+        
+        else:
+            dt = time - self.fp.route[wp_i].time
 
     def command_off(self):
         self.cmd_on = False

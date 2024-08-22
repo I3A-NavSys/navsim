@@ -1,9 +1,8 @@
-from .point_msg import PointMsg
-from .vector3_msg import Vector3Msg
+from pxr import Gf
 
 class WaypointMsg:
-    def __init__(self, pos: PointMsg, vel: Vector3Msg, accel: Vector3Msg, jerk: Vector3Msg, snap: Vector3Msg, 
-                 crkl: Vector3Msg, time: float):
+    def __init__(self, pos: Gf.Vec3d, vel: Gf.Vec3d, accel: Gf.Vec3d, jerk: Gf.Vec3d, snap: Gf.Vec3d, 
+                 crkl: Gf.Vec3d, time: float):
         self.pos = pos
         self.vel = vel
         self.accel = accel
