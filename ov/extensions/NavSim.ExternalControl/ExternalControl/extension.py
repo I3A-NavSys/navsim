@@ -205,9 +205,10 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
 
             with ui.HStack(spacing=5):
                 # Control buttons
-                ui.Button("START", clicked_fn=self.start_update, height=5)
-                ui.Button("STOP", clicked_fn=self.stop_update, height=5)
-                ui.Button("RESET", clicked_fn=self.reset_plot, height=5)
+                self.start_control_prim_button = ui.Button("START", clicked_fn=self.start_update, height=5)
+                self.stop_control_prim_button = ui.Button("STOP", clicked_fn=self.stop_update, height=5)
+                self.stop_control_prim_button.enabled = False
+                self.reset_control_prim_button = ui.Button("RESET", clicked_fn=self.reset_plot, height=5)
 
             match self.plots_appearance:
                 case 0:
@@ -263,6 +264,8 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
         if self.stop_update_plot:
             print("-- START --")
             self.stop_update_plot = False
+            self.start_control_prim_button.enabled = False
+            self.stop_control_prim_button.enabled = True
 
             # Set controls power to controller
             self.linear_vel_limit = self.linear_vel_power.model.get_value_as_float()
@@ -318,6 +321,8 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
         if not self.stop_update_plot:
             print("-- STOP --")
             self.stop_update_plot = True
+            self.start_control_prim_button.enabled = True
+            self.stop_control_prim_button.enabled = False
             self.external_control.stop()
 
         else:
@@ -398,7 +403,7 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
 
         # TODO
         # Once the tracking has finished, we can save the plot, present it versus time, etc
-        
+
         track_plot.cla()
         plt.close(plt_fig)
 
