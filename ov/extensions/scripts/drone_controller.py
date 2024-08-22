@@ -5,6 +5,9 @@ from omni.isaac.core.utils import rotations
 from pxr import UsdGeom
 
 from .msgs.flight_plan_msg import FlightPlanMsg
+from .msgs.waypoint_msg import WaypointMsg
+from .msgs.point_msg import PointMsg
+from .msgs.vector3_msg import Vector3Msg
 
 import numpy as np
 
@@ -108,6 +111,26 @@ class UamMinidrone(BehaviorScript):
 
         # Flight plan example
         self.fp = FlightPlanMsg()
+        self.fp.plan_id = 0
+        self.fp.uav_id = 0
+        self.fp.operator_id = 0
+        self.fp.radius = 2
+        self.fp.priority = 0
+
+        waypoint_data = [[10, 5, 0, 1],
+                         [20, 5, 5, 1],   
+                         [30, 0, 5, 1],  
+                         [40, 0, 0, 1]]
+
+        for data in waypoint_data:
+            pos = PointMsg(data[1], data[2], data[3])
+            vel = Vector3Msg(0, 0, 0)
+            accel = Vector3Msg(0, 0, 0)
+            jerk = Vector3Msg(0, 0, 0)
+            snap = Vector3Msg(0, 0, 0)
+            crkl = Vector3Msg(0, 0, 0)
+            waypoint = WaypointMsg(pos, vel, accel, jerk, snap, crkl, data[0])
+            self.fp.route.append(waypoint)
 
     def on_destroy(self):
         pass
@@ -124,8 +147,14 @@ class UamMinidrone(BehaviorScript):
     def on_update(self, current_time: float, delta_time: float):
         self.servo_control(current_time, delta_time)
         self.platform_dynamics(current_time, delta_time)
+
+        # TEST
+        
     
     def navigation(self):
+        pass
+
+    def get_waypoint_at_time(self, time: float):
         pass
 
     def command_off(self):
@@ -262,4 +291,5 @@ class UamMinidrone(BehaviorScript):
                                        -self.kMDy * self.angular_vel[1] * math.fabs(self.angular_vel[1]),
                                        -self.kMDz * self.angular_vel[2] * math.fabs(self.angular_vel[2])])
         
-        self.drone_rbp.apply_forces_and_torques_at_pos(torques=friction_moment_CM, positions=self.pos_CM, is_global=False)
+        self.drone_rbp.apply_forces_and_torques_at_pos(torques=friction_moment_CM, positions=self.pos_CM, 
+                                                       is_global=False)

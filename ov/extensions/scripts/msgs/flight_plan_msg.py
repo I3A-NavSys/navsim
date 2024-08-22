@@ -5,7 +5,7 @@ class FlightPlanMsg:
         self.plan_id: int
         self.uav_id: str
         self.operator_id: str
-        self.route: WaypointMsg
+        self.route: list[WaypointMsg] = []
         self.mode: str
         self.radius: float
         self.priority: int

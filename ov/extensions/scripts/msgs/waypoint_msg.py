@@ -1,13 +1,13 @@
 from .point_msg import PointMsg
 from .vector3_msg import Vector3Msg
-from .time_msg import TimeMsg
 
 class WaypointMsg:
-    def __init__(self) -> None:
-        self.pos: PointMsg
-        self.vel: Vector3Msg
-        self.accel: Vector3Msg
-        self.jerk: Vector3Msg
-        self.snap: Vector3Msg
-        self.crkl: Vector3Msg
-        self.time: TimeMsg
+    def __init__(self, pos: PointMsg, vel: Vector3Msg, accel: Vector3Msg, jerk: Vector3Msg, snap: Vector3Msg, 
+                 crkl: Vector3Msg, time: float):
+        self.pos = pos
+        self.vel = vel
+        self.accel = accel
+        self.jerk = jerk
+        self.snap = snap
+        self.crkl = crkl
+        self.time = time
