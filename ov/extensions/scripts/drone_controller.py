@@ -147,7 +147,7 @@ class UamMinidrone(BehaviorScript):
         self.platform_dynamics(current_time, delta_time)
 
         # TEST
-        self.get_current_wp_index(current_time)
+        print(self.get_wp_pos_at_time(current_time))
     
     def navigation(self):
         pass
@@ -160,17 +160,51 @@ class UamMinidrone(BehaviorScript):
         return i
     
     def get_wp_pos_at_time(self, time: float) -> Gf.Vec3d:
-        wp_i = self.get_waypoint_at_time(time)
+        wp_i = self.get_current_wp_index(time)
 
         # If the drone is on the first waypoint
         if wp_i == 0:
             return Gf.Vec3d(self.fp.route[0].pos[0], self.fp.route[0].pos[1], self.fp.route[0].pos[2])
 
+        # If the drone has completed the flightplan
         elif wp_i == len(self.fp.route)-1:
              return Gf.Vec3d(self.fp.route[wp_i].pos[0], self.fp.route[wp_i].pos[1], self.fp.route[wp_i].pos[2])
         
+        # If the drone is executing the flightplan
         else:
-            dt = time - self.fp.route[wp_i].time
+            wp = self.fp.route[wp_i]
+            dt = time - wp.time
+            r1 = Gf.Vec3d(wp.pos[0], wp.pos[1], wp.pos[2])
+            v1 = Gf.Vec3d(wp.vel[0], wp.vel[1], wp.vel[2])
+            a1 = Gf.vec3d(wp.accel[0], wp.accel[1], wp.accel[2])
+            j1 = Gf.vec3d(wp.jerk[0], wp.jerk[1], wp.jerk[2])
+            s1 = Gf.vec3d(wp.snap[0], wp.snap[1], wp.snap[2])
+            c1 = Gf.vec3d(wp.crkl[0], wp.crkl[1], wp.crkl[2])
+
+            return r1 + v1*dt + a1*pow(dt,2)/2 + j1*pow(dt,3)/6 + s1*pow(dt,4)/24 + c1*pow(dt,5)/120
+        
+    def get_wp_vel_at_time(self, time: float) -> Gf.Vec3d:
+        wp_i = self.get_current_wp_index(time)
+
+        # If the drone is on the first waypoint
+        if wp_i == 0:
+            return Gf.Vec3d(0, 0, 0)
+
+        # If the drone has completed the flightplan
+        elif wp_i == len(self.fp.route)-1:
+             return Gf.Vec3d(0, 0, 0)
+        
+        # If the drone is executing the flightplan
+        else:
+            wp = self.fp.route[wp_i]
+            dt = time - wp.time
+            v1 = Gf.Vec3d(wp.vel[0], wp.vel[1], wp.vel[2])
+            a1 = Gf.vec3d(wp.accel[0], wp.accel[1], wp.accel[2])
+            j1 = Gf.vec3d(wp.jerk[0], wp.jerk[1], wp.jerk[2])
+            s1 = Gf.vec3d(wp.snap[0], wp.snap[1], wp.snap[2])
+            c1 = Gf.vec3d(wp.crkl[0], wp.crkl[1], wp.crkl[2])
+
+            return v1 + a1*dt + j1*pow(dt,2)/2 + s1*pow(dt,3)/6 + c1*pow(dt,4)/24
 
     def command_off(self):
         self.cmd_on = False
