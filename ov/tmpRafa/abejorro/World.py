@@ -8,9 +8,11 @@ from pxr import Gf
 
 
 class World(BehaviorScript):
+
+
+    
     def on_init(self):
         carb.log_info(f"{type(self).__name__}.on_init()->{self.prim_path}")
-
        
 
 
@@ -18,7 +20,6 @@ class World(BehaviorScript):
         carb.log_info(f"{type(self).__name__}.on_destroy()->{self.prim_path}")
 
         self.keyboard_sub_id = None
-
 
 
 
@@ -31,19 +32,13 @@ class World(BehaviorScript):
         input = carb.input.acquire_input_interface()
         self.keyboard_sub_id = input.subscribe_to_keyboard_events(self.keyboard, self.on_keyboard_input)
 
-        
-
-  
-
-
-
+          
 
     def on_pause(self):
         carb.log_info(f"{type(self).__name__}.on_pause()->{self.prim_path}")
         input = carb.input.acquire_input_interface()
         input.unsubscribe_to_keyboard_events(self.keyboard, self.keyboard_sub_id)
         self.keyboard_sub_id = None
-
 
 
 

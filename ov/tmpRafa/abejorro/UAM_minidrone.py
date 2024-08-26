@@ -8,22 +8,18 @@ from pxr import Sdf, Usd, UsdGeom, Gf, UsdPhysics
 
 
 
-
-
 class UamMinidrone(BehaviorScript):
 
     xform : UsdGeom.Xformable 
 
-    mass: float
-   
     pos: Gf.Vec3d
     rot: Gf.Vec3d
     
+    mass: float
     force_atr:  Usd.Attribute
     torque_atr: Usd.Attribute
     CmdVel_atr: Usd.Attribute
   
-    #keyboard_sub_id
 
 
     def on_init(self):
@@ -35,6 +31,7 @@ class UamMinidrone(BehaviorScript):
 
         mass_attr = self.prim.GetAttribute("physics:mass")
         self.mass = mass_attr.Get()
+        print(f"mass: {self.mass}")
 
         self.force_atr = self.prim.CreateAttribute(
             "physxForce:force", 
@@ -46,7 +43,6 @@ class UamMinidrone(BehaviorScript):
             Sdf.ValueTypeNames.Float3)
         self.torque_atr = self.prim.GetAttribute("physxForce:torque")
         
-
         self.CmdVel_atr = self.prim.CreateAttribute(
             "NavSim:CmdVel", 
             Sdf.ValueTypeNames.Float3)
@@ -59,63 +55,69 @@ class UamMinidrone(BehaviorScript):
 
 
 
-
-    def on_destroy(self):
-        carb.log_info(f"{type(self).__name__}.on_destroy()->{self.prim_path}")
-
- 
-
-
     def on_play(self):
         carb.log_info(f"{type(self).__name__}.on_play()->{self.prim_path}")
         print(f"PLAY  {self.prim_path}")
 
         g: float = 9.81
-        #force: Gf.Vec3d = self.force_atr.Get()
-        force: Sdf.ValueTypeNames.Float3 = (0,0,self.mass*g*1.001)
+        force: Gf.Vec3d = self.force_atr.Get()
+        print(f"force-----------")
+        print(f"force {force}")
+
+        f = Sdf.ValueTypeNames.Float3 = (0,0,-self.mass*g)
+        print(f"f {f}")
+        force = Sdf.ValueTypeNames.Float3 = (0,0,11)
         self.force_atr.Set(force)
 
         #torque: Gf.Vec3d = self.torque_atr.Get()
-        torque = (0,0,0)
+        torque = (0,0,1)
         self.torque_atr.Set(torque)
 
 
 
 
+    def on_update(self, current_time: float, delta_time: float):
 
+        # carb.log_info(f"{type(self).__name__}.on_update({current_time}, {delta_time})->{self.prim_path}")
+
+        # pose: Gf.Matrix4d = self.xform.GetLocalTransformation()           
+
+        # # posición XYZ
+        # self.pos = pose.ExtractTranslation()
+        # pos_formatted = tuple("{:.2f}".format(value) for value in self.pos)
+        # #print(f"Posición XYZ de {self.prim_path}: {pos_formatted}")        
+
+        # # rotación XYZ
+        # rotation: Gf.Rotation = pose.ExtractRotation()      
+        # self.rot = rotation.Decompose(Gf.Vec3d.XAxis(), Gf.Vec3d.YAxis(), Gf.Vec3d.ZAxis())
+        # rot_formatted = tuple("{:.0f}".format(value) for value in self.rot)
+        # #print(f"Rotación XYZ de {self.prim_path}: {rot_formatted}") 
+
+
+        # CmdVel: Gf.Vec3d = self.CmdVel_atr.Get()
+        # #print(CmdVel)
+
+        # force = Sdf.ValueTypeNames.Float3 = (0,0,11)
+        # self.force_atr.Set(force)
+        # print(f"force {force}")
 
        
-    def on_pause(self):
-        carb.log_info(f"{type(self).__name__}.on_pause()->{self.prim_path}")
 
 
 
-    def on_stop(self):
-        carb.log_info(f"{type(self).__name__}.on_stop()->{self.prim_path}")
-        print(f"STOP  {self.prim_path}")
+    # def on_pause(self):
+    #     carb.log_info(f"{type(self).__name__}.on_pause()->{self.prim_path}")
 
 
 
 
-    def on_update(self, current_time: float, delta_time: float):
-        carb.log_info(f"{type(self).__name__}.on_update({current_time}, {delta_time})->{self.prim_path}")
-
-        pose: Gf.Matrix4d = self.xform.GetLocalTransformation()           
-
-        # posición XYZ
-        self.pos = pose.ExtractTranslation()
-        pos_formatted = tuple("{:.2f}".format(value) for value in self.pos)
-        #print(f"Posición XYZ de {self.prim_path}: {pos_formatted}")        
-
-        # rotación XYZ
-        rotation: Gf.Rotation = pose.ExtractRotation()      
-        self.rot = rotation.Decompose(Gf.Vec3d.XAxis(), Gf.Vec3d.YAxis(), Gf.Vec3d.ZAxis())
-        rot_formatted = tuple("{:.0f}".format(value) for value in self.rot)
-        #print(f"Rotación XYZ de {self.prim_path}: {rot_formatted}") 
-
-
-        CmdVel: Gf.Vec3d = self.CmdVel_atr.Get()
-        #print(CmdVel)
+    # def on_stop(self):
+    #     carb.log_info(f"{type(self).__name__}.on_stop()->{self.prim_path}")
+    #     print(f"STOP  {self.prim_path}")
 
 
 
+    # def on_destroy(self):
+    #     carb.log_info(f"{type(self).__name__}.on_destroy()->{self.prim_path}")
+
+ 
