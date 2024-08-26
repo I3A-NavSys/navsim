@@ -51,6 +51,11 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
         self.build_plots = False
         self.sub = omni.kit.app.get_app().get_update_event_stream().create_subscription_to_pop(self.build_plots_container, name="Plots_building")
 
+        # UI state information
+        self.UI_state_info = {"track_pos_opts": {"visible": False, "enabled": True},
+                              "start_upd_plot_button": {"visible" : True, "enabled": True},
+                              "stop_upd_plot_button": {"visible" : True, "enabled": False}}
+
         # Control variable
         self.stop_update_plot = True
         
@@ -59,6 +64,9 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
 
         # Instance of ExternalController
         self.external_control = ExternalController()
+
+        # Timeline interface
+        self.app_interface = omni.kit.app.get_app_interface()
 
 
     def build_ui(self):
@@ -168,15 +176,29 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
             self.build_plot_container_content()
 
 
+    def track_checkbox_changed(self, model):
+        # If position must be tracked
+        if model.get_value_as_bool():
+            # Show more options
+            self.select_controller_HStack.visible = True
+            self.UI_state_info["track_pos_opts"]["visible"] = True
+        
+        else:
+            self.select_controller_HStack.visible = False
+            self.UI_state_info["track_pos_opts"]["visible"] = False
+
+
     def build_plot_container_content(self):
         with self.plots_container:
             ui.Spacer(height=10)
             
+            # Plots appereance section
             with ui.HStack():
-                ui.Label("Plots appearance", alignment=ui.Alignment.LEFT)
+                ui.Label("Plots appereance", alignment=ui.Alignment.LEFT)
                 self.plots_appearance_combo_box = ui.ComboBox(self.plots_appearance, "Rows", "Group", "Stack")
                 self.plots_appearance_combo_box.model.add_item_changed_fn(self.change_plot_distribution)
 
+            # Make UI beauty
             match self.plots_appearance:
                 case 0:
                     ui.Spacer(height=6)
@@ -187,10 +209,25 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
                 case 2:
                     ui.Spacer(height=6)
 
+            # Track position section
             with ui.HStack():
                 ui.Label("Track position", alignment=ui.Alignment.LEFT)
                 self.track_checkbox = ui.CheckBox()
+                self.track_checkbox.model.add_value_changed_fn(self.track_checkbox_changed)
 
+                self.track_checkbox.model.set_value(self.UI_state_info["track_pos_opts"]["visible"])
+                self.track_checkbox.enabled = self.UI_state_info["track_pos_opts"]["enabled"]
+
+            # Select contoller section
+            self.select_controller_HStack = ui.HStack()
+            with self.select_controller_HStack:
+                ui.Label("\tSelect controller", alignment=ui.Alignment.LEFT)
+                self.drone_controller_combo_box = ui.ComboBox(0, "Joystick", "Keyboard")
+
+            self.select_controller_HStack.visible = self.UI_state_info["track_pos_opts"]["visible"]
+            self.drone_controller_combo_box.enabled = self.UI_state_info["track_pos_opts"]["enabled"]
+
+            # Make UI beauty
             match self.plots_appearance:
                 case 0:
                     ui.Spacer(height=14)
@@ -203,13 +240,16 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
 
             ui.Separator(height=10)
 
+            # Control buttons section
             with ui.HStack(spacing=5):
-                # Control buttons
                 self.start_control_prim_button = ui.Button("START", clicked_fn=self.start_update, height=5)
                 self.stop_control_prim_button = ui.Button("STOP", clicked_fn=self.stop_update, height=5)
-                self.stop_control_prim_button.enabled = False
                 self.reset_control_prim_button = ui.Button("RESET", clicked_fn=self.reset_plot, height=5)
 
+                self.start_control_prim_button.enabled = self.UI_state_info["start_upd_plot_button"]["enabled"]
+                self.stop_control_prim_button.enabled = self.UI_state_info["stop_upd_plot_button"]["enabled"]
+
+            # Plots section
             match self.plots_appearance:
                 case 0:
                     self.first_way()
@@ -260,73 +300,91 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
         if len(self.manipulable_prims) == 0:
             raise Exception("No drone selected")
 
-        # Start just once
-        if self.stop_update_plot:
-            print("-- START --")
-            self.stop_update_plot = False
-            self.start_control_prim_button.enabled = False
-            self.stop_control_prim_button.enabled = True
+        print("-- START --")
 
-            # Set controls power to controller
-            self.linear_vel_limit = self.linear_vel_power.model.get_value_as_float()
-            self.angular_vel_limit = self.angular_vel_power.model.get_value_as_float()
+        # Change loop variable value to startloop
+        self.stop_update_plot = False
 
-            self.external_control.ang_vel_limit = self.angular_vel_limit
-            self.external_control.linear_vel_limit = self.linear_vel_limit
+        # Change UI elements state
+        self.start_control_prim_button.enabled = False
+        self.stop_control_prim_button.enabled = True
+        self.track_checkbox.enabled = False
+        self.drone_controller_combo_box.enabled = False
 
-            # Update linear velocity limit labels
-            self.x_max_lvl.text = str(self.linear_vel_limit)
-            if not self.TRDW:
-                self.y_max_lvl.text = str(self.linear_vel_limit)
-                self.z_max_lvl.text = str(self.linear_vel_limit)
+        # Change UI dictionary state
+        self.UI_state_info["track_pos_opts"]["enabled"] = False
+        self.UI_state_info["start_upd_plot_button"]["enabled"] = False
+        self.UI_state_info["stop_upd_plot_button"]["enabled"] = True
 
-            self.x_min_lvl.text = str(-self.linear_vel_limit)
-            if not self.TRDW:
-                self.y_min_lvl.text = str(-self.linear_vel_limit)
-                self.z_min_lvl.text = str(-self.linear_vel_limit)
+        # Set controls power to controller
+        self.linear_vel_limit = self.linear_vel_power.model.get_value_as_float()
+        self.angular_vel_limit = self.angular_vel_power.model.get_value_as_float()
 
-            # Update angular velocity limit labels
-            self.z_max_avl.text = str(self.angular_vel_limit)
-            self.z_min_avl.text = str(-self.angular_vel_limit)
-            
-            # Adjust scale to corresponding control power
-            self.x_lv_plot.scale_min = -self.linear_vel_limit
-            self.x_lv_plot.scale_max = self.linear_vel_limit
-            
-            self.y_lv_plot.scale_min = -self.linear_vel_limit
-            self.y_lv_plot.scale_max = self.linear_vel_limit
+        self.external_control.ang_vel_limit = self.angular_vel_limit
+        self.external_control.linear_vel_limit = self.linear_vel_limit
 
-            self.z_lv_plot.scale_min = -self.linear_vel_limit
-            self.z_lv_plot.scale_max = self.linear_vel_limit
+        # Update linear velocity limit labels
+        self.x_max_lvl.text = str(self.linear_vel_limit)
+        if not self.TRDW:
+            self.y_max_lvl.text = str(self.linear_vel_limit)
+            self.z_max_lvl.text = str(self.linear_vel_limit)
 
-            # Get the selected drone
-            drone = self.manipulable_prims[self.drone_selector_dropdown.get_selection_index()]
+        self.x_min_lvl.text = str(-self.linear_vel_limit)
+        if not self.TRDW:
+            self.y_min_lvl.text = str(-self.linear_vel_limit)
+            self.z_min_lvl.text = str(-self.linear_vel_limit)
 
-            # Start external control
-            self.external_control.start(drone)
+        # Update angular velocity limit labels
+        self.z_max_avl.text = str(self.angular_vel_limit)
+        self.z_min_avl.text = str(-self.angular_vel_limit)
+        
+        # Adjust scale to corresponding control power
+        self.x_lv_plot.scale_min = -self.linear_vel_limit
+        self.x_lv_plot.scale_max = self.linear_vel_limit
+        
+        self.y_lv_plot.scale_min = -self.linear_vel_limit
+        self.y_lv_plot.scale_max = self.linear_vel_limit
 
-            # Check if prim's pos must be tracked
-            if self.track_checkbox.model.get_value_as_bool():
-                asyncio.ensure_future(self.track_prim_pos(drone))
+        self.z_lv_plot.scale_min = -self.linear_vel_limit
+        self.z_lv_plot.scale_max = self.linear_vel_limit
 
-            # Start the coroutine that updates the plots
-            asyncio.ensure_future(self.update_plot())
+        # Get the selected drone
+        drone = self.manipulable_prims[self.drone_selector_dropdown.get_selection_index()]
+
+        # Check if tracking option selected, if so a specific controller must be used
+        if self.UI_state_info["track_pos_opts"]["visible"]:
+            self.external_control.start(drone, self.drone_controller_combo_box.model.get_item_value_model().get_value_as_int())
 
         else:
-            print("ALREADY STARTED")
+            self.external_control.start(drone)
+
+        # Check if prim's position must be tracked
+        if self.track_checkbox.model.get_value_as_bool():
+            asyncio.ensure_future(self.track_prim_pos(drone))
+
+        # Start the coroutine that updates the plots
+        asyncio.ensure_future(self.update_plot())
 
 
     def stop_update(self):
-        # Stop just once
-        if not self.stop_update_plot:
-            print("-- STOP --")
-            self.stop_update_plot = True
-            self.start_control_prim_button.enabled = True
-            self.stop_control_prim_button.enabled = False
-            self.external_control.stop()
+        print("-- STOP --")
 
-        else:
-            print("ALREADY STOPPED")
+        # Reset loop variable
+        self.stop_update_plot = True
+
+        # Reset UI elements state
+        self.start_control_prim_button.enabled = True
+        self.stop_control_prim_button.enabled = False
+        self.track_checkbox.enabled = True
+        self.drone_controller_combo_box.enabled = True
+
+        # Reset UI dictionary state
+        self.UI_state_info["track_pos_opts"]["enabled"] = True
+        self.UI_state_info["start_upd_plot_button"]["enabled"] = True
+        self.UI_state_info["stop_upd_plot_button"]["enabled"] = False
+
+        # Stop asking for inputs
+        self.external_control.stop()
 
 
     def reset_plot(self):
@@ -342,14 +400,17 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
 
     
     async def track_prim_pos(self, drone):
+        # Get starting time
+        start_time = self.app_interface.get_time_since_start_s()
+
         # Create the matplotlib figure and the corresponding plot
-        plt_fig = plt.figure()
-        track_plot = plt_fig.add_subplot(111, projection="3d")
+        track_fig = plt.figure()
+        track_plot = track_fig.add_subplot(3, 4, (1, 11), projection="3d")
 
         # Indicate the axes name
-        track_plot.set_xlabel("X AXES")
-        track_plot.set_ylabel("Y AXES")
-        track_plot.set_zlabel("Z AXES")
+        track_plot.set_xlabel("X")
+        track_plot.set_ylabel("Y")
+        track_plot.set_zlabel("Z")
 
         # Write a title for the plot
         track_plot.set_title("Drone Position")
@@ -364,14 +425,26 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
         y_pos_track = []
         z_pos_track = []
 
+        # Create the time list to show pos vs time
+        time_track = []
+
         # Store initial position
         drone_pos = drone.GetAttribute("xformOp:translate").Get()
         x_pos_track.append(drone_pos[0])
         y_pos_track.append(drone_pos[1])
         z_pos_track.append(drone_pos[2])
-        
 
+        # Store initial time
+        time_track.append(0)
+
+        # Plot initial position
         line, = track_plot.plot(x_pos_track, y_pos_track, z_pos_track)
+
+        # Get the figure manager
+        fig_manager = plt.get_current_fig_manager()
+
+        # Disable keyboard listening for the figure (so we can use it to control the drone)
+        track_fig.canvas.mpl_disconnect(fig_manager.key_press_handler_id)
 
         while not self.stop_update_plot:
             # Get the current position
@@ -383,6 +456,10 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
                 x_pos_track.append(drone_pos[0])
                 y_pos_track.append(drone_pos[1])
                 z_pos_track.append(drone_pos[2])
+
+                # Add the current time to the corresponding list
+                current_time = self.app_interface.get_time_since_start_s() - start_time
+                time_track.append(current_time)
 
                 # Update plot data
                 line.set_data(x_pos_track, y_pos_track)
@@ -396,16 +473,20 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
                 track_plot.set_ylim3d(*new_limits[1])
                 track_plot.set_zlim3d(*new_limits[2])
 
-                plt.draw()
-                plt.pause(0.01)
+                if self.drone_controller_combo_box.model.get_item_value_model().get_value_as_int() == 0:
+                    # Foreground updating
+                    plt.pause(0.01)
+
+                elif self.drone_controller_combo_box.model.get_item_value_model().get_value_as_int() == 1:
+                    # Background updating
+                    plt.draw()
             
             await asyncio.sleep(0.2)
 
         # TODO
-        # Once the tracking has finished, we can save the plot, present it versus time, etc
+        # Enable the figure keyboard listening once the tracking has finished (not compulsory as they are shortcuts)
 
-        track_plot.cla()
-        plt.close(plt_fig)
+        self.show_pos_vs_time(track_fig, x_pos_track, y_pos_track, z_pos_track, time_track)
 
     
     def get_matplotlib_plot_limits(self, plot):
@@ -442,6 +523,34 @@ class NavsimExternalcontrolExtension(omni.ext.IExt):
             track_plot_lims[2] = [track_plot_lims[2][0], new_pos[2]]
 
         return track_plot_lims
+
+
+    def show_pos_vs_time(self, track_fig, x_pos_track, y_pos_track, z_pos_track, time_track):
+        # Create the plots
+        x_time_plot = track_fig.add_subplot(3, 4, (4, 4))
+        y_time_plot = track_fig.add_subplot(3, 4, (8, 8))
+        z_time_plot = track_fig.add_subplot(3, 4, (12, 12))
+
+        # X plot
+        x_time_plot.set_title("X pos vs time")
+        x_time_plot.set_xlabel("Time")
+        x_time_plot.set_ylabel("Position")
+        x_time_plot.plot(time_track, x_pos_track)
+
+        # Y plot
+        y_time_plot.set_title("Y pos vs time")
+        y_time_plot.set_xlabel("Time")
+        y_time_plot.set_ylabel("Position")
+        y_time_plot.plot(time_track, y_pos_track)
+
+        # Z plot
+        z_time_plot.set_title("Z pos vs time")
+        z_time_plot.set_xlabel("Time")
+        z_time_plot.set_ylabel("Position")
+        z_time_plot.plot(time_track, z_pos_track)
+
+        plt.show(block=False)
+
 
     def first_way(self):
         self.TRDW = False

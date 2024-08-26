@@ -23,9 +23,12 @@ class ExternalController:
         self.keyboard = KeyboardInput()
 
     
-    def start(self, prim):
+    def start(self, prim, controller = None):
         if self._stop:
             self._stop = False
+
+            # Get the controller
+            self.controller = controller
 
             # Selected drone
             self.prim = prim
@@ -49,9 +52,19 @@ class ExternalController:
             self._ang_vel_att.Set(self._ang_vel_to_apply)
             self.prim.GetAttribute("physxForce:force").Set(Gf.Vec3f(0,0,0))
             
-            # Start external inputs
-            self.joystick.start()
-            self.keyboard.start()
+            # Check if a specific controller must be used
+            if self.controller != None:
+                # Check if it is joystick
+                if self.controller == 0:
+                    self.joystick.start()
+
+                # Check if it is keyboard
+                elif self.controller == 1:
+                    self.keyboard.start()
+
+            else:
+                self.joystick.start()
+                self.keyboard.start()
 
             # Start control coroutine
             asyncio.ensure_future(self.control())
@@ -61,17 +74,30 @@ class ExternalController:
         if not self._stop:
             self._stop = True
 
-            self.joystick.stop()
-            self.keyboard.stop()
+            # Check if a specific controller must be used
+            if self.controller != None:
+                # Check if it is joystick
+                if self.controller == 0:
+                    self.joystick.stop()
+
+                # Check if it is keyboard
+                elif self.controller == 1:
+                    self.keyboard.stop()
+
+            else:
+                self.joystick.stop()
+                self.keyboard.stop()
+
+            self.prim.SetCustomData({"x_vel": 0, "y_vel": 0, "z_vel": 0, "z_rot": 0})
 
             # New values for those attributes
-            self._vel_to_apply = Gf.Vec3f(0,0,0)
-            self._ang_vel_to_apply = Gf.Vec3f(0,0,0)
+            # self._vel_to_apply = Gf.Vec3f(0,0,0)
+            # self._ang_vel_to_apply = Gf.Vec3f(0,0,0)
 
-            # Reset attributes
-            self._vel_att.Set(self._vel_to_apply)
-            self._ang_vel_att.Set(self._ang_vel_to_apply)
-            self.prim.GetAttribute("physxForce:force").Set(Gf.Vec3f(0,0,0))
+            # # Reset attributes
+            # self._vel_att.Set(self._vel_to_apply)
+            # self._ang_vel_att.Set(self._ang_vel_to_apply)
+            # self.prim.GetAttribute("physxForce:force").Set(Gf.Vec3f(0,0,0))
 
 
     # -- FUNCTION get_grav_deacc --------------------------------------------------------------------------------
@@ -80,6 +106,34 @@ class ExternalController:
     # -----------------------------------------------------------------------------------------------------------
     async def control(self):
         while not self._stop:
+            self.inputs = self.get_inputs()
+
+            # Get velocities and rotation
+            vel = self.inputs[:3] * -self.linear_vel_limit
+            rot = self.inputs[3] * -self.ang_vel_limit
+
+            # Update prim's custom data dictionary
+            self.prim.SetCustomData({"x_vel": vel[0], "y_vel": vel[1], "z_vel": vel[2], "z_rot": rot})
+
+
+            # Compute velocities
+            # self.compute_ang_vel()
+            # self.compute_lin_vel()
+
+            # # Update velocities
+            # self._vel_att.Set(self._vel_to_apply)
+            # self._ang_vel_att.Set(self._ang_vel_to_apply)
+
+            await asyncio.sleep(0.1)
+
+
+    # -- FUNCTION get_inputs --------------------------------------------------------------------------------
+    # This method is in charge of returning the valid inputs.
+    # It must check which controllers are being used and get the corresponding inputs
+    # -----------------------------------------------------------------------------------------------------------
+    def get_inputs(self):
+        # Chek if both controllers are running
+        if self.controller == None:
             # Get the corresponding inputs
             self.joystick.ask_input()
             joy_inputs = np.array(self.joystick.inputs)
@@ -87,19 +141,19 @@ class ExternalController:
 
             # Joystick input has priority
             if self.check_inputs(joy_inputs):
-                self.inputs = joy_inputs
+                return joy_inputs
             else:
-                self.inputs = key_inputs
+                return key_inputs
 
-            # Compute velocities
-            self.compute_ang_vel()
-            self.compute_lin_vel()
+        else:
+            # Check if running controller is joystick
+            if self.controller == 0:
+                self.joystick.ask_input()
+                return np.array(self.joystick.inputs)
 
-            # Update velocities
-            self._vel_att.Set(self._vel_to_apply)
-            self._ang_vel_att.Set(self._ang_vel_to_apply)
-
-            await asyncio.sleep(0.1)
+            # Check if running controller is keyboard
+            elif self.controller == 1:
+                return np.array(self.keyboard.inputs)
 
 
     # -- FUNCTION get_grav_deacc --------------------------------------------------------------------------------
