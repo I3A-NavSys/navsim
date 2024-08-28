@@ -6,6 +6,7 @@ from pxr import UsdGeom, Gf
 
 from .msgs.flight_plan_msg import FlightPlanMsg
 from .msgs.waypoint_msg import WaypointMsg
+from .msgs.navigation_report_msg import NavigationReportMsg
 
 import numpy as np
 
@@ -32,6 +33,9 @@ class UamMinidrone(BehaviorScript):
         self.cmd_vel_z = 0.0
         self.cmd_rot_z = 0.0
 
+        # Navigation aux
+        self.active_wp = -1
+
         # Quadcopter parameters
         g = 9.8
         mass = 0.595
@@ -43,13 +47,13 @@ class UamMinidrone(BehaviorScript):
         self.w_rotor_SW : float
 
         # Linear & angular velocities
-        self.linear_vel = []
-        self.angular_vel = []
+        self.linear_vel = Gf.Vec3d(0, 0, 0)
+        self.angular_vel = Gf.Vec3d(0, 0, 0)
 
         # Pose variables
-        self.position = []
-        self.orientation = []
-        self.orientation_qt = []
+        self.position = Gf.Vec3d(0, 0, 0)
+        self.orientation = Gf.Vec3d(0, 0, 0)
+        self.orientation_qt = Gf.Vec4d(0, 0, 0, 0)
 
         # Angular speed limits
         self.w_max = 628.3185
@@ -143,14 +147,42 @@ class UamMinidrone(BehaviorScript):
         self.prims_initialized = False
 
     def on_update(self, current_time: float, delta_time: float):
+        # TEST
+        self.navigation(current_time)
         self.servo_control(current_time, delta_time)
         self.platform_dynamics(current_time, delta_time)
-
-        # TEST
-        print(self.get_wp_pos_at_time(current_time))
     
-    def navigation(self):
-        pass
+    def navigation(self, time):
+        if self.fp == None:
+            return
+        
+        # Create navigation report message
+        nav_rep = NavigationReportMsg(self.fp.plan_id, "Abejorro00", self.fp.operator_id, False, False, False, 0, time)
+        
+        # Check flightplan vigency
+        wp_i = self.get_current_wp_index(time)
+
+        # If flight plan is obsolete
+        if self.active_wp == -1 and wp_i != 0:
+            nav_rep.fp_aborted = True
+            self.fp = None
+            return
+
+        # Current UAV status
+        self.position, self.orientation_qt = self.drone_rbp.get_world_poses()
+
+        # Transform orientation from quaternions to Euler angles
+        self.orientation = rotations.quat_to_euler_angles(self.orientation_qt[0])
+
+        # Get linear and angular velocity
+        self.linear_vel = self.drone_rbp.get_linear_velocities()[0]
+        self.angular_vel = self.drone_rbp.get_angular_velocities()[0]
+
+        # Check if navigation status has changed
+        if self.active_wp != wp_i:
+            if wp_i == 0:
+                wp_0 = self.fp.route[0]
+                initial_position = Gf.Vec3d(wp_0.pos[0], wp_0.pos[1], wp_0.pos[2])
 
     # Get the index of the route list where the current waypoint is stored
     def get_current_wp_index(self, time: float) -> int:
@@ -176,10 +208,10 @@ class UamMinidrone(BehaviorScript):
             dt = time - wp.time
             r1 = Gf.Vec3d(wp.pos[0], wp.pos[1], wp.pos[2])
             v1 = Gf.Vec3d(wp.vel[0], wp.vel[1], wp.vel[2])
-            a1 = Gf.vec3d(wp.accel[0], wp.accel[1], wp.accel[2])
-            j1 = Gf.vec3d(wp.jerk[0], wp.jerk[1], wp.jerk[2])
-            s1 = Gf.vec3d(wp.snap[0], wp.snap[1], wp.snap[2])
-            c1 = Gf.vec3d(wp.crkl[0], wp.crkl[1], wp.crkl[2])
+            a1 = Gf.Vec3d(wp.accel[0], wp.accel[1], wp.accel[2])
+            j1 = Gf.Vec3d(wp.jerk[0], wp.jerk[1], wp.jerk[2])
+            s1 = Gf.Vec3d(wp.snap[0], wp.snap[1], wp.snap[2])
+            c1 = Gf.Vec3d(wp.crkl[0], wp.crkl[1], wp.crkl[2])
 
             return r1 + v1*dt + a1*pow(dt,2)/2 + j1*pow(dt,3)/6 + s1*pow(dt,4)/24 + c1*pow(dt,5)/120
         
@@ -199,10 +231,10 @@ class UamMinidrone(BehaviorScript):
             wp = self.fp.route[wp_i]
             dt = time - wp.time
             v1 = Gf.Vec3d(wp.vel[0], wp.vel[1], wp.vel[2])
-            a1 = Gf.vec3d(wp.accel[0], wp.accel[1], wp.accel[2])
-            j1 = Gf.vec3d(wp.jerk[0], wp.jerk[1], wp.jerk[2])
-            s1 = Gf.vec3d(wp.snap[0], wp.snap[1], wp.snap[2])
-            c1 = Gf.vec3d(wp.crkl[0], wp.crkl[1], wp.crkl[2])
+            a1 = Gf.Vec3d(wp.accel[0], wp.accel[1], wp.accel[2])
+            j1 = Gf.Vec3d(wp.jerk[0], wp.jerk[1], wp.jerk[2])
+            s1 = Gf.Vec3d(wp.snap[0], wp.snap[1], wp.snap[2])
+            c1 = Gf.Vec3d(wp.crkl[0], wp.crkl[1], wp.crkl[2])
 
             return v1 + a1*dt + j1*pow(dt,2)/2 + s1*pow(dt,3)/6 + c1*pow(dt,4)/24
 
