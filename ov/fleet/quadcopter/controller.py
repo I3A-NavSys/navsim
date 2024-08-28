@@ -12,10 +12,10 @@ import numpy as np
 
 import math
 
-class UamMinidrone(BehaviorScript):
+class Quadcopter(BehaviorScript):
     def on_init(self):
         # Get rigid body prims
-        self.drone_rbp = RigidPrimView("/abejorro")
+        self.drone_rbp = RigidPrimView("/quadcopter")
         self.prims_initialized = False
 
         # Get xformable from prim
