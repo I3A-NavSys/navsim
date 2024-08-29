@@ -6,10 +6,6 @@ import asyncio
 
 from pxr import UsdGeom, Gf, Usd
 
-# TEST
-import carb.events
-import omni.kit.app
-
 class ExternalController:
     def __init__(self):
         # Loop condition
@@ -25,10 +21,6 @@ class ExternalController:
         # External inputs
         self.joystick = JoystickInput()
         self.keyboard = KeyboardInput()
-
-        # TEST
-        self.TEST_EVENT = carb.events.type_from_string("omni.NavSim.ExternalControl.TEST")
-        self.msg_bus_event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
 
     
     def start(self, prim, controller = None):
@@ -122,11 +114,7 @@ class ExternalController:
             rot = self.inputs[3] * -self.ang_vel_limit
 
             # Update prim's custom data dictionary
-            # self.prim.SetCustomData({"x_vel": vel[0], "y_vel": vel[1], "z_vel": vel[2], "z_rot": rot})
-
-            # TEST
-            inputs = {"x_vel": vel[0], "y_vel": vel[1], "z_vel": vel[2], "z_rot": rot}
-            self.msg_bus_event_stream.push(self.TEST_EVENT, payload={"method": "test_control", "inputs": inputs})
+            self.prim.SetCustomData({"x_vel": vel[0], "y_vel": vel[1], "z_vel": vel[2], "z_rot": rot})
 
 
             # Compute velocities

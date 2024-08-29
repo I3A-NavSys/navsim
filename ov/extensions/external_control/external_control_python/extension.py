@@ -68,20 +68,6 @@ class Extension(omni.ext.IExt):
         # App interface
         self.app_interface = omni.kit.app.get_app_interface()
 
-        # TEST
-        self.TEST_EVENT = carb.events.type_from_string("omni.NavSim.ExternalControl.TEST")
-        self.msg_bus_event_stream = self.app_interface.get_message_bus_event_stream()
-
-
-    # TEST
-    def test_fly(self):
-        self.msg_bus_event_stream.push(self.TEST_EVENT, payload={"method": "test_method1"})
-
-
-    # TEST
-    def test_hover(self):
-        self.msg_bus_event_stream.push(self.TEST_EVENT, payload={"method": "test_method2"})
-
 
     def build_ui(self):
         with self.window.frame:
@@ -89,11 +75,6 @@ class Extension(omni.ext.IExt):
             with ui.ScrollingFrame():
                 with ui.VStack(spacing=10, height=0):
                     ui.Spacer(height=10)
-
-                    # TEST
-                    with ui.HStack():
-                        ui.Button("FLY", clicked_fn=self.test_fly)
-                        ui.Button("HOVER", clicked_fn=self.test_hover)
 
                     # Drone selector dropdown
                     with ui.HStack(spacing=5):
