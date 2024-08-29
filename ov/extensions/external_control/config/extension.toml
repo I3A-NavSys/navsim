@@ -1,0 +1,25 @@
+[core]
+reloadable = true
+order = 0
+
+[package]
+version = "1.0.0"
+category = "Simulation"
+title = "NavSim ExternalControl"
+description="External input controller for manipulable prims"
+authors = ["NVIDIA"]
+repository = ""
+keywords = []
+changelog="docs/CHANGELOG.md"
+readme  = "docs/README.md"
+preview_image = "data/preview.png"
+icon = "data/icon.png"
+
+[dependencies]
+"omni.kit.uiapp" = {}
+"omni.isaac.ui" = {}
+"omni.isaac.core" = {}
+# PyQt5 pipapi
+
+[[python.module]]
+name = "external_control_python"
