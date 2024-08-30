@@ -202,10 +202,19 @@ class UAM_minidrone(BehaviorScript):
 
     def on_stop(self):
         print(f"STOP    {self.prim_path}")
+
         self.current_time = 0
         self.delta_time = 0
 
+        self.command_off()
+        self.rotors_off()
 
+        self.force_atr.Set(Gf.Vec3f(0,0,0))
+        self.torque_atr.Set(Gf.Vec3f(0,0,0))
+        self.forceNE_atr.Set(Gf.Vec3f(0,0,0))
+        self.forceNW_atr.Set(Gf.Vec3f(0,0,0))
+        self.forceSE_atr.Set(Gf.Vec3f(0,0,0))
+        self.forceSW_atr.Set(Gf.Vec3f(0,0,0))        
 
 
     def on_update(self, current_time: float, delta_time: float):
@@ -242,7 +251,7 @@ class UAM_minidrone(BehaviorScript):
         self.w_rotor_SW = 0
         self.rotors_on = False
         # Reset del control
-        # self.E = [0, 0, 0, 0]
+        self.E = np.zeros((4, 1))
 
 
 
