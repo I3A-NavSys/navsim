@@ -144,6 +144,7 @@ class Quadcopter(BehaviorScript):
         pass
 
     def on_stop(self):
+        self.reset_state()
         self.prims_initialized = False
 
     def on_update(self, current_time: float, delta_time: float):
@@ -258,6 +259,45 @@ class Quadcopter(BehaviorScript):
 
         # Control reset
         self.E = np.zeros((4, 1))
+
+    def reset_state(self):
+        # Resetea la navegación
+        self.cmd_on = False
+        self.cmd_vel_x = 0.0
+        self.cmd_vel_y = 0.0
+        self.cmd_vel_z = 0.0
+        self.cmd_rot_z = 0.0
+        self.active_wp = -1
+
+        # Resetea la velocidad de los rotores
+        self.w_rotor_NE = 0.0
+        self.w_rotor_NW = 0.0
+        self.w_rotor_SE = 0.0
+        self.w_rotor_SW = 0.0
+
+        # Resetea las velocidades lineales y angulares
+        self.linear_vel = Gf.Vec3d(0, 0, 0)
+        self.angular_vel = Gf.Vec3d(0, 0, 0)
+
+        # Resetea la posición y orientación
+        self.position = Gf.Vec3d(0, 0, 0)
+        self.orientation = Gf.Vec3d(0, 0, 0)
+        self.orientation_qt = Gf.Vec4d(0, 0, 0, 0)
+
+        # Resetea las matrices de control
+        self.x = np.zeros((8, 1))
+        self.y = np.zeros((4, 1))
+        self.u = np.zeros((4, 1))
+        self.r = np.zeros((4, 1))
+        self.e = np.zeros((4, 1))
+        self.E = np.zeros((4, 1))
+
+        # Resetea el tiempo y el estado de los rotores
+        self.prev_control_time = 0
+        self.rotors_on = False
+
+        # Reset del acumulado de errores
+        self.E_max = 15
 
     def servo_control(self, current_time: float, delta_time: float):
         # Initialize rigid body prim
