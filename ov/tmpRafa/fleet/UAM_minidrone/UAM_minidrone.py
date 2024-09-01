@@ -179,10 +179,10 @@ class UAM_minidrone(BehaviorScript):
 
         # Asumimos un comando
         self.cmd_on = True
-        self.cmd_velX = 2.0
+        self.cmd_velX = 0.0
         self.cmd_velY = 0.0
         self.cmd_velZ = 0.0
-        self.cmd_rotZ = 1.0
+        self.cmd_rotZ = 0.0
         print(f"UAV command: ON: {self.cmd_on:.0f} velX: {self.cmd_velX:.1f} velY: {self.cmd_velY:.1f} velZ: {self.cmd_velZ:.1f} rotZ: {self.cmd_rotZ:.1f}")
 
 
