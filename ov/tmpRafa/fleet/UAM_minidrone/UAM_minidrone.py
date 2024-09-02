@@ -53,6 +53,10 @@ class UAM_minidrone(BehaviorScript):
         self.forceSW_atr.Set(Gf.Vec3f(0,0,0))        
         
 
+        self.primRotStatic = self.prim.GetChild("rotors_spinning")
+
+
+
         ########################################################################
         ## Navigation parameters
 
@@ -224,6 +228,15 @@ class UAM_minidrone(BehaviorScript):
         self.current_time = current_time
         self.delta_time = delta_time
 
+
+
+        if self.current_time > 5:
+            self.command_off()
+            self.rotors_off()
+
+
+
+
         # Update the drone status
         self.IMU()
         self.servo_control()
@@ -244,14 +257,18 @@ class UAM_minidrone(BehaviorScript):
 
 
     def rotors_off(self):
+
         # Apagamos motores
         self.w_rotor_NE = 0
         self.w_rotor_NW = 0
         self.w_rotor_SE = 0
         self.w_rotor_SW = 0
         self.rotors_on = False
+        self.primRotStatic.SetActive(False)
+
         # Reset del control
         self.E = np.zeros((4, 1))
+
 
 
 
@@ -264,7 +281,7 @@ class UAM_minidrone(BehaviorScript):
             self.rotors_off()
             return
 
-
+        self.primRotStatic.SetActive(True)
 
         # Assign the model reference to be followed
         self.r[0, 0] = self.cmd_velX       # bXdot
