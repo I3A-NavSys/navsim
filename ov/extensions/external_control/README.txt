@@ -1,5 +1,6 @@
 Steps to control the UAV via joystick:
-    - Open the scene '/fleet/joystick_quadcopter/quadcopter.usd'
+    - Open the scene '/fleet/iker_joystick_quadcopter/quadcopter.usd' to try Iker controller
+    - Open the scene '/fleet/rafa_joystick_quadcopter/UAM_minidrone.usd' to try Rafa controller
     - Click on 'Yes' when asked about attached behaviors scripts
     - If external_control extension is not enabled, enable it
     - Click on 'REFRESH' button from the extension to get the manipulable UAV
