@@ -25,8 +25,6 @@ class ExternalController:
         self.joystick = JoystickInput()
         self.keyboard = KeyboardInput()
 
-        # Create the event have a communication between the UAV and the joystick
-        self.CONTROL_JOYSTICK_EVENT = carb.events.type_from_string("omni.NavSim.ExternalControl.CONTROL_JOYSTICK_EVENT")
         # Get the bus event stream
         self.msg_bus_event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
 
@@ -34,6 +32,9 @@ class ExternalController:
     def start(self, prim, controller = None):
         if self._stop:
             self._stop = False
+
+            # Create the event to have a communication between the UAV and the joystick
+            self.CONTROL_JOYSTICK_EVENT = carb.events.type_from_string("omni.NavSim.ExternalControl." + str(prim.GetPath()))
 
             # Get the controller
             self.controller = controller

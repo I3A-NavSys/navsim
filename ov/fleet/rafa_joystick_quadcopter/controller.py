@@ -183,13 +183,17 @@ class UAM_minidrone(BehaviorScript):
             
 
     def set_flight_inputs(self, inputs):
-        self.inputs = inputs
+        self.cmd_on = True
+        self.cmd_velX = inputs["x_vel"]
+        self.cmd_velY = inputs["y_vel"]
+        self.cmd_velZ = inputs["z_vel"]
+        self.cmd_rotZ = inputs["z_rot"]
 
 
     def on_play(self):
         # JOYSTICK CONTROL
         # Create the event to communite with the joystick
-        CONTROL_JOYSTICK_EVENT = carb.events.type_from_string("omni.NavSim.ExternalControl.CONTROL_JOYSTICK_EVENT")
+        CONTROL_JOYSTICK_EVENT = carb.events.type_from_string("omni.NavSim.ExternalControl." + str(self.prim.GetPath()))
         # Get the bus event stream
         bus = omni.kit.app.get_app().get_message_bus_event_stream()
         # Subscribe to pushing events of type CONTROL_JOYSTICK_EVENT
@@ -294,18 +298,11 @@ class UAM_minidrone(BehaviorScript):
             return
 
 
-
-        # TEST joystick control
-        self.r[0, 0] = self.inputs["x_vel"]
-        self.r[1, 0] = self.inputs["y_vel"]
-        self.r[2, 0] = self.inputs["z_vel"]
-        self.r[3, 0] = self.inputs["z_rot"]
-
         # Assign the model reference to be followed
-        # self.r[0, 0] = self.cmd_velX       # bXdot
-        # self.r[1, 0] = self.cmd_velY       # bYdot
-        # self.r[2, 0] = self.cmd_velZ       # bZdot
-        # self.r[3, 0] = self.cmd_rotZ       # hZdot
+        self.r[0, 0] = self.cmd_velX       # bXdot
+        self.r[1, 0] = self.cmd_velY       # bYdot
+        self.r[2, 0] = self.cmd_velZ       # bZdot
+        self.r[3, 0] = self.cmd_rotZ       # hZdot
         # print(f"r: {np.round(self.r.T, 2)}")
 
         # Assign model state

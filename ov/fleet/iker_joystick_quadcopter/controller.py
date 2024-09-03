@@ -128,11 +128,15 @@ class UamMinidrone(BehaviorScript):
             
 
     def set_flight_inputs(self, inputs):
-        self.inputs = inputs
+        self.cmd_on = True
+        self.cmd_velX = inputs["x_vel"]
+        self.cmd_velY = inputs["y_vel"]
+        self.cmd_velZ = inputs["z_vel"]
+        self.cmd_rotZ = inputs["z_rot"]
 
     def on_play(self):
         # Create the event to communite with the joystick
-        CONTROL_JOYSTICK_EVENT = carb.events.type_from_string("omni.NavSim.ExternalControl.CONTROL_JOYSTICK_EVENT")
+        CONTROL_JOYSTICK_EVENT = carb.events.type_from_string("omni.NavSim.ExternalControl." + str(self.prim.GetPath()))
         # Get the bus event stream
         bus = omni.kit.app.get_app().get_message_bus_event_stream()
         # Subscribe to pushing events of type CONTROL_JOYSTICK_EVENT
@@ -211,10 +215,10 @@ class UamMinidrone(BehaviorScript):
         self.y[3, 0] = self.angular_vel[2] # bWz
 
         # Assign reference (m/s)
-        self.r[0, 0] = self.inputs["x_vel"]
-        self.r[1, 0] = self.inputs["y_vel"]
-        self.r[2, 0] = self.inputs["z_vel"]
-        self.r[3, 0] = self.inputs["z_rot"]
+        self.r[0, 0] = self.cmd_velX
+        self.r[1, 0] = self.cmd_velY
+        self.r[2, 0] = self.cmd_velZ
+        self.r[3, 0] = self.cmd_rotZ
 
         # Error between output and reference
         self.e = self.y - self.r
