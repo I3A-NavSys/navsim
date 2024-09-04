@@ -1,18 +1,18 @@
 # Description: This script is used to control the minidrone in the UAM environment.
 
 from omni.kit.scripting import BehaviorScript
-import carb
 from pxr import Sdf
-from omni.isaac.core.prims import RigidPrimView
-from pxr import Usd, UsdGeom, Gf
+# from omni.isaac.core.prims import RigidPrimView
+from pxr import Gf
+# from pxr import Usd, UsdGeom, Gf
 
 import numpy as np
-import math
-
+# import math
 from scipy.spatial.transform import Rotation
 
 import carb.events
 import omni.kit.app
+
 
 class UAM_minidrone(BehaviorScript):
 
@@ -54,6 +54,10 @@ class UAM_minidrone(BehaviorScript):
         self.forceSW_atr = primSW.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
         self.forceSW_atr.Set(Gf.Vec3f(0,0,0))        
         
+
+        self.primRotStatic = self.prim.GetChild("rotors_spinning")
+
+
 
         ########################################################################
         ## Navigation parameters
@@ -171,6 +175,12 @@ class UAM_minidrone(BehaviorScript):
         self.E_max = 15  # previous value 5, maximum model accumulated error
 
 
+
+
+########################################################################
+# Event handlers
+
+
     def push_subscripted_event_method(self, e):        
         method = getattr(self, e.payload["method"])
         
@@ -191,6 +201,11 @@ class UAM_minidrone(BehaviorScript):
 
 
     def on_play(self):
+        print(f"PLAY    {self.prim_path}")
+        # print(f"\t {self.current_time} \t {self.delta_time}")
+
+
+
         # JOYSTICK CONTROL
         # Create the event to communite with the joystick
         CONTROL_JOYSTICK_EVENT = carb.events.type_from_string("omni.NavSim.ExternalControl." + str(self.prim.GetPath()))
@@ -202,8 +217,8 @@ class UAM_minidrone(BehaviorScript):
         # Reset inputs to have the same start
         self.inputs = {"x_vel": 0, "y_vel": 0, "z_vel": 0, "z_rot": 0}
 
-        print(f"PLAY    {self.prim_path}")
-        # print(f"\t {self.current_time} \t {self.delta_time}")
+
+
 
 
 
@@ -220,7 +235,6 @@ class UAM_minidrone(BehaviorScript):
         self.IMU()
         self.servo_control()
         self.platform_dynamics()
-
         pass
 
 
@@ -244,10 +258,7 @@ class UAM_minidrone(BehaviorScript):
         self.forceNE_atr.Set(Gf.Vec3f(0,0,0))
         self.forceNW_atr.Set(Gf.Vec3f(0,0,0))
         self.forceSE_atr.Set(Gf.Vec3f(0,0,0))
-        self.forceSW_atr.Set(Gf.Vec3f(0,0,0))
-
-        # Forget about the subscription, now we will not listen to CONTROL_JOYSTICK_EVENT
-        self.control_joy_event_sub = None
+        self.forceSW_atr.Set(Gf.Vec3f(0,0,0))        
 
 
     def on_update(self, current_time: float, delta_time: float):
@@ -256,6 +267,10 @@ class UAM_minidrone(BehaviorScript):
         # Get current simulation time
         self.current_time = current_time
         self.delta_time = delta_time
+
+        # if self.current_time > 5:
+        #     self.command_off()
+        #     self.rotors_off()
 
         # Update the drone status
         self.IMU()
@@ -277,14 +292,18 @@ class UAM_minidrone(BehaviorScript):
 
 
     def rotors_off(self):
+
         # Apagamos motores
         self.w_rotor_NE = 0
         self.w_rotor_NW = 0
         self.w_rotor_SE = 0
         self.w_rotor_SW = 0
         self.rotors_on = False
+        self.primRotStatic.SetActive(False)
+
         # Reset del control
         self.E = np.zeros((4, 1))
+
 
 
 
@@ -297,6 +316,7 @@ class UAM_minidrone(BehaviorScript):
             self.rotors_off()
             return
 
+        self.primRotStatic.SetActive(True)
 
         # Assign the model reference to be followed
         self.r[0, 0] = self.cmd_velX       # bXdot
