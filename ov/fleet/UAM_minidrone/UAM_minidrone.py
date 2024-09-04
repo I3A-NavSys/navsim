@@ -54,7 +54,6 @@ class UAM_minidrone(BehaviorScript):
         self.forceSW_atr = primSW.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
         self.forceSW_atr.Set(Gf.Vec3f(0,0,0))        
         
-
         self.primRotStatic = self.prim.GetChild("rotors_spinning")
 
 
@@ -187,7 +186,6 @@ class UAM_minidrone(BehaviorScript):
         match e.payload["method"]:
             case "set_flight_inputs":
                 method(e.payload["inputs"])
-
             case _:
                 method()
             
