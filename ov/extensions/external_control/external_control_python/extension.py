@@ -7,14 +7,19 @@ from omni.isaac.core.utils.stage import get_current_stage
 
 import asyncio
 import omni.kit.app
+
+import omni.kit.pipapi
+omni.kit.pipapi.install("pygame")
 from .ExternalController import ExternalController
 from omni.ui import color as cl
 
 import carb.events
 
+
 import matplotlib
 try:
     matplotlib.use("Qt5Agg")
+
 
 except ModuleNotFoundError:
     import omni.kit.pipapi
