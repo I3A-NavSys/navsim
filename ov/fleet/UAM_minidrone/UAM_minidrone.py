@@ -184,18 +184,19 @@ class UAM_minidrone(BehaviorScript):
         method = getattr(self, e.payload["method"])
         
         match e.payload["method"]:
-            case "set_flight_inputs":
-                method(e.payload["inputs"])
+            case "remote_command":
+                method(e.payload["command"])
             case _:
                 method()
             
 
-    def set_flight_inputs(self, inputs):
-        self.cmd_on = True
-        self.cmd_velX = inputs["x_vel"]
-        self.cmd_velY = inputs["y_vel"]
-        self.cmd_velZ = inputs["z_vel"]
-        self.cmd_rotZ = inputs["z_rot"]
+    def remote_command(self, command):
+        self.cmd_on   = command["on"]
+        self.cmd_velX = command["velX"]
+        self.cmd_velY = command["velY"]
+        self.cmd_velZ = command["velZ"]
+        self.cmd_rotZ = command["rotZ"]
+        self.CommandExpTime = self.current_time + command["duration"]
 
 
     def on_play(self):
@@ -212,11 +213,8 @@ class UAM_minidrone(BehaviorScript):
         # Subscribe to pushing events of type CONTROL_JOYSTICK_EVENT
         self.control_joy_event_sub = bus.create_subscription_to_push_by_type(CONTROL_JOYSTICK_EVENT, self.push_subscripted_event_method)
 
-        # Reset inputs to have the same start
-        self.inputs = {"x_vel": 0, "y_vel": 0, "z_vel": 0, "z_rot": 0}
-
-
-
+        # Reset command to have the same start
+        self.command = {"on": False, "velX": 0, "velY": 0, "velZ": 0, "rotZ": 1, "duration": 0}
 
 
 

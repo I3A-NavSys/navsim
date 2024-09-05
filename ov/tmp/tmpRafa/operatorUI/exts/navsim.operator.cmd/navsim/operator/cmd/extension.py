@@ -1,5 +1,6 @@
 import omni.ext
 import omni.ui as ui
+from omni.ui import color as cl
 
 from omni.isaac.ui.ui_utils import dropdown_builder
 from omni.isaac.core.utils.stage import get_current_stage
@@ -12,78 +13,125 @@ import carb.events
 # Any class derived from `omni.ext.IExt` in top level module (defined in `python.modules` of `extension.toml`) will be
 # instantiated when extension gets enabled and `on_startup(ext_id)` will be called. Later when extension gets disabled
 # on_shutdown() is called.
+
 class NavsimOperatorCmdExtension(omni.ext.IExt):
     # ext_id is current extension id. It can be used with extension manager to query additional information, like where
     # this extension is located on filesystem.
+
     def on_startup(self, ext_id):
-        print("[navsim.operator.cmd] startup")
-
-        self.velX = 0
-
+        # print("[REMOTE COMMAND ext] startup")
 
         # List of manipulable prims (usually drones)
         self.manipulable_prims = []
 
         # Get the bus event stream
-        self.msg_bus_event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
+        self.event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
 
-
-
-
-        self._window = ui.Window("Operator CMD", width=300, height=300)
+        # Create the window
+        self._window = ui.Window("REMOTE COMMAND", width=400, height=200)
         with self._window.frame:
-            with ui.VStack():
-                label = ui.Label("")
 
-
+            with ui.VStack(spacing=10):
                 ui.Spacer(height=10)
-
-                # Drone selector dropdown
-                with ui.HStack(spacing=5):
-                    # Dropdown selector
-                    self.drone_selector_dropdown = DropDown("Select Drone", "Select the drone you want to control", self.get_manipulable_prims)
-                    self.drone_selector_dropdown.enabled = False
-
-                    # Button to refresh manipulable drones
-                    self.refresh_selector_button = ui.Button("REFRESH", clicked_fn=self.refresh_drone_selector, width=100)
-                    pass
-
-
-                ui.Spacer(height=10)
-
-
-
-
-
-                LvelX = ui.FloatField(tooltip="velX parameter")
-
-
-
 
                 def on_click():
-
+                    # print("[REMOTE COMMAND ext] SEND button clicked")
 
                     # Get the selected drone
-                    drone = self.manipulable_prims[self.drone_selector_dropdown.get_selection_index()]
-
+                    try:
+                        drone = self.manipulable_prims[self.drone_selector_dropdown.get_selection_index()]
+                    except:
+                        print("[REMOTE COMMAND ext] No drone selected")
+                        return
                     # Create the event to have a communication between the UAV and the joystick
                     self.CONTROL_JOYSTICK_EVENT = carb.events.type_from_string("omni.NavSim.ExternalControl." + str(drone.GetPath()))
                            
-                    # Set inputs data structure
-                    inputs = {"x_vel": 2, "y_vel": 0, "z_vel": 0.1, "z_rot": 1}
-                    # Push CONTROL_JOYSTICK_EVENT with the inputs
-                    self.msg_bus_event_stream.push(self.CONTROL_JOYSTICK_EVENT, payload={"method": "set_flight_inputs", "inputs": inputs})
+                    # Set command data structure
+                    command = {
+                        "on":   rotors_CB.checked, 
+                        "velX": velX_FF.model.get_value_as_float(), 
+                        "velY": velY_FF.model.get_value_as_float(), 
+                        "velZ": velZ_FF.model.get_value_as_float(),
+                        "rotZ": rotZ_FF.model.get_value_as_float(),
+                        "duration": 1}
+                    # print(command)
 
 
 
+                    self.event_stream.push(self.CONTROL_JOYSTICK_EVENT, payload={"method": "remote_command", "command": command})
 
 
-                    self.velX = 1
-                    label.text = f"velX: {self.velX}"
-                    print (f"velX: {self.velX}")
+                # Drone selector dropdown
+                with ui.HStack(height=25):
+                    # Dropdown selector
+                    self.drone_selector_dropdown = DropDown(
+                        "Drone", "Select the drone you want to send commands", 
+                        self.get_manipulable_prims)
+                    self.drone_selector_dropdown.enabled = False
 
-                with ui.HStack():
-                    ui.Button("Send CMD", clicked_fn = on_click)
+                    # Button to refresh manipulable drones
+                    self.refresh_selector_button = ui.Button(
+                        "REFRESH", 
+                        clicked_fn=self.refresh_drone_selector, 
+                        height=15,
+                        width=80)
+                                        
+
+                rotors_CB = ui.CheckBox(
+                    checked=True,
+                    tooltip="Rotors activation"
+                )  
+
+                with ui.HStack(height=20, spacing=10):
+
+                    with ui.HStack():
+                        ui.Button(
+                            "velX", enable=False,
+                            width=20,
+                            style={
+                                "background_color":cl.red, 
+                                "color":cl.white, 
+                                "margin": 0})
+                        velX_FF = ui.FloatField(tooltip="velX parameter")
+
+                    with ui.HStack():
+                        ui.Button(
+                            "velY", enable=False,
+                            width=20,
+                            style={
+                                "background_color":cl.green, 
+                                "color":cl.white, 
+                                "margin": 0})
+                        velY_FF = ui.FloatField(
+                            name="velY",
+                            tooltip="velY parameter")
+
+                    with ui.HStack():
+                        ui.Button(
+                            "velZ", enable=False,
+                            width=20,
+                            style={
+                                "background_color":cl.blue, 
+                                "color":cl.white, 
+                                "margin": 0})
+                        velZ_FF = ui.FloatField(tooltip="velZ parameter")
+
+                    with ui.HStack():
+                        ui.Button(
+                            "rotZ", enable=False,
+                            width=20,
+                            style={
+                                "background_color":cl.orange, 
+                                "color":cl.white, 
+                                "margin": 0})
+                        rotZ_FF = ui.FloatField(tooltip="rotZ parameter")
+
+                with ui.HStack(height=50):
+                    #send button
+                    ui.Button(
+                        "SEND", 
+                        clicked_fn = on_click)
+
 
 
 
@@ -120,9 +168,6 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
 
 
 
-
-
-
     def refresh_drone_selector(self):
         self.drone_selector_dropdown.enabled = True
         self.drone_selector_dropdown.repopulate()
@@ -130,22 +175,6 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     def on_shutdown(self):
-        print("[navsim.operator.cmd] shutdown")
+        # print("[REMOTE COMMAND ext] shutdown")
+        pass
