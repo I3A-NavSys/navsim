@@ -94,10 +94,10 @@ class ExternalController:
             vel = self.inputs[:3] * -self.linear_vel_limit
             rot = self.inputs[3] * -self.ang_vel_limit
 
-            # Set inputs data structure
-            inputs = {"x_vel": vel[0], "y_vel": vel[1], "z_vel": vel[2], "z_rot": rot}
+            # Set command
+            command = {"on": True, "velX": vel[0], "velY": vel[1], "velZ": vel[2], "rotZ": rot, "duration": 0}
             # Push CONTROL_JOYSTICK_EVENT with the inputs
-            self.msg_bus_event_stream.push(self.CONTROL_JOYSTICK_EVENT, payload={"method": "set_flight_inputs", "inputs": inputs})
+            self.msg_bus_event_stream.push(self.CONTROL_JOYSTICK_EVENT, payload={"method": "remote_command", "command": command})
 
             await asyncio.sleep(0.1)
 
