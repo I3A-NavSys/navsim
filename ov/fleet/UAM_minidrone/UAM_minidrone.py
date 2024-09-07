@@ -56,13 +56,15 @@ class UAM_minidrone(BehaviorScript):
         
         self.primRotStatic = self.prim.GetChild("rotors_spinning")
 
+        # Create the omniverse event associated to this UAV
+        self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(self.prim.GetPath()))
+        bus = omni.kit.app.get_app().get_message_bus_event_stream()
+        self.eventSub = bus.create_subscription_to_push_by_type(self.UAV_EVENT, self.push_subscripted_event_method)
+
 
 
         ########################################################################
         ## Navigation parameters
-
-        # rotor engine status on/off
-        self.rotors_on = False
 
         # AutoPilot navigation command
         self.cmd_on = False          # (bool) motores activos 
@@ -70,7 +72,7 @@ class UAM_minidrone(BehaviorScript):
         self.cmd_velY = 0.0          # (m/s)  velocidad lineal  deseada en eje Y
         self.cmd_velZ = 0.0          # (m/s)  velocidad lineal  deseada en eje Z
         self.cmd_rotZ = 0.0          # (m/s)  velocidad angular deseada en eje Z
-        self.CommandExpTime = None   # (s)    tiempo de expiracion del comando
+        self.cmd_exp_time = None     # (s)    tiempo de expiracion del comando
 
 
         ########################################################################
@@ -180,52 +182,19 @@ class UAM_minidrone(BehaviorScript):
 # Event handlers
 
 
-    def push_subscripted_event_method(self, e):        
-        method = getattr(self, e.payload["method"])
-        
-        match e.payload["method"]:
-            case "remote_command":
-                method(e.payload["command"])
-            case _:
-                method()
-            
-
-    def remote_command(self, command):
-        self.cmd_on   = command["on"]
-        self.cmd_velX = command["velX"]
-        self.cmd_velY = command["velY"]
-        self.cmd_velZ = command["velZ"]
-        self.cmd_rotZ = command["rotZ"]
-        self.CommandExpTime = self.current_time + command["duration"]
-
 
     def on_play(self):
         print(f"PLAY    {self.prim_path}")
         # print(f"\t {self.current_time} \t {self.delta_time}")
 
-
-
-        # JOYSTICK CONTROL
-        # Create the event to communite with the joystick
-        CONTROL_JOYSTICK_EVENT = carb.events.type_from_string("omni.NavSim.ExternalControl." + str(self.prim.GetPath()))
-        # Get the bus event stream
-        bus = omni.kit.app.get_app().get_message_bus_event_stream()
-        # Subscribe to pushing events of type CONTROL_JOYSTICK_EVENT
-        self.control_joy_event_sub = bus.create_subscription_to_push_by_type(CONTROL_JOYSTICK_EVENT, self.push_subscripted_event_method)
-
-        # Reset command to have the same start
-        self.command = {"on": False, "velX": 0, "velY": 0, "velZ": 0, "rotZ": 1, "duration": 0}
-
-
-
-        # Asumimos un comando
-        self.cmd_on = True
-        self.cmd_velX = 0.0
-        self.cmd_velY = 0.0
-        self.cmd_velZ = 0.0
-        self.cmd_rotZ = 0.0
-        print(f"UAV command: ON: {self.cmd_on:.0f} velX: {self.cmd_velX:.1f} velY: {self.cmd_velY:.1f} velZ: {self.cmd_velZ:.1f} rotZ: {self.cmd_rotZ:.1f}")
-
+        # Asumimos un comando ---------------------------------------TEMPORAL
+        self.hover()
+        # self.cmd_on = True
+        # self.cmd_velX = 0.0
+        # self.cmd_velY = 0.0
+        # self.cmd_velZ = 0.0
+        # self.cmd_rotZ = 0.0
+        # print(f"UAV command: ON: {self.cmd_on:.0f} velX: {self.cmd_velX:.1f} velY: {self.cmd_velY:.1f} velZ: {self.cmd_velZ:.1f} rotZ: {self.cmd_rotZ:.1f}")
 
         # Update the drone status
         self.IMU()
@@ -257,6 +226,7 @@ class UAM_minidrone(BehaviorScript):
         self.forceSW_atr.Set(Gf.Vec3f(0,0,0))        
 
 
+
     def on_update(self, current_time: float, delta_time: float):
         # print(f"UPDATE  {self.prim_path} \t {current_time:.3f} \t {delta_time:.3f}")
 
@@ -276,6 +246,44 @@ class UAM_minidrone(BehaviorScript):
 
 
 
+    def push_subscripted_event_method(self, e):       
+
+        try:
+            method = getattr(self, e.payload["method"]) 
+        except:
+            print(f"Method {e.payload['method']} not found")
+            return
+        
+        match e.payload["method"]:
+            case "eventFn_RemoteCommand":
+                method(e.payload["command"])
+            case "eventFn_FlightPlan":
+                method(e.payload["fp"])
+            case _:
+                method()
+            
+
+
+    def eventFn_RemoteCommand(self, command):
+        # print(command)
+        self.cmd_on   = command["on"]
+        self.cmd_velX = command["velX"]
+        self.cmd_velY = command["velY"]
+        self.cmd_velZ = command["velZ"]
+        self.cmd_rotZ = command["rotZ"]
+        self.cmd_exp_time = self.current_time + command["duration"]       
+        
+
+
+    def eventFn_FlightPlan(self, fp):
+        print(fp)
+        pass
+
+
+
+########################################################################
+
+
 
     def command_off(self):
         self.cmd_on   = False
@@ -283,7 +291,14 @@ class UAM_minidrone(BehaviorScript):
         self.cmd_velY = 0
         self.cmd_velZ = 0
         self.cmd_rotZ = 0
+        self.cmd_exp_time = None
 
+
+
+    def hover(self):
+        self.command_off()
+        self.cmd_on = True
+        self.cmd_exp_time = None     # Never expires
 
 
 
@@ -294,12 +309,10 @@ class UAM_minidrone(BehaviorScript):
         self.w_rotor_NW = 0
         self.w_rotor_SE = 0
         self.w_rotor_SW = 0
-        self.rotors_on = False
         self.primRotStatic.SetActive(False)
 
         # Reset del control
         self.E = np.zeros((4, 1))
-
 
 
 
@@ -311,6 +324,10 @@ class UAM_minidrone(BehaviorScript):
         if not self.cmd_on:
             self.rotors_off()
             return
+
+        if self.cmd_exp_time is not None:
+            if self.current_time > self.cmd_exp_time:
+                self.hover()
 
         self.primRotStatic.SetActive(True)
 
@@ -382,7 +399,6 @@ class UAM_minidrone(BehaviorScript):
 
 
 
-
     def IMU(self):
 
         self.pos  = self.pos_atr.Get()
@@ -408,7 +424,6 @@ class UAM_minidrone(BehaviorScript):
 
         self.angular_vel = self.angVel_atr.Get() * np.pi / 180
         # print(f"angular velocity (local):  {self.angular_vel}")
-
 
 
 
@@ -467,3 +482,5 @@ class UAM_minidrone(BehaviorScript):
         # Apply the moments to the drone
         self.torque_atr.Set(MDR + MD)
         # print(f"Torque Z => \t {MDR[2]:.4f} + {MD[2]:.4f} = {MDR[2] + MD[2]:.4f}")
+
+

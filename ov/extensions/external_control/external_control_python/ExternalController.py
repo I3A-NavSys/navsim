@@ -34,7 +34,7 @@ class ExternalController:
             self._stop = False
 
             # Create the event to have a communication between the UAV and the joystick
-            self.CONTROL_JOYSTICK_EVENT = carb.events.type_from_string("omni.NavSim.ExternalControl." + str(prim.GetPath()))
+            self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(prim.GetPath()))
 
             # Get the controller
             self.controller = controller
@@ -95,9 +95,9 @@ class ExternalController:
             rot = self.inputs[3] * -self.ang_vel_limit
 
             # Set command
-            command = {"on": True, "velX": vel[0], "velY": vel[1], "velZ": vel[2], "rotZ": rot, "duration": 0}
-            # Push CONTROL_JOYSTICK_EVENT with the inputs
-            self.msg_bus_event_stream.push(self.CONTROL_JOYSTICK_EVENT, payload={"method": "remote_command", "command": command})
+            command = {"on": True, "velX": vel[0], "velY": vel[1], "velZ": vel[2], "rotZ": rot, "duration": 1}
+            # Push UAV_EVENT with the inputs
+            self.msg_bus_event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_RemoteCommand", "command": command})
 
             await asyncio.sleep(0.1)
 

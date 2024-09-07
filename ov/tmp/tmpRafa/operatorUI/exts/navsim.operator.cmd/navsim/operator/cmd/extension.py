@@ -18,6 +18,9 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
     # ext_id is current extension id. It can be used with extension manager to query additional information, like where
     # this extension is located on filesystem.
 
+
+
+
     def on_startup(self, ext_id):
         # print("[REMOTE COMMAND ext] startup")
 
@@ -43,8 +46,9 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                     except:
                         print("[REMOTE COMMAND ext] No drone selected")
                         return
-                    # Create the event to have a communication between the UAV and the joystick
-                    self.CONTROL_JOYSTICK_EVENT = carb.events.type_from_string("omni.NavSim.ExternalControl." + str(drone.GetPath()))
+                    
+                    # Create the event to send commands to the UAV
+                    self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(drone.GetPath()))
                            
                     # Set command data structure
                     command = {
@@ -53,12 +57,10 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                         "velY": velY_FF.model.get_value_as_float(), 
                         "velZ": velZ_FF.model.get_value_as_float(),
                         "rotZ": rotZ_FF.model.get_value_as_float(),
-                        "duration": 1}
+                        "duration": duration_FF.model.get_value_as_float()}
                     # print(command)
 
-
-
-                    self.event_stream.push(self.CONTROL_JOYSTICK_EVENT, payload={"method": "remote_command", "command": command})
+                    self.event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_RemoteCommand", "command": command})
 
 
                 # Drone selector dropdown
@@ -75,19 +77,39 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                         clicked_fn=self.refresh_drone_selector, 
                         height=15,
                         width=80)
-                                        
 
-                rotors_CB = ui.CheckBox(
-                    checked=True,
-                    tooltip="Rotors activation"
-                )  
+                with ui.HStack(height=20, spacing=10):
+
+
+                    with ui.HStack(spacing=5):
+                        ui.Button(
+                            "ON", enable=False,
+                            width=30,
+                            style={
+                                "background_color":cl.grey, 
+                                "color":cl.white, 
+                                "margin": 0})
+                        rotors_CB = ui.CheckBox(
+                            checked=True,
+                            tooltip="Rotors activation"
+                        )  
+
+                    with ui.HStack():
+                        ui.Button(
+                            "duration", enable=False,
+                            width=50,
+                            style={
+                                "background_color":cl.grey, 
+                                "color":cl.white, 
+                                "margin": 0})
+                        duration_FF = ui.FloatField(tooltip="time executing this command")
 
                 with ui.HStack(height=20, spacing=10):
 
                     with ui.HStack():
                         ui.Button(
                             "velX", enable=False,
-                            width=20,
+                            width=30,
                             style={
                                 "background_color":cl.red, 
                                 "color":cl.white, 
@@ -97,7 +119,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                     with ui.HStack():
                         ui.Button(
                             "velY", enable=False,
-                            width=20,
+                            width=30,
                             style={
                                 "background_color":cl.green, 
                                 "color":cl.white, 
@@ -109,7 +131,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                     with ui.HStack():
                         ui.Button(
                             "velZ", enable=False,
-                            width=20,
+                            width=30,
                             style={
                                 "background_color":cl.blue, 
                                 "color":cl.white, 
