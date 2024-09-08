@@ -63,11 +63,11 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                     self.event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_RemoteCommand", "command": command})
 
 
-                # Drone selector dropdown
+                # UAV selector dropdown
                 with ui.HStack(height=25):
                     # Dropdown selector
                     self.drone_selector_dropdown = DropDown(
-                        "Drone", "Select the drone you want to send commands", 
+                        "UAV", "Select the drone you want to send commands", 
                         self.get_manipulable_prims)
                     self.drone_selector_dropdown.enabled = False
 
@@ -89,10 +89,8 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                                 "background_color":cl.grey, 
                                 "color":cl.white, 
                                 "margin": 0})
-                        rotors_CB = ui.CheckBox(
-                            checked=True,
-                            tooltip="Rotors activation"
-                        )  
+                        rotors_CB = ui.CheckBox(tooltip="Rotors activation")
+                        rotors_CB.model.set_value(True)
 
                     with ui.HStack():
                         ui.Button(
@@ -103,6 +101,8 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                                 "color":cl.white, 
                                 "margin": 0})
                         duration_FF = ui.FloatField(tooltip="time executing this command")
+                        duration_FF.model.set_value(1.0)
+                        duration_FF.precision = 2
 
                 with ui.HStack(height=20, spacing=10):
 
@@ -115,6 +115,8 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                                 "color":cl.white, 
                                 "margin": 0})
                         velX_FF = ui.FloatField(tooltip="velX parameter")
+                        velX_FF.precision = 2
+
 
                     with ui.HStack():
                         ui.Button(
@@ -124,9 +126,8 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                                 "background_color":cl.green, 
                                 "color":cl.white, 
                                 "margin": 0})
-                        velY_FF = ui.FloatField(
-                            name="velY",
-                            tooltip="velY parameter")
+                        velY_FF = ui.FloatField(tooltip="velY parameter")
+                        velY_FF.precision = 2
 
                     with ui.HStack():
                         ui.Button(
@@ -137,6 +138,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                                 "color":cl.white, 
                                 "margin": 0})
                         velZ_FF = ui.FloatField(tooltip="velZ parameter")
+                        velZ_FF.precision = 2
 
                     with ui.HStack():
                         ui.Button(
@@ -147,6 +149,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                                 "color":cl.white, 
                                 "margin": 0})
                         rotZ_FF = ui.FloatField(tooltip="rotZ parameter")
+                        rotZ_FF.precision = 2
 
                 with ui.HStack(height=50):
                     #send button
