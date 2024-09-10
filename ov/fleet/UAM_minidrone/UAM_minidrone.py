@@ -62,9 +62,9 @@ class UAM_minidrone(BehaviorScript):
         self.eventSub = bus.create_subscription_to_push_by_type(self.UAV_EVENT, self.push_subscripted_event_method)
 
 
-
         ########################################################################
         ## Navigation parameters
+
 
         # AutoPilot navigation command
         self.cmd_on = False          # (bool) motores activos 
@@ -195,6 +195,23 @@ class UAM_minidrone(BehaviorScript):
         # self.cmd_velZ = 0.0
         # self.cmd_rotZ = 0.0
         # print(f"UAV command: ON: {self.cmd_on:.0f} velX: {self.cmd_velX:.1f} velY: {self.cmd_velY:.1f} velZ: {self.cmd_velZ:.1f} rotZ: {self.cmd_rotZ:.1f}")
+
+
+        # import sys, os
+        # sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+        from uspace.flightplan.Waypoint   import Waypoint
+        from uspace.flightplan.FlightPlan import FlightPlan
+
+        # Crear waypoints
+        waypoint1 = Waypoint(label='WP1', t= 0,  pos=[  0,   0, 0], vel=[10,  1, 0])
+        waypoint2 = Waypoint(label='WP2', t=10,  pos=[100, 100, 0], vel=[ 0, 10, 0])
+        # Crear plan de vuelo
+        fp = FlightPlan([waypoint1, waypoint2])
+        fp.SetJLS()
+        # Mostrar la posición 3D del plan de vuelo
+        fp.Print()
+
+
 
         # Update the drone status
         self.IMU()

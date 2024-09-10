@@ -1,21 +1,26 @@
-import sys
-import os
-
+##############################################################################
 #borrar consola
+import os
 if os.name == 'nt':
     os.system('cls')
 else:
     os.system('clear')
 
+
+##############################################################################
 # Añadir el directorio principal al sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import sys
+
+print(sys.path)
+
+# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 ##############################################################################
 
 
 
-from planners.Waypoint import Waypoint
-from planners.FlightPlan import FlightPlan
+from uspace.flightplan.Waypoint   import Waypoint
+from uspace.flightplan.FlightPlan import FlightPlan
 
 
 # Crear waypoints
