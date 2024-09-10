@@ -120,3 +120,4 @@ CATKIN_IGNORE
 # Ignore all local history of files
 .history
 .ionide
+/ov/.vscode

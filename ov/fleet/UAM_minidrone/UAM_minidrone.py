@@ -1,17 +1,18 @@
 # Description: This script is used to control the minidrone in the UAM environment.
 
+import omni.kit.app
 from omni.kit.scripting import BehaviorScript
-from pxr import Sdf
-# from omni.isaac.core.prims import RigidPrimView
-from pxr import Gf
-# from pxr import Usd, UsdGeom, Gf
+from pxr import Sdf, Gf
+import carb.events
+# from omni.physx import get_physx_interface
 
 import numpy as np
-# import math
 from scipy.spatial.transform import Rotation
 
-import carb.events
-import omni.kit.app
+import sys, os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+from uspace.flightplan.Waypoint   import Waypoint
+from uspace.flightplan.FlightPlan import FlightPlan
 
 
 class UAM_minidrone(BehaviorScript):
@@ -61,10 +62,15 @@ class UAM_minidrone(BehaviorScript):
         bus = omni.kit.app.get_app().get_message_bus_event_stream()
         self.eventSub = bus.create_subscription_to_push_by_type(self.UAV_EVENT, self.push_subscripted_event_method)
 
+        # Subscribe to the physics step event
+        # self._stepping_sub = get_physx_interface().subscribe_physics_step_events(self._on_physics_step)
+        # esto tiene el problema de que se suscribe múltiples veces al evento, por lo que se ejecuta varias veces el método _on_physics_step
 
         ########################################################################
         ## Navigation parameters
 
+        self.fp = None               
+        self.currentWP = None  
 
         # AutoPilot navigation command
         self.cmd_on = False          # (bool) motores activos 
@@ -197,24 +203,20 @@ class UAM_minidrone(BehaviorScript):
         # print(f"UAV command: ON: {self.cmd_on:.0f} velX: {self.cmd_velX:.1f} velY: {self.cmd_velY:.1f} velZ: {self.cmd_velZ:.1f} rotZ: {self.cmd_rotZ:.1f}")
 
 
-        # import sys, os
-        # sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-        from uspace.flightplan.Waypoint   import Waypoint
-        from uspace.flightplan.FlightPlan import FlightPlan
+        
 
         # Crear waypoints
-        waypoint1 = Waypoint(label='WP1', t= 0,  pos=[  0,   0, 0], vel=[10,  1, 0])
-        waypoint2 = Waypoint(label='WP2', t=10,  pos=[100, 100, 0], vel=[ 0, 10, 0])
+        waypoint1 = Waypoint(label='WP1', t= 5,  pos=[0,0,1], vel=[1,0,0])
+        waypoint2 = Waypoint(label='WP2', t=10,  pos=[5,0,0], vel=[0,0,0])
         # Crear plan de vuelo
-        fp = FlightPlan([waypoint1, waypoint2])
-        fp.SetJLS()
-        # Mostrar la posición 3D del plan de vuelo
-        fp.Print()
-
+        self.fp = FlightPlan([waypoint1, waypoint2])
+        self.fp.SetJLS()
+        self.fp.Print()
 
 
         # Update the drone status
         self.IMU()
+        self.navigation()
         self.servo_control()
         self.platform_dynamics()
         pass
@@ -257,9 +259,19 @@ class UAM_minidrone(BehaviorScript):
 
         # Update the drone status
         self.IMU()
+        self.navigation()
         self.servo_control()
         self.platform_dynamics()
         pass
+
+
+    
+    # def _on_physics_step(self, dt):
+    # esto tiene el problema de que se suscribe múltiples veces al evento, 
+    # por lo que se ejecuta varias veces el método _on_physics_step
+    #     print(f"STEP  {self.prim_path} \t {dt:.3f}")
+    #     pass
+    
 
 
 
@@ -331,6 +343,54 @@ class UAM_minidrone(BehaviorScript):
         # Reset del control
         self.E = np.zeros((4, 1))
 
+
+
+    def IMU(self):
+
+        self.pos  = self.pos_atr.Get()
+        # print(f"\nposition:  {self.pos}")
+
+        self.ori  = self.ori_atr.Get()
+        # print(f"\norientation:  {self.ori}")
+     
+        W = self.ori.real
+        X = self.ori.imaginary[0]
+        Y = self.ori.imaginary[1]
+        Z = self.ori.imaginary[2]
+        # print(f"Orientation:  {W:.4f} {X:.4f} {Y:.4f} {Z:.4f}")
+
+        rot = Rotation.from_quat([X,Y,Z,W])     
+        self.roll, self.pitch, self.yaw = rot.as_euler('xyz', degrees=False)
+        # print(f"Euler RPY (rad):  {self.roll:.2f} {self.pitch:.2f} {self.yaw:.2f}")
+        # roll, pitch, yaw = rot.as_euler('xyz', degrees=True)
+        # print(f"Euler RPY (deg):  {roll:.0f} {pitch:.0f} {yaw:.0f}")
+
+        self.linear_vel  = self.linVel_atr.Get()
+        # print(f"linear velocity  (local):  {self.linear_vel}")
+
+        self.angular_vel = self.angVel_atr.Get() * np.pi / 180
+        # print(f"angular velocity (local):  {self.angular_vel}")
+
+
+
+    def navigation(self):
+        # This function converts a flight plan position at certain time
+        # to a navigation command (desired velocity vector and rotation)        
+        if self.fp is None:
+            return
+
+        # Check FP vigency
+        WP = self.fp.GetIndexFromTime(self.current_time)
+        if self.currentWP is None and WP != 0:
+            # This flight plan is obsolete
+            print(f"{self.prim_path} discarding FP due to it is obsolete")
+            self.fp = None
+            self.currentWP = None
+            return
+        
+
+
+        pass
 
 
     def servo_control(self):
@@ -413,34 +473,6 @@ class UAM_minidrone(BehaviorScript):
         self.w_rotor_SW = self.u[3, 0]
 
         pass
-
-
-
-    def IMU(self):
-
-        self.pos  = self.pos_atr.Get()
-        # print(f"\nposition:  {self.pos}")
-
-        self.ori  = self.ori_atr.Get()
-        # print(f"\norientation:  {self.ori}")
-     
-        W = self.ori.real
-        X = self.ori.imaginary[0]
-        Y = self.ori.imaginary[1]
-        Z = self.ori.imaginary[2]
-        # print(f"Orientation:  {W:.4f} {X:.4f} {Y:.4f} {Z:.4f}")
-
-        rot = Rotation.from_quat([X,Y,Z,W])     
-        self.roll, self.pitch, self.yaw = rot.as_euler('xyz', degrees=False)
-        # print(f"Euler RPY (rad):  {self.roll:.2f} {self.pitch:.2f} {self.yaw:.2f}")
-        # roll, pitch, yaw = rot.as_euler('xyz', degrees=True)
-        # print(f"Euler RPY (deg):  {roll:.0f} {pitch:.0f} {yaw:.0f}")
-
-        self.linear_vel  = self.linVel_atr.Get()
-        # print(f"linear velocity  (local):  {self.linear_vel}")
-
-        self.angular_vel = self.angVel_atr.Get() * np.pi / 180
-        # print(f"angular velocity (local):  {self.angular_vel}")
 
 
 

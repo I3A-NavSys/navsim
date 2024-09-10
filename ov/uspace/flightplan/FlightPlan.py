@@ -4,7 +4,7 @@ import numpy as np
 import copy
 from bisect import bisect_left
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D  # Necesario para gráficos 3D
+# from mpl_toolkits.mplot3d import Axes3D  # Necesario para gráficos 3D
 
 
 
@@ -67,12 +67,19 @@ class FlightPlan:
 
 
 
-    def GetIndexFromLabel(self, label: str) -> int:
+    def GetIndexFromLabel(self, label: str) -> Optional[int]:
         for i, wp in enumerate(self.waypoints):
             if wp.label == label:
                 return i
-        return -1
+        return None
+    
+    
 
+    def GetIndexFromTime(self, t: float) -> Optional[int]:
+        for i, wp in enumerate(self.waypoints):
+            if t < wp.t:
+                return i
+        return None
 
 
     def Copy(self):
@@ -236,7 +243,6 @@ class FlightPlan:
 
 #-------------------------------------------------------------------
 # INFORMATION AND FIGURES
-
 
  
 
