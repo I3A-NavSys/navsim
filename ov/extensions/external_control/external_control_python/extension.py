@@ -96,7 +96,7 @@ class Extension(omni.ext.IExt):
                     self.controls_power = ui.CollapsableFrame(title="Controls power", collapsed=False)
 
                     with self.controls_power:
-                        with ui.VStack(style={"margin": 1}):
+                        with ui.VStack(style={"margin": 1}, height=0):
                             with ui.HStack():
                                 # Linear velocity (m/s)
                                 ui.Label("Linear velocity (m/s)")
@@ -115,7 +115,7 @@ class Extension(omni.ext.IExt):
                     self.controls_ploting = ui.CollapsableFrame(title="Drone control visualization", collapsed=False)
 
                     with self.controls_ploting:
-                        self.plots_container = ui.VStack()
+                        self.plots_container = ui.VStack(heigth=0)
 
                         self.build_plot_container_content()
                             
@@ -204,15 +204,7 @@ class Extension(omni.ext.IExt):
                 self.plots_appearance_combo_box.model.add_item_changed_fn(self.change_plot_distribution)
 
             # Make UI beauty
-            match self.plots_appearance:
-                case 0:
-                    ui.Spacer(height=6)
-
-                case 1:
-                    pass
-
-                case 2:
-                    ui.Spacer(height=6)
+            ui.Spacer(height=10)
 
             # Track position section
             with ui.HStack():
@@ -222,6 +214,9 @@ class Extension(omni.ext.IExt):
 
                 self.track_checkbox.model.set_value(self.UI_state_info["track_pos_opts"]["visible"])
                 self.track_checkbox.enabled = self.UI_state_info["track_pos_opts"]["enabled"]
+
+            # Make UI beauty
+            ui.Spacer(height=10)
 
             # Select contoller section
             self.select_controller_HStack = ui.HStack()
@@ -233,17 +228,7 @@ class Extension(omni.ext.IExt):
             self.drone_controller_combo_box.enabled = self.UI_state_info["track_pos_opts"]["enabled"]
 
             # Make UI beauty
-            match self.plots_appearance:
-                case 0:
-                    ui.Spacer(height=14)
-
-                case 1:
-                    pass
-
-                case 2:
-                    ui.Spacer(height=9)
-
-            ui.Separator(height=10)
+            ui.Spacer(height=10)
 
             # Control buttons section
             with ui.HStack(spacing=5):
@@ -253,6 +238,9 @@ class Extension(omni.ext.IExt):
 
                 self.start_control_prim_button.enabled = self.UI_state_info["start_upd_plot_button"]["enabled"]
                 self.stop_control_prim_button.enabled = self.UI_state_info["stop_upd_plot_button"]["enabled"]
+
+            # Make UI beauty
+            ui.Spacer(height=10)
 
             # Plots section
             match self.plots_appearance:
@@ -560,8 +548,6 @@ class Extension(omni.ext.IExt):
     def first_way(self):
         self.TRDW = False
 
-        ui.Spacer(height=16)
-
         # X linear vel
         self.x_linear_vel_label = ui.Label("X linear velocity (m/s)", alignment=ui.Alignment.CENTER)
         self.x_max_lvl = ui.Label("1.0")
@@ -569,7 +555,6 @@ class Extension(omni.ext.IExt):
         self.x_min_lvl = ui.Label("-1.0")
 
         ui.Spacer(height=10)
-        ui.Separator()
 
         # Y linear vel
         self.y_linear_vel_label = ui.Label("Y linear velocity (m/s)", alignment=ui.Alignment.CENTER)
@@ -578,7 +563,6 @@ class Extension(omni.ext.IExt):
         self.y_min_lvl = ui.Label("-1.0")
 
         ui.Spacer(height=10)
-        ui.Separator()
 
         # Z linear vel
         self.z_linear_vel_label = ui.Label("Z linear velocity (m/s)", alignment=ui.Alignment.CENTER)
@@ -597,8 +581,6 @@ class Extension(omni.ext.IExt):
 
     def second_way(self):
         self.TRDW = False
-
-        ui.Spacer(height=14)
 
         with ui.HStack(spacing=5):
             with ui.VStack():
@@ -633,8 +615,6 @@ class Extension(omni.ext.IExt):
 
     def third_way(self):
         self.TRDW = True
-
-        ui.Spacer(height=14)
 
         self.x_linear_vel_label = ui.Label("Linear velocity (m/s)", alignment=ui.Alignment.CENTER)
         self.x_max_lvl = ui.Label("1.0")
