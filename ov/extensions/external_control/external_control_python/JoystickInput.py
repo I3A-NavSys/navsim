@@ -8,7 +8,7 @@ from pxr import UsdGeom, Gf, Usd
 
 class JoystickInput:
     def __init__(self):
-        self.inputs = [0,0,0,0]
+        self.inputs = [0,0,0,0,0,0,0,0,0]
         self.event = asyncio.Event()
 
     def start(self):
@@ -53,9 +53,16 @@ class JoystickInput:
 
             if joystick != None:
                 # Joystick axis
-                self.inputs[0] = round(joystick.get_axis(1), 2)    # Left - Right
-                self.inputs[1] = round(joystick.get_axis(0), 2)    # Fordward - Backward
-                self.inputs[2] = round(joystick.get_axis(3), 2)    # Slider
-                self.inputs[3] = round(joystick.get_axis(2), 2)    # Rotation Left - Right
+                self.inputs[0] = round(joystick.get_axis(1), 2)     # Left - Right
+                self.inputs[1] = round(joystick.get_axis(0), 2)     # Fordward - Backward
+                self.inputs[2] = round(joystick.get_axis(3), 2)     # Slider
+                self.inputs[3] = round(joystick.get_axis(2), 2)     # Rotation Left - Right
+
+                # Joystick buttons
+                self.inputs[4] = joystick.get_button(0)             # cmd on/off
+                self.inputs[5] = joystick.get_button(4)*-1          # -1 active camera
+                self.inputs[6] = joystick.get_button(5)             # +1 active camera
+                self.inputs[7] = joystick.get_hat(0)[0]             # Follow distance
+                self.inputs[8] = joystick.get_hat(0)[1]             # Follow height
 
             self.event.clear()

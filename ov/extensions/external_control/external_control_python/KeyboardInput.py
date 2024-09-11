@@ -1,6 +1,5 @@
 import omni.appwindow
 import carb.input
-
 from carb.input import KeyboardEventType
 
 class KeyboardInput:
@@ -9,12 +8,12 @@ class KeyboardInput:
         self.app_window = omni.appwindow.get_default_app_window()
         self.keyboard = self.app_window.get_keyboard()
         self.input = carb.input.acquire_input_interface()
-        self.inputs = [0,0,0,0]
-        self.acc = 0.03
-        
 
     def start(self):
         self.keyboard_sub_id = self.input.subscribe_to_keyboard_events(self.keyboard, self.on_keyboard_input)
+
+        self.inputs = [0,0,0,0,0,0,0,0,0]
+        self.acc = 0.03
     
 
     def stop(self):
@@ -77,7 +76,8 @@ class KeyboardInput:
             if e.type == KeyboardEventType.KEY_PRESS:
                 self.inputs[2] = 0.1
             elif e.type == KeyboardEventType.KEY_REPEAT:
-                self.inputs[2] = 1
+                if self.inputs[2] < 1:
+                    self.inputs[2] += self.acc
             else:
                 self.inputs[2] = 0.0
 
@@ -86,7 +86,8 @@ class KeyboardInput:
             if e.type == KeyboardEventType.KEY_PRESS:
                 self.inputs[3] = -0.25
             elif e.type == KeyboardEventType.KEY_REPEAT:
-                self.inputs[3] = -1
+                if self.inputs[3] > -1:
+                    self.inputs[3] -= self.acc
             else:
                 self.inputs[3] = 0.0
 
@@ -95,6 +96,58 @@ class KeyboardInput:
             if e.type == KeyboardEventType.KEY_PRESS:
                 self.inputs[3] = 0.25
             elif e.type == KeyboardEventType.KEY_REPEAT:
-                self.inputs[3] = 1
+                if self.inputs[3] < 1:
+                    self.inputs[3] += self.acc
             else:
                 self.inputs[3] = 0.0
+
+        # ON/OFF
+        if e.input == carb.input.KeyboardInput.SPACE:
+            if e.type == KeyboardEventType.KEY_PRESS:
+                self.inputs[4] = 1
+            elif e.type == KeyboardEventType.KEY_RELEASE:
+                self.inputs[4] = 0
+            
+
+        # CAMERA
+        # -1 active camera
+        if e.input == carb.input.KeyboardInput.NUMPAD_SUBTRACT:
+            if e.type == KeyboardEventType.KEY_PRESS:
+                self.inputs[5] = -1
+            elif e.type == KeyboardEventType.KEY_RELEASE:
+                self.inputs[5] = 0
+
+        # +1 active camera
+        if e.input == carb.input.KeyboardInput.NUMPAD_ADD:
+            if e.type == KeyboardEventType.KEY_PRESS:
+                self.inputs[6] = 1
+            elif e.type == KeyboardEventType.KEY_RELEASE:
+                self.inputs[6] = 0
+
+        # Follow distance
+        if e.input == carb.input.KeyboardInput.NUMPAD_4:
+            if e.type == KeyboardEventType.KEY_PRESS:
+                self.inputs[7] = -1
+            elif e.type == KeyboardEventType.KEY_RELEASE:
+                self.inputs[7] = 0
+
+        # Follow distance
+        if e.input == carb.input.KeyboardInput.NUMPAD_6:
+            if e.type == KeyboardEventType.KEY_PRESS:
+                self.inputs[7] = 1
+            elif e.type == KeyboardEventType.KEY_RELEASE:
+                self.inputs[7] = 0
+
+        # Follow height
+        if e.input == carb.input.KeyboardInput.NUMPAD_8:
+            if e.type == KeyboardEventType.KEY_PRESS:
+                self.inputs[8] = 1
+            elif e.type == KeyboardEventType.KEY_RELEASE:
+                self.inputs[8] = 0
+
+        # Follow height
+        if e.input == carb.input.KeyboardInput.NUMPAD_2:
+            if e.type == KeyboardEventType.KEY_PRESS:
+                self.inputs[8] = -1
+            elif e.type == KeyboardEventType.KEY_RELEASE:
+                self.inputs[8] = 0

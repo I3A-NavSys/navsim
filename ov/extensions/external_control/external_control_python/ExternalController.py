@@ -7,7 +7,8 @@ import asyncio
 import carb.events
 import omni.kit.app
 
-from pxr import UsdGeom, Gf, Usd
+from omni.isaac.core.utils.stage import get_current_stage
+import omni.kit.viewport.utility
 
 class ExternalController:
     def __init__(self):
@@ -33,6 +34,14 @@ class ExternalController:
         if self._stop:
             self._stop = False
 
+            # Stage
+            self.stage = get_current_stage()
+
+            # Cameras
+            self.cameras = self.get_cameras()
+            self.active_camera = 0
+            self.amount_cameras = len(self.cameras)
+
             # Create the event to have a communication between the UAV and the joystick
             self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(prim.GetPath()))
 
@@ -43,7 +52,9 @@ class ExternalController:
             self.prim = prim
 
             # Needed variables
-            self.inputs = [0,0,0,0]
+            self.inputs = [0,0,0,0,0,0,0,0]
+            self.changed_on = False
+            self.current_on = False
             
             # Check if a specific controller must be used
             if self.controller != None:
@@ -94,8 +105,32 @@ class ExternalController:
             vel = self.inputs[:3] * -self.linear_vel_limit
             rot = self.inputs[3] * -self.ang_vel_limit
 
+            # Get rottors on/off
+            input_on = self.inputs[4]
+
+            if input_on == 1 and not self.changed_on:
+                self.changed_on = True
+                self.current_on = not self.current_on
+
+            elif input_on == 0:
+                self.changed_on = False
+
+            # Get camera switch index
+            if self.inputs[5] != 0:     camera_slice = self.inputs[5]
+            else:                       camera_slice = self.inputs[6]
+
+            # Switch camera
+            self.active_camera = int(self.active_camera + camera_slice)%self.amount_cameras
+            self.switch_active_camera(self.active_camera)
+
+            # Update camera distance & height
+            follow_distance = self.inputs[7]
+            follow_height = self.inputs[8]
+            self.update_camera_dist_height(follow_distance, follow_height)
+
             # Set command
-            command = {"on": True, "velX": vel[0], "velY": vel[1], "velZ": vel[2], "rotZ": rot, "duration": 1}
+            command = {"on": self.current_on, "velX": vel[0], "velY": vel[1], "velZ": vel[2], "rotZ": rot, "duration": 0}
+
             # Push UAV_EVENT with the inputs
             self.msg_bus_event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_RemoteCommand", "command": command})
 
@@ -140,3 +175,56 @@ class ExternalController:
                 return True
             
         return False
+    
+
+    # -- FUNCTION get_cameras -----------------------------------------------------------------------------------
+    # This function returns the cameras' prim path
+    # The only searched cameras are the ones which have physics to follow the prim
+    # -----------------------------------------------------------------------------------------------------------
+    def get_cameras(self, prim=None):
+        cameras = []
+
+        # First iteration
+        if prim is None:
+            prim = self.stage.GetPseudoRoot()
+
+        # Check current prim
+        if (("Camera" in prim.GetName()) and (("Drone" in prim.GetName()) or ("Look" in prim.GetName()) or ("Velocity" in prim.GetName()))):
+            cameras.append(prim.GetPath())
+        
+        else:
+            # Check prim's children
+            for child in prim.GetChildren():
+                # First check children
+                if len(child.GetChildren()) > 0:
+                    cameras += self.get_cameras(child)
+                
+                # Then check current child
+                elif (("Camera" in child.GetName()) and (("Drone" in child.GetName()) or ("Look" in child.GetName()) or ("Velocity" in child.GetName()))):
+                    cameras.append(child.GetPath())
+
+        return cameras
+
+    # -- FUNCTION switch_active_camera --------------------------------------------------------------------------
+    # This function change the active camera
+    # -----------------------------------------------------------------------------------------------------------
+    def switch_active_camera(self, camera_index):
+        camera = self.cameras[camera_index]
+        viewport_api = omni.kit.viewport.utility.get_active_viewport()
+        viewport_api.set_active_camera(camera)
+
+    
+    # -- FUNCTION switch_active_camera --------------------------------------------------------------------------
+    # This method changes the follow distance and height of the active based on the received parameters
+    # Highlight that it only support cameras of type Drone (neither Look nor Velocity)
+    # -----------------------------------------------------------------------------------------------------------
+    def update_camera_dist_height(self, follow_distance, follow_height):
+        active_camera_path = self.cameras[self.active_camera]
+        active_camera_prim = self.stage.GetPrimAtPath(active_camera_path)
+
+        if "Drone" in active_camera_prim.GetName():
+            distance_att = active_camera_prim.GetAttribute("physxDroneCamera:followDistance")
+            height_att = active_camera_prim.GetAttribute("physxDroneCamera:followHeight")
+
+            distance_att.Set(distance_att.Get() + follow_distance)
+            height_att.Set(height_att.Get() + follow_height)
