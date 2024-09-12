@@ -14,6 +14,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')
 from uspace.flightplan.Waypoint   import Waypoint
 from uspace.flightplan.FlightPlan import FlightPlan
 
+from uspace.flightplan.command import Command
+import pickle   # Serialization
+import base64   # Parsing to string
+
 
 class UAM_minidrone(BehaviorScript):
 
@@ -73,13 +77,13 @@ class UAM_minidrone(BehaviorScript):
         self.currentWP = None  
 
         # AutoPilot navigation command
-        self.cmd_on = False          # (bool) motores activos 
-        self.cmd_velX = 0.0          # (m/s)  velocidad lineal  deseada en eje X
-        self.cmd_velY = 0.0          # (m/s)  velocidad lineal  deseada en eje Y
-        self.cmd_velZ = 0.0          # (m/s)  velocidad lineal  deseada en eje Z
-        self.cmd_rotZ = 0.0          # (m/s)  velocidad angular deseada en eje Z
-        self.cmd_exp_time = None     # (s)    tiempo de expiracion del comando
-
+        # self.cmd_on = False          # (bool) motores activos 
+        # self.cmd_velX = 0.0          # (m/s)  velocidad lineal  deseada en eje X
+        # self.cmd_velY = 0.0          # (m/s)  velocidad lineal  deseada en eje Y
+        # self.cmd_velZ = 0.0          # (m/s)  velocidad lineal  deseada en eje Z
+        # self.cmd_rotZ = 0.0          # (m/s)  velocidad angular deseada en eje Z
+        # self.cmd_exp_time = None     # (s)    tiempo de expiracion del comando
+        self.command = Command()
 
         ########################################################################
         ## quadcopter parameters
@@ -194,13 +198,8 @@ class UAM_minidrone(BehaviorScript):
         # print(f"\t {self.current_time} \t {self.delta_time}")
 
         # Asumimos un comando ---------------------------------------TEMPORAL
-        self.hover()
-        # self.cmd_on = True
-        # self.cmd_velX = 0.0
-        # self.cmd_velY = 0.0
-        # self.cmd_velZ = 0.0
-        # self.cmd_rotZ = 0.0
-        # print(f"UAV command: ON: {self.cmd_on:.0f} velX: {self.cmd_velX:.1f} velY: {self.cmd_velY:.1f} velZ: {self.cmd_velZ:.1f} rotZ: {self.cmd_rotZ:.1f}")
+        self.command.Hover()
+        self.command.Print()
 
 
         
@@ -234,7 +233,7 @@ class UAM_minidrone(BehaviorScript):
         self.current_time = 0
         self.delta_time = 0
 
-        self.command_off()
+        self.command.Off()
         self.rotors_off()
 
         self.force_atr.Set(Gf.Vec3f(0,0,0))
@@ -252,10 +251,6 @@ class UAM_minidrone(BehaviorScript):
         # Get current simulation time
         self.current_time = current_time
         self.delta_time = delta_time
-
-        # if self.current_time > 5:
-        #     self.command_off()
-        #     self.rotors_off()
 
         # Update the drone status
         self.IMU()
@@ -294,13 +289,7 @@ class UAM_minidrone(BehaviorScript):
 
 
     def eventFn_RemoteCommand(self, command):
-        # print(command)
-        self.cmd_on   = command["on"]
-        self.cmd_velX = command["velX"]
-        self.cmd_velY = command["velY"]
-        self.cmd_velZ = command["velZ"]
-        self.cmd_rotZ = command["rotZ"]
-        self.cmd_exp_time = self.current_time + command["duration"]       
+        self.command : Command = pickle.loads(base64.b64decode(command))
         
 
 
@@ -312,22 +301,6 @@ class UAM_minidrone(BehaviorScript):
 
 ########################################################################
 
-
-
-    def command_off(self):
-        self.cmd_on   = False
-        self.cmd_velX = 0
-        self.cmd_velY = 0
-        self.cmd_velZ = 0
-        self.cmd_rotZ = 0
-        self.cmd_exp_time = None
-
-
-
-    def hover(self):
-        self.command_off()
-        self.cmd_on = True
-        self.cmd_exp_time = None     # Never expires
 
 
 
@@ -398,21 +371,21 @@ class UAM_minidrone(BehaviorScript):
         # a navigation command (desired velocity vector and rotation)
         # to speeds of the four rotors
 
-        if not self.cmd_on:
+        if not self.command.on:
             self.rotors_off()
             return
 
-        if self.cmd_exp_time is not None:
-            if self.current_time > self.cmd_exp_time:
-                self.hover()
+        if self.command.duration is not None:
+            if self.current_time > self.command.duration:
+                self.command.Hover()
 
         self.primRotStatic.SetActive(True)
 
         # Assign the model reference to be followed
-        self.r[0, 0] = self.cmd_velX       # bXdot
-        self.r[1, 0] = self.cmd_velY       # bYdot
-        self.r[2, 0] = self.cmd_velZ       # bZdot
-        self.r[3, 0] = self.cmd_rotZ       # hZdot
+        self.r[0, 0] = self.command.velX       # bXdot
+        self.r[1, 0] = self.command.velY       # bYdot
+        self.r[2, 0] = self.command.velZ       # bZdot
+        self.r[3, 0] = self.command.rotZ       # hZdot
         # print(f"r: {np.round(self.r.T, 2)}")
 
         # Assign model state

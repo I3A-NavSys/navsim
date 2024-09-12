@@ -8,7 +8,19 @@ from omni.isaac.ui.element_wrappers import *
 
 import carb.events
 
+# Adding root 'ov' folder to sys.path
+import sys
+import os
 
+# This line will add to the python list of paths to look for modules the path to the project root
+project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
+
+if project_root_path not in sys.path:
+    sys.path.append(project_root_path)
+
+from uspace.flightplan.command import Command
+import pickle   # Serialization
+import base64   # Parsing to string
 
 # Any class derived from `omni.ext.IExt` in top level module (defined in `python.modules` of `extension.toml`) will be
 # instantiated when extension gets enabled and `on_startup(ext_id)` will be called. Later when extension gets disabled
@@ -51,16 +63,16 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                     self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(drone.GetPath()))
                            
                     # Set command data structure
-                    command = {
-                        "on":   rotors_CB.checked, 
-                        "velX": velX_FF.model.get_value_as_float(), 
-                        "velY": velY_FF.model.get_value_as_float(), 
-                        "velZ": velZ_FF.model.get_value_as_float(),
-                        "rotZ": rotZ_FF.model.get_value_as_float(),
-                        "duration": duration_FF.model.get_value_as_float()}
-                    # print(command)
+                    command = Command(
+                                    on = rotors_CB.checked, 
+                                    velX = velX_FF.model.get_value_as_float(), 
+                                    velY = velY_FF.model.get_value_as_float(), 
+                                    velZ = velZ_FF.model.get_value_as_float(),
+                                    rotZ = rotZ_FF.model.get_value_as_float(),
+                                    duration = duration_FF.model.get_value_as_float())
 
-                    self.event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_RemoteCommand", "command": command})
+                    serialized_command = base64.b64encode(pickle.dumps(command)).decode('utf-8')
+                    self.event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_RemoteCommand", "command": serialized_command})
 
 
                 # UAV selector dropdown
