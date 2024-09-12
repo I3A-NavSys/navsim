@@ -77,13 +77,8 @@ class UAM_minidrone(BehaviorScript):
         self.currentWP = None  
 
         # AutoPilot navigation command
-        # self.cmd_on = False          # (bool) motores activos 
-        # self.cmd_velX = 0.0          # (m/s)  velocidad lineal  deseada en eje X
-        # self.cmd_velY = 0.0          # (m/s)  velocidad lineal  deseada en eje Y
-        # self.cmd_velZ = 0.0          # (m/s)  velocidad lineal  deseada en eje Z
-        # self.cmd_rotZ = 0.0          # (m/s)  velocidad angular deseada en eje Z
-        # self.cmd_exp_time = None     # (s)    tiempo de expiracion del comando
         self.command = Command()
+        self.cmd_exp_time = 0
 
         ########################################################################
         ## quadcopter parameters
