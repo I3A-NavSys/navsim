@@ -1,8 +1,12 @@
 # Changelog
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+## [1.0.1] - 2024-09-12
+- Enhanced ui visuals
+- Updated icon, preview and readme data
 
-
-## [1.0.0] - 2021-04-26
-- Initial version of extension UI template with a window
+## [1.0.0] - 2024-09-04
+- Complete joystick controller logic
+- Hability to track prim's position
+- Real-simulation time velocities plots
+- Keyboard control support
 

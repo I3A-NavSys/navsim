@@ -5,11 +5,11 @@ order = 0
 [package]
 version = "1.0.0"
 category = "Simulation"
-title = "NavSim ExternalControl"
+title = "NavSim External Control"
 description="External input controller for manipulable prims"
-authors = ["NVIDIA"]
+authors = ["I3A-NavSys"]
 repository = ""
-keywords = []
+keywords = ["controller", "UAV", "dron"]
 changelog="docs/CHANGELOG.md"
 readme  = "docs/README.md"
 preview_image = "data/preview.png"
@@ -20,6 +20,7 @@ icon = "data/icon.png"
 "omni.isaac.ui" = {}
 "omni.isaac.core" = {}
 # PyQt5 pipapi
+# pygame pipapi
 
 [[python.module]]
 name = "external_control_python"
