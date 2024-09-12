@@ -290,6 +290,7 @@ class UAM_minidrone(BehaviorScript):
 
     def eventFn_RemoteCommand(self, command):
         self.command : Command = pickle.loads(base64.b64decode(command))
+        self.command.exp_time = self.current_time + self.command.duration
         
 
 
@@ -376,7 +377,7 @@ class UAM_minidrone(BehaviorScript):
             return
 
         if self.command.duration is not None:
-            if self.current_time > self.command.duration:
+            if self.current_time > self.command.exp_time:
                 self.command.Hover()
 
         self.primRotStatic.SetActive(True)

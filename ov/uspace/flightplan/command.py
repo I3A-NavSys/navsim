@@ -6,6 +6,7 @@ class Command:
         self.velZ = velZ            # (m/s)  velocidad lineal  deseada en eje Z
         self.rotZ = rotZ            # (m/s)  velocidad angular deseada en eje Z
         self.duration = duration    # (s)    tiempo de expiracion del comando
+        self.exp_time = None
 
     def Off(self):
         self.on   = False
@@ -14,6 +15,7 @@ class Command:
         self.velZ = 0
         self.rotZ = 0
         self.duration = None
+        self.exp_time = None
 
     def Set(self, on, velX, velY, velZ, rotZ, duration):
         self.on   = on              # (bool) motores activos 
@@ -22,6 +24,7 @@ class Command:
         self.velZ = velZ            # (m/s)  velocidad lineal  deseada en eje Z
         self.rotZ = rotZ            # (m/s)  velocidad angular deseada en eje Z
         self.duration = duration    # (s)    tiempo de expiracion del comando
+        self.exp_time = None
 
     def Hover(self):
         self.on   = True
@@ -30,6 +33,10 @@ class Command:
         self.velZ = 0
         self.rotZ = 0
         self.duration = None
+        self.exp_time = None
 
     def Print(self):
-        print(f"UAV command: ON: {self.on:.0f} velX: {self.velX:.1f} velY: {self.velY:.1f} velZ: {self.velZ:.1f} rotZ: {self.rotZ:.1f} duration: {self.duration:.1f}")
+        try:
+            print(f"UAV command: ON: {self.on:.0f} velX: {self.velX:.1f} velY: {self.velY:.1f} velZ: {self.velZ:.1f} rotZ: {self.rotZ:.1f} duration: {self.duration:.1f}")
+        except:
+            print(f"UAV command: ON: {self.on:.0f} velX: {self.velX:.1f} velY: {self.velY:.1f} velZ: {self.velZ:.1f} rotZ: {self.rotZ:.1f} duration: None")
