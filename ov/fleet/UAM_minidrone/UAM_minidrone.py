@@ -285,7 +285,8 @@ class UAM_minidrone(BehaviorScript):
 
     def eventFn_RemoteCommand(self, command):
         self.command : Command = pickle.loads(base64.b64decode(command))
-        self.cmd_exp_time = self.current_time + self.command.duration
+        if self.command.duration is not None:
+            self.cmd_exp_time = self.current_time + self.command.duration
         
 
 
