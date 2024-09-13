@@ -9,18 +9,14 @@ if project_root_path not in sys.path:
 
 import omni.ext
 import omni.ui as ui
-
-from omni.isaac.ui.ui_utils import dropdown_builder
-from omni.isaac.ui.element_wrappers import *
+from omni.ui import color as cl
+import omni.kit.app
+import carb.events
+from omni.isaac.ui.element_wrappers import DropDown
 from omni.isaac.core.utils.stage import get_current_stage
 
 import asyncio
-import omni.kit.app
-
 from .ExternalController import ExternalController
-from omni.ui import color as cl
-
-import carb.events
 
 
 try:
@@ -127,7 +123,7 @@ class Extension(omni.ext.IExt):
                     self.controls_ploting = ui.CollapsableFrame(title="Drone control visualization", collapsed=False)
 
                     with self.controls_ploting:
-                        self.plots_container = ui.VStack(heigth=0)
+                        self.plots_container = ui.VStack(height=0)
 
                         self.build_plot_container_content()
                             
@@ -228,7 +224,7 @@ class Extension(omni.ext.IExt):
                 self.track_checkbox.enabled = self.UI_state_info["track_pos_opts"]["enabled"]
 
             # Make UI beauty
-            ui.Spacer(height=10)
+            ui.Spacer(height=5)
 
             # Select contoller section
             self.select_controller_HStack = ui.HStack()
@@ -455,8 +451,8 @@ class Extension(omni.ext.IExt):
             # Get the current position
             drone_pos = drone.GetAttribute("xformOp:translate").Get()
 
-            # If position (all coordinates) is changed
-            if drone_pos[0] != x_pos_track[-1] and drone_pos[1] != y_pos_track[-1] and drone_pos[2] != z_pos_track[-1]:
+            # If position (any coordinates) is changed
+            if drone_pos[0] != x_pos_track[-1] or drone_pos[1] != y_pos_track[-1] or drone_pos[2] != z_pos_track[-1]:
                 # Add the position components to the corresponding list
                 x_pos_track.append(drone_pos[0])
                 y_pos_track.append(drone_pos[1])
@@ -537,21 +533,21 @@ class Extension(omni.ext.IExt):
         z_time_plot = track_fig.add_subplot(3, 4, (12, 12))
 
         # X plot
-        x_time_plot.set_title("X pos vs time")
-        x_time_plot.set_xlabel("Time")
-        x_time_plot.set_ylabel("Position")
+        x_time_plot.set_title("Position vs Time")
+        # x_time_plot.set_xlabel("Time")
+        x_time_plot.set_ylabel("X")
         x_time_plot.plot(time_track, x_pos_track)
 
         # Y plot
-        y_time_plot.set_title("Y pos vs time")
-        y_time_plot.set_xlabel("Time")
-        y_time_plot.set_ylabel("Position")
+        # y_time_plot.set_title("Y pos vs time")
+        # y_time_plot.set_xlabel("Time")
+        y_time_plot.set_ylabel("Y")
         y_time_plot.plot(time_track, y_pos_track)
 
         # Z plot
-        z_time_plot.set_title("Z pos vs time")
+        # z_time_plot.set_title("Z pos vs time")
         z_time_plot.set_xlabel("Time")
-        z_time_plot.set_ylabel("Position")
+        z_time_plot.set_ylabel("Z")
         z_time_plot.plot(time_track, z_pos_track)
 
         plt.show(block=False)
