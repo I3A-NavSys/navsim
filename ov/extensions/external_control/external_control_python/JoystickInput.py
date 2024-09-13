@@ -1,4 +1,10 @@
-import pygame
+try:
+    import pygame
+except:
+    raise Exception("ERROR: 'pygame' package is not installed. Copy and paste in the Script Editor the folllowing code\n\n" + 
+                    "import omni.kit.pipapi\n" +
+                    "omni.kit.pipapi.install(\"pygame\")\n")
+
 import asyncio
 import numpy as np
 

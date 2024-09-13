@@ -17,22 +17,25 @@ from omni.isaac.core.utils.stage import get_current_stage
 import asyncio
 import omni.kit.app
 
-import omni.kit.pipapi
-omni.kit.pipapi.install("pygame")
 from .ExternalController import ExternalController
 from omni.ui import color as cl
 
 import carb.events
 
 
-import matplotlib
+try:
+    import matplotlib
+except:
+    raise Exception("ERROR: 'matplotlib' package is not installed. Copy and paste in the Script Editor the folllowing code\n\n" + 
+                    "import omni.kit.pipapi\n" +
+                    "omni.kit.pipapi.install(\"matplotlib\")\n")
+
 try:
     matplotlib.use("Qt5Agg")
-
-
-except ModuleNotFoundError:
-    import omni.kit.pipapi
-    omni.kit.pipapi.install("PyQt5")
+except:
+    raise Exception("ERROR: 'PyQt5' package is not installed. Copy and paste in the Script Editor the folllowing code\n\n" + 
+                    "import omni.kit.pipapi\n" +
+                    "omni.kit.pipapi.install(\"PyQt5\")\n")
 
 import matplotlib.pyplot as plt
 
