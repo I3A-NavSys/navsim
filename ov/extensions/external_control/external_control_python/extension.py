@@ -1,3 +1,12 @@
+# Adding root 'project' folder to sys.path
+import sys
+import os
+# This line will add to the python list of paths to look for modules the path to the project root
+project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
+
+if project_root_path not in sys.path:
+    sys.path.append(project_root_path)
+
 import omni.ext
 import omni.ui as ui
 

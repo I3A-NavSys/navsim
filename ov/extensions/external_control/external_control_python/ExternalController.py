@@ -10,6 +10,10 @@ import omni.kit.app
 from omni.isaac.core.utils.stage import get_current_stage
 import omni.kit.viewport.utility
 
+from uspace.flightplan.command import Command
+import pickle   # Serialization
+import base64   # Parsing to string
+
 class ExternalController:
     def __init__(self):
         # Loop condition
@@ -129,10 +133,18 @@ class ExternalController:
             self.update_camera_dist_height(follow_distance, follow_height)
 
             # Set command
-            command = {"on": self.current_on, "velX": vel[0], "velY": vel[1], "velZ": vel[2], "rotZ": rot, "duration": 0}
+            command = Command(
+                            on = self.current_on,
+                            velX = vel[0],
+                            velY = vel[1],
+                            velZ = vel[2],
+                            rotZ = rot,
+                            duration = None)
+
+            serialized_command = base64.b64encode(pickle.dumps(command)).decode('utf-8')
 
             # Push UAV_EVENT with the inputs
-            self.msg_bus_event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_RemoteCommand", "command": command})
+            self.msg_bus_event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_RemoteCommand", "command": serialized_command})
 
             await asyncio.sleep(0.1)
 
