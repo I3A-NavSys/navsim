@@ -5,19 +5,20 @@ import numpy as np
 class Waypoint:
 
 
-    def __init__(self, label='', t=0, pos=None, vel=None, acel=None, jerk=None, jolt=None, snap=None, mandatory=False):
+    def __init__(self, label='', t=0, 
+                 pos =[0,0,0], vel =[0,0,0], acel=[0,0,0], 
+                 jerk=[0,0,0], snap=[0,0,0], crkl=[0,0,0], 
+                 mandatory=False):
  
-        self.label: str = label  if label  is not None else ''           # label to refer the waypoint
-        self.t: float = t                                                # time (s)
-        
-        self.pos  = np.array(pos)  if pos  is not None else np.zeros(3)  # position      (m)
-        self.vel  = np.array(vel)  if vel  is not None else np.zeros(3)  # velocity      (m/s)
-        self.acel = np.array(acel) if acel is not None else np.zeros(3)  # acceleration  (m/s2)
-        self.jerk = np.array(jerk) if jerk is not None else np.zeros(3)  # jerk          (m/s3)
-        self.jolt = np.array(jolt) if jolt is not None else np.zeros(3)  # jolt          (m/s4)
-        self.snap = np.array(snap) if snap is not None else np.zeros(3)  # snap          (m/s5)
-
-        self.mandatory = mandatory  # transito obligado
+        self.label: str = label          # identifier to refer the waypoint
+        self.t: float = t                # time          (s)
+        self.pos  = np.array(pos)        # position      (m)
+        self.vel  = np.array(vel)        # velocity      (m/s)
+        self.acel = np.array(acel)       # acceleration  (m/s2)
+        self.jerk = np.array(jerk)       # jerk          (m/s3)
+        self.snap = np.array(snap)       # snap          (m/s4)
+        self.crkl = np.array(crkl)       # ckl           (m/s5)
+        self.fly_over = mandatory        # transito obligado
 
 
 
@@ -25,9 +26,13 @@ class Waypoint:
         self.vel  = np.zeros(3)
         self.acel = np.zeros(3)
         self.jerk = np.zeros(3)
-        self.jolt = np.zeros(3)
         self.snap = np.zeros(3)
+        self.crkl = np.zeros(3)
 
+
+
+#-------------------------------------------------------------------
+# TIME MANAGEMENT
 
 
     def Postpone(self, timeStep):
@@ -36,9 +41,13 @@ class Waypoint:
 
 
     def TimeTo(self,wp):
-            # Get the time elapsed from this waypoint to another given
-            return wp.t - self.t
+        # Get the time elapsed from this waypoint to another given
+        return wp.t - self.t
 
+
+
+#-------------------------------------------------------------------
+# SPACE MANAGEMENT
 
    
     def DistanceTo(self,wp) -> float:
@@ -48,7 +57,7 @@ class Waypoint:
 
 
 
-    def DirectionTo(self,wp):
+    def DirectionTo(self,wp) -> np.array:
         # Get a direction vector from one waypoint to another
         dist = self.DistanceTo(wp)
         if dist == 0:
@@ -58,7 +67,7 @@ class Waypoint:
 
 
 
-    def CourseTo(self,wp):
+    def CourseTo(self,wp) -> float:
         # Get the course from one waypoint to another
         # -X -> -  90
         # +Y ->     0
@@ -76,7 +85,7 @@ class Waypoint:
 
     
     
-    def AngleWith(self,wp):
+    def AngleWith(self,wp) -> float:
         # Get the angle between the direction of two waypoints
         
         norm_a_vel = np.linalg.norm(self.vel)
@@ -90,7 +99,11 @@ class Waypoint:
             angle = np.arccos(np.clip(cos_angle, -1.0, 1.0))
             return angle
         
-        
+
+
+#-------------------------------------------------------------------
+# DYNAMICS MANAGEMENT
+
 
     def SetV0000(self,wp2):
         # Set uniform straight velocity from A to B
@@ -107,7 +120,7 @@ class Waypoint:
         # Dados dos waypoints con 
         #   t1 pos1 vel1 acel1
         #   t2 pos2 vel2 acel2
-        # obtiene jerk1, jolt1 y snap1 para ejecutar dicho movimiento
+        # obtiene jerk1, snap1 y crkl1 para ejecutar dicho movimiento
 
         r1 = self.pos
         v1 = self.vel
@@ -140,8 +153,8 @@ class Waypoint:
             raise ValueError('Error. Interpolation not possible')
 
         self.jerk = X[0]
-        self.jolt = X[1]
-        self.snap = X[2]
+        self.snap = X[1]
+        self.crkl = X[2]
 
 
 
@@ -151,7 +164,7 @@ class Waypoint:
         #   t1 pos1 vel1 acel1
         #      pos2 vel2 acel2
         # obtiene 
-        #   jerk1 jolt1 snap1=0
+        #   jerk1 snap1 crkl1=0
         #   t2
         # para ejecutar dicho movimiento
 
@@ -187,8 +200,8 @@ class Waypoint:
             raise ValueError('Error. Interpolation not possible')
 
         self.jerk = X[0]
-        self.jolt = X[1]
-        self.snap = X[2]
+        self.snap = X[1]
+        self.crkl = X[2]
 
 
 
@@ -203,8 +216,8 @@ class Waypoint:
         v1 = self.vel
         a1 = self.acel
         j1 = self.jerk
-        l1 = self.jolt
-        s1 = self.snap
+        l1 = self.snap
+        s1 = self.crkl
 
         t12 = self.TimeTo(wp2)
         
@@ -219,8 +232,8 @@ class Waypoint:
         wp2.vel  = v2
         wp2.acel = a2
         wp2.jerk = j2
-        wp2.jolt = l2
-        wp2.snap = s2
+        wp2.snap = l2
+        wp2.crkl = s2
 
         return wp2
 
