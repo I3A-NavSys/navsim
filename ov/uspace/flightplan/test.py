@@ -5,19 +5,16 @@ if os.name == 'nt':
     os.system('cls')
 else:
     os.system('clear')
-
-
 ##############################################################################
 # Añadir el directorio principal al sys.path
 import sys, os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-
 ##############################################################################
-
-import matplotlib.pyplot as plt
 
 from uspace.flightplan.Waypoint   import Waypoint
 from uspace.flightplan.FlightPlan import FlightPlan
+
+
 
 
 # Crear waypoints
@@ -34,7 +31,9 @@ fp.SetJLS()
 
 # Mostrar la posición 3D del plan de vuelo
 fp.Print()
-# fp.PositionFigure('Flight Path 3D', 0.1)
+fp.PositionFigure("FP1: POSITION", 0.1)
+fp.VelocityFigure("FP1: VELOCITY", 0.1)
+
 
 for t in range(0, 11):
     i = fp.GetIndexFromTime(t)
