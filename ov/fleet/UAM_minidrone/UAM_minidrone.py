@@ -59,7 +59,8 @@ class UAM_minidrone(BehaviorScript):
         self.forceSW_atr = primSW.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
         self.forceSW_atr.Set(Gf.Vec3f(0,0,0))        
         
-        self.primRotStatic = self.prim.GetChild("rotors_spinning")
+        self.primRotSpinning = self.prim.GetChild("rotors_spinning")
+        self.primRotStatic   = self.prim.GetChild("rotors_static")
 
         # Create the omniverse event associated to this UAV
         self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(self.prim.GetPath()))
@@ -308,7 +309,8 @@ class UAM_minidrone(BehaviorScript):
         self.w_rotor_NW = 0
         self.w_rotor_SE = 0
         self.w_rotor_SW = 0
-        self.primRotStatic.SetActive(False)
+        self.primRotStatic.SetActive(True)
+        self.primRotSpinning.SetActive(False)
 
         # Reset del control
         self.E = np.zeros((4, 1))
@@ -376,7 +378,9 @@ class UAM_minidrone(BehaviorScript):
             if self.current_time > self.cmd_exp_time:
                 self.command.Hover()
 
-        self.primRotStatic.SetActive(True)
+        self.primRotStatic.SetActive(False)
+        self.primRotSpinning.SetActive(True)
+
 
         # Assign the model reference to be followed
         self.r[0, 0] = self.command.velX       # bXdot
