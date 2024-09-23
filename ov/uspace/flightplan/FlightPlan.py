@@ -45,7 +45,6 @@ class FlightPlan:
             self.waypoints.insert(index, waypoint)
 
 
-    
     def AppendWaypoint(self, waypoint: Waypoint) -> None:
         """Introduces a waypoint at the end (1s later) of the flight plan."""
         if not isinstance(waypoint, Waypoint):
@@ -81,13 +80,11 @@ class FlightPlan:
         return i + 1
 
 
-
     def Copy(self):
         """Realiza una copia profunda de la instancia actual de FlightPlan."""
         return FlightPlan(
             waypoints=copy.deepcopy(self.waypoints),
         )
-
 
 
 #-------------------------------------------------------------------
@@ -127,17 +124,17 @@ class FlightPlan:
 
 
 
-    def PostponeFrom(self, time: float, timeStep: float):
+    def PostponeFrom(self, startTime: float, timeStep: float):
         # Postpone a portion of the Flight Plan a given time_delta,
-        # starting from a given start_time
+        # starting from a given startTime
 
-        if self.FinishTime() < time:
+        if self.FinishTime() < startTime:
             return
 
-        # Find the first waypoint with time greater than or equal to start_time
-        index = bisect_left([wp.t for wp in self.waypoints], time)
+        # Find the first waypoint with time greater than or equal to startTime
+        index = bisect_left([wp.t for wp in self.waypoints], startTime)
 
-        if index > 0 and timeStep < self.waypoints[index].t - self.waypoints[index - 1].t:
+        if index > 0 and timeStep < self.waypoints[index].TimeTo(self.waypoints[index-1]):
             return  # Not enough time in the past
 
         for i in range(index, len(self.waypoints)):
@@ -159,7 +156,6 @@ class FlightPlan:
 
 #-------------------------------------------------------------------
 # ROUTE MANAGEMENT
-
 
 
     def SetV0000(self):
@@ -184,6 +180,133 @@ class FlightPlan:
             wpB = self.waypoints[i + 1]
             wpA.SetJLS(wpB)
 
+
+    
+    def SmoothVertexMaintainingSpeed(self, label, angVel):
+        # Curva el vertice entre dos rectas
+        # manteniendo velocidad y acortando el tiempo de vuelo
+        # Para ello descompone dicho waypoint en dos
+
+        i : int = self.GetIndexFromLabel(label)
+        if i <= 0 or len(self.waypoints) <= i:
+            return
+      
+        wp1 = self.waypoints[i-1]
+        wp2 = self.waypoints[i]
+        wp3 = self.waypoints[i+1]
+
+        if wp2.fly_over:
+            return
+        
+        angle = wp1.AngleWith(wp2)
+
+        v1 = wp1.vel / np.linalg.norm(wp1.vel)
+        v2 = wp2.vel / np.linalg.norm(wp2.vel)
+        v = np.mean([v1, v2])
+
+        r = v / angVel              # Radius of the curve
+        d = r * np.tan(angle/2)     # Distance to the new waypoints
+        step = d / v                # Time to the decomposed waypoints
+
+        wp2A = Waypoint()
+        wp2A.label = wp2.label + "_A"
+        wp2A.pos = wp2.pos - wp1.vel * step
+        wp2A.vel = wp1.vel
+        wp2A.t = wp2.t - step
+
+        wp2B = Waypoint()
+        wp2B.label = wp2.label + "_B"
+        wp2B.pos = wp2.pos - wp2.vel * step
+        wp2B.vel = wp2.vel
+        wp2BTinit = wp2.t + step
+
+        T2Min = wp2A.t + angle/angVel
+        T2Max = wp2BTinit
+
+        while T2Max - T2Min > 0.05:
+            wp2B.t = np.mean([T2Min, T2Max])
+            wp2A.SetJLS(wp2B)
+
+            tABmed = np.mean([wp2A.t, wp2B.t])
+            status = wp2A.Interpolation(tABmed)
+            vMed = status.vel / np.linalg.norm(status.vel)
+
+            if vMed < v:
+                T2Max = wp2B.t
+            else:
+                T2Min = wp2B.t
+
+        if wp2A.t < wp1.t or wp3.t < wp2B.t:
+            return "There is not time enough to include the curve"
+        
+        self.RemoveWaypointAtTime(wp2.t)
+        self.SetWaypoint(wp2A)
+        self.SetWaypoint(wp2B)
+
+        self.PostponeFrom(wp2B.t + 0.001, wp2B.t - wp2BTinit)
+
+        
+
+    def SmoothVertexMaintainingDuration(self, label, angVel, linAcel):
+        # Curva el vertice entre dos rectas
+        # reduciendo velocidad y manteniendo el tiempo de vuelo
+        # Para ello descompone dicho waypoint en dos
+
+        i : int = self.GetIndexFromLabel(label)
+        if i <= 0 or len(self.waypoints) <= i:
+            return
+      
+        wp1 = self.waypoints[i-1]
+        wp2 = self.waypoints[i]
+
+        if wp2.fly_over:
+            return
+        
+        angle = wp1.AngleWith(wp2)
+        tc = angle / angVel         # Time spent in the curve
+
+        v1 = wp1.vel / np.linalg.norm(wp1.vel)
+        v2 = wp2.vel / np.linalg.norm(wp2.vel)
+        ts = np.abs(v2-v1) / linAcel
+
+        interval = np.max([tc, ts])
+        self.ExpandWaypoint(label, interval)
+
+        
+
+    def ExpandWaypoint(self, label, interval):
+        pass
+        # Decompone un waypoint en dos, separados un intervalo dado
+
+        # i : int = self.GetIndexFromLabel(label)
+        # if i <= 0 or len(self.waypoints) <= i:
+        #     return
+      
+        # wp1 = self.waypoints[i-1]
+        # wp2 = self.waypoints[i]
+        # wp3 = self.waypoints[i+1]
+        
+        # angle = wp1.AngleWith(wp2)
+
+        # v1 = wp1.vel / np.linalg.norm(wp1.vel)
+        # v2 = wp2.vel / np.linalg.norm(wp2.vel)
+        # v = np.mean([v1, v2])
+
+        # r = v / angVel              # Radius of the curve
+        # d = r * np.tan(angle/2)     # Distance to the new waypoints
+        # step = d / v                # Time to the decomposed waypoints
+
+        # wp2A = Waypoint()
+        # wp2A.label = wp2.label + "_A"
+        # wp2A.pos = wp2.pos - wp1.vel * step
+        # wp2A.vel = wp1.vel
+        # wp2A.t = wp2.t - step
+
+        # wp2B = Waypoint()
+        # wp2B.label = wp2.label + "_B"
+        # wp2B.pos = wp2.pos - wp2.vel * step
+        # wp2B.vel = wp2.vel
+        # wp2BTinit = wp2.t + step
 
 
 #-------------------------------------------------------------------
@@ -241,9 +364,8 @@ class FlightPlan:
 #-------------------------------------------------------------------
 # UAV NAVIGATION
 
- 
 
-    def Navigate(self, UAVname, UAVori : Rotation, UAVyaw, currentStatus : Waypoint, tToSolve):
+    def Navigate(self, currentTime, UAVpos, UAVvel, UAVrot : Rotation, tToSolve):
         # This function converts a flight plan position at certain time
         # to a navigation command (desired velocity vector and rotation)        
         # if self.fp is None:
@@ -251,134 +373,79 @@ class FlightPlan:
 
         # No sé donde ponerlo
         maxVarLinVel = 5
-        maxVarAngVel = 1
-        targetStep = 2
-
-        # Check FP vigency
-        WP = self.GetIndexFromTime(currentStatus.t)
-
-        # Avoid exception when currentStatus.t is greater than fp.FinishTime() (solved as now it returns the last WP)
-        if WP is not None:
+        maxVarAngVel = 1      
         
-            if self.currentWP is None and WP != 0:
-                # This flight plan is obsolete
-                print(f"{UAVname} discarding FP due to it is obsolete")
-                # self.fp = None
-                return None
-            
-            # Current UAV status (la tiene wp)
-            
-            # Navigation status has changed?
-            if self.currentWP != WP:
-                if WP == 0:
-                    initPos = self.waypoints[0].pos.copy()
-                    initPos -= currentStatus.pos
 
-                    if np.linalg.norm(initPos) < self.radius:
-                        # Drone waiting to start the flight
-                        print(f"{UAVname} waiting to start a FP")
 
-                    else:
-                        # Drone in an incorrect starting position
-                        print(f"{UAVname} discarding FP due to an incorrect starting position")
-                        # self.fp = None
-                        return None
+        # COMPUTING DESIRED POSITION / VELOCITY
+        desPos, desVel = self.PosVelAtTime(currentTime)
+        # print("currentPos:", currentStatus.pos)
+        # print("desPos:", desPos)
+        # print("desVel:", desVel)
 
-                elif WP < len(self.waypoints):
-                    print(f"{UAVname} flying to WP {WP}")
+        # COMPUTING CORRECTION VELOCITY (to achieve dtPos in 'targetStep' seconds)
+        crVel = (desPos - UAVpos) / tToSolve
+        # print("crVel:", crVel)
 
-                else:
-                    print(f"{UAVname} has completed its flight plan")
-                    # self.fp = None
+        # COMPUTING COMMANDED VELOCITY
+        cmdVel = desVel + crVel
+        # print("cmdVel1:", cmdVel)
 
-                    cmd = Command(on=True, duration=0)
-                    return cmd
+        # SMOOTHING COMMANDED VELOCITY
+        varVel = cmdVel - UAVvel
+        varVelMagnitude = np.linalg.norm(varVel)
+        if varVelMagnitude > maxVarLinVel:
+            varVel /= varVelMagnitude # Normalize
+            varVel *= maxVarLinVel
+        # print("varVel:", varVel)
 
-            self.currentWP = WP
+        # cmdVel = currentStatus.vel + varVel
+        # print("cmdVel2:", cmdVel)
 
-            # Time to analyze movement
-            step = self.waypoints[self.currentWP].t - currentStatus.t
+        # COMPUTING DRONE RELATIVE LINEAR VELOCITY
+        cmdRelVel = UAVrot.inv().apply(cmdVel)
+        # print("cmdRelVel:", cmdRelVel)
 
-            if 0 < self.currentWP and self.currentWP < len(self.waypoints):
-                step = targetStep
+        # COMPUTING TARGET ERROR YAW
+        targetDir = cmdVel.copy()
+        targetDir[2] = 0
 
-            if step == 0:
-                step = 1    # Avoid division by zero
+        _, _, UAVyaw = UAVrot.as_euler('xyz', degrees=False)
 
-            # COMPUTING DESIRED POSITION / VELOCITY
-            # correctStatus = self.StatusAtTime(currentStatus.t)
-            # desPos = correctStatus.pos
-            # desVel = correctStatus.vel
-            desPos, desVel = self.PosVelAtTime(currentStatus.t)
-            # print("currentPos:", currentStatus.pos)
-            # print("desPos:", desPos)
-            # print("desVel:", desVel)
+        # TODO
+        # Podemos mirar el wp siguiente para poder girar mientras subimos
+        if np.linalg.norm(targetDir) == 0:
+            targetYaw = UAVyaw
+        else:
+            targetYaw = np.arctan2(targetDir[1], targetDir[0])
 
-            # COMPUTING CORRECTION VELOCITY (to achieve dtPos in 'targetStep' seconds)
-            crVel = (desPos - currentStatus.pos) / step
-            # print("crVel:", crVel)
+        errorYaw = targetYaw - UAVyaw
+        while errorYaw < -np.pi:
+            errorYaw += 2*np.pi
 
-            # COMPUTING COMMANDED VELOCITY
-            cmdVel = desVel + crVel
-            # print("cmdVel1:", cmdVel)
+        while np.pi < errorYaw:
+            errorYaw -= 2*np.pi
 
-            # TODO: Implement this by means of a dynamic control
-            # SMOOTHING COMMANDED VELOCITY
-            varVel = cmdVel - currentStatus.vel
-            varVelMagnitude = np.linalg.norm(varVel)
-            if varVelMagnitude > maxVarLinVel:
-                varVel /= varVelMagnitude # Normalize
-                varVel *= maxVarLinVel
-            # print("varVel:", varVel)
-
-            cmdVel = currentStatus.vel + varVel
-            # print("cmdVel2:", cmdVel)
-
-            # COMPUTING DRONE RELATIVE LINEAR VELOCITY
-            cmdRelVel = UAVori.inv().apply(cmdVel)
-            # print("cmdRelVel:", cmdRelVel)
-
-            # COMPUTING TARGET ERROR YAW
-            targetDir = cmdVel.copy()
-            targetDir[2] = 0
-
-            if np.linalg.norm(targetDir) == 0:
-                targetYaw = UAVyaw
-            else:
-                targetYaw = np.arctan2(targetDir[1], targetDir[0])
-
-            errorYaw = targetYaw - UAVyaw
-            while errorYaw < -np.pi:
-                errorYaw += 2*np.pi
-
-            while np.pi < errorYaw:
-                errorYaw -= 2*np.pi
-
-            # COMPUTING TARGET ANGULAR VELOCITY
-            currentWel = errorYaw / targetStep
-            
-            if currentWel < -maxVarAngVel:
-                currentWel = -maxVarAngVel
-            
-            if maxVarAngVel < currentWel:
-                currentWel = maxVarAngVel
-
-            # CREATING COMMANDED RELATIVE VELOCITY VECTOR
-            cmd = Command(
-                on=True,
-                velX=cmdRelVel[0],
-                velY=cmdRelVel[1],
-                velZ=cmdRelVel[2],
-                # velY=cmdRelVel[1] * -1,
-                # velZ=cmdRelVel[2] * -1,
-                rotZ=currentWel,
-                duration=tToSolve
-            )
-
-            return cmd
+        # COMPUTING TARGET ANGULAR VELOCITY
+        currentWel = errorYaw / tToSolve
         
-        return None
+        if currentWel < -maxVarAngVel:
+            currentWel = -maxVarAngVel
+        
+        if maxVarAngVel < currentWel:
+            currentWel = maxVarAngVel
 
+        # CREATING COMMANDED RELATIVE VELOCITY VECTOR
+        cmd = Command(
+            on=True,
+            velX=cmdRelVel[0],
+            velY=cmdRelVel[1],
+            velZ=cmdRelVel[2],
+            rotZ=currentWel,
+            duration=tToSolve
+        )
+
+        return cmd
 
 
     def PosVelAtTime(self, t2):
@@ -417,39 +484,6 @@ class FlightPlan:
         return r2, v2
     
 
-
-    # def VelocityAtTime(self, t2):
-    #     v2 = None
-
-    #     numWps = len(self.waypoints)
-    #     i = self.GetIndexFromTime(t2)
-
-    #     if i == 0:
-    #         # The drone is waiting to start the FP
-    #         v2 = np.array([0.0, 0.0, 0.0])
-        
-    #     elif i == numWps:
-    #         # The drone has completed the FP
-    #         v2 = np.array([0.0, 0.0, 0.0])
-        
-    #     else:
-    #         # The drone is executing the FP
-    #         wp1 = self.waypoints[i-1]
-    #         t1 = wp1.t
-    #         t = t2-t1
-
-    #         v1 = wp1.vel
-    #         a1 = wp1.acel
-    #         j1 = wp1.jerk
-    #         s1 = wp1.snap
-    #         c1 = wp1.crkl
-
-    #         v2 = v1 + a1*t + j1*pow(t,2)/2 + s1*pow(t,3)/6 + c1*pow(t,4)/24
-
-    #     return v2
-
-
-
     def YawAtTime(self, t, currentYaw):
         i = self.GetIndexFromTime(t)
         numWPs = len(self.waypoints)
@@ -474,11 +508,9 @@ class FlightPlan:
         return targetYaw
     
 
-    
+
 #-------------------------------------------------------------------
 # CONFLICT DETECTION
-
-
 
 
 
@@ -499,7 +531,6 @@ class FlightPlan:
 
 
 
-    # def PositionFigure(self, figName, timeStep, xPosUAV, yPosUAV, zPosUAV, timeUAV):
     def PositionFigure(self, figName, timeStep):
         # Display the flight plan trajectory
         
@@ -579,43 +610,29 @@ class FlightPlan:
         yPosTimePlot.scatter(t, yPos, marker="o", color="blue", s=20)
         zPosTimePlot.scatter(t, zPos, marker="o", color="blue", s=20)
 
-        # # Plot UAV route
-        # xyzPosPlot.plot(xPosUAV, yPosUAV, zPosUAV, linestyle="dashed", linewidth=1, color="black")
-        # xPosTimePlot.plot(timeUAV, xPosUAV, linestyle="dashed", linewidth=1, color="black")
-        # yPosTimePlot.plot(timeUAV, yPosUAV, linestyle="dashed", linewidth=1, color="black")
-        # zPosTimePlot.plot(timeUAV, zPosUAV, linestyle="dashed", linewidth=1, color="black")
-
-        # # Highlight UAV route positions
-        # xyzPosPlot.scatter(xPosUAV, yPosUAV, zPosUAV, color="black", s=10)
-        # xPosTimePlot.scatter(timeUAV, xPosUAV, color="black", s=10)
-        # yPosTimePlot.scatter(timeUAV, yPosUAV, color="black", s=10)
-        # zPosTimePlot.scatter(timeUAV, zPosUAV, color="black", s=10)
-
         # Update limits to maintain scale in all axes
-        # xLim = max(np.abs(xyzPosPlot.get_xlim3d()))
-        # yLim = max(np.abs(xyzPosPlot.get_ylim3d()))
-        # zLim = max(np.abs(xyzPosPlot.get_zlim3d()))
-        # maxLim = max(xLim, yLim, zLim)
+        xLim = max(np.abs(xyzPosPlot.get_xlim3d()))
+        yLim = max(np.abs(xyzPosPlot.get_ylim3d()))
+        zLim = max(np.abs(xyzPosPlot.get_zlim3d()))
+        maxLim = max(xLim, yLim, zLim)
 
-        # xyzPosPlot.set_xlim3d(-maxLim, maxLim)
-        # xyzPosPlot.set_ylim3d(-maxLim, maxLim)
-        # xyzPosPlot.set_zlim3d(-maxLim, maxLim)
+        xyzPosPlot.set_xlim3d(-maxLim, maxLim)
+        xyzPosPlot.set_ylim3d(-maxLim, maxLim)
+        xyzPosPlot.set_zlim3d(-maxLim, maxLim)
 
-        # xLim = max(np.abs(xPosTimePlot.get_ylim()))
-        # yLim = max(np.abs(yPosTimePlot.get_ylim()))
-        # zLim = max(np.abs(zPosTimePlot.get_ylim()))
-        # maxLim = max(xLim, yLim, zLim)
+        xLim = max(np.abs(xPosTimePlot.get_ylim()))
+        yLim = max(np.abs(yPosTimePlot.get_ylim()))
+        zLim = max(np.abs(zPosTimePlot.get_ylim()))
+        maxLim = max(xLim, yLim, zLim)
 
-        # xPosTimePlot.set_ylim(-maxLim, maxLim)
-        # yPosTimePlot.set_ylim(-maxLim, maxLim)
-        # zPosTimePlot.set_ylim(-maxLim, maxLim)
+        xPosTimePlot.set_ylim(-maxLim, maxLim)
+        yPosTimePlot.set_ylim(-maxLim, maxLim)
+        zPosTimePlot.set_ylim(-maxLim, maxLim)
 
         # Show the plots
         plt.show(block=False)
 
 
-
-    # def VelocityFigure(self, figName, timeStep, xVelUAV, yVelUAV, zVelUAV, timeUAV):
     def VelocityFigure(self, figName, timeStep):
         # Display the flight plan instant velocity
 
@@ -688,31 +705,59 @@ class FlightPlan:
         yVelTimePlot.scatter(t, yVel, marker="o", color="blue", s=20)
         zVelTimePlot.scatter(t, zVel, marker="o", color="blue", s=20)
 
-        # # Plot UAV route
-        # velPlot3D.plot(timeUAV, np.sqrt(xVelUAV**2 + yVelUAV**2 + zVelUAV**2), linestyle="dashed", linewidth=1, color="black")
-        # xVelTimePlot.plot(timeUAV, xVelUAV, linestyle="dashed", linewidth=1, color="black")
-        # yVelTimePlot.plot(timeUAV, yVelUAV, linestyle="dashed", linewidth=1, color="black")
-        # zVelTimePlot.plot(timeUAV, zVelUAV, linestyle="dashed", linewidth=1, color="black")
-
-        # # Highlight UAV route positions
-        # velPlot3D.scatter(timeUAV, np.sqrt(xVelUAV**2 + yVelUAV**2 + zVelUAV**2), color="black", s=10)
-        # xVelTimePlot.scatter(timeUAV, xVelUAV, color="black", s=10)
-        # yVelTimePlot.scatter(timeUAV, yVelUAV, color="black", s=10)
-        # zVelTimePlot.scatter(timeUAV, zVelUAV, color="black", s=10)
-
         # Update limits to maintain scale in all axes
-        # lim3D = max(np.abs(velPlot3D.get_ylim()))
-        # xLim = max(np.abs(xVelTimePlot.get_ylim()))
-        # yLim = max(np.abs(yVelTimePlot.get_ylim()))
-        # zLim = max(np.abs(zVelTimePlot.get_ylim()))
-        # maxLim = max(lim3D, xLim, yLim, zLim)
+        lim3D = max(np.abs(velPlot3D.get_ylim()))
+        xLim = max(np.abs(xVelTimePlot.get_ylim()))
+        yLim = max(np.abs(yVelTimePlot.get_ylim()))
+        zLim = max(np.abs(zVelTimePlot.get_ylim()))
+        maxLim = max(lim3D, xLim, yLim, zLim)
 
-        # velPlot3D.set_ylim(-maxLim, maxLim)
-        # xVelTimePlot.set_ylim(-maxLim, maxLim)
-        # yVelTimePlot.set_ylim(-maxLim, maxLim)
-        # zVelTimePlot.set_ylim(-maxLim, maxLim)
+        velPlot3D.set_ylim(-maxLim, maxLim)
+        xVelTimePlot.set_ylim(-maxLim, maxLim)
+        yVelTimePlot.set_ylim(-maxLim, maxLim)
+        zVelTimePlot.set_ylim(-maxLim, maxLim)
 
         # Show the plots
         plt.show(block=False)
 
 
+    def AddUAVTrackPos(self, figName, xPosUAV, yPosUAV, zPosUAV, timeUAV):
+        posFig = plt.figure(figName)
+        subplots = posFig.get_axes()
+        xyzPosPlot = subplots[0]
+        xPosTimePlot = subplots[1]
+        yPosTimePlot = subplots[2]
+        zPosTimePlot = subplots[3]
+
+        # Plot UAV route
+        xyzPosPlot.plot(xPosUAV, yPosUAV, zPosUAV, linestyle="dashed", linewidth=1, color="black")
+        xPosTimePlot.plot(timeUAV, xPosUAV, linestyle="dashed", linewidth=1, color="black")
+        yPosTimePlot.plot(timeUAV, yPosUAV, linestyle="dashed", linewidth=1, color="black")
+        zPosTimePlot.plot(timeUAV, zPosUAV, linestyle="dashed", linewidth=1, color="black")
+
+        # Highlight UAV route positions
+        xyzPosPlot.scatter(xPosUAV, yPosUAV, zPosUAV, color="black", s=10)
+        xPosTimePlot.scatter(timeUAV, xPosUAV, color="black", s=10)
+        yPosTimePlot.scatter(timeUAV, yPosUAV, color="black", s=10)
+        zPosTimePlot.scatter(timeUAV, zPosUAV, color="black", s=10)
+
+
+    def AddUAVTrackVel(self, figName, xVelUAV, yVelUAV, zVelUAV, timeUAV):
+        posFig = plt.figure(figName)
+        subplots = posFig.get_axes()
+        velPlot3D = subplots[0]
+        xVelTimePlot = subplots[1]
+        yVelTimePlot = subplots[2]
+        zVelTimePlot = subplots[3]
+        
+        # Plot UAV route
+        velPlot3D.plot(timeUAV, np.sqrt(xVelUAV**2 + yVelUAV**2 + zVelUAV**2), linestyle="dashed", linewidth=1, color="black")
+        xVelTimePlot.plot(timeUAV, xVelUAV, linestyle="dashed", linewidth=1, color="black")
+        yVelTimePlot.plot(timeUAV, yVelUAV, linestyle="dashed", linewidth=1, color="black")
+        zVelTimePlot.plot(timeUAV, zVelUAV, linestyle="dashed", linewidth=1, color="black")
+
+        # Highlight UAV route positions
+        velPlot3D.scatter(timeUAV, np.sqrt(xVelUAV**2 + yVelUAV**2 + zVelUAV**2), color="black", s=10)
+        xVelTimePlot.scatter(timeUAV, xVelUAV, color="black", s=10)
+        yVelTimePlot.scatter(timeUAV, yVelUAV, color="black", s=10)
+        zVelTimePlot.scatter(timeUAV, zVelUAV, color="black", s=10)
