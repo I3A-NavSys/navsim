@@ -1,3 +1,3 @@
-# Drone command sender
+# Drone flighplan sender
 
-Esta extensión envía un comando a un dron.
+Esta extensión envía un flightplan a un dron.

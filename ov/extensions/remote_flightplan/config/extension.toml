@@ -5,8 +5,8 @@ order = 0
 [package]
 version = "1.0.0"
 category = "Simulation"
-title = "NavSim RemoteCommand"
-description="Remote sender of commands to UAVs"
+title = "NavSim Remote FlightPlan"
+description="Remote sender of flightplans to UAVs"
 authors = ["I3A-NavSys"]
 repository = ""
 keywords = ["UAM", "dron control"]
