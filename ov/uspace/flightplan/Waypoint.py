@@ -6,19 +6,18 @@ class Waypoint:
 
 
     def __init__(self, label='', t=0, 
-                 pos =[0,0,0], vel =[0,0,0], acel=[0,0,0], 
-                 jerk=[0,0,0], snap=[0,0,0], crkl=[0,0,0], 
-                 mandatory=False):
+                 pos=[0,0,0], vel=[0,0,0], 
+                 fly_over=False):
  
         self.label: str = label          # identifier to refer the waypoint
         self.t: float = t                # time          (s)
         self.pos  = np.array(pos)        # position      (m)
         self.vel  = np.array(vel)        # velocity      (m/s)
-        self.acel = np.array(acel)       # acceleration  (m/s2)
-        self.jerk = np.array(jerk)       # jerk          (m/s3)
-        self.snap = np.array(snap)       # snap          (m/s4)
-        self.crkl = np.array(crkl)       # ckl           (m/s5)
-        self.fly_over = mandatory        # transito obligado
+        self.acel = np.array([0,0,0])    # acceleration  (m/s2)
+        self.jerk = np.array([0,0,0])    # jerk          (m/s3)
+        self.snap = np.array([0,0,0])    # snap          (m/s4)
+        self.crkl = np.array([0,0,0])    # ckl           (m/s5)
+        self.fly_over = fly_over         # transito obligado
 
 
 

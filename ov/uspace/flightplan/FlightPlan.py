@@ -45,6 +45,7 @@ class FlightPlan:
             self.waypoints.insert(index, waypoint)
 
 
+
     def AppendWaypoint(self, waypoint: Waypoint) -> None:
         """Introduces a waypoint at the end (1s later) of the flight plan."""
         if not isinstance(waypoint, Waypoint):
@@ -80,11 +81,13 @@ class FlightPlan:
         return i + 1
 
 
+
     def Copy(self):
         """Realiza una copia profunda de la instancia actual de FlightPlan."""
         return FlightPlan(
             waypoints=copy.deepcopy(self.waypoints),
         )
+
 
 
 #-------------------------------------------------------------------
@@ -324,21 +327,24 @@ class FlightPlan:
         Returns:
         Waypoint: The interpolated waypoint status at time t.
         """
+
+        numWPs = len(self.waypoints)
+        
         # Check if t is outside the flight plan schedule
-        if t < self.InitTime() or t > self.FinishTime():
-            wp2 = Waypoint()
-            wp2.pos = np.array([np.nan, np.nan, np.nan])
+        if t < self.InitTime(): 
+            wp2 = Waypoint(pos=self.waypoints[0].pos)
+            return wp2
+        
+        if t > self.FinishTime():
+            wp2 = Waypoint(pos=self.waypoints[numWPs-1].pos)
             return wp2
 
-        # Search for the current waypoints
+        # Search for the current waypoint
         for i in range(1, len(self.waypoints)):
             if t < self.waypoints[i].t:
-                break
-        
-        wp1 = self.waypoints[i - 1]
-        wp2 = wp1.Interpolation(t)
-        
-        return wp2
+                wp1 = self.waypoints[i - 1]
+                wp2 = wp1.Interpolation(t)
+                return wp2
     
 
 
@@ -365,7 +371,7 @@ class FlightPlan:
 # UAV NAVIGATION
 
 
-    def Navigate(self, currentTime, UAVpos, UAVvel, UAVrot : Rotation, tToSolve):
+    def GetCommand(self, currentTime, UAVpos, UAVvel, UAVrot : Rotation, tToSolve):
         # This function converts a flight plan position at certain time
         # to a navigation command (desired velocity vector and rotation)        
         # if self.fp is None:
@@ -379,9 +385,15 @@ class FlightPlan:
 
         # COMPUTING DESIRED POSITION / VELOCITY
         desPos, desVel = self.PosVelAtTime(currentTime)
-        # print("currentPos:", currentStatus.pos)
+        # print("currentPos:", UAVpos)
         # print("desPos:", desPos)
         # print("desVel:", desVel)
+
+        status = self.StatusAtTime(currentTime)
+        # print("desPos:", status.pos)
+        # print("desVel:", status.vel)
+
+
 
         # COMPUTING CORRECTION VELOCITY (to achieve dtPos in 'targetStep' seconds)
         crVel = (desPos - UAVpos) / tToSolve
@@ -633,6 +645,7 @@ class FlightPlan:
         plt.show(block=False)
 
 
+
     def VelocityFigure(self, figName, timeStep):
         # Display the flight plan instant velocity
 
@@ -721,6 +734,7 @@ class FlightPlan:
         plt.show(block=False)
 
 
+
     def AddUAVTrackPos(self, figName, xPosUAV, yPosUAV, zPosUAV, timeUAV):
         posFig = plt.figure(figName)
         subplots = posFig.get_axes()
@@ -740,6 +754,7 @@ class FlightPlan:
         xPosTimePlot.scatter(timeUAV, xPosUAV, color="black", s=10)
         yPosTimePlot.scatter(timeUAV, yPosUAV, color="black", s=10)
         zPosTimePlot.scatter(timeUAV, zPosUAV, color="black", s=10)
+
 
 
     def AddUAVTrackVel(self, figName, xVelUAV, yVelUAV, zVelUAV, timeUAV):

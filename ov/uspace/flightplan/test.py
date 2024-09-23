@@ -6,9 +6,15 @@ if os.name == 'nt':
 else:
     os.system('clear')
 ##############################################################################
-# Añadir el directorio principal al sys.path
+# Adding root 'project' folder to sys.path
 import sys, os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+if project_root_path not in sys.path:
+    sys.path.append(project_root_path)
+# # Verificar que la ruta se ha añadido correctamente
+# print("Rutas en sys.path:")
+# for path in sys.path:
+#     print(path)
 ##############################################################################
 
 from uspace.flightplan.Waypoint   import Waypoint
