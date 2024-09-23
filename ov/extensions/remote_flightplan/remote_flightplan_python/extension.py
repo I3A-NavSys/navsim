@@ -29,6 +29,7 @@ from uspace.flightplan.FlightPlan import FlightPlan
 from omni.isaac.core import SimulationContext
 
 class NavsimOperatorCmdExtension(omni.ext.IExt):
+
     def on_startup(self, ext_id):
         # print("[REMOTE COMMAND ext] startup")
 
@@ -64,32 +65,21 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                         width=80)
 
                 with ui.HStack(height=20, spacing=10):
-
-
-                    with ui.HStack(spacing=5):
-                        ui.Button(
-                            "ON", enable=False,
-                            width=30,
-                            style={
-                                "background_color":cl.grey, 
-                                "color":cl.white, 
-                                "margin": 0})
-                        rotors_CB = ui.CheckBox(tooltip="Rotors activation")
-                        rotors_CB.model.set_value(True)
-
-                    with ui.HStack():
-                        ui.Button(
-                            "duration", enable=False,
-                            width=50,
-                            style={
-                                "background_color":cl.grey, 
-                                "color":cl.white, 
-                                "margin": 0})
-                        duration_FF = ui.FloatField(tooltip="time executing this command")
-                        duration_FF.model.set_value(1.0)
-                        duration_FF.precision = 2
+       
+                    ui.Button(
+                        "delay", enable=False,
+                        width=50,
+                        style={
+                            "background_color":cl.grey, 
+                            "color":cl.white, 
+                            "margin": 0})
+                    self.delay_FF = ui.FloatField(
+                        width=50,
+                        tooltip="Delay related to sending time")
+                    self.delay_FF.model.set_value(5.0)
+                    self.delay_FF.precision = 2
                     
-                with ui.HStack(height=50):
+                with ui.HStack(height=50, spacing=20):
                     # fp button
                     ui.Button(
                         "TUTO4",
@@ -101,8 +91,15 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                         clicked_fn = self.fp2
                     )
 
+                    ui.Button(
+                        "BOX",
+                        clicked_fn = self.fp_box
+                    )
 
 
+    def on_update(self, time, dt):
+        print("[REMOTE COMMAND ext] update")
+        pass
 
     def get_manipulable_prims(self, prim=None):
             # Needed list containing the names of the manipulable prims for the dropdown selector
@@ -136,11 +133,9 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
         
 
 
-
     def refresh_drone_selector(self):
         self.drone_selector_dropdown.enabled = True
         self.drone_selector_dropdown.repopulate()
-
 
 
 
@@ -201,6 +196,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
         self.event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_FlightPlan", "fp": serialized_fp})
 
 
+
     def fp2(self):
         wpI = Waypoint(label='WPI', t=0,  pos=[0.0, 0.0, 1.0])
         wpIP = Waypoint(label='WPIP', t=5,  pos=[0.0, 0.0, 1.0])
@@ -247,3 +243,41 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
 
         serialized_fp = base64.b64encode(pickle.dumps(self.fp)).decode('utf-8')
         self.event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_FlightPlan", "fp": serialized_fp})
+
+
+
+    def fp_box(self):
+
+        try:
+            drone = self.manipulable_prims[self.drone_selector_dropdown.get_selection_index()]
+        except:
+            print("[REMOTE COMMAND ext] No drone selected")
+            return
+        
+        print("[REMOTE COMMAND ext] Drone selected is: ", drone.GetPath())
+
+        # Tomamos tiempos
+        sim_context = SimulationContext.instance()
+        current_time = sim_context.current_time
+        print("[REMOTE COMMAND ext] Current time is: ", current_time)
+
+        delay = self.delay_FF.model.get_value_as_float()
+
+        # Creamos plan de vuelo
+        wp1 = Waypoint(t=0,  pos=[  0.0,  0.0,  1.0 ])
+        wp2 = Waypoint(t=20,  pos=[  0.0,  0.0,  2.0 ])
+        # wp3 = Waypoint(t=12, pos=[ 10.0,  0.0,  2.0 ])
+        # wp4 = Waypoint(t=14, pos=[ 10.0,  0.0,  1.0 ])
+        self.fp = FlightPlan([wp1, wp2])
+        # self.fp = FlightPlan([wp1, wp2, wp3, wp4])
+        self.fp.radius = 2
+        self.fp.SetV0000()
+        self.fp.RescheduleAt(current_time + delay)
+
+        # Comunicamos plan de vuelo
+        self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(drone.GetPath()))
+        serialized_fp = base64.b64encode(pickle.dumps(self.fp)).decode('utf-8')
+        self.event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_FlightPlan", "fp": serialized_fp})  
+        pass
+
+

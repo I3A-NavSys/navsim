@@ -9,12 +9,8 @@ from omni.isaac.ui.element_wrappers import *
 import carb.events
 
 # Adding root 'ov' folder to sys.path
-import sys
-import os
-
-# This line will add to the python list of paths to look for modules the path to the project root
+import sys, os
 project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
-
 if project_root_path not in sys.path:
     sys.path.append(project_root_path)
 
