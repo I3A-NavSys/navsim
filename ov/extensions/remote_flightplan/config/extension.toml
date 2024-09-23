@@ -22,7 +22,7 @@ icon = "data/icon.png"
 # PyQt5 pipapi
 
 [[python.module]]
-name = "remote_command_python"
+name = "remote_flightplan_python"
 
 [[test]]
 # Extra dependencies only to be used during test run

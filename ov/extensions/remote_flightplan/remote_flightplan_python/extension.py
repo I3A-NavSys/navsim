@@ -26,6 +26,11 @@ import base64   # Parsing to string
 
 import omni.kit.app
 
+from uspace.flightplan.Waypoint   import Waypoint
+from uspace.flightplan.FlightPlan import FlightPlan
+
+from omni.isaac.core import SimulationContext
+
 class NavsimOperatorCmdExtension(omni.ext.IExt):
     def on_startup(self, ext_id):
         # print("[REMOTE COMMAND ext] startup")
@@ -44,31 +49,6 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
 
             with ui.VStack(spacing=10):
                 ui.Spacer(height=10)
-
-                def on_click():
-                    # print("[REMOTE COMMAND ext] SEND button clicked")
-
-                    # Get the selected drone
-                    try:
-                        drone = self.manipulable_prims[self.drone_selector_dropdown.get_selection_index()]
-                    except:
-                        print("[REMOTE COMMAND ext] No drone selected")
-                        return
-                    
-                    # Create the event to send commands to the UAV
-                    self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(drone.GetPath()))
-                           
-                    # Set command data structure
-                    command = Command(
-                                    on = rotors_CB.checked, 
-                                    velX = velX_FF.model.get_value_as_float(), 
-                                    velY = velY_FF.model.get_value_as_float(), 
-                                    velZ = velZ_FF.model.get_value_as_float(),
-                                    rotZ = rotZ_FF.model.get_value_as_float(),
-                                    duration = duration_FF.model.get_value_as_float())
-
-                    serialized_command = base64.b64encode(pickle.dumps(command)).decode('utf-8')
-                    self.event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_RemoteCommand", "command": serialized_command})
 
 
                 # UAV selector dropdown
@@ -111,65 +91,17 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                         duration_FF = ui.FloatField(tooltip="time executing this command")
                         duration_FF.model.set_value(1.0)
                         duration_FF.precision = 2
-
-                with ui.HStack(height=20, spacing=10):
-
-                    with ui.HStack():
-                        ui.Button(
-                            "velX", enable=False,
-                            width=30,
-                            style={
-                                "background_color":cl.red, 
-                                "color":cl.white, 
-                                "margin": 0})
-                        velX_FF = ui.FloatField(tooltip="velX parameter")
-                        velX_FF.precision = 2
-
-
-                    with ui.HStack():
-                        ui.Button(
-                            "velY", enable=False,
-                            width=30,
-                            style={
-                                "background_color":cl.green, 
-                                "color":cl.white, 
-                                "margin": 0})
-                        velY_FF = ui.FloatField(tooltip="velY parameter")
-                        velY_FF.precision = 2
-
-                    with ui.HStack():
-                        ui.Button(
-                            "velZ", enable=False,
-                            width=30,
-                            style={
-                                "background_color":cl.blue, 
-                                "color":cl.white, 
-                                "margin": 0})
-                        velZ_FF = ui.FloatField(tooltip="velZ parameter")
-                        velZ_FF.precision = 2
-
-                    with ui.HStack():
-                        ui.Button(
-                            "rotZ", enable=False,
-                            width=20,
-                            style={
-                                "background_color":cl.orange, 
-                                "color":cl.white, 
-                                "margin": 0})
-                        rotZ_FF = ui.FloatField(tooltip="rotZ parameter")
-                        rotZ_FF.precision = 2
-
-                with ui.HStack(height=50):
-                    #send button
-                    ui.Button(
-                        "SEND", 
-                        clicked_fn = on_click)
                     
                 with ui.HStack(height=50):
                     # fp button
                     ui.Button(
-                        "FP",
-                        clicked_fn = self.flightPlan
+                        "TUTO4",
+                        clicked_fn = self.tuto4
+                    )
+
+                    ui.Button(
+                        "FP2",
+                        clicked_fn = self.fp2
                     )
 
 
@@ -222,11 +154,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
 
 
 
-    def flightPlan(self):
-        from uspace.flightplan.Waypoint   import Waypoint
-        from uspace.flightplan.FlightPlan import FlightPlan
-
-
+    def tuto4(self):
         # Crear waypoints
         wp1L = Waypoint(label="wp1L", pos=[-190, -119, 48.1])
         wp1P = Waypoint(label="wp1P", pos=[-190, -119, 48.1])
@@ -254,15 +182,63 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
         wp6P.t = self.fp.FinishTime() + 5
         self.fp.SetWaypoint(wp6P)
 
-        self.fp.SetTimeFromVel("wp1", 1)
-        self.fp.SetTimeFromVel("wp2", 3)
-        self.fp.SetTimeFromVel("wp3", 3)
-        self.fp.SetTimeFromVel("wp4", 3)
-        self.fp.SetTimeFromVel("wp5", 3)
-        self.fp.SetTimeFromVel("wp6", 3)
-        self.fp.SetTimeFromVel("wp6L", 1)
+        self.fp.SetTimeFromVel("wp1", 2)
+        self.fp.SetTimeFromVel("wp2", 8)
+        self.fp.SetTimeFromVel("wp3", 8)
+        self.fp.SetTimeFromVel("wp4", 8)
+        self.fp.SetTimeFromVel("wp5", 8)
+        self.fp.SetTimeFromVel("wp6", 8)
+        self.fp.SetTimeFromVel("wp6L", 2)
 
         self.fp.SetV0000()
+
+        try:
+            drone = self.manipulable_prims[self.drone_selector_dropdown.get_selection_index()]
+        except:
+            print("[REMOTE COMMAND ext] No drone selected")
+            return
+
+        self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(drone.GetPath()))
+
+        serialized_fp = base64.b64encode(pickle.dumps(self.fp)).decode('utf-8')
+        self.event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_FlightPlan", "fp": serialized_fp})
+
+
+    def fp2(self):
+        wpI = Waypoint(label='WPI', t=0,  pos=[0.0, 0.0, 1.0])
+        wpIP = Waypoint(label='WPIP', t=5,  pos=[0.0, 0.0, 1.0])
+        wp1 = Waypoint(label='WP1', t=15,  pos=[0.0, 10.0, 1.0])
+        wp2 = Waypoint(label='WP2', t=25,  pos=[0.0, 20.0, 1.0])
+        wp2 = Waypoint(label='WP2', t=25,  pos=[-10.0, 10.0, 1.0])
+        wp3 = Waypoint(label='WP3', t=35,  pos=[-10.0, 0.0, 1.0])
+        wp4 = Waypoint(label='WP4', t=45,  pos=[.0, -10.0, 1.0])
+        wp5 = Waypoint(label='WP5', t=55,  pos=[10.0, 10.0, 1.0])
+        wp6 = Waypoint(label='WP6', t=65,  pos=[10.0, 0.0, 1.0])
+        wp7 = Waypoint(label='WP7', t=75,  pos=[10.0, -10.0, 1.0])
+        wpF = Waypoint(label='WPF', t=85,  pos=[-10.0, -10.0, 1.0])
+        wpFP = Waypoint(label='WPP', t=90,  pos=[-10.0, -10.0, 1.0])
+
+        # Crear plan de vuelo
+        self.fp = FlightPlan([wpI, wpIP, wp1, wp2, wp3, wp4, wp5, wp6, wp7, wpF, wpFP])
+        self.fp.radius = 2
+
+        self.fp.SetTimeFromVel("WP1", 2)
+        self.fp.SetTimeFromVel("WP2", 4)
+        self.fp.SetTimeFromVel("WP3", 4)
+        self.fp.SetTimeFromVel("WP4", 4)
+        self.fp.SetTimeFromVel("WP5", 4)
+        self.fp.SetTimeFromVel("WP6", 4)
+        self.fp.SetTimeFromVel("WP7", 4)
+        self.fp.SetTimeFromVel("WPF", 2)
+        
+        self.fp.SetV0000()
+
+        # It seems it does not work
+        simulation_context = SimulationContext()
+        current_time = simulation_context.current_time
+
+        print(current_time)
+        self.fp.RescheduleAt(current_time + 5)
 
         try:
             drone = self.manipulable_prims[self.drone_selector_dropdown.get_selection_index()]
