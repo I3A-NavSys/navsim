@@ -7,9 +7,6 @@ project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../
 if project_root_path not in sys.path:
     sys.path.append(project_root_path)
 
-for path in sys.path:
-    print(path)
-
 import omni.ext
 import omni.ui as ui
 from omni.ui import color as cl
