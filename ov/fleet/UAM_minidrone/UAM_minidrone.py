@@ -9,19 +9,15 @@ import carb.events
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-import sys, os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from uspace.flightplan.Waypoint   import Waypoint
 from uspace.flightplan.FlightPlan import FlightPlan
-
 from uspace.flightplan.command import Command
 import pickle   # Serialization
 import base64   # Parsing to string
+import matplotlib.pyplot as plt
 
 
 class UAM_minidrone(BehaviorScript):
-
-
     def on_init(self):
         print(f"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
         print(f"INIT    {self.prim_path}")
@@ -80,6 +76,22 @@ class UAM_minidrone(BehaviorScript):
         # AutoPilot navigation command
         self.command = Command()
         self.cmd_exp_time = 0
+
+        # Tracking
+        self.show_tracking = True
+        self.tracking_figure_builded = False
+        self.refresh_rate = 1
+        self.last_time_track = 0
+
+        self.time_track = []
+
+        self.xPos_track = []
+        self.yPos_track = []
+        self.zPos_track = []
+        
+        self.xVel_track = []
+        self.yVel_track = []
+        self.zVel_track = []
 
         ########################################################################
         ## quadcopter parameters
@@ -194,19 +206,11 @@ class UAM_minidrone(BehaviorScript):
         # print(f"\t {self.current_time} \t {self.delta_time}")
 
         # Asumimos un comando ---------------------------------------TEMPORAL
-        self.command.Hover()
-        self.command.Print()
 
-
-        
-
-        # Crear waypoints
-        waypoint1 = Waypoint(label='WP1', t= 5,  pos=[0,0,1], vel=[1,0,0])
-        waypoint2 = Waypoint(label='WP2', t=10,  pos=[5,0,0], vel=[0,0,0])
-        # Crear plan de vuelo
-        self.fp = FlightPlan([waypoint1, waypoint2])
-        self.fp.SetJLS()
-        self.fp.Print()
+        # Tracking
+        self.show_tracking = False
+        self.refresh_rate = 1
+        self.last_time_track = 0
 
 
         # Update the drone status
@@ -214,13 +218,11 @@ class UAM_minidrone(BehaviorScript):
         self.navigation()
         self.servo_control()
         self.platform_dynamics()
-        pass
-
+        self.telemetry()
 
     
     def on_pause(self):
         print(f"PAUSE   {self.prim_path}")
-
 
 
     def on_stop(self):
@@ -237,7 +239,20 @@ class UAM_minidrone(BehaviorScript):
         self.forceNE_atr.Set(Gf.Vec3f(0,0,0))
         self.forceNW_atr.Set(Gf.Vec3f(0,0,0))
         self.forceSE_atr.Set(Gf.Vec3f(0,0,0))
-        self.forceSW_atr.Set(Gf.Vec3f(0,0,0))        
+        self.forceSW_atr.Set(Gf.Vec3f(0,0,0))
+
+        self.fp = None
+
+        self.tracking_figure_builded = False
+        self.time_track = []
+        
+        self.xPos_track = []
+        self.yPos_track = []
+        self.zPos_track = []
+        
+        self.xVel_track = []
+        self.yVel_track = []
+        self.zVel_track = []
 
 
 
@@ -253,8 +268,7 @@ class UAM_minidrone(BehaviorScript):
         self.navigation()
         self.servo_control()
         self.platform_dynamics()
-        pass
-
+        self.telemetry()
 
     
     # def _on_physics_step(self, dt):
@@ -283,23 +297,16 @@ class UAM_minidrone(BehaviorScript):
                 method()
             
 
-
     def eventFn_RemoteCommand(self, command):
         self.command : Command = pickle.loads(base64.b64decode(command))
         if self.command.duration is not None:
             self.cmd_exp_time = self.current_time + self.command.duration
         
 
-
     def eventFn_FlightPlan(self, fp):
-        print(fp)
-        pass
-
-
-
-########################################################################
-
-
+        self.fp :FlightPlan = pickle.loads(base64.b64decode(fp))
+        print(f"{self.prim_path}: flightplan received")
+            
 
 
     def rotors_off(self):
@@ -316,23 +323,22 @@ class UAM_minidrone(BehaviorScript):
         self.E = np.zeros((4, 1))
 
 
-
     def IMU(self):
 
         self.pos  = self.pos_atr.Get()
         # print(f"\nposition:  {self.pos}")
 
-        self.ori  = self.ori_atr.Get()
+        ori  = self.ori_atr.Get()
         # print(f"\norientation:  {self.ori}")
      
-        W = self.ori.real
-        X = self.ori.imaginary[0]
-        Y = self.ori.imaginary[1]
-        Z = self.ori.imaginary[2]
+        W = ori.real
+        X = ori.imaginary[0]
+        Y = ori.imaginary[1]
+        Z = ori.imaginary[2]
         # print(f"Orientation:  {W:.4f} {X:.4f} {Y:.4f} {Z:.4f}")
 
-        rot = Rotation.from_quat([X,Y,Z,W])     
-        self.roll, self.pitch, self.yaw = rot.as_euler('xyz', degrees=False)
+        self.rot = Rotation.from_quat([X,Y,Z,W])     
+        self.roll, self.pitch, self.yaw = self.rot.as_euler('xyz', degrees=False)
         # print(f"Euler RPY (rad):  {self.roll:.2f} {self.pitch:.2f} {self.yaw:.2f}")
         # roll, pitch, yaw = rot.as_euler('xyz', degrees=True)
         # print(f"Euler RPY (deg):  {roll:.0f} {pitch:.0f} {yaw:.0f}")
@@ -344,25 +350,159 @@ class UAM_minidrone(BehaviorScript):
         # print(f"angular velocity (local):  {self.angular_vel}")
 
 
+    def telemetry(self):
+        # Update every self.refresh_rate seconds
+        if self.current_time - self.last_time_track >= self.refresh_rate:
+            # Update last_time_track
+            self.last_time_track = self.current_time
+
+            # Get tracking information
+            self.time_track.append(self.current_time)
+            
+            self.xPos_track.append(self.pos[0])
+            self.yPos_track.append(self.pos[1])
+            self.zPos_track.append(self.pos[2])
+
+            self.xVel_track.append(self.linear_vel[0])
+            self.yVel_track.append(self.linear_vel[1])
+            self.zVel_track.append(self.linear_vel[2])
+
+            # Check if we want to show tracking while simulating
+            if self.show_tracking:
+                # Check if we already built the figure
+                if not self.tracking_figure_builded:
+                    # Build the ploting figure just once
+                    self.tracking_figure_builded = True
+
+                    # Create the matplotlib figure and the corresponding plot
+                    track_fig = plt.figure("Tracking Plot")
+                    self.track_plot = track_fig.add_subplot(projection="3d")
+
+                    # Indicate the axes name
+                    self.track_plot.set_xlabel("x [m]")
+                    self.track_plot.set_ylabel("y [m]")
+                    self.track_plot.set_zlabel("z [m]")
+
+                    # Write a title for the plot
+                    self.track_plot.set_title("Position 3D")
+
+                    # Stablish the initial limits
+                    # self.track_plot.set_xlim3d(-15, 15)
+                    # self.track_plot.set_ylim3d(-15, 15)
+                    # self.track_plot.set_zlim3d(-15, 15)
+
+                    # Plot initial position
+                    self.line, = self.track_plot.plot(self.xPos_track, self.yPos_track, self.zPos_track, linestyle="dashed", linewidth=1, color="black")
+
+                self.line.set_data(self.xPos_track, self.yPos_track)
+                self.line.set_3d_properties(self.zPos_track)
+                self.track_plot.scatter(self.xPos_track[-1], self.yPos_track[-1], self.zPos_track[-1], color="black", s=10)
+
+                # Update plot limits
+                track_plot_lims = self.get_matplotlib_plot_limits(self.track_plot)
+                new_limits = self.update_track_plot_lims(track_plot_lims, self.pos)
+
+                self.track_plot.set_xlim3d(*new_limits[0])
+                self.track_plot.set_ylim3d(*new_limits[1])
+                self.track_plot.set_zlim3d(*new_limits[2])
+
+                plt.pause(0.01)
+
+            
+    def get_matplotlib_plot_limits(self, plot):
+        try:
+            z_lim = plot.get_zlim3d()
+            x_lim = plot.get_xlim3d()
+            y_lim = plot.get_ylim3d()
+
+            return [x_lim, y_lim, z_lim]
+        except:
+            x_lim = plot.get_xlim3d()
+            y_lim = plot.get_ylim3d()
+
+            return (x_lim, y_lim)
+        
+
+    def update_track_plot_lims(self, track_plot_lims, new_pos):
+        if new_pos[0] < track_plot_lims[0][0]:
+            track_plot_lims[0] = [new_pos[0], track_plot_lims[0][1]]
+
+        if new_pos[0] > track_plot_lims[0][1]:
+            track_plot_lims[0] = [track_plot_lims[0][0], new_pos[0]]
+
+        if new_pos[1] < track_plot_lims[1][0]:
+            track_plot_lims[1] = [new_pos[1], track_plot_lims[1][1]]
+
+        if new_pos[1] > track_plot_lims[1][1]:
+            track_plot_lims[1] = [track_plot_lims[1][0], new_pos[1]]
+
+        if new_pos[2] < track_plot_lims[2][0]:
+            track_plot_lims[2] = [new_pos[2], track_plot_lims[2][0]]
+
+        if new_pos[2] > track_plot_lims[2][1]:
+            track_plot_lims[2] = [track_plot_lims[2][0], new_pos[2]]
+
+        return track_plot_lims
+
 
     def navigation(self):
         # This function converts a flight plan position at certain time
-        # to a navigation command (desired velocity vector and rotation)        
+        # to a navigation command (desired velocity vector and rotation)
         if self.fp is None:
             return
 
         # Check FP vigency
         WP = self.fp.GetIndexFromTime(self.current_time)
+        numWPs = len(self.fp.waypoints)
+
         if self.currentWP is None and WP != 0:
             # This flight plan is obsolete
             print(f"{self.prim_path} discarding FP due to it is obsolete")
             self.fp = None
-            self.currentWP = None
             return
         
+        # Current UAV status (already computed)
 
+        
+        # Navigation status has changed?
+        if self.currentWP != WP:
+            if WP == 0:
+                initPos = self.fp.waypoints[0].pos.copy()
+                initPos -= self.pos
 
-        pass
+                if np.linalg.norm(initPos) < self.fp.radius:
+                    # Drone waiting to start the flight
+                    print(f"{self.prim_path} waiting to start a FP")
+
+                else:
+                    # Drone in an incorrect starting position
+                    print(f"{self.prim_path} discarding FP due to an incorrect starting position")
+                    self.fp = None
+                    return
+
+            elif WP < numWPs:
+                print(f"{self.prim_path} flying to {self.fp.waypoints[WP].label}")
+
+            else:
+                print(f"{self.prim_path} has completed its flight plan")
+
+                # Uncomment this to show the corresponding plots
+                # plt.close(plt.gcf())
+                # self.fp.PositionFigure("FP1: POSITION", 0.01)
+                # self.fp.VelocityFigure("FP1: VELOCITY", 0.01)
+                
+                # self.fp.AddUAVTrackPos("FP1: POSITION", self.xPos_track, self.yPos_track, self.zPos_track, self.time_track)
+                # self.fp.AddUAVTrackVel("FP1: VELOCITY", np.array(self.xVel_track), np.array(self.yVel_track), np.array(self.zVel_track), self.time_track)
+
+                self.fp = None
+                return
+
+        self.currentWP = WP
+        
+        self.command = self.fp.Navigate(self.current_time, self.pos, self.linear_vel, self.rot, 2)
+        self.cmd_exp_time = self.current_time + self.command.duration
+
+            
 
 
     def servo_control(self):
@@ -380,7 +520,6 @@ class UAM_minidrone(BehaviorScript):
 
         self.primRotStatic.SetActive(False)
         self.primRotSpinning.SetActive(True)
-
 
         # Assign the model reference to be followed
         self.r[0, 0] = self.command.velX       # bXdot
@@ -446,15 +585,11 @@ class UAM_minidrone(BehaviorScript):
         self.w_rotor_SE = self.u[2, 0]
         self.w_rotor_SW = self.u[3, 0]
 
-        pass
-
-
 
     def platform_dynamics(self):
         # Esta función traduce 
         # la velocidad de rotación de los 4 motores
         # a fuerzas y torques del sólido libre
-        
         # Con esto simulamos rotación de sustentación
         # self.w_rotor_NE = self.w_hov
         # self.w_rotor_NW = self.w_rotor_NE
@@ -467,7 +602,6 @@ class UAM_minidrone(BehaviorScript):
         # self.w_rotor_NW = 0
         # self.w_rotor_SE = 0
         # self.w_rotor_SW = self.w_rotor_NE
-
         # Apply thrust force
         FT_NE = Gf.Vec3f(0, 0, self.kFT * self.w_rotor_NE**2)
         FT_NW = Gf.Vec3f(0, 0, self.kFT * self.w_rotor_NW**2)
@@ -505,5 +639,3 @@ class UAM_minidrone(BehaviorScript):
         # Apply the moments to the drone
         self.torque_atr.Set(MDR + MD)
         # print(f"Torque Z => \t {MDR[2]:.4f} + {MD[2]:.4f} = {MDR[2] + MD[2]:.4f}")
-
-
