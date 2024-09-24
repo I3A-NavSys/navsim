@@ -20,6 +20,8 @@ class FlightPlan:
         self.id: int = 0
         self.priority: int = 0
         self.radius: float = 1
+        self.maxVarLinVel = 5        # maximum variation in linear  velocity   [  m/s]
+        self.maxVarAngVel = 1        # maximum variation in angular velocity   [rad/s]
         self.waypoints: List[Waypoint] = []
         self.currentWP = None
 
@@ -219,7 +221,7 @@ class FlightPlan:
 
         wp2B = Waypoint()
         wp2B.label = wp2.label + "_B"
-        wp2B.pos = wp2.pos - wp2.vel * step
+        wp2B.pos = wp2.pos + wp2.vel * step
         wp2B.vel = wp2.vel
         wp2BTinit = wp2.t + step
 
@@ -268,8 +270,8 @@ class FlightPlan:
         angle = wp1.AngleWith(wp2)
         tc = angle / angVel         # Time spent in the curve
 
-        v1 = wp1.vel / np.linalg.norm(wp1.vel)
-        v2 = wp2.vel / np.linalg.norm(wp2.vel)
+        v1 = np.linalg.norm(wp1.vel)
+        v2 = np.linalg.norm(wp2.vel)
         ts = np.abs(v2-v1) / linAcel
 
         interval = np.max([tc, ts])
@@ -278,38 +280,38 @@ class FlightPlan:
         
 
     def ExpandWaypoint(self, label, interval):
-        pass
         # Decompone un waypoint en dos, separados un intervalo dado
 
-        # i : int = self.GetIndexFromLabel(label)
-        # if i <= 0 or len(self.waypoints) <= i:
-        #     return
+        i : int = self.GetIndexFromLabel(label)
+        if i <= 0 or len(self.waypoints) <= i:
+            return
       
-        # wp1 = self.waypoints[i-1]
-        # wp2 = self.waypoints[i]
-        # wp3 = self.waypoints[i+1]
+        wp1 = self.waypoints[i-1]
+        wp2 = self.waypoints[i]
+        wp3 = self.waypoints[i+1]
         
-        # angle = wp1.AngleWith(wp2)
+        step = interval / 2
+        if (step >= wp2.t - wp1.t) or (step >= wp3.t - wp2.t):
+            # There is not time enough to include the curve
+            return
 
-        # v1 = wp1.vel / np.linalg.norm(wp1.vel)
-        # v2 = wp2.vel / np.linalg.norm(wp2.vel)
-        # v = np.mean([v1, v2])
+        wp2A = Waypoint()
+        wp2A.label = wp2.label + "_A"
+        wp2A.pos = wp2.pos - wp1.vel * step
+        wp2A.vel = wp1.vel
+        wp2A.t = wp2.t - step
 
-        # r = v / angVel              # Radius of the curve
-        # d = r * np.tan(angle/2)     # Distance to the new waypoints
-        # step = d / v                # Time to the decomposed waypoints
+        wp2B = Waypoint()
+        wp2B.label = wp2.label + "_B"
+        wp2B.pos = wp2.pos + wp2.vel * step
+        wp2B.vel = wp2.vel
+        wp2B.t= wp2.t + step
 
-        # wp2A = Waypoint()
-        # wp2A.label = wp2.label + "_A"
-        # wp2A.pos = wp2.pos - wp1.vel * step
-        # wp2A.vel = wp1.vel
-        # wp2A.t = wp2.t - step
+        wp2A.SetJLS(wp2B)
 
-        # wp2B = Waypoint()
-        # wp2B.label = wp2.label + "_B"
-        # wp2B.pos = wp2.pos - wp2.vel * step
-        # wp2B.vel = wp2.vel
-        # wp2BTinit = wp2.t + step
+        self.RemoveWaypointAtTime(wp2.t)
+        self.SetWaypoint(wp2A)
+        self.SetWaypoint(wp2B)
 
 
 #-------------------------------------------------------------------
@@ -371,47 +373,33 @@ class FlightPlan:
 # UAV NAVIGATION
 
 
-    def GetCommand(self, currentTime, UAVpos, UAVvel, UAVrot : Rotation, tToSolve):
+    def GetCommand(self, currentTime, UAVpos, UAVvel, UAVrot : Rotation, tToSolve) -> Command:
+        # UAVvel = current UAV vel in global system
         # This function converts a flight plan position at certain time
         # to a navigation command (desired velocity vector and rotation)        
-        # if self.fp is None:
-        #     return
 
-        # No sé donde ponerlo
-        maxVarLinVel = 5
-        maxVarAngVel = 1      
-        
+        _, _, UAVyaw = UAVrot.as_euler('xyz', degrees=False)
+
+        # EXPECTED UAV POSE
+        expected = self.StatusAtTime(currentTime)
 
 
-        # COMPUTING DESIRED POSITION / VELOCITY
-        desPos, desVel = self.PosVelAtTime(currentTime)
-        # print("currentPos:", UAVpos)
-        # print("desPos:", desPos)
-        # print("desVel:", desVel)
-
-        status = self.StatusAtTime(currentTime)
-        # print("desPos:", status.pos)
-        # print("desVel:", status.vel)
-
-
-
-        # COMPUTING CORRECTION VELOCITY (to achieve dtPos in 'targetStep' seconds)
-        crVel = (desPos - UAVpos) / tToSolve
-        # print("crVel:", crVel)
+        # COMPUTING CORRECTION VELOCITY (to achieve status.pos in 'tToSolve' seconds)
+        crVel = (expected.pos - UAVpos) / tToSolve
 
         # COMPUTING COMMANDED VELOCITY
-        cmdVel = desVel + crVel
+        cmdVel = expected.vel + crVel
         # print("cmdVel1:", cmdVel)
 
         # SMOOTHING COMMANDED VELOCITY
         varVel = cmdVel - UAVvel
         varVelMagnitude = np.linalg.norm(varVel)
-        if varVelMagnitude > maxVarLinVel:
+        if varVelMagnitude > self.maxVarLinVel:
             varVel /= varVelMagnitude # Normalize
-            varVel *= maxVarLinVel
+            varVel *= self.maxVarLinVel
         # print("varVel:", varVel)
 
-        # cmdVel = currentStatus.vel + varVel
+        cmdVel = UAVvel + varVel
         # print("cmdVel2:", cmdVel)
 
         # COMPUTING DRONE RELATIVE LINEAR VELOCITY
@@ -419,17 +407,13 @@ class FlightPlan:
         # print("cmdRelVel:", cmdRelVel)
 
         # COMPUTING TARGET ERROR YAW
-        targetDir = cmdVel.copy()
+        targetDir = expected.vel.copy()
         targetDir[2] = 0
 
-        _, _, UAVyaw = UAVrot.as_euler('xyz', degrees=False)
-
-        # TODO
-        # Podemos mirar el wp siguiente para poder girar mientras subimos
-        if np.linalg.norm(targetDir) == 0:
-            targetYaw = UAVyaw
-        else:
+        if np.linalg.norm(targetDir) >= 1:
             targetYaw = np.arctan2(targetDir[1], targetDir[0])
+        else:
+            targetYaw = UAVyaw
 
         errorYaw = targetYaw - UAVyaw
         while errorYaw < -np.pi:
@@ -441,11 +425,11 @@ class FlightPlan:
         # COMPUTING TARGET ANGULAR VELOCITY
         currentWel = errorYaw / tToSolve
         
-        if currentWel < -maxVarAngVel:
-            currentWel = -maxVarAngVel
+        if currentWel < -self.maxVarAngVel:
+            currentWel = -self.maxVarAngVel
         
-        if maxVarAngVel < currentWel:
-            currentWel = maxVarAngVel
+        if self.maxVarAngVel < currentWel:
+            currentWel = self.maxVarAngVel
 
         # CREATING COMMANDED RELATIVE VELOCITY VECTOR
         cmd = Command(
@@ -458,66 +442,6 @@ class FlightPlan:
         )
 
         return cmd
-
-
-    def PosVelAtTime(self, t2):
-        r2 = None
-        v2 = None
-
-        numWps = len(self.waypoints)
-        i = self.GetIndexFromTime(t2)
-
-        if i == 0:
-            # The drone is waiting to start the FP
-            r2 = self.waypoints[0].pos
-            v2 = np.array([0.0, 0.0, 0.0])
-        
-        elif i == numWps:
-            # The drone has completed the FP
-            r2 = self.waypoints[i-1]
-            v2 = np.array([0.0, 0.0, 0.0])
-        
-        else:
-            # The drone is executing the FP
-            wp1 = self.waypoints[i-1]
-            t1 = wp1.t
-            t = t2-t1
-
-            r1 = wp1.pos
-            v1 = wp1.vel
-            a1 = wp1.acel
-            j1 = wp1.jerk
-            s1 = wp1.snap
-            c1 = wp1.crkl
-
-            r2 = r1 + v1*t + a1*pow(t,2)/2 + j1*pow(t,3)/6 + s1*pow(t,4)/24 + c1*pow(t,5)/120
-            v2 = v1 + a1*t + j1*pow(t,2)/2 + s1*pow(t,3)/6 + c1*pow(t,4)/24
-
-        return r2, v2
-    
-
-    def YawAtTime(self, t, currentYaw):
-        i = self.GetIndexFromTime(t)
-        numWPs = len(self.waypoints)
-        if i == numWPs:
-            i -= 1
-
-        wp1 = self.waypoints[i-1]
-        preWPpos = wp1.pos
-
-        wp2 = self.waypoints[i]
-        currentWPpos = wp2.pos
-
-        targetDir = currentWPpos - preWPpos
-        targetDir[2] = 0
-
-        targetYaw = None
-        if np.linalg.norm(targetDir) < 1:
-            targetYaw = currentYaw
-        else:
-            targetYaw = np.arctan2(targetDir[1], targetDir[0])
-
-        return targetYaw
     
 
 
