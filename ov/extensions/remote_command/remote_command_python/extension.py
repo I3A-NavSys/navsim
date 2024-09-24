@@ -32,6 +32,10 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
     def on_startup(self, ext_id):
         # print("[REMOTE COMMAND ext] startup")
 
+        import omni.timeline
+        self.timeline = omni.timeline.get_timeline_interface()
+
+
         # List of manipulable prims (usually drones)
         self.manipulable_prims = []
 
@@ -45,30 +49,8 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
             with ui.VStack(spacing=10):
                 ui.Spacer(height=10)
 
-                def on_click():
-                    # print("[REMOTE COMMAND ext] SEND button clicked")
+                
 
-                    # Get the selected drone
-                    try:
-                        drone = self.manipulable_prims[self.drone_selector_dropdown.get_selection_index()]
-                    except:
-                        print("[REMOTE COMMAND ext] No drone selected")
-                        return
-                    
-                    # Create the event to send commands to the UAV
-                    self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(drone.GetPath()))
-                           
-                    # Set command data structure
-                    command = Command(
-                                    on = rotors_CB.checked, 
-                                    velX = velX_FF.model.get_value_as_float(), 
-                                    velY = velY_FF.model.get_value_as_float(), 
-                                    velZ = velZ_FF.model.get_value_as_float(),
-                                    rotZ = rotZ_FF.model.get_value_as_float(),
-                                    duration = duration_FF.model.get_value_as_float())
-
-                    serialized_command = base64.b64encode(pickle.dumps(command)).decode('utf-8')
-                    self.event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_RemoteCommand", "command": serialized_command})
 
 
                 # UAV selector dropdown
@@ -97,8 +79,8 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                                 "background_color":cl.grey, 
                                 "color":cl.white, 
                                 "margin": 0})
-                        rotors_CB = ui.CheckBox(tooltip="Rotors activation")
-                        rotors_CB.model.set_value(True)
+                        self.rotors_CB = ui.CheckBox(tooltip="Rotors activation")
+                        self.rotors_CB.model.set_value(True)
 
                     with ui.HStack():
                         ui.Button(
@@ -108,9 +90,9 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                                 "background_color":cl.grey, 
                                 "color":cl.white, 
                                 "margin": 0})
-                        duration_FF = ui.FloatField(tooltip="time executing this command")
-                        duration_FF.model.set_value(1.0)
-                        duration_FF.precision = 2
+                        self.duration_FF = ui.FloatField(tooltip="time executing this command")
+                        self.duration_FF.model.set_value(1.0)
+                        self.duration_FF.precision = 2
 
                 with ui.HStack(height=20, spacing=10):
 
@@ -122,8 +104,8 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                                 "background_color":cl.red, 
                                 "color":cl.white, 
                                 "margin": 0})
-                        velX_FF = ui.FloatField(tooltip="velX parameter")
-                        velX_FF.precision = 2
+                        self.velX_FF = ui.FloatField(tooltip="velX parameter")
+                        self.velX_FF.precision = 2
 
 
                     with ui.HStack():
@@ -134,8 +116,8 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                                 "background_color":cl.green, 
                                 "color":cl.white, 
                                 "margin": 0})
-                        velY_FF = ui.FloatField(tooltip="velY parameter")
-                        velY_FF.precision = 2
+                        self.velY_FF = ui.FloatField(tooltip="velY parameter")
+                        self.velY_FF.precision = 2
 
                     with ui.HStack():
                         ui.Button(
@@ -145,8 +127,8 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                                 "background_color":cl.blue, 
                                 "color":cl.white, 
                                 "margin": 0})
-                        velZ_FF = ui.FloatField(tooltip="velZ parameter")
-                        velZ_FF.precision = 2
+                        self.velZ_FF = ui.FloatField(tooltip="velZ parameter")
+                        self.velZ_FF.precision = 2
 
                     with ui.HStack():
                         ui.Button(
@@ -156,14 +138,14 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                                 "background_color":cl.orange, 
                                 "color":cl.white, 
                                 "margin": 0})
-                        rotZ_FF = ui.FloatField(tooltip="rotZ parameter")
-                        rotZ_FF.precision = 2
+                        self.rotZ_FF = ui.FloatField(tooltip="rotZ parameter")
+                        self.rotZ_FF.precision = 2
 
                 with ui.HStack(height=50):
                     #send button
                     ui.Button(
                         "SEND", 
-                        clicked_fn = on_click)
+                        clicked_fn = self.on_click)
 
 
 
@@ -204,6 +186,41 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
     def refresh_drone_selector(self):
         self.drone_selector_dropdown.enabled = True
         self.drone_selector_dropdown.repopulate()
+
+
+
+
+    def on_click(self):
+        # print("[REMOTE COMMAND ext] SEND button clicked")
+
+        # Get the selected drone
+        try:
+            drone = self.manipulable_prims[self.drone_selector_dropdown.get_selection_index()]
+        except:
+            print("[REMOTE COMMAND ext] No drone selected")
+            return
+        
+        # Check if the simulation is running
+        if not self.timeline.is_playing():
+            print(f"[REMOTE COMMAND ext] Simulation is not running!")
+            return
+        simulation_time = self.timeline.get_current_time()
+        print(f"[REMOTE COMMAND ext] Command sent at simulation time: {simulation_time:.2f}")
+
+        # Create the event to send commands to the UAV
+        self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(drone.GetPath()))
+                
+        # Set command data structure
+        command = Command(
+                        on = self.rotors_CB.checked, 
+                        velX = self.velX_FF.model.get_value_as_float(), 
+                        velY = self.velY_FF.model.get_value_as_float(), 
+                        velZ = self.velZ_FF.model.get_value_as_float(),
+                        rotZ = self.rotZ_FF.model.get_value_as_float(),
+                        duration = self.duration_FF.model.get_value_as_float())
+
+        serialized_command = base64.b64encode(pickle.dumps(command)).decode('utf-8')
+        self.event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_RemoteCommand", "command": serialized_command})
 
 
 
