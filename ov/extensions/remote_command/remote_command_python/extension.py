@@ -32,8 +32,15 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
     def on_startup(self, ext_id):
         # print("[REMOTE COMMAND ext] startup")
 
-        import omni.timeline
+        # Getting the simulation current time
+        self.current_time = 0
+        self.physx_interface = omni.physx.get_physx_interface()
+        self.physics_timer_callback = self.physx_interface.subscribe_physics_step_events(self.physics_timer_callback_fn)
+
         self.timeline = omni.timeline.get_timeline_interface()
+        self.event_timer_callback = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
+            int(omni.timeline.TimelineEventType.STOP), self.timeline_timer_callback_fn
+        )
 
 
         # List of manipulable prims (usually drones)
@@ -147,6 +154,15 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                         "SEND", 
                         clicked_fn = self.on_click)
 
+
+
+    def physics_timer_callback_fn(self, step_size:int):
+        self.current_time += step_size
+
+
+
+    def timeline_timer_callback_fn(self, event):
+        self.current_time = 0
 
 
 

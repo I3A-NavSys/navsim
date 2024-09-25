@@ -17,7 +17,6 @@ from omni.isaac.ui.element_wrappers import *
 
 import carb.events
 
-from uspace.flightplan.command import Command
 import pickle   # Serialization
 import base64   # Parsing to string
 
@@ -26,12 +25,23 @@ import omni.kit.app
 from uspace.flightplan.Waypoint   import Waypoint
 from uspace.flightplan.FlightPlan import FlightPlan
 
-from omni.isaac.core import SimulationContext
+import omni.physx
+import omni.timeline
 
 class NavsimOperatorCmdExtension(omni.ext.IExt):
 
     def on_startup(self, ext_id):
         # print("[REMOTE COMMAND ext] startup")
+
+        # Getting the simulation current time
+        self.current_time = 0
+        self.physx_interface = omni.physx.get_physx_interface()
+        self.physics_timer_callback = self.physx_interface.subscribe_physics_step_events(self.physics_timer_callback_fn)
+
+        self.timeline = omni.timeline.get_timeline_interface()
+        self.event_timer_callback = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
+            int(omni.timeline.TimelineEventType.STOP), self.timeline_timer_callback_fn
+        )
 
         # List of manipulable prims (usually drones)
         self.manipulable_prims = []
@@ -87,8 +97,8 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                     )
 
                     ui.Button(
-                        "FP2",
-                        clicked_fn = self.fp2
+                        "3x3CUBES",
+                        clicked_fn = self.cubes3x3
                     )
 
                     ui.Button(
@@ -97,9 +107,12 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                     )
 
 
+
     def on_update(self, time, dt):
         print("[REMOTE COMMAND ext] update")
         pass
+
+
 
     def get_manipulable_prims(self, prim=None):
             # Needed list containing the names of the manipulable prims for the dropdown selector
@@ -146,7 +159,19 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
 
 
 
+    def physics_timer_callback_fn(self, step_size:int):
+        self.current_time += step_size
+
+
+
+    def timeline_timer_callback_fn(self, event):
+        self.current_time = 0
+
+
+
     def tuto4(self):
+        delay = self.delay_FF.model.get_value_as_float()
+
         # Crear waypoints
         wp1L = Waypoint(label="wp1L", pos=[-190, -119, 48.1])
         wp1P = Waypoint(label="wp1P", pos=[-190, -119, 48.1])
@@ -183,6 +208,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
         self.fp.SetTimeFromVel("wp6L", 2)
 
         self.fp.SetV0000()
+        self.fp.RescheduleAt(self.current_time + delay)
 
         try:
             drone = self.manipulable_prims[self.drone_selector_dropdown.get_selection_index()]
@@ -197,7 +223,9 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
 
 
 
-    def fp2(self):
+    def cubes3x3(self):
+        delay = self.delay_FF.model.get_value_as_float()
+
         wpI = Waypoint(label='WPI', t=0,  pos=[0.0, 0.0, 1.0])
         wpIP = Waypoint(label='WPIP', t=5,  pos=[0.0, 0.0, 1.0])
         wp1 = Waypoint(label='WP1', t=15,  pos=[0.0, 10.0, 1.0])
@@ -215,23 +243,19 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
         self.fp = FlightPlan([wpI, wpIP, wp1, wp2, wp3, wp4, wp5, wp6, wp7, wpF, wpFP])
         self.fp.radius = 2
 
-        self.fp.SetTimeFromVel("WP1", 2)
-        self.fp.SetTimeFromVel("WP2", 4)
-        self.fp.SetTimeFromVel("WP3", 4)
-        self.fp.SetTimeFromVel("WP4", 4)
-        self.fp.SetTimeFromVel("WP5", 4)
-        self.fp.SetTimeFromVel("WP6", 4)
-        self.fp.SetTimeFromVel("WP7", 4)
-        self.fp.SetTimeFromVel("WPF", 2)
+        self.fp.SetTimeFromVel("WP1", 1)
+        self.fp.SetTimeFromVel("WP2", 2)
+        self.fp.SetTimeFromVel("WP3", 2)
+        self.fp.SetTimeFromVel("WP4", 2)
+        self.fp.SetTimeFromVel("WP5", 2)
+        self.fp.SetTimeFromVel("WP6", 2)
+        self.fp.SetTimeFromVel("WP7", 2)
+        self.fp.SetTimeFromVel("WPF", 1)
         
         self.fp.SetV0000()
 
-        # It seems it does not work
-        simulation_context = SimulationContext()
-        current_time = simulation_context.current_time
-
-        print(current_time)
-        self.fp.RescheduleAt(current_time + 5)
+        print(self.current_time)
+        self.fp.RescheduleAt(self.current_time + delay)
 
         try:
             drone = self.manipulable_prims[self.drone_selector_dropdown.get_selection_index()]
@@ -256,23 +280,18 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
         
         print("[REMOTE COMMAND ext] Drone selected is: ", drone.GetPath())
 
-        # Tomamos tiempos
-        sim_context = SimulationContext.instance()
-        current_time = sim_context.current_time
-        print("[REMOTE COMMAND ext] Current time is: ", current_time)
 
         delay = self.delay_FF.model.get_value_as_float()
 
         # Creamos plan de vuelo
-        wp1 = Waypoint(t=0,  pos=[  0.0,  0.0,  1.0 ])
+        wp1 = Waypoint(t=10,  pos=[  0.0,  0.0,  1.0 ])
         wp2 = Waypoint(t=20,  pos=[  0.0,  0.0,  2.0 ])
-        # wp3 = Waypoint(t=12, pos=[ 10.0,  0.0,  2.0 ])
-        # wp4 = Waypoint(t=14, pos=[ 10.0,  0.0,  1.0 ])
-        self.fp = FlightPlan([wp1, wp2])
-        # self.fp = FlightPlan([wp1, wp2, wp3, wp4])
+        wp3 = Waypoint(t=30, pos=[ 10.0,  0.0,  2.0 ])
+        wp4 = Waypoint(t=40, pos=[ 10.0,  -10.0,  2.0 ])
+        self.fp = FlightPlan([wp1, wp2, wp3, wp4])
         self.fp.radius = 2
         self.fp.SetV0000()
-        self.fp.RescheduleAt(current_time + delay)
+        self.fp.RescheduleAt(self.current_time + delay)
 
         # Comunicamos plan de vuelo
         self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(drone.GetPath()))
