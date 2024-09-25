@@ -216,12 +216,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
             print("[REMOTE COMMAND ext] No drone selected")
             return
         
-        # Check if the simulation is running
-        if not self.timeline.is_playing():
-            print(f"[REMOTE COMMAND ext] Simulation is not running!")
-            return
-        simulation_time = self.timeline.get_current_time()
-        print(f"[REMOTE COMMAND ext] Command sent at simulation time: {simulation_time:.2f}")
+        print(f"[REMOTE COMMAND ext] Command sent at simulation time: {self.current_time:.2f}")
 
         # Create the event to send commands to the UAV
         self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(drone.GetPath()))
