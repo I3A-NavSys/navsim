@@ -115,7 +115,7 @@ class Waypoint:
 
 
 
-    def SetJLS(self,wp2):
+    def SetJSC(self,wp2):
         # Dados dos waypoints con 
         #   t1 pos1 vel1 acel1
         #   t2 pos2 vel2 acel2
@@ -157,7 +157,7 @@ class Waypoint:
 
 
 
-    def SetJL0_T(self,wp2):
+    def SetJS0_T(self,wp2):
 
         # Dados dos waypoints con 
         #   t1 pos1 vel1 acel1
@@ -166,41 +166,7 @@ class Waypoint:
         #   jerk1 snap1 crkl1=0
         #   t2
         # para ejecutar dicho movimiento
-
-
-        r1 = self.pos
-        v1 = self.vel
-        a1 = self.acel
-        r2 = wp2.pos
-        v2 = wp2.vel
-        a2 = wp2.acel
-
-        if np.linalg.norm(r2 - r1) == 0:
-            self.Stop()
-            return
-        
-        t12 = self.TimeTo(wp2)
-
-        A = np.array([
-            [t12**3 / 6,   t12**4 / 24,   t12**5 / 120],
-            [t12**2 / 2,   t12**3 / 6,    t12**4 / 24],
-            [t12,          t12**2 / 2,    t12**3 / 6]
-        ])
-
-        B = np.array([
-            r2 - r1 - v1 * t12,
-            v2 - v1,
-            a2 - a1
-        ])
-
-        try:
-            X = np.linalg.solve(A,B)
-        except np.linalg.LinAlgError:
-            raise ValueError('Error. Interpolation not possible')
-
-        self.jerk = X[0]
-        self.snap = X[1]
-        self.crkl = X[2]
+        pass
 
 
 
@@ -215,24 +181,24 @@ class Waypoint:
         v1 = self.vel
         a1 = self.acel
         j1 = self.jerk
-        l1 = self.snap
-        s1 = self.crkl
+        s1 = self.snap
+        c1 = self.crkl
 
         t12 = self.TimeTo(wp2)
         
-        r2 = r1 + v1*t12 + 1/2*a1*t12**2 + 1/6*j1*t12**3 + 1/24*l1*t12**4 + 1/120*s1*t12**5
-        v2 = v1 + a1*t12 + 1/2*j1*t12**2 + 1/6*l1*t12**3 + 1/24*s1*t12**4
-        a2 = a1 + j1*t12 + 1/2*l1*t12**2 + 1/6*s1*t12**3
-        j2 = j1 + l1*t12 + 1/2*s1*t12**2
-        l2 = l1 + s1*t12
-        s2 = s1
+        r2 = r1 + v1*t12 + 1/2*a1*t12**2 + 1/6*j1*t12**3 + 1/24*s1*t12**4 + 1/120*c1*t12**5
+        v2 = v1 + a1*t12 + 1/2*j1*t12**2 + 1/6*s1*t12**3 + 1/24*c1*t12**4
+        a2 = a1 + j1*t12 + 1/2*s1*t12**2 + 1/6*c1*t12**3
+        j2 = j1 + s1*t12 + 1/2*c1*t12**2
+        s2 = s1 + c1*t12
+        c2 = c1
 
         wp2.pos  = r2
         wp2.vel  = v2
         wp2.acel = a2
         wp2.jerk = j2
-        wp2.snap = l2
-        wp2.crkl = s2
+        wp2.snap = s2
+        wp2.crkl = c2
 
         return wp2
 
