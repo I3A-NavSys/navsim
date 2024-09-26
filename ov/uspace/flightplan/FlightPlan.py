@@ -23,7 +23,6 @@ class FlightPlan:
         self.maxVarLinVel = 5        # maximum variation in linear  velocity   [  m/s]
         self.maxVarAngVel = 1        # maximum variation in angular velocity   [rad/s]
         self.waypoints: List[Waypoint] = []
-        self.currentWP = None
 
         if waypoints is not None:
             for waypoint in waypoints:
@@ -77,6 +76,7 @@ class FlightPlan:
     
 
     def GetIndexFromTime(self, t: float) -> Optional[int]:
+        # It returns the WP we are going to
         for i, wp in enumerate(self.waypoints):
             if t < wp.t:
                 return i
@@ -175,7 +175,7 @@ class FlightPlan:
 
 
 
-    def SetJLS(self):
+    def SetJSC(self):
         """
         Para cada waypoint con tiempo, posición, velocidad y aceleración determinados,
         obtiene las 3 derivadas siguientes que ejecutan dicho movimiento.
@@ -183,7 +183,7 @@ class FlightPlan:
         for i in range(len(self.waypoints) - 1):
             wpA = self.waypoints[i]
             wpB = self.waypoints[i + 1]
-            wpA.SetJLS(wpB)
+            wpA.SetJSC(wpB)
 
 
     
@@ -205,8 +205,8 @@ class FlightPlan:
         
         angle = wp1.AngleWith(wp2)
 
-        v1 = wp1.vel / np.linalg.norm(wp1.vel)
-        v2 = wp2.vel / np.linalg.norm(wp2.vel)
+        v1 = np.linalg.norm(wp1.vel)
+        v2 = np.linalg.norm(wp2.vel)
         v = np.mean([v1, v2])
 
         r = v / angVel              # Radius of the curve
@@ -230,11 +230,11 @@ class FlightPlan:
 
         while T2Max - T2Min > 0.05:
             wp2B.t = np.mean([T2Min, T2Max])
-            wp2A.SetJLS(wp2B)
+            wp2A.SetJSC(wp2B)
 
             tABmed = np.mean([wp2A.t, wp2B.t])
             status = wp2A.Interpolation(tABmed)
-            vMed = status.vel / np.linalg.norm(status.vel)
+            vMed = np.linalg.norm(status.vel)
 
             if vMed < v:
                 T2Max = wp2B.t
@@ -305,9 +305,9 @@ class FlightPlan:
         wp2B.label = wp2.label + "_B"
         wp2B.pos = wp2.pos + wp2.vel * step
         wp2B.vel = wp2.vel
-        wp2B.t= wp2.t + step
+        wp2B.t = wp2.t + step
 
-        wp2A.SetJLS(wp2B)
+        wp2A.SetJSC(wp2B)
 
         self.RemoveWaypointAtTime(wp2.t)
         self.SetWaypoint(wp2A)
@@ -659,13 +659,24 @@ class FlightPlan:
 
 
 
-    def AddUAVTrackPos(self, figName, xPosUAV, yPosUAV, zPosUAV, timeUAV):
+    def AddUAVTrackPos(self, figName, UAVinfo : List[Waypoint]):
         posFig = plt.figure(figName)
         subplots = posFig.get_axes()
         xyzPosPlot = subplots[0]
         xPosTimePlot = subplots[1]
         yPosTimePlot = subplots[2]
         zPosTimePlot = subplots[3]
+
+        xPosUAV = []
+        yPosUAV = []
+        zPosUAV = []
+        timeUAV = []
+
+        for wp in UAVinfo:
+            xPosUAV.append(wp.pos[0])
+            yPosUAV.append(wp.pos[1])
+            zPosUAV.append(wp.pos[2])
+            timeUAV.append(wp.t)
 
         # Plot UAV route
         xyzPosPlot.plot(xPosUAV, yPosUAV, zPosUAV, linestyle="dashed", linewidth=1, color="black")
@@ -681,13 +692,28 @@ class FlightPlan:
 
 
 
-    def AddUAVTrackVel(self, figName, xVelUAV, yVelUAV, zVelUAV, timeUAV):
+    def AddUAVTrackVel(self, figName, UAVinfo : List[Waypoint]):
         posFig = plt.figure(figName)
         subplots = posFig.get_axes()
         velPlot3D = subplots[0]
         xVelTimePlot = subplots[1]
         yVelTimePlot = subplots[2]
         zVelTimePlot = subplots[3]
+
+        xVelUAV = []
+        yVelUAV = []
+        zVelUAV = []
+        timeUAV = []
+
+        for wp in UAVinfo:
+            xVelUAV.append(wp.vel[0])
+            yVelUAV.append(wp.vel[1])
+            zVelUAV.append(wp.vel[2])
+            timeUAV.append(wp.t)
+
+        xVelUAV = np.array(xVelUAV)
+        yVelUAV = np.array(yVelUAV)
+        zVelUAV = np.array(zVelUAV)
         
         # Plot UAV route
         velPlot3D.plot(timeUAV, np.sqrt(xVelUAV**2 + yVelUAV**2 + zVelUAV**2), linestyle="dashed", linewidth=1, color="black")
