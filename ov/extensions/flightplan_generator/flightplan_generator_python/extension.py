@@ -224,5 +224,6 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
         # Populate window frame
         with self.window.frame:
             with ui.VStack(height=0, name="main_v_stack", spacing=6):
+                ui.Spacer(height=0)
                 # create build transform Frame
                 self.build_waypoint_frame()
