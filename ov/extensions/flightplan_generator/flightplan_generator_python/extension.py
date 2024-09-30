@@ -183,7 +183,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
         with ui.CollapsableFrame(title="Transform", style=CollapsableFrame_style):
             with ui.VStack(spacing=8, name="frame_v_stack"):
                 ui.Spacer(height=0)
-                components = ["Position", "Rotation", "Scale"]
+                components = ["Position", "Linear Velocity"]
                 for component in components:
                     # Field labels
                     with ui.HStack():
@@ -203,9 +203,8 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                                         style={
                                             "background_color": colors[axis],
                                             "border_radius": 3,
-                                            "corner_flag": ui.CornerFlag.LEFT,
-                                        },
-                                    )
+                                            "corner_flag": ui.CornerFlag.LEFT
+                                        })
                                     # Axis letter label
                                     ui.Label(axis, name="transform_label", alignment=ui.Alignment.CENTER)
                                 # FloatDrag widget
