@@ -1,0 +1,31 @@
+[core]
+reloadable = true
+order = 0
+
+[package]
+version = "1.0.0"
+category = "Simulation"
+title = "Navsim - Flightplan Generator"
+description="GUI for flightplan generation"
+authors = ["I3A-NavSys"]
+repository = ""
+keywords = ["UAM", "dron control"]
+changelog="docs/CHANGELOG.md"
+readme  = "docs/README.md"
+preview_image = "data/preview.png"
+icon = "data/icon.png"
+
+[dependencies]
+"omni.kit.uiapp" = {}
+# "omni.isaac.ui" = {}
+# "omni.isaac.core" = {}
+# PyQt5 pipapi
+
+[[python.module]]
+name = "flightplan_generator_python"
+
+[[test]]
+# Extra dependencies only to be used during test run
+dependencies = [
+    "omni.kit.ui_test" # UI testing extension
+]
