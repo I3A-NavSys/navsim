@@ -180,13 +180,14 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
         pass
 
     def build_waypoint_frame(self):
-        with ui.CollapsableFrame(title="Transform", style=CollapsableFrame_style):
+        with ui.CollapsableFrame(title="Waypoint", style=CollapsableFrame_style):
             with ui.VStack(spacing=8, name="frame_v_stack"):
                 ui.Spacer(height=0)
-                components = ["Position", "Linear Velocity"]
+                # Pose and linear velocity fields
+                components = ["Position", "Rotation", "Linear Velocity"]
                 for component in components:
                     # Field labels
-                    with ui.HStack():
+                    with ui.HStack(spacing=8):
                         with ui.HStack(width=LABEL_PADDING):
                             ui.Label(component, name="transform", width=50)
                             ui.Spacer()
@@ -209,6 +210,8 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                                     ui.Label(axis, name="transform_label", alignment=ui.Alignment.CENTER)
                                 # FloatDrag widget
                                 ui.FloatDrag(name="transform", min=-1000000, max=1000000, step=0.01)
+                        # Null field checkbox
+                        ui.CheckBox(width=0).model.set_value(True)
                 ui.Spacer(height=0)
                 
     def build_window(self):
