@@ -97,20 +97,10 @@ class UAM_minidrone(BehaviorScript):
         self.cmd_exp_time = 0
 
         # Tracking
-        self.show_tracking = True
         self.tracking_figure_builded = False
         self.refresh_rate = 1
         self.last_time_track = 0
-
-        self.time_track = []
-
-        self.xPos_track = []
-        self.yPos_track = []
-        self.zPos_track = []
-        
-        self.xVel_track = []
-        self.yVel_track = []
-        self.zVel_track = []
+        self.track_info = []
 
         ########################################################################
         ## quadcopter parameters
@@ -264,15 +254,7 @@ class UAM_minidrone(BehaviorScript):
         self.fp = None
 
         self.tracking_figure_builded = False
-        self.time_track = []
-        
-        self.xPos_track = []
-        self.yPos_track = []
-        self.zPos_track = []
-        
-        self.xVel_track = []
-        self.yVel_track = []
-        self.zVel_track = []
+        self.track_info = []
 
 
 
@@ -320,7 +302,7 @@ class UAM_minidrone(BehaviorScript):
     def eventFn_FlightPlan(self, fp):
         self.fp :FlightPlan = pickle.loads(base64.b64decode(fp))
         self.currentWP = None
-        print(f"{self.prim_path}: flightplan received")
+        print(f"[{self.current_time}] {self.prim_path}: flightplan received")
             
 
 
@@ -378,12 +360,12 @@ class UAM_minidrone(BehaviorScript):
             return
 
         # Check FP vigency
-        WP = self.fp.GetIndexFromTime(self.current_time)
+        WP = self.fp.GetTargetIndexFromTime(self.current_time)
         numWPs = len(self.fp.waypoints)
 
         if self.currentWP is None and WP != 0:
             # This flight plan is obsolete
-            print(f"{self.prim_path} discarding FP due to it is obsolete")
+            print(f"[{self.current_time:3.2f}] {self.prim_path} discarding FP due to it is obsolete")
             self.fp = None
             return
         
@@ -395,34 +377,37 @@ class UAM_minidrone(BehaviorScript):
 
                 if np.linalg.norm(initPos) < self.fp.radius:
                     # Drone waiting to start the flight
-                    print(f"{self.prim_path} waiting to start a FP")
+                    print(f"[{self.current_time:3.2f}] {self.prim_path} waiting to start a FP")
 
                 else:
                     # Drone in an incorrect starting position
-                    print(f"{self.prim_path} discarding FP due to an incorrect starting position")
+                    print(f"[{self.current_time:3.2f}] {self.prim_path} discarding FP due to an incorrect starting position")
                     self.fp = None
                     return
 
             elif WP < numWPs:
-                print(f"{self.prim_path} flying to {self.fp.waypoints[WP].label}")
+                print(f"[{self.current_time:3.2f}] {self.prim_path} flying to {self.fp.waypoints[WP].label}")
 
             else:
-                print(f"{self.prim_path} has completed its flight plan")
+                print(f"[{self.current_time:3.2f}] {self.prim_path} has completed its flight plan")
 
                 # Uncomment this to show the corresponding plots
                 # plt.close(plt.gcf())
                 # self.fp.PositionFigure("FP1: POSITION", 0.01)
                 # self.fp.VelocityFigure("FP1: VELOCITY", 0.01)
                 
-                # self.fp.AddUAVTrackPos("FP1: POSITION", self.xPos_track, self.yPos_track, self.zPos_track, self.time_track)
-                # self.fp.AddUAVTrackVel("FP1: VELOCITY", np.array(self.xVel_track), np.array(self.yVel_track), np.array(self.zVel_track), self.time_track)
+                # self.fp.AddUAVTrackPos("FP1: POSITION", self.track_info)
+                # self.fp.AddUAVTrackVel("FP1: VELOCITY", self.track_info)
 
                 self.fp = None
                 return
 
         self.currentWP = WP
         
-        self.command = self.fp.GetCommand(self.current_time, self.pos, self.linear_vel, self.rot, 2)
+        # Change relative vel to absolute
+        linear_vel = self.rot.apply(self.linear_vel)
+
+        self.command = self.fp.GetCommand(self.current_time, self.pos, linear_vel, self.rot, 2)
         self.cmd_exp_time = self.current_time + self.command.duration
 
 
@@ -576,57 +561,52 @@ class UAM_minidrone(BehaviorScript):
             # Update last_time_track
             self.last_time_track = self.current_time
 
-            # Get tracking information
-            self.time_track.append(self.current_time)
-            
-            self.xPos_track.append(self.pos[0])
-            self.yPos_track.append(self.pos[1])
-            self.zPos_track.append(self.pos[2])
+            # Change relative vel to absolute
+            linear_vel = self.rot.apply(self.linear_vel)
 
-            self.xVel_track.append(self.linear_vel[0])
-            self.yVel_track.append(self.linear_vel[1])
-            self.zVel_track.append(self.linear_vel[2])
+            # Get tracking information
+            self.track_info.append(Waypoint(t= self.current_time, pos=self.pos, vel=linear_vel))
 
             # Check if we want to show tracking while simulating
-            if self.show_tracking:
-                # Check if we already built the figure
-                if not self.tracking_figure_builded:
-                    # Build the ploting figure just once
-                    self.tracking_figure_builded = True
+            # if self.show_tracking:
+            #     # Check if we already built the figure
+            #     if not self.tracking_figure_builded:
+            #         # Build the ploting figure just once
+            #         self.tracking_figure_builded = True
 
-                    # Create the matplotlib figure and the corresponding plot
-                    track_fig = plt.figure("Tracking Plot")
-                    self.track_plot = track_fig.add_subplot(projection="3d")
+            #         # Create the matplotlib figure and the corresponding plot
+            #         track_fig = plt.figure("Tracking Plot")
+            #         self.track_plot = track_fig.add_subplot(projection="3d")
 
-                    # Indicate the axes name
-                    self.track_plot.set_xlabel("x [m]")
-                    self.track_plot.set_ylabel("y [m]")
-                    self.track_plot.set_zlabel("z [m]")
+            #         # Indicate the axes name
+            #         self.track_plot.set_xlabel("x [m]")
+            #         self.track_plot.set_ylabel("y [m]")
+            #         self.track_plot.set_zlabel("z [m]")
 
-                    # Write a title for the plot
-                    self.track_plot.set_title("Position 3D")
+            #         # Write a title for the plot
+            #         self.track_plot.set_title("Position 3D")
 
-                    # Stablish the initial limits
-                    # self.track_plot.set_xlim3d(-15, 15)
-                    # self.track_plot.set_ylim3d(-15, 15)
-                    # self.track_plot.set_zlim3d(-15, 15)
+            #         # Stablish the initial limits
+            #         # self.track_plot.set_xlim3d(-15, 15)
+            #         # self.track_plot.set_ylim3d(-15, 15)
+            #         # self.track_plot.set_zlim3d(-15, 15)
 
-                    # Plot initial position
-                    self.line, = self.track_plot.plot(self.xPos_track, self.yPos_track, self.zPos_track, linestyle="dashed", linewidth=1, color="black")
+            #         # Plot initial position
+            #         self.line, = self.track_plot.plot(self.xPos_track, self.yPos_track, self.zPos_track, linestyle="dashed", linewidth=1, color="black")
 
-                self.line.set_data(self.xPos_track, self.yPos_track)
-                self.line.set_3d_properties(self.zPos_track)
-                self.track_plot.scatter(self.xPos_track[-1], self.yPos_track[-1], self.zPos_track[-1], color="black", s=10)
+            #     self.line.set_data(self.xPos_track, self.yPos_track)
+            #     self.line.set_3d_properties(self.zPos_track)
+            #     self.track_plot.scatter(self.xPos_track[-1], self.yPos_track[-1], self.zPos_track[-1], color="black", s=10)
 
-                # Update plot limits
-                track_plot_lims = self.get_matplotlib_plot_limits(self.track_plot)
-                new_limits = self.update_track_plot_lims(track_plot_lims, self.pos)
+            #     # Update plot limits
+            #     track_plot_lims = self.get_matplotlib_plot_limits(self.track_plot)
+            #     new_limits = self.update_track_plot_lims(track_plot_lims, self.pos)
 
-                self.track_plot.set_xlim3d(*new_limits[0])
-                self.track_plot.set_ylim3d(*new_limits[1])
-                self.track_plot.set_zlim3d(*new_limits[2])
+            #     self.track_plot.set_xlim3d(*new_limits[0])
+            #     self.track_plot.set_ylim3d(*new_limits[1])
+            #     self.track_plot.set_zlim3d(*new_limits[2])
 
-                plt.pause(0.01)
+            #     plt.pause(0.01)
 
 
             
