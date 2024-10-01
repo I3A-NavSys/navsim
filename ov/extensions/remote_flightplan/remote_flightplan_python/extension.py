@@ -102,8 +102,13 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                     )
 
                     ui.Button(
-                        "BOX",
-                        clicked_fn = self.fp_box
+                        "REL_ABS",
+                        clicked_fn = self.rel_abs_test
+                    )
+
+                    ui.Button(
+                        "SMOOTH",
+                        clicked_fn = self.smooth_test
                     )
 
 
@@ -180,9 +185,9 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
         wp3 = Waypoint(label="wp3", pos=[-90, 181, 70])
         wp4 = Waypoint(label="wp4", pos=[110, 181, 70])
         wp5 = Waypoint(label="wp5", pos=[110, -119, 70])
+        wp6 = Waypoint(label="wp6", pos=[-152, -106, 70])
         wp6L = Waypoint(label="wp6L", pos=[-152, -106, 49.1])
         wp6P = Waypoint(label="wp6P", pos=[-152, -106, 49.1])
-        wp6 = Waypoint(label="wp6", pos=[-152, -106, 70])
 
         self.fp = FlightPlan()
         self.fp.radius = 2
@@ -199,15 +204,26 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
         wp6P.t = self.fp.FinishTime() + 5
         self.fp.SetWaypoint(wp6P)
 
-        self.fp.SetTimeFromVel("wp1", 2)
-        self.fp.SetTimeFromVel("wp2", 8)
-        self.fp.SetTimeFromVel("wp3", 8)
-        self.fp.SetTimeFromVel("wp4", 8)
-        self.fp.SetTimeFromVel("wp5", 8)
-        self.fp.SetTimeFromVel("wp6", 8)
-        self.fp.SetTimeFromVel("wp6L", 2)
+        self.fp.SetUniformVelocity("wp1P", 2)
+        self.fp.SetUniformVelocity("wp1", 8)
+        self.fp.SetUniformVelocity("wp2", 8)
+        self.fp.SetUniformVelocity("wp3", 8)
+        self.fp.SetUniformVelocity("wp4", 8)
+        self.fp.SetUniformVelocity("wp5", 8)
+        self.fp.SetUniformVelocity("wp6", 2)
 
-        self.fp.SetV0000()
+        ang_vel = 0.1
+        lin_acel = 0.4
+
+        self.fp.SmoothWPDuration('wp1P',ang_vel,lin_acel)
+        self.fp.SmoothWPDuration('wp1',ang_vel,lin_acel)
+        self.fp.SmoothWPSpeed('wp2',ang_vel)
+        self.fp.SmoothWPSpeed('wp3',ang_vel)
+        self.fp.SmoothWPSpeed('wp4',ang_vel)
+        self.fp.SmoothWPSpeed('wp5',ang_vel)
+        self.fp.SmoothWPDuration('wp6',ang_vel,lin_acel)
+        self.fp.SmoothWPDuration('wp6L',ang_vel,lin_acel)
+
         self.fp.RescheduleAt(self.current_time + delay)
 
         try:
@@ -243,18 +259,17 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
         self.fp = FlightPlan([wpI, wpIP, wp1, wp2, wp3, wp4, wp5, wp6, wp7, wpF, wpFP])
         self.fp.radius = 2
 
-        self.fp.SetTimeFromVel("WP1", 1)
-        self.fp.SetTimeFromVel("WP2", 2)
-        self.fp.SetTimeFromVel("WP3", 2)
-        self.fp.SetTimeFromVel("WP4", 2)
-        self.fp.SetTimeFromVel("WP5", 2)
-        self.fp.SetTimeFromVel("WP6", 2)
-        self.fp.SetTimeFromVel("WP7", 2)
-        self.fp.SetTimeFromVel("WPF", 1)
+        self.fp.SetUniformVelocity("WP1", 1)
+        self.fp.SetUniformVelocity("WP2", 2)
+        self.fp.SetUniformVelocity("WP3", 2)
+        self.fp.SetUniformVelocity("WP4", 2)
+        self.fp.SetUniformVelocity("WP5", 2)
+        self.fp.SetUniformVelocity("WP6", 2)
+        self.fp.SetUniformVelocity("WP7", 2)
+        self.fp.SetUniformVelocity("WPF", 1)
         
-        self.fp.SetV0000()
+        self.fp.ConnectWPs()
 
-        print(self.current_time)
         self.fp.RescheduleAt(self.current_time + delay)
 
         try:
@@ -270,7 +285,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
 
 
 
-    def fp_box(self):
+    def rel_abs_test(self):
 
         try:
             drone = self.manipulable_prims[self.drone_selector_dropdown.get_selection_index()]
@@ -284,19 +299,52 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
         delay = self.delay_FF.model.get_value_as_float()
 
         # Creamos plan de vuelo
-        wp1 = Waypoint(t=10,  pos=[  0.0,  0.0,  1.0 ])
-        wp2 = Waypoint(t=20,  pos=[  0.0,  0.0,  2.0 ])
-        wp3 = Waypoint(t=30, pos=[ 10.0,  0.0,  2.0 ])
-        wp4 = Waypoint(t=40, pos=[ 10.0,  -10.0,  2.0 ])
+        wp1 = Waypoint("wp1", t=10,  pos=[  0.0,  0.0,  1.0 ])
+        wp2 = Waypoint("wp2", t=20,  pos=[  0.0,  0.0,  2.0 ])
+        wp3 = Waypoint("wp3", t=30, pos=[ 0.0,  10.0,  2.0 ])
+        wp4 = Waypoint("wp4", t=40, pos=[ 0.0,  10.0,  1.0 ])
+        # wp5 = Waypoint("wp5", t=50, pos=[ 10.0,  -10.0,  1.0 ])
         self.fp = FlightPlan([wp1, wp2, wp3, wp4])
         self.fp.radius = 2
-        self.fp.SetV0000()
+        self.fp.SetUniformVelocity()
+
         self.fp.RescheduleAt(self.current_time + delay)
 
         # Comunicamos plan de vuelo
         self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(drone.GetPath()))
         serialized_fp = base64.b64encode(pickle.dumps(self.fp)).decode('utf-8')
+        self.event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_FlightPlan", "fp": serialized_fp})
+
+
+
+    def smooth_test(self):
+
+        try:
+            drone = self.manipulable_prims[self.drone_selector_dropdown.get_selection_index()]
+        except:
+            print("[REMOTE COMMAND ext] No drone selected")
+            return
+        
+        print("[REMOTE COMMAND ext] Drone selected is: ", drone.GetPath())
+
+        delay = self.delay_FF.model.get_value_as_float()
+
+        # Creamos plan de vuelo
+        wp1 = Waypoint("wp1", t=10,  pos=[  0.0,  0.0,  1.0 ])
+        wp2 = Waypoint("wp2", t=15,  pos=[  0.0,  0.0,  2.0 ])
+        wp3 = Waypoint("wp3", t=25, pos=[ 10.0,  0.0,  2.0 ])
+        wp4 = Waypoint("wp4", t=35, pos=[ 10.0,  -10.0,  2.0 ])
+        wp5 = Waypoint("wp5", t=40, pos=[ 10.0,  -10.0,  1.0 ])
+        self.fp = FlightPlan([wp1, wp2, wp3, wp4, wp5])
+        self.fp.radius = 2
+
+        self.fp.SetUniformVelocity()
+
+        self.fp.SmoothWPSpeed("wp3", 0.1)
+
+        self.fp.Postpone(self.current_time + delay)
+
+        # Comunicamos plan de vuelo
+        self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(drone.GetPath()))
+        serialized_fp = base64.b64encode(pickle.dumps(self.fp)).decode('utf-8')
         self.event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_FlightPlan", "fp": serialized_fp})  
-        pass
-
-
