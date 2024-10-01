@@ -103,19 +103,19 @@ class Waypoint:
 #-------------------------------------------------------------------
 # DYNAMICS MANAGEMENT
 
-
-    def SetV0000(self,wp2):
-        # Set uniform straight velocity from A to B
+    def SetUniformVelocity(self, wp2):
+        # Set uniform straight velocity from wp1 to wp2
 
         self.Stop()
 
+        # Time between wp1 and wp2
         t12 = self.TimeTo(wp2)
         if t12 != 0:
             self.vel = (wp2.pos - self.pos) / t12
 
 
 
-    def SetJSC(self,wp2):
+    def ConnectTo(self,wp2):
         # Dados dos waypoints con 
         #   t1 pos1 vel1 acel1
         #   t2 pos2 vel2 acel2
