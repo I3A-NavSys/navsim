@@ -38,8 +38,8 @@ from uspace.flightplan.command    import Command
 
 class UAM_minidrone(BehaviorScript):
     def on_init(self):
-        print(f"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
-        print(f"INIT    {self.prim_path}")
+        # print(f"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
+        # print(f"INIT    {self.prim_path}")
 
         ########################################################################
         ## Omniverse
@@ -210,7 +210,7 @@ class UAM_minidrone(BehaviorScript):
 
 
     def on_play(self):
-        print(f"PLAY    {self.prim_path}")
+        # print(f"PLAY    {self.prim_path}")
         # print(f"\t {self.current_time} \t {self.delta_time}")
 
         # Asumimos un comando ---------------------------------------TEMPORAL
@@ -231,12 +231,13 @@ class UAM_minidrone(BehaviorScript):
 
     
     def on_pause(self):
-        print(f"PAUSE   {self.prim_path}")
+        # print(f"PAUSE   {self.prim_path}")
+        pass
 
 
 
     def on_stop(self):
-        print(f"STOP    {self.prim_path}")
+        # print(f"STOP    {self.prim_path}")
 
         self.current_time = 0
         self.delta_time = 0
@@ -296,6 +297,7 @@ class UAM_minidrone(BehaviorScript):
         self.command : Command = pickle.loads(base64.b64decode(command))
         if self.command.duration is not None:
             self.cmd_exp_time = self.current_time + self.command.duration
+            print(f"[{self.current_time}] {self.prim_path}: command received")
         
 
 

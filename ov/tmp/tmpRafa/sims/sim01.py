@@ -1,13 +1,18 @@
-from pxr import Usd, UsdGeom, Gf
-
+from pxr import Usd, Gf
 
 import sys, os
 import random
 import omni
 import omni.usd
-import numpy as np
+import omni.ext
 
+##############################################################################
 
+# Adding root 'ov' folder to sys.path
+import sys, os
+project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
+if project_root_path not in sys.path:
+    sys.path.append(project_root_path)
 
 ##############################################################################
 # Adding root 'ov' folder to sys.path
@@ -27,8 +32,6 @@ if not context.open_stage(usd_file_path):
 
 stage: Usd.Stage = context.get_stage()
 # print(stage.ExportToString())
-
-
 
 
 ##############################################################################
@@ -53,43 +56,33 @@ if not UAV_root_prim:
 
 
 
-num_UAVs = 1
+num_UAVs = 20
 for i in range(num_UAVs):
-
-    # Creamos un prim Xform para el UAV
     UAV_prim_path = f"/World/UAV{i}"
-    UAV_prim = UsdGeom.Xform.Define(stage, UAV_prim_path)
 
-    # # Establecemos la posición del UAV
-    # x = random.uniform(1, 3)
-    # y = random.uniform(1, 3)
-    # z = random.uniform(1, 3)  
-    # UAV_prim.AddTranslateOp().Set(Gf.Vec3d(x, y, z))
-
-    # Clonar el prim del robot al escenario principal como payload
+    # Cargar el payload del dron
     UAV_prim = stage.OverridePrim(UAV_prim_path)
     UAV_prim.GetPayloads().AddPayload(UAV_usd_file_path, UAV_root_prim.GetPath())
 
 
+    # Establecemos la posición del UAV
+    pos_atr = UAV_prim.GetAttribute("xformOp:translate")
+    x = random.uniform(-4, -2)
+    y = random.uniform( 1,  3)
+    z = random.uniform( 1,  2)  
+    pos_atr.Set(Gf.Vec3d(x, y, z))
+
+    # rot_atr = UAV_prim.GetAttribute("xformOp:rotateXYZ")
+    # ori_atr = UAV_prim.GetAttribute("xformOp:orient")
 
 
 
-# from operators.USpaceOperator import USpaceOperator
-# from planners.Waypoint import Waypoint
-# from planners.FlightPlan import FlightPlan
-
-# # Crear una instancia de UspaceOperator
-# op = USpaceOperator("Operador Uno")
-
-# # Acceder al atributo name
-# print(op.name)  # Imprime: Operador Uno
 
 
+##############################################################################
+# Iniciar la simulación
+import omni.timeline
+timeline = omni.timeline.get_timeline_interface()
+timeline.play()
 
-# # Ejemplo de uso
-# waypoint = Waypoint(label='WP1', t=10, pos=[1, 2, 3], vel=[0.1, 0.2, 0.3])
-# print(waypoint.label)
-# print(waypoint.t)
-# print(waypoint.pos)
-# print(waypoint.vel)
-# print(waypoint.mandatory)
+
