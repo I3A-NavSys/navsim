@@ -484,13 +484,13 @@ class FlightPlan:
 
     def Print(self) -> None:
         """Prints all waypoints in the flight plan with their time, position, and velocity."""
-        data = []
-        headers = ["Label", "Time", "Pos", "Vel"]
+        # data = []
+        # headers = ["Label", "Time", "Pos", "Vel"]
         for wp in self.waypoints:
-            # print(f"{wp.label} \t  {wp.t} pos{wp.pos} vel{wp.vel}")
-            data.append([wp.label, np.round(wp.t, 2), np.round(wp.pos, 3), np.round(wp.vel, 3)])
+            print(f"{wp.label} \t  {wp.t} pos{wp.pos} vel{wp.vel}")
+            # data.append([wp.label, np.round(wp.t, 2), np.round(wp.pos, 3), np.round(wp.vel, 3)])
 
-        print(tabulate(data, headers, tablefmt="plain", colalign=("left", "right", "right", "right")))
+        # print(tabulate(data, headers, tablefmt="plain", colalign=("left", "right", "right", "right")))
 
 
 
