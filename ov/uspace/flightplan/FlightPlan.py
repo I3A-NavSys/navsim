@@ -206,7 +206,7 @@ class FlightPlan:
 
 
 
-    def SetJSC(self):
+    def ConnectWPs(self):
         """
         Para cada waypoint con tiempo, posición, velocidad y aceleración determinados,
         obtiene las 3 derivadas siguientes que ejecutan dicho movimiento.
@@ -214,7 +214,7 @@ class FlightPlan:
         for i in range(len(self.waypoints) - 1):
             wpA = self.waypoints[i]
             wpB = self.waypoints[i + 1]
-            wpA.SetJSC(wpB)
+            wpA.ConnectTo(wpB)
 
 
     
