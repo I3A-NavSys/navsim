@@ -183,36 +183,69 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
         with ui.CollapsableFrame(title="Waypoint", style=CollapsableFrame_style):
             with ui.VStack(spacing=8, name="frame_v_stack"):
                 ui.Spacer(height=0)
+
                 # Pose and linear velocity fields
-                components = ["Position", "Rotation", "Linear Velocity"]
+                components = ["Position", "Velocity", "Acceleration", "Jerk", "Snap", "Crackle"]
                 for component in components:
+
                     # Field labels
                     with ui.HStack(spacing=8):
                         with ui.HStack(width=LABEL_PADDING):
                             ui.Label(component, name="transform", width=50)
                             ui.Spacer()
+
                         # Axis fields
                         all_axis = ["X", "Y", "Z"]
                         colors = {"X": 0xFF5555AA, "Y": 0xFF76A371, "Z": 0xFFA07D4F}
                         for axis in all_axis:
                             with ui.HStack():
                                 with ui.ZStack(width=15):
-                                    # Colored rectangle
-                                    ui.Rectangle(
-                                        width=15,
-                                        height=20,
-                                        style={
-                                            "background_color": colors[axis],
-                                            "border_radius": 3,
-                                            "corner_flag": ui.CornerFlag.LEFT
-                                        })
+
+                                    # Colored rectangles
+                                    ui.Rectangle(width=15, height=20, style={"background_color": colors[axis], 
+                                                                             "border_radius": 3, 
+                                                                             "corner_flag": ui.CornerFlag.LEFT})
+
                                     # Axis letter label
                                     ui.Label(axis, name="transform_label", alignment=ui.Alignment.CENTER)
-                                # FloatDrag widget
+
+                                # FloatDrag widgets
                                 ui.FloatDrag(name="transform", min=-1000000, max=1000000, step=0.01)
-                        # Null field checkbox
+
+                        # Null field checkboxes
                         ui.CheckBox(width=0).model.set_value(True)
-                ui.Spacer(height=0)
+
+                # Add time field
+                with ui.HStack(spacing=8):
+                    ui.Label("Time", width=LABEL_PADDING)
+                    ui.IntDrag(min=0, max=1000000, step=1)
+
+                    # Null field checkbox
+                    ui.CheckBox(width=0).model.set_value(True)
+
+                with ui.HStack(spacing=8):
+                    # Fly over label
+                    ui.Label("Fly over", width=LABEL_PADDING)
+
+                    # Fly over field checkbox
+                    ui.CheckBox(width=0).model.set_value(True)
+
+                # Add waypoint button
+                ui.Button("Add waypoint")
+                ui.Spacer()
+
+    def build_waypoint_list(self):
+        with ui.CollapsableFrame(title="Waypoint list", style=CollapsableFrame_style):
+            self.waypoint_list = ui.ScrollingFrame(
+                height=250,
+                horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_ALWAYS_OFF,
+                vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_ALWAYS_ON
+            )
+            with self.waypoint_list:
+                with ui.VStack(spacing=8):
+                    ui.Spacer(height=0)
+                    self.empty_waypoint_list = ui.Label("Waypoint list is empty", style={"color": cl.white}, 
+                                                        alignment=ui.Alignment.CENTER_TOP)
                 
     def build_window(self):
         # Create extension main window
@@ -225,5 +258,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
         with self.window.frame:
             with ui.VStack(height=0, name="main_v_stack", spacing=6):
                 ui.Spacer(height=0)
-                # create build transform Frame
+                # Create transform frame
                 self.build_waypoint_frame()
+                # Create waypoint list
+                self.build_waypoint_list()
