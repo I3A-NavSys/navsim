@@ -64,16 +64,14 @@ for i in range(num_UAVs):
     UAV_prim = stage.OverridePrim(UAV_prim_path)
     UAV_prim.GetPayloads().AddPayload(UAV_usd_file_path, UAV_root_prim.GetPath())
 
-
     # Establecemos la posición del UAV
-    pos_atr = UAV_prim.GetAttribute("xformOp:translate")
     x = random.uniform(-4, -2)
     y = random.uniform( 1,  3)
     z = random.uniform( 1,  2)  
-    pos_atr.Set(Gf.Vec3d(x, y, z))
-
-    # rot_atr = UAV_prim.GetAttribute("xformOp:rotateXYZ")
-    # ori_atr = UAV_prim.GetAttribute("xformOp:orient")
+    UAV_prim.GetAttribute("xformOp:translate").Set((Gf.Vec3d(x, y, z)))
+    # UAV_prim.GetAttribute("xformOp:rotateXYZ").Set((0, 0, 90))
+    ori_atr = UAV_prim.GetAttribute("xformOp:orient")
+    print(f"Orientación: {ori_atr.Get()}")
 
 
 
