@@ -186,6 +186,9 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
 
                 # Pose and linear velocity fields
                 components = ["Position", "Velocity", "Acceleration", "Jerk", "Snap", "Crackle"]
+
+                # Handles to each component FloatDrag
+                self.component_handles = []
                 for component in components:
 
                     # Field labels
@@ -210,9 +213,10 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                                     ui.Label(axis, name="transform_label", alignment=ui.Alignment.CENTER)
 
                                 # FloatDrag widgets
-                                ui.FloatDrag(name="transform", min=-1000000, max=1000000, step=0.01)
+                                self.component_handles.append(ui.FloatDrag(name="transform", min=-1000000, max=1000000, 
+                                                                           step=0.01))
 
-                        # Null field checkboxes
+                        # Enabled field checkboxes
                         ui.CheckBox(width=0).model.set_value(True)
 
                 # Add time field
@@ -220,7 +224,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                     ui.Label("Time", width=LABEL_PADDING)
                     ui.IntDrag(min=0, max=1000000, step=1)
 
-                    # Null field checkbox
+                    # Enabled field checkbox
                     ui.CheckBox(width=0).model.set_value(True)
 
                 with ui.HStack(spacing=8):
@@ -230,8 +234,18 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                     # Fly over field checkbox
                     ui.CheckBox(width=0).model.set_value(True)
 
+                with ui.HStack(spacing=8):
+                    # Priority label
+                    ui.Label("Priority", width=LABEL_PADDING)
+
+                    # Priority field checkbox
+                    ui.IntDrag(min=0, max=1000000, step=1)
+
+                    # Enabled field checkbox
+                    ui.CheckBox(width=0).model.set_value(True)
+
                 # Add waypoint button
-                ui.Button("Add waypoint")
+                ui.Button("Add waypoint", clicked_fn=self.add_waypoint)
                 ui.Spacer()
 
     def build_waypoint_list(self):
@@ -247,6 +261,9 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                     self.empty_waypoint_list = ui.Label("Waypoint list is empty", style={"color": cl.white}, 
                                                         alignment=ui.Alignment.CENTER_TOP)
                 
+    def add_waypoint(self):
+        pass
+    
     def build_window(self):
         # Create extension main window
         self.window = ui.Window("Flightplan Generator", width=450, height=800)
