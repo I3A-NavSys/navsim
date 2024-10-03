@@ -9,15 +9,15 @@ class Waypoint:
                  pos=[0,0,0], vel=[0,0,0], 
                  fly_over=False):
  
-        self.label: str = label          # identifier to refer the waypoint
-        self.t: float = t                # time          (s)
-        self.pos  = np.array(pos)        # position      (m)
-        self.vel  = np.array(vel)        # velocity      (m/s)
-        self.acel = np.array([0,0,0])    # acceleration  (m/s2)
-        self.jerk = np.array([0,0,0])    # jerk          (m/s3)
-        self.snap = np.array([0,0,0])    # snap          (m/s4)
-        self.crkl = np.array([0,0,0])    # ckl           (m/s5)
-        self.fly_over = fly_over         # transito obligado
+        self.label: str = label                         # identifier to refer the waypoint
+        self.t: float = np.round(t, 2)                  # time          (s)
+        self.pos  = np.round(np.array(pos), 2)          # position      (m)
+        self.vel  = np.round(np.array(vel), 2)          # velocity      (m/s)
+        self.acel = np.array([0,0,0])                   # acceleration  (m/s2)
+        self.jerk = np.array([0,0,0])                   # jerk          (m/s3)
+        self.snap = np.array([0,0,0])                   # snap          (m/s4)
+        self.crkl = np.array([0,0,0])                   # ckl           (m/s5)
+        self.fly_over = fly_over                        # transito obligado
 
 
 
@@ -36,7 +36,7 @@ class Waypoint:
 
     def Postpone(self, timeStep):
         self.t += timeStep
-
+        self.t = np.round(self.t, 2)
 
 
     def TimeTo(self,wp):
@@ -112,6 +112,7 @@ class Waypoint:
         t12 = self.TimeTo(wp2)
         if t12 != 0:
             self.vel = (wp2.pos - self.pos) / t12
+            self.vel = np.round(self.vel, 2)
 
 
 
