@@ -185,10 +185,10 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                 ui.Spacer(height=0)
 
                 # Pose and linear velocity fields
-                components = ["Position", "Velocity", "Acceleration", "Jerk", "Snap", "Crackle"]
+                components = ["Position", "Velocity"]
 
                 # Handles to each component FloatDrag
-                self.component_handles = []
+                self.component_handles : list[ui.FloatDrag] = []
                 for component in components:
 
                     # Field labels
@@ -262,7 +262,8 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                                                         alignment=ui.Alignment.CENTER_TOP)
                 
     def add_waypoint(self):
-        pass
+        for handle in self.component_handles:
+            print(handle.model.get_value_as_float())
     
     def build_window(self):
         # Create extension main window
