@@ -7,8 +7,8 @@
                 double radius = 5
             }
             dictionary Perspective = {
-                double3 position = (-200, -140, 55)
-                double3 target = (688.1777786450372, 605.2696464809065, -87.36056345585936)
+                double3 position = (-980.0154842992399, -763.0561195339009, 623.1596524710394)
+                double3 target = (587.1993998218234, 475.92048750963284, -381.1481116548157)
             }
             dictionary Right = {
                 double3 position = (0, -5, 0)
@@ -47,7 +47,9 @@ over "Render" (
 
 def Xform "World"
 {
-    def Scope "buildings"
+    def Scope "buildings" (
+        kind = "assembly"
+    )
     {
         def Cube "building__200__176" (
             prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]

@@ -3,51 +3,51 @@
 
 ##############################################################################
 
-import sys
-import os
-if os.name == 'nt':
-    os.system('cls')
-else:
-    os.system('clear')
 
-# Adding root 'ov' folder to sys.path
+from pxr import Usd, Gf
 import sys, os
-project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../..'))
-if project_root_path not in sys.path:
-    sys.path.append(project_root_path)
-
-##############################################################################
-
-
-
-
-from pxr import Usd, UsdGeom, Gf
 import random
 import omni
 import omni.usd
-import numpy as np
-
-
-
+import omni.ext
 
 
 
 ##############################################################################
 
+# Adding root 'ov' folder to sys.path
+import sys, os
+
+current_path = os.path.abspath(os.path.dirname(__file__))
+while True:
+    if os.path.basename(current_path) == 'ov':
+        project_root_path = current_path
+        break
+    parent_path = os.path.dirname(current_path)
+    if parent_path == current_path:
+        raise RuntimeError("No se encontró el directorio 'ov' en la ruta.")
+    current_path = parent_path
+# print(f"Directorio raíz del proyecto: {project_root_path}")
+
+if project_root_path not in sys.path:
+    sys.path.append(project_root_path)
+
+
+
+##############################################################################
 # Abre archivo USD en el entorno de Isaac Sim
-current_dir = os.path.dirname(__file__)
-print(f"Directorio actual: {current_dir}")
-usd_file_path = os.path.join(current_dir, "../pruebas/balancin.usd")
+usd_file_path = os.path.join(project_root_path, "tmp/tmpRafa/pruebas/balancin.usd")
+# print(f"Directorio: {usd_file_path}")
 
 context = omni.usd.get_context()
-if context.open_stage(usd_file_path):
-    print(f"Archivo USD cargado correctamente en el escenario: {usd_file_path}")
-else:
+if not context.open_stage(usd_file_path):
     raise RuntimeError(f"Error: No se pudo abrir el archivo USD en {usd_file_path}")
 
 stage: Usd.Stage = context.get_stage()
-print(stage.ExportToString())
-##############################################################################
+# print(stage.ExportToString())
+
+
+
 
 
 
