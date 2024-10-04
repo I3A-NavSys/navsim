@@ -156,7 +156,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
         if self.UAV_selector_dropdown.get_selection() is None:
             raise Exception("[REMOTE COMMAND ext] No drone selected")
         
-        drone = ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
+        drone = self.ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
         
         print(f"[REMOTE COMMAND ext] Command sent at simulation time: {self.current_time:.2f}")
 
