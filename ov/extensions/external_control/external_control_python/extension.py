@@ -18,20 +18,25 @@ from omni.isaac.core.utils.stage import get_current_stage
 import asyncio
 from .ExternalController import ExternalController
 
+from ov_utils import extensions_utils as ext_utils
 
 try:
     import matplotlib
 except:
     raise Exception("ERROR: 'matplotlib' package is not installed. Copy and paste in the Script Editor the folllowing code\n\n" + 
+                    "# -- START CODE ------------------------------\n" +
                     "import omni.kit.pipapi\n" +
-                    "omni.kit.pipapi.install(\"matplotlib\")\n")
+                    "omni.kit.pipapi.install(\"matplotlib\")\n" +
+                    "# -- END CODE --------------------------------\n")
 
 try:
     matplotlib.use("Qt5Agg")
 except:
     raise Exception("ERROR: 'PyQt5' package is not installed. Copy and paste in the Script Editor the folllowing code\n\n" + 
+                    "# -- START CODE ------------------------------\n" +
                     "import omni.kit.pipapi\n" +
-                    "omni.kit.pipapi.install(\"PyQt5\")\n")
+                    "omni.kit.pipapi.install(\"PyQt5\")\n" +
+                    "# -- END CODE --------------------------------\n")
 
 import matplotlib.pyplot as plt
 
@@ -71,9 +76,6 @@ class Extension(omni.ext.IExt):
 
         # Control variable
         self.stop_update_plot = True
-        
-        # List of manipulable prims (usually drones)
-        self.manipulable_prims = []
 
         # Instance of ExternalController
         self.external_control = ExternalController()
@@ -89,14 +91,8 @@ class Extension(omni.ext.IExt):
                 with ui.VStack(spacing=10, height=0):
                     ui.Spacer(height=10)
 
-                    # Drone selector dropdown
-                    with ui.HStack(spacing=5):
-                        # Dropdown selector
-                        self.drone_selector_dropdown = DropDown("Select Drone", "Select the drone you want to control", self.get_manipulable_prims)
-                        self.drone_selector_dropdown.enabled = False
-
-                        # Button to refresh manipulable drones
-                        self.refresh_selector_button = ui.Button("REFRESH", clicked_fn=self.refresh_drone_selector, width=100)
+                    # UAV selector dropdown
+                    self.UAV_selector_dropdown: DropDown = ext_utils.build_uav_selector()
 
                     ui.Spacer(height=10)
 
@@ -126,42 +122,6 @@ class Extension(omni.ext.IExt):
                         self.plots_container = ui.VStack(height=0)
 
                         self.build_plot_container_content()
-                            
-
-    def get_manipulable_prims(self, prim=None):
-        # Needed list containing the names of the manipulable prims for the dropdown selector
-        manipulable_prims = []
-
-        # First iteration
-        if prim is None:
-            stage = get_current_stage()
-            prim = stage.GetPseudoRoot()
-
-            self.manipulable_prims.clear()
-
-        # Check current prim
-        if prim.GetAttribute("NavSim:Manipulable").IsValid() and prim.GetAttribute("NavSim:Manipulable").Get():
-            manipulable_prims.append(prim.GetName())
-            self.manipulable_prims.append(prim)
-        
-        else:
-            # Check prim's children
-            for child in prim.GetAllChildren():
-                # First check children
-                if len(child.GetAllChildren()) > 0:
-                    manipulable_prims += self.get_manipulable_prims(child)
-                
-                # Then check current child
-                elif child.GetAttribute("NavSim:Manipulable").IsValid() and child.GetAttribute("NavSim:Manipulable").Get():
-                    manipulable_prims.append(child.GetName())
-                    self.manipulable_prims.append(prim)
-
-        return manipulable_prims
-    
-
-    def refresh_drone_selector(self):
-        self.drone_selector_dropdown.enabled = True
-        self.drone_selector_dropdown.repopulate()
 
     
     def change_plot_distribution(self, model, index):        
@@ -298,7 +258,7 @@ class Extension(omni.ext.IExt):
 
 
     def start_update(self):
-        if len(self.manipulable_prims) == 0:
+        if self.UAV_selector_dropdown.get_selection() is None:
             raise Exception("No drone selected")
 
         print("-- START --")
@@ -350,7 +310,7 @@ class Extension(omni.ext.IExt):
         self.z_lv_plot.scale_max = self.linear_vel_limit
 
         # Get the selected drone
-        drone = self.manipulable_prims[self.drone_selector_dropdown.get_selection_index()]
+        drone = ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
 
         # Check if tracking option selected, if so a specific controller must be used
         if self.UI_state_info["track_pos_opts"]["visible"]:
