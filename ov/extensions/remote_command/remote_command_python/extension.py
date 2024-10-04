@@ -18,7 +18,7 @@ from uspace.flightplan.command import Command
 import pickle   # Serialization
 import base64   # Parsing to string
 
-from ov_utils import extensions_utils as ext_utils
+from ov_utils.extensions_utils import ExtUtils
 
 # Any class derived from `omni.ext.IExt` in top level module (defined in `python.modules` of `extension.toml`) will be
 # instantiated when extension gets enabled and `on_startup(ext_id)` will be called. Later when extension gets disabled
@@ -33,6 +33,9 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
 
     def on_startup(self, ext_id):
         # print("[REMOTE COMMAND ext] startup")
+        
+        # Buidl ExtUtils instance
+        self.ext_utils = ExtUtils()
 
         # Getting the simulation current time
         self.current_time = 0
@@ -54,7 +57,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                 ui.Spacer(height=10)
 
                 # UAV selector dropdown                    
-                self.UAV_selector_dropdown = ext_utils.build_uav_selector()
+                self.UAV_selector_dropdown = self.ext_utils.build_uav_selector()
 
                 with ui.HStack(spacing=10):
 

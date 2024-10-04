@@ -28,12 +28,15 @@ from uspace.flightplan.FlightPlan import FlightPlan
 import omni.physx
 import omni.timeline
 
-from ov_utils import extensions_utils as ext_utils
+from ov_utils.extensions_utils import ExtUtils
 
 class NavsimOperatorCmdExtension(omni.ext.IExt):
 
     def on_startup(self, ext_id):
         # print("[REMOTE COMMAND ext] startup")
+        
+        # Buidl ExtUtils instance
+        self.ext_utils = ExtUtils()
 
         # Getting the simulation current time
         self.current_time = 0
@@ -59,7 +62,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
 
 
                 # UAV selector dropdown
-                self.UAV_selector_dropdown = ext_utils.build_uav_selector()
+                self.UAV_selector_dropdown = self.ext_utils.build_uav_selector()
 
                 with ui.HStack(spacing=10):
        
@@ -77,7 +80,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                     ui.Button("3x3CUBES", clicked_fn = self.cubes3x3)
                     ui.Button("REL_ABS", clicked_fn = self.rel_abs_test)
                     ui.Button("SMOOTH", clicked_fn = self.smooth_test)
-                            
+        
 
 
     def on_shutdown(self):
@@ -101,7 +104,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
         if self.UAV_selector_dropdown.get_selection() is None:
             raise Exception("[REMOTE FLIGHTPLAN ext] No drone selected")
         
-        drone = ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
+        drone = self.ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
         
         delay = self.delay_FF.model.get_value_as_float()
 
@@ -153,7 +156,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
         if self.UAV_selector_dropdown.get_selection() is None:
             raise Exception("[REMOTE FLIGHTPLAN ext] No drone selected")
         
-        drone = ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
+        drone = self.ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
         
         delay = self.delay_FF.model.get_value_as_float()
 
@@ -196,7 +199,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
         if self.UAV_selector_dropdown.get_selection() is None:
             raise Exception("[REMOTE FLIGHTPLAN ext] No drone selected")
         
-        drone = ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
+        drone = self.ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
 
         delay = self.delay_FF.model.get_value_as_float()
 
@@ -223,7 +226,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
         if self.UAV_selector_dropdown.get_selection() is None:
             raise Exception("[REMOTE FLIGHTPLAN ext] No drone selected")
         
-        drone = ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
+        drone = self.ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
 
         delay = self.delay_FF.model.get_value_as_float()
 

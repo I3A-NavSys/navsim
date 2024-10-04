@@ -12,58 +12,55 @@ from omni.ui import color as cl
 from omni.isaac.ui.element_wrappers import DropDown
 from omni.isaac.core.utils.stage import get_current_stage
 
+class ExtUtils:
+    # -- USER INTERFACE --
 
-# -- USER INTERFACE --
+    #  -> START -| Build NavSim:Manipulable UAV selector |-
 
-#  -> START -| Build NavSim:Manipulable UAV selector |-
-UAV_selector_dropdown: DropDown = None
+    def build_uav_selector(self):
+        with ui.HStack(spacing=5):
+            # Dropdown selector
+            self.UAV_selector_dropdown = DropDown("Select Drone", "Select the drone you want to control", 
+                                            self.get_navsim_UAV_names)
+            self.UAV_selector_dropdown.enabled = False
 
-def build_uav_selector():
-    global UAV_selector_dropdown
+            # Button to refresh manipulable UAVs
+            ui.Button("REFRESH", clicked_fn=self.refresh_drone_selector, width=100)
 
-    with ui.HStack(spacing=5):
-        # Dropdown selector
-        UAV_selector_dropdown = DropDown("Select Drone", "Select the drone you want to control", 
-                                            get_navsim_UAV_names)
-        UAV_selector_dropdown.enabled = False
-
-        # Button to refresh manipulable UAVs
-        ui.Button("REFRESH", clicked_fn=refresh_drone_selector, width=100)
-
-    return UAV_selector_dropdown
+        return self.UAV_selector_dropdown
 
 
 
-def get_navsim_UAV_names():
-    manipulable_UAV_names = []
-    stage = get_current_stage()
-    
-    for prim in stage.Traverse():
-           att = prim.GetAttribute("NavSim:UAV")
-           if att.IsValid() and att.Get():
-                  manipulable_UAV_names.append(prim.GetName())
-
-    return manipulable_UAV_names
-
-
-
-def refresh_drone_selector():
-        global UAV_selector_dropdown
-        UAV_selector_dropdown.enabled = True
-        UAV_selector_dropdown.repopulate()
-
-#  -> END -| Build NavSim:Manipulable UAV selector |-
-
-
-
-
-
-# -- GENERAL UTILS --
-
-def get_prim_by_name(name):
-    stage = get_current_stage()
-    for prim in stage.Traverse():
-        if prim.GetName() == name:
-                return prim
+    def get_navsim_UAV_names(self):
+        manipulable_UAV_names = []
+        stage = get_current_stage()
         
-    return None
+        if stage is not None:
+            for prim in stage.Traverse():
+                att = prim.GetAttribute("NavSim:UAV")
+                if att.IsValid() and att.Get():
+                        manipulable_UAV_names.append(prim.GetName())
+
+        return manipulable_UAV_names
+
+
+
+    def refresh_drone_selector(self):
+            self.UAV_selector_dropdown.enabled = True
+            self.UAV_selector_dropdown.repopulate()
+
+    #  -> END -| Build NavSim:Manipulable UAV selector |-
+
+
+
+
+
+    # -- GENERAL UTILS --
+
+    def get_prim_by_name(name):
+        stage = get_current_stage()
+        for prim in stage.Traverse():
+            if prim.GetName() == name:
+                    return prim
+            
+        return None

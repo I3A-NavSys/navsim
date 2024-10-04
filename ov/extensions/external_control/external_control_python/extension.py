@@ -18,7 +18,7 @@ from omni.isaac.core.utils.stage import get_current_stage
 import asyncio
 from .ExternalController import ExternalController
 
-from ov_utils import extensions_utils as ext_utils
+from ov_utils.extensions_utils import ExtUtils
 
 try:
     import matplotlib
@@ -55,6 +55,9 @@ class Extension(omni.ext.IExt):
 
 
     def create_vars(self):
+        # Buidl ExtUtils instance
+        self.ext_utils = ExtUtils()
+
         # UI window
         self.window = ui.Window("NavSim - External UAV control", width=600, height=600, raster_policy=ui.RasterPolicy.NEVER)   # The ui.RasterPolicy.NEVER is to always update plots line drawing
 
@@ -92,7 +95,7 @@ class Extension(omni.ext.IExt):
                     ui.Spacer(height=10)
 
                     # UAV selector dropdown
-                    self.UAV_selector_dropdown: DropDown = ext_utils.build_uav_selector()
+                    self.UAV_selector_dropdown: DropDown = self.ext_utils.build_uav_selector()
 
                     ui.Spacer(height=10)
 
@@ -310,7 +313,7 @@ class Extension(omni.ext.IExt):
         self.z_lv_plot.scale_max = self.linear_vel_limit
 
         # Get the selected drone
-        drone = ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
+        drone = self.ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
 
         # Check if tracking option selected, if so a specific controller must be used
         if self.UI_state_info["track_pos_opts"]["visible"]:
