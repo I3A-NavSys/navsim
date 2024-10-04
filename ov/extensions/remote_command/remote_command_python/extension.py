@@ -18,6 +18,8 @@ from uspace.flightplan.command import Command
 import pickle   # Serialization
 import base64   # Parsing to string
 
+from ov_utils import extensions_utils as ext_utils
+
 # Any class derived from `omni.ext.IExt` in top level module (defined in `python.modules` of `extension.toml`) will be
 # instantiated when extension gets enabled and `on_startup(ext_id)` will be called. Later when extension gets disabled
 # on_shutdown() is called.
@@ -39,12 +41,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
 
         self.timeline = omni.timeline.get_timeline_interface()
         self.event_timer_callback = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
-            int(omni.timeline.TimelineEventType.STOP), self.timeline_timer_callback_fn
-        )
-
-
-        # List of manipulable prims (usually drones)
-        self.manipulable_prims = []
+            int(omni.timeline.TimelineEventType.STOP), self.timeline_timer_callback_fn)
 
         # Get the bus event stream
         self.event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
@@ -53,29 +50,13 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
         self._window = ui.Window("REMOTE COMMAND", width=400, height=200)
         with self._window.frame:
 
-            with ui.VStack(spacing=10):
+            with ui.VStack(spacing=10, height=0):
                 ui.Spacer(height=10)
 
-                
+                # UAV selector dropdown                    
+                self.UAV_selector_dropdown = ext_utils.build_uav_selector()
 
-
-
-                # UAV selector dropdown
-                with ui.HStack(height=25):
-                    # Dropdown selector
-                    self.drone_selector_dropdown = DropDown(
-                        "UAV", "Select the drone you want to send commands", 
-                        self.get_manipulable_prims)
-                    self.drone_selector_dropdown.enabled = False
-
-                    # Button to refresh manipulable drones
-                    self.refresh_selector_button = ui.Button(
-                        "REFRESH", 
-                        clicked_fn=self.refresh_drone_selector, 
-                        height=15,
-                        width=80)
-
-                with ui.HStack(height=20, spacing=10):
+                with ui.HStack(spacing=10):
 
 
                     with ui.HStack(spacing=5):
@@ -101,7 +82,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                         self.duration_FF.model.set_value(1.0)
                         self.duration_FF.precision = 2
 
-                with ui.HStack(height=20, spacing=10):
+                with ui.HStack(spacing=10):
 
                     with ui.HStack():
                         ui.Button(
@@ -148,7 +129,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                         self.rotZ_FF = ui.FloatField(tooltip="rotZ parameter")
                         self.rotZ_FF.precision = 2
 
-                with ui.HStack(height=50):
+                with ui.HStack():
                     #send button
                     ui.Button(
                         "SEND", 
@@ -166,55 +147,13 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
 
 
 
-    def get_manipulable_prims(self, prim=None):
-            # Needed list containing the names of the manipulable prims for the dropdown selector
-            manipulable_prims = []
-
-            # First iteration
-            if prim is None:
-                stage = get_current_stage()
-                prim = stage.GetPseudoRoot()
-
-                self.manipulable_prims.clear()
-
-            # Check current prim
-            if prim.GetAttribute("NavSim:Manipulable").IsValid() and prim.GetAttribute("NavSim:Manipulable").Get():
-                manipulable_prims.append(prim.GetName())
-                self.manipulable_prims.append(prim)
-            
-            else:
-                # Check prim's children
-                for child in prim.GetAllChildren():
-                    # First check children
-                    if len(child.GetAllChildren()) > 0:
-                        manipulable_prims += self.get_manipulable_prims(child)
-                    
-                    # Then check current child
-                    elif child.GetAttribute("NavSim:Manipulable").IsValid() and child.GetAttribute("NavSim:Manipulable").Get():
-                        manipulable_prims.append(child.GetName())
-                        self.manipulable_prims.append(prim)
-
-            return manipulable_prims
-        
-
-
-
-    def refresh_drone_selector(self):
-        self.drone_selector_dropdown.enabled = True
-        self.drone_selector_dropdown.repopulate()
-
-
-
-
     def on_click(self):
         # print("[REMOTE COMMAND ext] SEND button clicked")
-
-        # Get the selected drone
-        try:
-            drone = self.manipulable_prims[self.drone_selector_dropdown.get_selection_index()]
-        except:
-            print("[REMOTE COMMAND ext] No drone selected")
-            return
+        
+        if self.UAV_selector_dropdown.get_selection() is None:
+            raise Exception("[REMOTE COMMAND ext] No drone selected")
+        
+        drone = ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
         
         print(f"[REMOTE COMMAND ext] Command sent at simulation time: {self.current_time:.2f}")
 
