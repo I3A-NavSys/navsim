@@ -24,7 +24,7 @@ def build_uav_selector():
     with ui.HStack(spacing=5):
         # Dropdown selector
         UAV_selector_dropdown = DropDown("Select Drone", "Select the drone you want to control", 
-                                            get_manipulable_UAV_names)
+                                            get_navsim_UAV_names)
         UAV_selector_dropdown.enabled = False
 
         # Button to refresh manipulable UAVs
@@ -34,12 +34,12 @@ def build_uav_selector():
 
 
 
-def get_manipulable_UAV_names():
+def get_navsim_UAV_names():
     manipulable_UAV_names = []
     stage = get_current_stage()
     
     for prim in stage.Traverse():
-           att = prim.GetAttribute("NavSim:Manipulable")
+           att = prim.GetAttribute("NavSim:UAV")
            if att.IsValid() and att.Get():
                   manipulable_UAV_names.append(prim.GetName())
 
