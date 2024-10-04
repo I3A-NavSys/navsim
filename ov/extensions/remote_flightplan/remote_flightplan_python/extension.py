@@ -28,6 +28,8 @@ from uspace.flightplan.FlightPlan import FlightPlan
 import omni.physx
 import omni.timeline
 
+from ov_utils import extensions_utils as ext_utils
+
 class NavsimOperatorCmdExtension(omni.ext.IExt):
 
     def on_startup(self, ext_id):
@@ -43,9 +45,6 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
             int(omni.timeline.TimelineEventType.STOP), self.timeline_timer_callback_fn
         )
 
-        # List of manipulable prims (usually drones)
-        self.manipulable_prims = []
-
         # Get the bus event stream
         self.event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
 
@@ -55,106 +54,30 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
         self._window = ui.Window("REMOTE FLIGHTPLAN", width=400, height=200)
         with self._window.frame:
 
-            with ui.VStack(spacing=10):
+            with ui.VStack(spacing=10, height=0):
                 ui.Spacer(height=10)
 
 
                 # UAV selector dropdown
-                with ui.HStack(height=25):
-                    # Dropdown selector
-                    self.drone_selector_dropdown = DropDown(
-                        "UAV", "Select the drone you want to send commands", 
-                        self.get_manipulable_prims)
-                    self.drone_selector_dropdown.enabled = False
+                self.UAV_selector_dropdown = ext_utils.build_uav_selector()
 
-                    # Button to refresh manipulable drones
-                    self.refresh_selector_button = ui.Button(
-                        "REFRESH", 
-                        clicked_fn=self.refresh_drone_selector, 
-                        height=15,
-                        width=80)
-
-                with ui.HStack(height=20, spacing=10):
+                with ui.HStack(spacing=10):
        
-                    ui.Button(
-                        "delay", enable=False,
-                        width=50,
-                        style={
-                            "background_color":cl.grey, 
-                            "color":cl.white, 
-                            "margin": 0})
-                    self.delay_FF = ui.FloatField(
-                        width=50,
-                        tooltip="Delay related to sending time")
+                    ui.Button("delay", enable=False, width=50,
+                              style={"background_color":cl.grey, 
+                                    "color":cl.white, 
+                                    "margin": 0})
+                    
+                    self.delay_FF = ui.FloatField(width=50, tooltip="Delay related to sending time")
                     self.delay_FF.model.set_value(5.0)
                     self.delay_FF.precision = 2
                     
-                with ui.HStack(height=50, spacing=20):
-                    # fp button
-                    ui.Button(
-                        "TUTO4",
-                        clicked_fn = self.tuto4
-                    )
-
-                    ui.Button(
-                        "3x3CUBES",
-                        clicked_fn = self.cubes3x3
-                    )
-
-                    ui.Button(
-                        "REL_ABS",
-                        clicked_fn = self.rel_abs_test
-                    )
-
-                    ui.Button(
-                        "SMOOTH",
-                        clicked_fn = self.smooth_test
-                    )
-
-
-
-    def on_update(self, time, dt):
-        print("[REMOTE COMMAND ext] update")
-        pass
-
-
-
-    def get_manipulable_prims(self, prim=None):
-            # Needed list containing the names of the manipulable prims for the dropdown selector
-            manipulable_prims = []
-
-            # First iteration
-            if prim is None:
-                stage = get_current_stage()
-                prim = stage.GetPseudoRoot()
-
-                self.manipulable_prims.clear()
-
-            # Check current prim
-            if prim.GetAttribute("NavSim:Manipulable").IsValid() and prim.GetAttribute("NavSim:Manipulable").Get():
-                manipulable_prims.append(prim.GetName())
-                self.manipulable_prims.append(prim)
-            
-            else:
-                # Check prim's children
-                for child in prim.GetAllChildren():
-                    # First check children
-                    if len(child.GetAllChildren()) > 0:
-                        manipulable_prims += self.get_manipulable_prims(child)
-                    
-                    # Then check current child
-                    elif child.GetAttribute("NavSim:Manipulable").IsValid() and child.GetAttribute("NavSim:Manipulable").Get():
-                        manipulable_prims.append(child.GetName())
-                        self.manipulable_prims.append(prim)
-
-            return manipulable_prims
-        
-
-
-    def refresh_drone_selector(self):
-        self.drone_selector_dropdown.enabled = True
-        self.drone_selector_dropdown.repopulate()
-
+                with ui.HStack(spacing=20):
+                    ui.Button("TUTO4", clicked_fn = self.tuto4)
+                    ui.Button("3x3CUBES", clicked_fn = self.cubes3x3)
+                    ui.Button("REL_ABS", clicked_fn = self.rel_abs_test)
+                    ui.Button("SMOOTH", clicked_fn = self.smooth_test)
+                            
 
 
     def on_shutdown(self):
@@ -175,34 +98,26 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
 
 
     def tuto4(self):
+        if self.UAV_selector_dropdown.get_selection() is None:
+            raise Exception("[REMOTE FLIGHTPLAN ext] No drone selected")
+        
+        drone = ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
+        
         delay = self.delay_FF.model.get_value_as_float()
-
-        # Crear waypoints
-        wp1L = Waypoint(label="wp1L", pos=[-190, -119, 48.1])
-        wp1P = Waypoint(label="wp1P", pos=[-190, -119, 48.1])
-        wp1 = Waypoint(label="wp1", pos=[-190, -119, 70])
-        wp2 = Waypoint(label="wp2", pos=[-90, -19, 70])
-        wp3 = Waypoint(label="wp3", pos=[-90, 181, 70])
-        wp4 = Waypoint(label="wp4", pos=[110, 181, 70])
-        wp5 = Waypoint(label="wp5", pos=[110, -119, 70])
-        wp6 = Waypoint(label="wp6", pos=[-152, -106, 70])
-        wp6L = Waypoint(label="wp6L", pos=[-152, -106, 49.1])
-        wp6P = Waypoint(label="wp6P", pos=[-152, -106, 49.1])
 
         self.fp = FlightPlan()
         self.fp.radius = 2
-        self.fp.AppendWaypoint(wp1L)
-        wp1P.t = self.fp.FinishTime() + 5
-        self.fp.SetWaypoint(wp1P)
-        self.fp.AppendWaypoint(wp1)
-        self.fp.AppendWaypoint(wp2)
-        self.fp.AppendWaypoint(wp3)
-        self.fp.AppendWaypoint(wp4)
-        self.fp.AppendWaypoint(wp5)
-        self.fp.AppendWaypoint(wp6)
-        self.fp.AppendWaypoint(wp6L)
-        wp6P.t = self.fp.FinishTime() + 5
-        self.fp.SetWaypoint(wp6P)
+
+        self.fp.SetWaypoint(label="wp1L", pos=[-190, -119, 48.1])
+        self.fp.SetWaypoint(label="wp1P", time=5, pos=[-190, -119, 48.1])
+        self.fp.SetWaypoint(label="wp1", pos=[-190, -119, 70])
+        self.fp.SetWaypoint(label="wp2", pos=[-90, -19, 70])
+        self.fp.SetWaypoint(label="wp3", pos=[-90, 181, 70])
+        self.fp.SetWaypoint(label="wp4", pos=[110, 181, 70])
+        self.fp.SetWaypoint(label="wp5", pos=[110, -119, 70])
+        self.fp.SetWaypoint(label="wp6", pos=[-152, -106, 70])
+        self.fp.SetWaypoint(label="wp6L", pos=[-152, -106, 49.1])
+        self.fp.SetWaypoint(label="wp6P", time=18, pos=[-152, -106, 49.1])
 
         self.fp.SetUniformVelocity("wp1P", 2)
         self.fp.SetUniformVelocity("wp1", 8)
@@ -211,26 +126,21 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
         self.fp.SetUniformVelocity("wp4", 8)
         self.fp.SetUniformVelocity("wp5", 8)
         self.fp.SetUniformVelocity("wp6", 2)
+        self.fp.SetUniformVelocity()
 
         ang_vel = 0.1
         lin_acel = 0.4
 
-        self.fp.SmoothWPDuration('wp1P',ang_vel,lin_acel)
-        self.fp.SmoothWPDuration('wp1',ang_vel,lin_acel)
+        self.fp.SmoothWPDuration('wp1P',ang_vel, lin_acel)
+        self.fp.SmoothWPDuration('wp1',ang_vel, lin_acel)
         self.fp.SmoothWPSpeed('wp2',ang_vel)
         self.fp.SmoothWPSpeed('wp3',ang_vel)
         self.fp.SmoothWPSpeed('wp4',ang_vel)
         self.fp.SmoothWPSpeed('wp5',ang_vel)
-        self.fp.SmoothWPDuration('wp6',ang_vel,lin_acel)
-        self.fp.SmoothWPDuration('wp6L',ang_vel,lin_acel)
+        self.fp.SmoothWPDuration('wp6',ang_vel, lin_acel)
+        self.fp.SmoothWPDuration('wp6L',ang_vel, lin_acel)
 
-        self.fp.RescheduleAt(self.current_time + delay)
-
-        try:
-            drone = self.manipulable_prims[self.drone_selector_dropdown.get_selection_index()]
-        except:
-            print("[REMOTE COMMAND ext] No drone selected")
-            return
+        self.fp.Postpone(self.current_time + delay)
 
         self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(drone.GetPath()))
 
@@ -240,43 +150,40 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
 
 
     def cubes3x3(self):
+        if self.UAV_selector_dropdown.get_selection() is None:
+            raise Exception("[REMOTE FLIGHTPLAN ext] No drone selected")
+        
+        drone = ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
+        
         delay = self.delay_FF.model.get_value_as_float()
 
-        wpI = Waypoint(label='WPI', t=0,  pos=[0.0, 0.0, 1.0])
-        wpIP = Waypoint(label='WPIP', t=5,  pos=[0.0, 0.0, 1.0])
-        wp1 = Waypoint(label='WP1', t=15,  pos=[0.0, 10.0, 1.0])
-        wp2 = Waypoint(label='WP2', t=25,  pos=[0.0, 20.0, 1.0])
-        wp2 = Waypoint(label='WP2', t=25,  pos=[-10.0, 10.0, 1.0])
-        wp3 = Waypoint(label='WP3', t=35,  pos=[-10.0, 0.0, 1.0])
-        wp4 = Waypoint(label='WP4', t=45,  pos=[.0, -10.0, 1.0])
-        wp5 = Waypoint(label='WP5', t=55,  pos=[10.0, 10.0, 1.0])
-        wp6 = Waypoint(label='WP6', t=65,  pos=[10.0, 0.0, 1.0])
-        wp7 = Waypoint(label='WP7', t=75,  pos=[10.0, -10.0, 1.0])
-        wpF = Waypoint(label='WPF', t=85,  pos=[-10.0, -10.0, 1.0])
-        wpFP = Waypoint(label='WPP', t=90,  pos=[-10.0, -10.0, 1.0])
-
         # Crear plan de vuelo
-        self.fp = FlightPlan([wpI, wpIP, wp1, wp2, wp3, wp4, wp5, wp6, wp7, wpF, wpFP])
+        self.fp = FlightPlan()
         self.fp.radius = 2
+        self.fp.SetWaypoint(label='WPI', time=0,  pos=[0.0, 0.0, 1.0])
+        self.fp.SetWaypoint(label='WPIP', time=5,  pos=[0.0, 0.0, 2.0])
+        self.fp.SetWaypoint(label='WP1', time=15,  pos=[0.0, 10.0, 2.0])
+        self.fp.SetWaypoint(label='WP2', time=25,  pos=[-10.0, 10.0, 2.0])
+        self.fp.SetWaypoint(label='WP3', time=35,  pos=[-10.0, 0.0, 2.0])
+        self.fp.SetWaypoint(label='WP4', time=45,  pos=[.0, -10.0, 2.0])
+        self.fp.SetWaypoint(label='WP5', time=55,  pos=[10.0, 10.0, 2.0])
+        self.fp.SetWaypoint(label='WP6', time=65,  pos=[10.0, 0.0, 2.0])
+        self.fp.SetWaypoint(label='WP7', time=75,  pos=[10.0, -10.0, 2.0])
+        self.fp.SetWaypoint(label='WPF', time=85,  pos=[-10.0, -10.0, 2.0])
+        self.fp.SetWaypoint(label='WPFP', time=90,  pos=[-10.0, -10.0, 1.0])
 
-        self.fp.SetUniformVelocity("WP1", 1)
-        self.fp.SetUniformVelocity("WP2", 2)
-        self.fp.SetUniformVelocity("WP3", 2)
-        self.fp.SetUniformVelocity("WP4", 2)
-        self.fp.SetUniformVelocity("WP5", 2)
-        self.fp.SetUniformVelocity("WP6", 2)
-        self.fp.SetUniformVelocity("WP7", 2)
-        self.fp.SetUniformVelocity("WPF", 1)
+        self.fp.SetUniformVelocity()
         
-        self.fp.ConnectWPs()
+        self.fp.SmoothWPSpeed("WPIP", 0.3)
+        self.fp.SmoothWPSpeed("WP1", 0.3)
+        self.fp.SmoothWPSpeed("WP2", 0.3)
+        self.fp.SmoothWPSpeed("WP3", 0.3)
+        self.fp.SmoothWPSpeed("WP4", 0.3)
+        self.fp.SmoothWPSpeed("WP5", 0.8)
+        self.fp.SmoothWPSpeed("WP7", 0.3)
+        self.fp.SmoothWPSpeed("WPF", 0.3)
 
-        self.fp.RescheduleAt(self.current_time + delay)
-
-        try:
-            drone = self.manipulable_prims[self.drone_selector_dropdown.get_selection_index()]
-        except:
-            print("[REMOTE COMMAND ext] No drone selected")
-            return
+        self.fp.Postpone(self.current_time + delay)
 
         self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(drone.GetPath()))
 
@@ -286,29 +193,24 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
 
 
     def rel_abs_test(self):
-
-        try:
-            drone = self.manipulable_prims[self.drone_selector_dropdown.get_selection_index()]
-        except:
-            print("[REMOTE COMMAND ext] No drone selected")
-            return
+        if self.UAV_selector_dropdown.get_selection() is None:
+            raise Exception("[REMOTE FLIGHTPLAN ext] No drone selected")
         
-        print("[REMOTE COMMAND ext] Drone selected is: ", drone.GetPath())
-
+        drone = ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
 
         delay = self.delay_FF.model.get_value_as_float()
 
         # Creamos plan de vuelo
-        wp1 = Waypoint("wp1", t=10,  pos=[  0.0,  0.0,  1.0 ])
-        wp2 = Waypoint("wp2", t=20,  pos=[  0.0,  0.0,  2.0 ])
-        wp3 = Waypoint("wp3", t=30, pos=[ 0.0,  10.0,  2.0 ])
-        wp4 = Waypoint("wp4", t=40, pos=[ 0.0,  10.0,  1.0 ])
-        # wp5 = Waypoint("wp5", t=50, pos=[ 10.0,  -10.0,  1.0 ])
-        self.fp = FlightPlan([wp1, wp2, wp3, wp4])
+        self.fp = FlightPlan()
         self.fp.radius = 2
+        self.fp.SetWaypoint(label="wp1", time=0,  pos=[  0.0,  0.0,  1.0 ])
+        self.fp.SetWaypoint(label="wp2", time=10,  pos=[  0.0,  0.0,  2.0 ])
+        self.fp.SetWaypoint(label="wp3", time=20, pos=[ 0.0,  10.0,  2.0 ])
+        self.fp.SetWaypoint(label="wp4", time=30, pos=[ 0.0,  10.0,  1.0 ])
+
         self.fp.SetUniformVelocity()
 
-        self.fp.RescheduleAt(self.current_time + delay)
+        self.fp.Postpone(self.current_time + delay)
 
         # Comunicamos plan de vuelo
         self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(drone.GetPath()))
@@ -318,29 +220,25 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
 
 
     def smooth_test(self):
-
-        try:
-            drone = self.manipulable_prims[self.drone_selector_dropdown.get_selection_index()]
-        except:
-            print("[REMOTE COMMAND ext] No drone selected")
-            return
+        if self.UAV_selector_dropdown.get_selection() is None:
+            raise Exception("[REMOTE FLIGHTPLAN ext] No drone selected")
         
-        print("[REMOTE COMMAND ext] Drone selected is: ", drone.GetPath())
+        drone = ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
 
         delay = self.delay_FF.model.get_value_as_float()
 
         # Creamos plan de vuelo
-        wp1 = Waypoint("wp1", t=10,  pos=[  0.0,  0.0,  1.0 ])
-        wp2 = Waypoint("wp2", t=15,  pos=[  0.0,  0.0,  2.0 ])
-        wp3 = Waypoint("wp3", t=25, pos=[ 10.0,  0.0,  2.0 ])
-        wp4 = Waypoint("wp4", t=35, pos=[ 10.0,  -10.0,  2.0 ])
-        wp5 = Waypoint("wp5", t=40, pos=[ 10.0,  -10.0,  1.0 ])
-        self.fp = FlightPlan([wp1, wp2, wp3, wp4, wp5])
+        self.fp = FlightPlan()
         self.fp.radius = 2
+        self.fp.SetWaypoint(label="wp1", time=0,  pos=[  0.0,  0.0,  1.0 ])
+        self.fp.SetWaypoint(label="wp2", time=5,  pos=[  0.0,  0.0,  2.0 ])
+        self.fp.SetWaypoint(label="wp3", time=15, pos=[ 10.0,  0.0,  2.0 ])
+        self.fp.SetWaypoint(label="wp4", time=25, pos=[ 10.0,  -10.0,  2.0 ])
+        self.fp.SetWaypoint(label="wp5", time=30, pos=[ 10.0,  -10.0,  1.0 ])
 
         self.fp.SetUniformVelocity()
 
-        self.fp.SmoothWPSpeed("wp3", 0.1)
+        self.fp.SmoothWPSpeed("wp3", 0.11)
 
         self.fp.Postpone(self.current_time + delay)
 
