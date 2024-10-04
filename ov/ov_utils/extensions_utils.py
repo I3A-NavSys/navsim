@@ -57,7 +57,7 @@ class ExtUtils:
 
     # -- GENERAL UTILS --
 
-    def get_prim_by_name(name):
+    def get_prim_by_name(self, name):
         stage = get_current_stage()
         for prim in stage.Traverse():
             if prim.GetName() == name:
