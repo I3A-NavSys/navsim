@@ -7,8 +7,8 @@
                 double radius = 5
             }
             dictionary Perspective = {
-                double3 position = (-980.0154842992399, -763.0561195339009, 623.1596524710394)
-                double3 target = (587.1993998218234, 475.92048750963284, -381.1481116548157)
+                double3 position = (-899.2575362826707, -699.2121569483348, 571.4080716980216)
+                double3 target = (587.1993473676918, 475.92044604152045, -381.14824466673974)
             }
             dictionary Right = {
                 double3 position = (0, -5, 0)
@@ -926,7 +926,7 @@ def Xform "Environment"
         color3f inputs:shaping:focusTint
         asset inputs:shaping:ies:file
         token visibility = "inherited"
-        quatd xformOp:orient = (0.8577311761792974, -0.3717656087563595, 0.11354485502769271, -0.3364448356756761)
+        quatd xformOp:orient = (0.4598475543432714, -0.21946870093897358, 0.3208357699281765, -0.7983972224446085)
         double3 xformOp:scale = (1, 1, 1)
         double3 xformOp:translate = (0, 0, 0)
         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
@@ -1011,6 +1011,24 @@ def Xform "Environment"
                 )
             }
         }
+    }
+
+    def DomeLight "DomeLight" (
+        prepend apiSchemas = ["ShapingAPI"]
+    )
+    {
+        float inputs:intensity = 1000
+        float inputs:shaping:cone:angle = 180
+        float inputs:shaping:cone:softness
+        float inputs:shaping:focus
+        color3f inputs:shaping:focusTint
+        asset inputs:shaping:ies:file
+        token inputs:texture:format = "latlong"
+        token visibility = "inherited"
+        quatd xformOp:orient = (1, 0, 0, 0)
+        double3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (0, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
     }
 }
 
