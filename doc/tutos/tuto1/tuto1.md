@@ -8,7 +8,7 @@ colocaremos varios drones sobre el terreno y los controlaremos mediante la emisi
 En primer lugar, abrimos el entorno de simulación NVIDIA Isaac Sim, que ofrecerá un aspecto similar al de la figura siguiente 
 (los paneles pueden variar en función de la configuración personal):
 
-![Isaac Sim](./img/IsaacSim.png)
+![Isaac Sim](./img/isaac_sim.png)
 
 
 
@@ -16,16 +16,21 @@ En primer lugar, abrimos el entorno de simulación NVIDIA Isaac Sim, que ofrecer
 
 Abrimos la ventana de extensiones desde el menu superior `Window/Extensions`
 
-![generated_city.usda](./img/generated_city.png)
+![Isaac extensions panel](./img/extensions.png)
 
 Abrimos los ajustes de esta ventana `Options/Setting`, 
 buscamos en nuestro disco duro la fuente `navsim/ov/extensions/` y la añadimos a *Extension Search Paths*.
+
+![generated_city.usda](./img/ov_extensions.png)
+
 
 Entonces, elegimos la lengueta *THIRD PARTY*, y el desplegable *User*. 
 Ahí encontraremos las extensiones propias de NavSim. 
 Activamos la extensión *NAVSIM REMOTE COMMAND* (podemos marcar la opción de que se cargue en el arranque.
 Observamos como se abre en la pantalla el panel correspondiete.
 Lo desplazamos y ajustamos a la interfaz a nuestro gusto.
+
+![generated_city.usda](./img/ext_remote_command.png)
 
 
 ## Launch the scenario
@@ -50,6 +55,9 @@ En el panel *REMOTE COMMAND* pulsamos el botón *REFRESH*.
 La lista desplegable se carga con los nombres de los tres quadricópteros.
 Elegimos uno de ellos.
 
+![Drone list in REMOTE COMMAND panel](./img/remote_cmd_drone_list.png)
+
+
 Asignamos `velZ = 1.0` y pulsamos *SEND*. El dron correspondiente se eleva a 1m/s durante 1 segundo.
 
 ![Drone flying](./img/drone_flying.png)
@@ -66,7 +74,8 @@ Experimenta con otros drones. No olvides que:
 - el *ejeZ* (azul) es el eje vertical del dron, positivo hacia arriba.
 - la rotación en el eje vertical es positiva en sentido antihorario.
 
-Cada drone lleva una cámara incorporada. Desde el menú *Window/Viewport*, podemos abrir el *Viewport 2* y asociar una de esas cámaras.
+Por último, debes saber que cada drone lleva una cámara incorporada. 
+Desde el menú *Window/Viewport*, podemos abrir el *Viewport 2* y asociar una de esas cámaras.
 
 ![Onboard camera](./img/onboard_cam.png)
 
