@@ -1,18 +1,16 @@
 
 # NavSim
 
-Update 27/02/2024
+Update 06/10/2024
 
 ![NavSim](./doc/img/navsim.png)
 
 
 NAVSIM is a **U-Space** service development tool. It provides:
 
-- Real-time simulation of 3D urban airspace (executed in the Gazebo 11 _Classic_ environment).
+- Real-time simulation of 3D urban airspace (executed in NVIDIA Isaac Sim).
 
-- Communication support between different services (implemented in ROS2).
-
-- A comprehensive set of tools (developed in Matlab® R2023b) to:
+- A comprehensive set of tools (developed in Python) to:
 
   - Define **drone operators** capable of generating flight operation needs.
   - Generate **flight plans** for the execution of these operations.
