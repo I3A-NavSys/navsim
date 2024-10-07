@@ -10,7 +10,6 @@ import omni.ui as ui
 
 import carb.events
 
-from omni.ui import color as cl
 from omni.isaac.core.utils.stage import get_current_stage
 from omni.isaac.ui.element_wrappers import *
 
