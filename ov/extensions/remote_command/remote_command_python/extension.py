@@ -136,6 +136,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                     #send button
                     ui.Button(
                         "SEND", 
+                        height=50,
                         clicked_fn = self.on_click)
 
 
