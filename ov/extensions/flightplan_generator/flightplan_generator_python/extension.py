@@ -48,52 +48,14 @@ DARK_WINDOW_STYLE = {
         "draw_mode": ui.SliderDrawMode.DRAG,
         "corner_flag": ui.CornerFlag.RIGHT,
         "font_size": 14,
-    },
-    "Label::transform_label": {"font_size": 12, "color": 0xFFDDDDDD},
-    "Label": {"font_size": 12, "color": 0xFF8A8777},
-    "Label::label": {"font_size": 14, "color": 0xFF8A8777},
-    "Label::title": {"font_size": 14, "color": 0xFFAAAAAA},
-    "Triangle::title": {"background_color": 0xFFAAAAAA},
-    "ComboBox::path": {"font_size": 12, "secondary_color": 0xFF23211F, "color": 0xFFAAAAAA},
-    "ComboBox::choices": {
+    }
+}
+
+Label_style = {
+    "Label": {
         "font_size": 12,
-        "color": 0xFFAAAAAA,
-        "background_color": 0xFF23211F,
-        "secondary_color": 0xFF23211F,
-    },
-    "ComboBox:hovered:choices": {"background_color": 0xFF33312F, "secondary_color": 0xFF33312F},
-    "Slider::value_less": {
-        "font_size": 12,
-        "color": 0x0,
-        "border_radius": 5,
-        "background_color": 0xFF23211F,
-        "secondary_color": KIT_GREEN,
-        "border_color": 0xFFAAFFFF,
-        "border_width": 0,
-    },
-    "Slider::value": {
-        "font_size": 14,
-        "color": 0xFFAAAAAA,
-        "border_radius": 5,
-        "background_color": 0xFF23211F,
-        "secondary_color": KIT_GREEN,
-    },
-    "Rectangle::add": {"background_color": 0xFF23211F},
-    "Rectangle:hovered:add": {"background_color": 0xFF73414F},
-    "CheckBox::greenCheck": {"font_size": 10, "background_color": KIT_GREEN, "color": 0xFF23211F},
-    "CheckBox::whiteCheck": {"font_size": 10, "background_color": 0xFFDDDDDD, "color": 0xFF23211F},
-    "Slider::colorField": {"background_color": 0xFF23211F, "font_size": 14, "color": 0xFF8A8777},
-    # Frame
-    "CollapsableFrame::standard_collapsable": {
-        "background_color": 0xFF343432,
-        "secondary_color": 0xFF343432,
-        "font_size": 16,
-        "border_radius": 2.0,
-        "border_color": 0x0,
-        "border_width": 0,
-    },
-    "CollapsableFrame:hovered:standard_collapsable": {"secondary_color": 0xFFFBF1E5},
-    "CollapsableFrame:pressed:standard_collapsable": {"secondary_color": 0xFFF7E4CC},
+        "color": 0xFFDDDDDD
+    }
 }
 
 CollapsableFrame_style = {
@@ -110,6 +72,22 @@ CollapsableFrame_style = {
     "HStack::header": {"margin": 5},
     "CollapsableFrame:hovered": {"secondary_color": 0xFF3A3A3A},
     "CollapsableFrame:pressed": {"secondary_color": 0xFF343432},
+}
+
+ScrollingFrame_style = {
+    "ScrollingFrame": {
+        "background_color": 0xFF343432,
+        "secondary_color": 0xFF343432,
+        "color": 0xFFAAAAAA,
+        "border_radius": 4.0,
+        "border_color": 0x0,
+        "border_width": 0,
+        "font_size": 14,
+        "padding": 0,
+    },
+    "HStack::header": {"margin": 5},
+    "ScrollingFrame:hovered": {"secondary_color": 0xFF3A3A3A},
+    "ScrollingFrame:pressed": {"secondary_color": 0xFF343432},
 }
 
 class NavsimOperatorCmdExtension(omni.ext.IExt):
@@ -194,7 +172,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                     # Field labels
                     with ui.HStack(spacing=8):
                         with ui.HStack(width=LABEL_PADDING):
-                            ui.Label(component, name="transform", width=50)
+                            ui.Label(component, style=Label_style, width=50)
                             ui.Spacer()
 
                         # Axis fields
@@ -210,7 +188,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                                                                              "corner_flag": ui.CornerFlag.LEFT})
 
                                     # Axis letter label
-                                    ui.Label(axis, name="transform_label", alignment=ui.Alignment.CENTER)
+                                    ui.Label(axis, style=Label_style, alignment=ui.Alignment.CENTER)
 
                                 # FloatDrag widgets
                                 self.component_handles.append(ui.FloatDrag(name="transform", min=-1000000, max=1000000, 
@@ -221,7 +199,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
 
                 # Add time field
                 with ui.HStack(spacing=8):
-                    ui.Label("Time", width=LABEL_PADDING)
+                    ui.Label("Time", style=Label_style, width=LABEL_PADDING)
                     ui.IntDrag(min=0, max=1000000, step=1)
 
                     # Enabled field checkbox
@@ -229,14 +207,14 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
 
                 with ui.HStack(spacing=8):
                     # Fly over label
-                    ui.Label("Fly over", width=LABEL_PADDING)
+                    ui.Label("Fly over", style=Label_style, width=LABEL_PADDING)
 
                     # Fly over field checkbox
                     ui.CheckBox(width=0).model.set_value(True)
 
                 with ui.HStack(spacing=8):
                     # Priority label
-                    ui.Label("Priority", width=LABEL_PADDING)
+                    ui.Label("Priority", style=Label_style, width=LABEL_PADDING)
 
                     # Priority field checkbox
                     ui.IntDrag(min=0, max=1000000, step=1)
@@ -253,12 +231,13 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
             self.waypoint_list = ui.ScrollingFrame(
                 height=250,
                 horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_ALWAYS_OFF,
-                vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_ALWAYS_ON
+                vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_ALWAYS_ON,
+                style=ScrollingFrame_style
             )
             with self.waypoint_list:
                 with ui.VStack(spacing=8):
                     ui.Spacer(height=0)
-                    self.empty_waypoint_list = ui.Label("Waypoint list is empty", style={"color": cl.white}, 
+                    self.empty_waypoint_list = ui.Label("Waypoint list is empty", style=Label_style, 
                                                         alignment=ui.Alignment.CENTER_TOP)
                 
     def add_waypoint(self):
