@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.0.2] - 2024-10-08
+- Added joystick mapping explanation to the documentation
+
 ## [1.0.1] - 2024-09-12
 - Enhanced ui visuals
 - Updated icon, preview and readme data
