@@ -54,7 +54,7 @@ class FlightPlanExamples(omni.ext.IExt):
         self.app_interface = omni.kit.app.get_app_interface()
 
         # Create the window
-        self._window = ui.Window("REMOTE FLIGHTPLAN", width=400, height=200)
+        self._window = ui.Window("NavSim - Flightplan Examples", width=400, height=200)
         with self._window.frame:
 
             with ui.VStack(spacing=10, height=0):

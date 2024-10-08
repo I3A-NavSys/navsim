@@ -59,7 +59,7 @@ class ManualController(omni.ext.IExt):
         self.ext_utils = ExtUtils()
 
         # UI window
-        self.window = ui.Window("NavSim - External UAV control", width=600, height=600, raster_policy=ui.RasterPolicy.NEVER)   # The ui.RasterPolicy.NEVER is to always update plots line drawing
+        self.window = ui.Window("NavSim - Manual Controller", width=600, height=600, raster_policy=ui.RasterPolicy.NEVER)   # The ui.RasterPolicy.NEVER is to always update plots line drawing
 
         # Plot data
         self.x_lv_plot_data = [0.0, 0.0]

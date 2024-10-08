@@ -45,7 +45,7 @@ class CommandGenerator(omni.ext.IExt):
         self.event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
 
         # Create the window
-        self._window = ui.Window("REMOTE COMMAND", width=400, height=200)
+        self._window = ui.Window("NavSim - Command Generator", width=400, height=200)
         with self._window.frame:
 
             with ui.VStack(spacing=10, height=0):

@@ -239,7 +239,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
     
     def build_window(self):
         # Create extension main window
-        self.window = ui.Window("Flightplan Generator", width=450, height=800)
+        self.window = ui.Window("NavSim - Flightplan Generator", width=450, height=800)
         self.window.deferred_dock_in("Layers")
         self.window.setPosition(0, 0)
         self.window.frame.set_style(DARK_WINDOW_STYLE)
