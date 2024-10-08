@@ -4,9 +4,9 @@ order = 0
 
 [package]
 version = "1.0.0"
-category = "Simulation"
-title = "NavSim RemoteCommand"
-description="Remote sender of commands to UAVs"
+category = ""
+title = "NavSim - Command Generator"
+description="Generate and send commands to UAVs"
 authors = ["I3A-NavSys"]
 repository = ""
 keywords = ["UAM", "dron control"]
@@ -22,7 +22,7 @@ icon = "data/icon.png"
 # PyQt5 pipapi
 
 [[python.module]]
-name = "remote_command_python"
+name = "command_generator_python"
 
 [[test]]
 # Extra dependencies only to be used during test run

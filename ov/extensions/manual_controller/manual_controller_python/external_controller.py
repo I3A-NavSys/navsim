@@ -1,5 +1,5 @@
-from .JoystickInput import JoystickInput
-from .KeyboardInput import KeyboardInput
+from .joystick_input import JoystickInput
+from .keyboard_input import KeyboardInput
 
 import numpy as np
 import asyncio

@@ -16,9 +16,9 @@ from omni.isaac.ui.element_wrappers import DropDown
 from omni.isaac.core.utils.stage import get_current_stage
 
 import asyncio
-from .ExternalController import ExternalController
+from .external_controller import ExternalController
 
-from ov_utils.extensions_utils import ExtUtils
+from navsim_utils.extensions_utils import ExtUtils
 
 try:
     import matplotlib
@@ -40,7 +40,7 @@ except:
 
 import matplotlib.pyplot as plt
 
-class Extension(omni.ext.IExt):
+class ManualController(omni.ext.IExt):
     def on_startup(self, ext_id):
         print("[NavSim.ExternalControl] NavSim ExternalControl startup")
 

@@ -18,22 +18,17 @@ from uspace.flightplan.command import Command
 import pickle   # Serialization
 import base64   # Parsing to string
 
-from ov_utils.extensions_utils import ExtUtils
+from navsim_utils.extensions_utils import ExtUtils
 
 # Any class derived from `omni.ext.IExt` in top level module (defined in `python.modules` of `extension.toml`) will be
 # instantiated when extension gets enabled and `on_startup(ext_id)` will be called. Later when extension gets disabled
 # on_shutdown() is called.
 
-class NavsimOperatorCmdExtension(omni.ext.IExt):
+class CommandGenerator(omni.ext.IExt):
     # ext_id is current extension id. It can be used with extension manager to query additional information, like where
     # this extension is located on filesystem.
 
-
-
-
     def on_startup(self, ext_id):
-        # print("[REMOTE COMMAND ext] startup")
-        
         # Buidl ExtUtils instance
         self.ext_utils = ExtUtils()
 
@@ -151,9 +146,7 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
 
 
 
-    def on_click(self):
-        # print("[REMOTE COMMAND ext] SEND button clicked")
-        
+    def on_click(self):   
         if self.UAV_selector_dropdown.get_selection() is None:
             raise Exception("[REMOTE COMMAND ext] No drone selected")
         

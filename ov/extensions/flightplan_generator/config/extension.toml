@@ -4,12 +4,12 @@ order = 0
 
 [package]
 version = "1.0.0"
-category = "Simulation"
+category = ""
 title = "Navsim - Flightplan Generator"
 description="GUI for flightplan generation"
 authors = ["I3A-NavSys"]
 repository = ""
-keywords = ["UAM", "dron control"]
+keywords = ["UAM", "Drone"]
 changelog="docs/CHANGELOG.md"
 readme  = "docs/README.md"
 preview_image = "data/preview.png"

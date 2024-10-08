@@ -4,12 +4,12 @@ order = 0
 
 [package]
 version = "1.0.2"
-category = "Simulation"
-title = "NavSim External Control"
-description="External input controller for manipulable prims"
+category = ""
+title = "NavSim - Manual Controller"
+description="Manual controller for manipulable prims"
 authors = ["I3A-NavSys"]
 repository = ""
-keywords = ["controller", "UAV", "dron"]
+keywords = ["controller", "UAV", "Drone"]
 changelog="docs/CHANGELOG.md"
 readme  = "docs/README.md"
 preview_image = "data/preview.png"
@@ -23,4 +23,4 @@ icon = "data/icon.png"
 # pygame pipapi
 
 [[python.module]]
-name = "external_control_python"
+name = "manual_controller_python"

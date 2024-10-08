@@ -6,8 +6,8 @@ version = "1.0.0"
 authors = ["NVIDIA"]
 
 # The title and description fields are primarily for displaying extension info in UI
-title = "navsim_core"
-description="A simple python extension example to use as a starting point for your extensions."
+title = "NavSim - Core"
+description="NavSim core components and configurations"
 
 # Path (relative to the root) or content of readme markdown file for UI.
 readme  = "docs/README.md"
@@ -16,7 +16,7 @@ readme  = "docs/README.md"
 repository = ""
 
 # One of categories for UI.
-category = "Example"
+category = ""
 
 # Keywords for the extension
 keywords = ["kit", "example"]

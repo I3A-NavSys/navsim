@@ -28,9 +28,9 @@ from uspace.flightplan.FlightPlan import FlightPlan
 import omni.physx
 import omni.timeline
 
-from ov_utils.extensions_utils import ExtUtils
+from navsim_utils.extensions_utils import ExtUtils
 
-class NavsimOperatorCmdExtension(omni.ext.IExt):
+class FlightPlanExamples(omni.ext.IExt):
 
     def on_startup(self, ext_id):
         # print("[REMOTE COMMAND ext] startup")
