@@ -40,13 +40,6 @@ DARK_WINDOW_STYLE = {
         "border_radius": 3,
         "corner_flag": ui.CornerFlag.RIGHT,
         "font_size": 12,
-    },
-    "Slider::transform": {
-        "background_color": 0xFF23211F,
-        "border_radius": 3,
-        "draw_mode": ui.SliderDrawMode.DRAG,
-        "corner_flag": ui.CornerFlag.RIGHT,
-        "font_size": 14,
     }
 }
 
@@ -240,8 +233,9 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
                                                         alignment=ui.Alignment.CENTER_TOP)
                 
     def add_waypoint(self):
+        new_waypoint = []
         for handle in self.component_handles:
-            print(handle.model.get_value_as_float())
+            new_waypoint.append(handle.model.floatValue())
     
     def build_window(self):
         # Create extension main window
