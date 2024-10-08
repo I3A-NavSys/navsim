@@ -2,7 +2,6 @@
 
 # ROS 2 specific
 build
-install
 utrafman_ws/install
 
 log

@@ -76,6 +76,13 @@ class UAM_minidrone(BehaviorScript):
         
         self.primRotSpinning = self.prim.GetChild("rotors_spinning")
         self.primRotStatic   = self.prim.GetChild("rotors_static")
+        
+        self.prim_rotor_NE_rot_att = self.primRotStatic.GetChild("rotor_NE").GetAttribute("xformOp:orient")
+        self.prim_rotor_NW_rot_att = self.primRotStatic.GetChild("rotor_NW").GetAttribute("xformOp:orient")
+        self.prim_rotor_SE_rot_att = self.primRotStatic.GetChild("rotor_SE").GetAttribute("xformOp:orient")
+        self.prim_rotor_SW_rot_att = self.primRotStatic.GetChild("rotor_SW").GetAttribute("xformOp:orient")
+        self.prim_rotors_rot_vel = 179
+        self.are_rotors_on = False
 
         # Create the omniverse event associated to this UAV
         self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(self.prim.GetPath()))
@@ -251,6 +258,11 @@ class UAM_minidrone(BehaviorScript):
         self.forceNW_atr.Set(Gf.Vec3f(0,0,0))
         self.forceSE_atr.Set(Gf.Vec3f(0,0,0))
         self.forceSW_atr.Set(Gf.Vec3f(0,0,0))
+    
+        self.prim_rotor_NE_rot_att.Set(Gf.Quatd(1,0,0,0))
+        self.prim_rotor_NW_rot_att.Set(Gf.Quatd(1,0,0,0))
+        self.prim_rotor_SE_rot_att.Set(Gf.Quatd(1,0,0,0))
+        self.prim_rotor_SW_rot_att.Set(Gf.Quatd(1,0,0,0))
 
         self.fp = None
 
@@ -265,6 +277,8 @@ class UAM_minidrone(BehaviorScript):
         # Get current simulation time
         self.current_time = current_time
         self.delta_time = delta_time
+
+        self.animate_rotors()
 
         # Update the drone status
         self.IMU()
@@ -320,12 +334,41 @@ class UAM_minidrone(BehaviorScript):
         self.w_rotor_NW = 0
         self.w_rotor_SE = 0
         self.w_rotor_SW = 0
-        self.primRotStatic.SetActive(True)
-        self.primRotSpinning.SetActive(False)
+        # self.primRotStatic.SetActive(True)
+        # self.primRotSpinning.SetActive(False)
+        self.are_rotors_on = False
 
         # Reset del control
         self.E = np.zeros((4, 1))
 
+
+
+    def animate_rotors(self):
+        if self.are_rotors_on:
+            ori = self.prim_rotor_NW_rot_att.Get()
+
+            W = ori.real
+            X = ori.imaginary[0]
+            Y = ori.imaginary[1]
+            Z = ori.imaginary[2]
+            quaternion = Rotation.from_quat([X,Y,Z,W])
+
+            rotation = Rotation.from_euler("z", self.prim_rotors_rot_vel, degrees=True)
+            q_rot = rotation * quaternion
+            
+            new_quat = q_rot.as_quat()
+            W = new_quat[3]
+            X = new_quat[0]
+            Y = new_quat[1]
+            Z = new_quat[2]
+
+            new_quat_NWSE = Gf.Quatd(W, X, Y, Z)
+            new_quat_NESW = Gf.Quatd(W, X, Y, Z * -1)
+
+            self.prim_rotor_NE_rot_att.Set(new_quat_NESW)
+            self.prim_rotor_NW_rot_att.Set(new_quat_NWSE)
+            self.prim_rotor_SE_rot_att.Set(new_quat_NWSE)
+            self.prim_rotor_SW_rot_att.Set(new_quat_NESW)
 
 
     def IMU(self):
@@ -427,8 +470,9 @@ class UAM_minidrone(BehaviorScript):
             if self.current_time > self.cmd_exp_time:
                 self.command.Hover()
 
-        self.primRotStatic.SetActive(False)
-        self.primRotSpinning.SetActive(True)
+        # self.primRotStatic.SetActive(False)
+        # self.primRotSpinning.SetActive(True)
+        self.are_rotors_on = True
 
         # Assign the model reference to be followed
         self.r[0, 0] = self.command.velX       # bXdot
