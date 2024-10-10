@@ -13,17 +13,6 @@ from uspace.flight_plan.waypoint import Waypoint
 from uspace.flight_plan.command import Command
 
 
-try:
-    from tabulate import tabulate
-except:
-    raise Exception("ERROR: 'tabulate' package is not installed. Copy and paste in the Script Editor the following" + 
-                    "code:\n\n" + 
-                    "# -- START CODE ------------------------------\n" +
-                    "import omni.kit.pipapi\n" +
-                    "omni.kit.pipapi.install(\"tabulate\")\n" +
-                    "# -- END CODE --------------------------------\n")
-
-
 class FlightPlan:
 
     def __init__(self):
@@ -457,14 +446,8 @@ class FlightPlan:
 
     def print_waypoints(self) -> None:
         """Prints all waypoints in the flight plan with their time, position, and velocity."""
-        data = []
-        headers = ["Label", "Time", "Pos", "Vel"]
         for wp in self.waypoints:
-            # print(f"{wp.label} \t  {wp.t} pos{wp.pos} vel{wp.vel}")
-            data.append([wp.label, wp.t, wp.pos, wp.vel])
-
-        if len(data) > 0:
-            print(tabulate(data, headers, tablefmt="plain", colalign=("left", "right", "right", "right")))
+            print(f"{wp.label} \t  {wp.t} pos{wp.pos} vel{wp.vel}")
 
     def __repr__(self):
         return f"FlightPlan(id: {self.id}, waypoints: {len(self.waypoints)})"
