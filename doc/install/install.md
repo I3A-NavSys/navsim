@@ -61,7 +61,7 @@ Open the extensions window from top menu `Window/Extensions`
 Open the the settings `Options/Setting`,
 find in your local storage the path to `navsim/ov/extensions` and add it to *Extension Search Paths*.
 
-![Navsim extensions](./img/ov_extensions.png)
+![Navsim extensions](./img/navsim_extensions.png)
 
 Then, select *THIRD PARTY* tab and *User* dropdown.
 There you will find our own extensions from NavSim.
@@ -69,7 +69,7 @@ Enable the extensions *NAVSIM - COMMAND GENERATOR* (you can set the extension to
 See how a new window appears with the extension's content.
 Move and adjust the window to you pleasure.
 
-![Command generator extension](./img/ext_remote_command.png)
+![Navsim extensions loaded](./img/navsim_extensions_loaded.png)
 
 
 ## Running your first simulation 
