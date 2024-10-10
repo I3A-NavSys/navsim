@@ -32,7 +32,7 @@ class FlightPlan:
                 if numWPs == 0:
                     time = 0
                 else:
-                    time = self.FinishTime() + 1
+                    time = self.finish_time() + 1
 
             if numWPs > 0:      status = self.status_at_time(time)
 
@@ -46,7 +46,7 @@ class FlightPlan:
                 if numWPs == 0:
                     vel = [0,0,0]
                 else:
-                    if time <= self.init_time() or time >= self.FinishTime():
+                    if time <= self.init_time() or time >= self.finish_time():
                         vel = [0,0,0]
                     else:
                         vel = status.vel
@@ -164,7 +164,7 @@ class FlightPlan:
     def postpone_from(self, startTime: float, timeStep: float):
         # Postpone a portion of the Flight Plan a given time_delta,
         # starting from a given startTime
-        if self.FinishTime() < startTime:
+        if self.finish_time() < startTime:
             return
 
         # Find the first waypoint with time greater than or equal to startTime
@@ -335,7 +335,7 @@ class FlightPlan:
         if t <= self.init_time(): 
             return self.waypoints[0]
         
-        if t >= self.FinishTime():
+        if t >= self.finish_time():
             return self.waypoints[-1]
 
         # Get the current waypoint
@@ -351,7 +351,7 @@ class FlightPlan:
     
     def trace(self, timeStep):
         # This method expands the flight plan behavior over time
-        instants = np.arange(self.init_time(), self.FinishTime() + timeStep, timeStep)
+        instants = np.arange(self.init_time(), self.finish_time() + timeStep, timeStep)
         tr = np.zeros((len(instants), 7))
         tr[:, 0] = instants
         
