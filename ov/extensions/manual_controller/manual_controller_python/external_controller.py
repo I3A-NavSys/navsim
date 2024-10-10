@@ -124,8 +124,9 @@ class ExternalController:
             else:                       camera_slice = self.inputs[6]
 
             # Switch camera
-            self.active_camera = int(self.active_camera + camera_slice)%self.amount_cameras
-            self.switch_active_camera(self.active_camera)
+            if self.amount_cameras > 0:
+                self.active_camera = int(self.active_camera + camera_slice)%self.amount_cameras
+                self.switch_active_camera(self.active_camera)
 
             # Update camera distance & height
             follow_distance = self.inputs[7]
