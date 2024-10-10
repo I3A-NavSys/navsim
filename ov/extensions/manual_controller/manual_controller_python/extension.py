@@ -47,12 +47,10 @@ class ManualController(omni.ext.IExt):
         self.create_vars()
         self.build_ui()
 
-
     def on_shutdown(self):
         print("[NavSim.ExternalControl] NavSim ExternalControl shutdown")
 
         self.stop_update()
-
 
     def create_vars(self):
         # Build ExtensionUtils instance
@@ -73,8 +71,7 @@ class ManualController(omni.ext.IExt):
         self.sub = omni.kit.app.get_app().get_update_event_stream().create_subscription_to_pop(self.build_plots_container, name="Plots_building")
 
         # UI state information
-        self.UI_state_info = {"track_pos_opts": {"visible": False, "enabled": True},
-                              "start_upd_plot_button": {"visible" : True, "enabled": True},
+        self.UI_state_info = {"start_upd_plot_button": {"visible" : True, "enabled": True},
                               "stop_upd_plot_button": {"visible" : True, "enabled": False}}
 
         # Control variable
@@ -85,7 +82,6 @@ class ManualController(omni.ext.IExt):
 
         # App interface
         self.app_interface = omni.kit.app.get_app_interface()
-
 
     def build_ui(self):
         with self.window.frame:
@@ -125,7 +121,6 @@ class ManualController(omni.ext.IExt):
                         self.plots_container = ui.VStack(height=0)
 
                         self.build_plot_container_content()
-
     
     def change_plot_distribution(self, model, index):        
         item = model.get_item_value_model(index).as_int
@@ -142,7 +137,6 @@ class ManualController(omni.ext.IExt):
 
         self.build_plots = True
 
-
     def build_plots_container(self, e: carb.events.IEvent):
         if self.build_plots:
             self.build_plots = False
@@ -150,19 +144,6 @@ class ManualController(omni.ext.IExt):
             self.plots_container.clear()
 
             self.build_plot_container_content()
-
-
-    def track_checkbox_changed(self, model):
-        # If position must be tracked
-        if model.get_value_as_bool():
-            # Show more options
-            self.select_controller_HStack.visible = True
-            self.UI_state_info["track_pos_opts"]["visible"] = True
-        
-        else:
-            self.select_controller_HStack.visible = False
-            self.UI_state_info["track_pos_opts"]["visible"] = False
-
 
     def build_plot_container_content(self):
         with self.plots_container:
@@ -177,35 +158,11 @@ class ManualController(omni.ext.IExt):
             # Make UI beauty
             ui.Spacer(height=10)
 
-            # Track position section
-            with ui.HStack():
-                ui.Label("Track position", alignment=ui.Alignment.LEFT)
-                self.track_checkbox = ui.CheckBox()
-                self.track_checkbox.model.add_value_changed_fn(self.track_checkbox_changed)
-
-                self.track_checkbox.model.set_value(self.UI_state_info["track_pos_opts"]["visible"])
-                self.track_checkbox.enabled = self.UI_state_info["track_pos_opts"]["enabled"]
-
-            # Make UI beauty
-            ui.Spacer(height=5)
-
-            # Select contoller section
-            self.select_controller_HStack = ui.HStack()
-            with self.select_controller_HStack:
-                ui.Label("\tSelect controller", alignment=ui.Alignment.LEFT)
-                self.drone_controller_combo_box = ui.ComboBox(0, "Joystick", "Keyboard")
-
-            self.select_controller_HStack.visible = self.UI_state_info["track_pos_opts"]["visible"]
-            self.drone_controller_combo_box.enabled = self.UI_state_info["track_pos_opts"]["enabled"]
-
-            # Make UI beauty
-            ui.Spacer(height=10)
-
             # Control buttons section
             with ui.HStack(spacing=5):
                 self.start_control_prim_button = ui.Button("START", clicked_fn=self.start_update, height=5)
                 self.stop_control_prim_button = ui.Button("STOP", clicked_fn=self.stop_update, height=5)
-                self.reset_control_prim_button = ui.Button("RESET", clicked_fn=self.reset_plot, height=5)
+                self.reset_control_prim_button = ui.Button("RESET PLOTS", clicked_fn=self.reset_plot, height=5)
 
                 self.start_control_prim_button.enabled = self.UI_state_info["start_upd_plot_button"]["enabled"]
                 self.stop_control_prim_button.enabled = self.UI_state_info["stop_upd_plot_button"]["enabled"]
@@ -223,7 +180,6 @@ class ManualController(omni.ext.IExt):
 
                 case 2:
                     self.third_way()
-
 
     async def update_plot(self):
         while not self.stop_update_plot:
@@ -259,7 +215,6 @@ class ManualController(omni.ext.IExt):
             if not hasattr(self, "stop_update_plot"):
                 break
 
-
     def start_update(self):
         if self.UAV_selector_dropdown.get_selection() is None:
             raise Exception("No drone selected")
@@ -272,11 +227,8 @@ class ManualController(omni.ext.IExt):
         # Change UI elements state
         self.start_control_prim_button.enabled = False
         self.stop_control_prim_button.enabled = True
-        self.track_checkbox.enabled = False
-        self.drone_controller_combo_box.enabled = False
 
         # Change UI dictionary state
-        self.UI_state_info["track_pos_opts"]["enabled"] = False
         self.UI_state_info["start_upd_plot_button"]["enabled"] = False
         self.UI_state_info["stop_upd_plot_button"]["enabled"] = True
 
@@ -315,20 +267,10 @@ class ManualController(omni.ext.IExt):
         # Get the selected drone
         drone = self.ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
 
-        # Check if tracking option selected, if so a specific controller must be used
-        if self.UI_state_info["track_pos_opts"]["visible"]:
-            self.external_control.start(drone, self.drone_controller_combo_box.model.get_item_value_model().get_value_as_int())
-
-        else:
-            self.external_control.start(drone)
-
-        # Check if prim's position must be tracked
-        if self.track_checkbox.model.get_value_as_bool():
-            asyncio.ensure_future(self.track_prim_pos(drone))
+        self.external_control.start(drone)
 
         # Start the coroutine that updates the plots
         asyncio.ensure_future(self.update_plot())
-
 
     def stop_update(self):
         print("-- STOP --")
@@ -339,17 +281,13 @@ class ManualController(omni.ext.IExt):
         # Reset UI elements state
         self.start_control_prim_button.enabled = True
         self.stop_control_prim_button.enabled = False
-        self.track_checkbox.enabled = True
-        self.drone_controller_combo_box.enabled = True
 
         # Reset UI dictionary state
-        self.UI_state_info["track_pos_opts"]["enabled"] = True
         self.UI_state_info["start_upd_plot_button"]["enabled"] = True
         self.UI_state_info["stop_upd_plot_button"]["enabled"] = False
 
         # Stop asking for inputs
         self.external_control.stop()
-
 
     def reset_plot(self):
         self.x_lv_plot_data = [0.0, 0.0]
@@ -362,165 +300,12 @@ class ManualController(omni.ext.IExt):
         self.z_lv_plot.set_data(*self.z_lv_plot_data)
         self.z_av_plot.set_data(*self.z_av_plot_data)
 
-    
-    async def track_prim_pos(self, drone):
-        # Get starting time
-        start_time = self.app_interface.get_time_since_start_s()
-
-        # Create the matplotlib figure and the corresponding plot
-        track_fig = plt.figure()
-        track_plot = track_fig.add_subplot(3, 4, (1, 11), projection="3d")
-
-        # Indicate the axes name
-        track_plot.set_xlabel("X")
-        track_plot.set_ylabel("Y")
-        track_plot.set_zlabel("Z")
-
-        # Write a title for the plot
-        track_plot.set_title("Drone Position")
-
-        # Stablish the initial limits
-        track_plot.set_xlim3d(-1, 1)
-        track_plot.set_ylim3d(-1, 1)
-        track_plot.set_zlim3d(-1, 1)
-
-        # Create the position lists to show over time
-        x_pos_track = []
-        y_pos_track = []
-        z_pos_track = []
-
-        # Create the time list to show pos vs time
-        time_track = []
-
-        # Store initial position
-        drone_pos = drone.GetAttribute("xformOp:translate").Get()
-        x_pos_track.append(drone_pos[0])
-        y_pos_track.append(drone_pos[1])
-        z_pos_track.append(drone_pos[2])
-
-        # Store initial time
-        time_track.append(0)
-
-        # Plot initial position
-        line, = track_plot.plot(x_pos_track, y_pos_track, z_pos_track)
-
-        # Get the figure manager
-        fig_manager = plt.get_current_fig_manager()
-
-        # Disable keyboard listening for the figure (so we can use it to control the drone)
-        track_fig.canvas.mpl_disconnect(fig_manager.key_press_handler_id)
-
-        while not self.stop_update_plot:
-            # Get the current position
-            drone_pos = drone.GetAttribute("xformOp:translate").Get()
-
-            # If position (any coordinates) is changed
-            if drone_pos[0] != x_pos_track[-1] or drone_pos[1] != y_pos_track[-1] or drone_pos[2] != z_pos_track[-1]:
-                # Add the position components to the corresponding list
-                x_pos_track.append(drone_pos[0])
-                y_pos_track.append(drone_pos[1])
-                z_pos_track.append(drone_pos[2])
-
-                # Add the current time to the corresponding list
-                current_time = self.app_interface.get_time_since_start_s() - start_time
-                time_track.append(current_time)
-
-                # Update plot data
-                line.set_data(x_pos_track, y_pos_track)
-                line.set_3d_properties(z_pos_track)
-
-                # Update plot limits
-                track_plot_lims = self.get_matplotlib_plot_limits(track_plot)
-                new_limits = self.update_track_plot_lims(track_plot_lims, drone_pos)
-
-                track_plot.set_xlim3d(*new_limits[0])
-                track_plot.set_ylim3d(*new_limits[1])
-                track_plot.set_zlim3d(*new_limits[2])
-
-                if self.drone_controller_combo_box.model.get_item_value_model().get_value_as_int() == 0:
-                    # Foreground updating
-                    plt.pause(0.01)
-
-                elif self.drone_controller_combo_box.model.get_item_value_model().get_value_as_int() == 1:
-                    # Background updating
-                    plt.draw()
-            
-            await asyncio.sleep(0.2)
-
-        # TODO
-        # Enable the figure keyboard listening once the tracking has finished (not compulsory as they are shortcuts)
-
-        self.show_pos_vs_time(track_fig, x_pos_track, y_pos_track, z_pos_track, time_track)
-
-    
-    def get_matplotlib_plot_limits(self, plot):
-        try:
-            z_lim = plot.get_zlim3d()
-            x_lim = plot.get_xlim3d()
-            y_lim = plot.get_ylim3d()
-
-            return [x_lim, y_lim, z_lim]
-        except:
-            x_lim = plot.get_xlim3d()
-            y_lim = plot.get_ylim3d()
-
-            return (x_lim, y_lim)
-        
-
-    def update_track_plot_lims(self, track_plot_lims, new_pos):
-        if new_pos[0] < track_plot_lims[0][0]:
-            track_plot_lims[0] = [new_pos[0], track_plot_lims[0][1]]
-
-        if new_pos[0] > track_plot_lims[0][1]:
-            track_plot_lims[0] = [track_plot_lims[0][0], new_pos[0]]
-
-        if new_pos[1] < track_plot_lims[1][0]:
-            track_plot_lims[1] = [new_pos[1], track_plot_lims[1][1]]
-
-        if new_pos[1] > track_plot_lims[1][1]:
-            track_plot_lims[1] = [track_plot_lims[1][0], new_pos[1]]
-
-        if new_pos[2] < track_plot_lims[2][0]:
-            track_plot_lims[2] = [new_pos[2], track_plot_lims[2][0]]
-
-        if new_pos[2] > track_plot_lims[2][1]:
-            track_plot_lims[2] = [track_plot_lims[2][0], new_pos[2]]
-
-        return track_plot_lims
-
-
-    def show_pos_vs_time(self, track_fig, x_pos_track, y_pos_track, z_pos_track, time_track):
-        # Create the plots
-        x_time_plot = track_fig.add_subplot(3, 4, (4, 4))
-        y_time_plot = track_fig.add_subplot(3, 4, (8, 8))
-        z_time_plot = track_fig.add_subplot(3, 4, (12, 12))
-
-        # X plot
-        x_time_plot.set_title("Position vs Time")
-        # x_time_plot.set_xlabel("Time")
-        x_time_plot.set_ylabel("X")
-        x_time_plot.plot(time_track, x_pos_track)
-
-        # Y plot
-        # y_time_plot.set_title("Y pos vs time")
-        # y_time_plot.set_xlabel("Time")
-        y_time_plot.set_ylabel("Y")
-        y_time_plot.plot(time_track, y_pos_track)
-
-        # Z plot
-        # z_time_plot.set_title("Z pos vs time")
-        z_time_plot.set_xlabel("Time")
-        z_time_plot.set_ylabel("Z")
-        z_time_plot.plot(time_track, z_pos_track)
-
-        plt.show(block=False)
-
-
     def first_way(self):
         self.TRDW = False
 
         # X linear vel
         self.x_linear_vel_label = ui.Label("X linear velocity (m/s)", alignment=ui.Alignment.CENTER)
+        ui.Spacer(height=5)
         self.x_max_lvl = ui.Label("1.0")
         self.x_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.x_lv_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl("#B13333")})
         self.x_min_lvl = ui.Label("-1.0")
@@ -529,6 +314,7 @@ class ManualController(omni.ext.IExt):
 
         # Y linear vel
         self.y_linear_vel_label = ui.Label("Y linear velocity (m/s)", alignment=ui.Alignment.CENTER)
+        ui.Spacer(height=5)
         self.y_max_lvl = ui.Label("1.0")
         self.y_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.y_lv_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl("#54B133")})
         self.y_min_lvl = ui.Label("-1.0")
@@ -537,6 +323,7 @@ class ManualController(omni.ext.IExt):
 
         # Z linear vel
         self.z_linear_vel_label = ui.Label("Z linear velocity (m/s)", alignment=ui.Alignment.CENTER)
+        ui.Spacer(height=5)
         self.z_max_lvl = ui.Label("1.0")
         self.z_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_lv_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl("#4C73E2")})
         self.z_min_lvl = ui.Label("-1.0")
@@ -545,10 +332,10 @@ class ManualController(omni.ext.IExt):
 
         # Z angular vel
         self.z_angular_vel_label = ui.Label("Z angular velocity (rad/s)", alignment=ui.Alignment.CENTER)
+        ui.Spacer(height=5)
         self.z_max_avl = ui.Label("1.0")
         self.z_av_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_av_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl("#4C73E2")})
         self.z_min_avl = ui.Label("-1.0")
-
 
     def second_way(self):
         self.TRDW = False
@@ -557,6 +344,7 @@ class ManualController(omni.ext.IExt):
             with ui.VStack():
                 # X linear vel
                 self.x_linear_vel_label = ui.Label("X linear velocity (m/s)", alignment=ui.Alignment.CENTER)
+                ui.Spacer(height=5)
                 self.x_max_lvl = ui.Label("1.0")
                 self.x_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.x_lv_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl("#B13333")})
                 self.x_min_lvl = ui.Label("-1.0")
@@ -564,6 +352,7 @@ class ManualController(omni.ext.IExt):
             with ui.VStack():
                 # Y linear vel
                 self.y_linear_vel_label = ui.Label("Y linear velocity (m/s)", alignment=ui.Alignment.CENTER)
+                ui.Spacer(height=5)
                 self.y_max_lvl = ui.Label("1.0")
                 self.y_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.y_lv_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl("#54B133")})
                 self.y_min_lvl = ui.Label("-1.0")
@@ -571,6 +360,7 @@ class ManualController(omni.ext.IExt):
             with ui.VStack():
                 # Z linear vel
                 self.z_linear_vel_label = ui.Label("Z linear velocity (m/s)", alignment=ui.Alignment.CENTER)
+                ui.Spacer(height=5)
                 self.z_max_lvl = ui.Label("1.0")
                 self.z_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_lv_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl("#4C73E2")})
                 self.z_min_lvl = ui.Label("-1.0")
@@ -579,15 +369,16 @@ class ManualController(omni.ext.IExt):
 
         # Z angular vel
         self.z_angular_vel_label = ui.Label("Z angular velocity (rad/s)", alignment=ui.Alignment.CENTER)
+        ui.Spacer(height=5)
         self.z_max_avl = ui.Label("1.0")
         self.z_av_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_av_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl("#4C73E2")})
         self.z_min_avl = ui.Label("-1.0")
-
 
     def third_way(self):
         self.TRDW = True
 
         self.x_linear_vel_label = ui.Label("Linear velocity (m/s)", alignment=ui.Alignment.CENTER)
+        ui.Spacer(height=5)
         self.x_max_lvl = ui.Label("1.0")
         
         with ui.ZStack():
@@ -609,6 +400,7 @@ class ManualController(omni.ext.IExt):
 
         # Z angular vel
         self.z_angular_vel_label = ui.Label("Z angular velocity (rad/s)", alignment=ui.Alignment.CENTER)
+        ui.Spacer(height=5)
         self.z_max_avl = ui.Label("1.0")
         self.z_av_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_av_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl("#4C73E2")})
         self.z_min_avl = ui.Label("-1.0")

@@ -34,7 +34,7 @@ class ControllerLogic:
         self.msg_bus_event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
 
     
-    def start(self, prim, controller = None):
+    def start(self, prim):
         if self._stop:
             self._stop = False
 
@@ -49,9 +49,6 @@ class ControllerLogic:
             # Create the event to have a communication between the UAV and the joystick
             self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(prim.GetPath()))
 
-            # Get the controller
-            self.controller = controller
-
             # Selected drone
             self.prim = prim
 
@@ -60,19 +57,8 @@ class ControllerLogic:
             self.changed_on = False
             self.current_on = False
             
-            # Check if a specific controller must be used
-            if self.controller != None:
-                # Check if it is joystick
-                if self.controller == 0:
-                    self.joystick.start()
-
-                # Check if it is keyboard
-                elif self.controller == 1:
-                    self.keyboard.start()
-
-            else:
-                self.joystick.start()
-                self.keyboard.start()
+            self.joystick.start()
+            self.keyboard.start()
 
             # Start control coroutine
             asyncio.ensure_future(self.control())
@@ -82,19 +68,8 @@ class ControllerLogic:
         if not self._stop:
             self._stop = True
 
-            # Check if a specific controller must be used
-            if self.controller != None:
-                # Check if it is joystick
-                if self.controller == 0:
-                    self.joystick.stop()
-
-                # Check if it is keyboard
-                elif self.controller == 1:
-                    self.keyboard.stop()
-
-            else:
-                self.joystick.stop()
-                self.keyboard.stop()
+            self.joystick.stop()
+            self.keyboard.stop()
 
 
     # -- FUNCTION control --------------------------------------------------------------------------------
@@ -155,31 +130,18 @@ class ControllerLogic:
     # It must check which controllers are being used and get the corresponding inputs
     # -----------------------------------------------------------------------------------------------------------
     def get_inputs(self):
-        # Chek if both controllers are running
-        if self.controller == None:
-            # Get the corresponding inputs
-            self.joystick.ask_input()
-            joy_inputs = np.array(self.joystick.inputs)
-            key_inputs = np.array(self.keyboard.inputs)
+        # Get the corresponding inputs
+        self.joystick.ask_input()
+        joy_inputs = np.array(self.joystick.inputs)
+        key_inputs = np.array(self.keyboard.inputs)
 
-            # Joystick input has priority
-            if self.check_inputs(joy_inputs):
-                return joy_inputs
-            else:
-                return key_inputs
-
+        # Joystick input has priority
+        if self.check_inputs(joy_inputs):
+            return joy_inputs
         else:
-            # Check if running controller is joystick
-            if self.controller == 0:
-                self.joystick.ask_input()
-                return np.array(self.joystick.inputs)
+            return key_inputs
 
-            # Check if running controller is keyboard
-            elif self.controller == 1:
-                return np.array(self.keyboard.inputs)
-
-
-    # -- FUNCTION get_grav_deacc --------------------------------------------------------------------------------
+    # -- FUNCTION check_inputs --------------------------------------------------------------------------------
     # This method just checks if we have any input from the receiving parameter (joystick as it has priority)
     # -----------------------------------------------------------------------------------------------------------
     def check_inputs(self, inputs):
