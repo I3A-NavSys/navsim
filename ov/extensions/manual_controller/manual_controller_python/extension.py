@@ -16,7 +16,7 @@ from omni.isaac.ui.element_wrappers import DropDown
 from omni.isaac.core.utils.stage import get_current_stage
 
 import asyncio
-from .external_controller import ExternalController
+from .controller_logic import ControllerLogic
 
 from navsim_utils.extensions_utils import ExtensionUtils
 
@@ -81,7 +81,7 @@ class ManualController(omni.ext.IExt):
         self.stop_update_plot = True
 
         # Instance of ExternalController
-        self.external_control = ExternalController()
+        self.external_control = ControllerLogic()
 
         # App interface
         self.app_interface = omni.kit.app.get_app_interface()

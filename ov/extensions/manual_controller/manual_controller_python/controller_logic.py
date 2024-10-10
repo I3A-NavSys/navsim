@@ -14,7 +14,7 @@ from uspace.flight_plan.command import Command
 import pickle   # Serialization
 import base64   # Parsing to string
 
-class ExternalController:
+class ControllerLogic:
     def __init__(self):
         # Loop condition
         self._stop = True
