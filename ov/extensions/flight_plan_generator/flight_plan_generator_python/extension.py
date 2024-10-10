@@ -8,9 +8,6 @@ if project_root_path not in sys.path:
 import omni.ext
 import omni.ui as ui
 
-import carb.events
-
-from omni.isaac.core.utils.stage import get_current_stage
 from omni.isaac.ui.element_wrappers import *
 
 from uspace.flight_plan.flight_plan import FlightPlan
@@ -22,31 +19,35 @@ from uspace.flight_plan.flight_plan import FlightPlan
 KIT_GREEN = 0xFF8A8777
 LABEL_PADDING = 120
 
-DARK_WINDOW_STYLE = {
-    "Window": {"background_color": 0xFF444444},
-    "Button": {"background_color": 0xFF292929, "margin": 3, "padding": 3, "border_radius": 2},
-    "Button.Label": {"color": 0xFFCCCCCC},
-    "Button:hovered": {"background_color": 0xFF9E9E9E},
-    "Button:pressed": {"background_color": 0xC22A8778},
-    "VStack::main_v_stack": {"secondary_color": 0x0, "margin_width": 10, "margin_height": 0},
-    "VStack::frame_v_stack": {"margin_width": 15},
-    "Rectangle::frame_background": {"background_color": 0xFF343432, "border_radius": 5},
-    "Field::models": {"background_color": 0xFF23211F, "font_size": 14, "color": 0xFFAAAAAA, "border_radius": 4.0},
-    "Frame": {"background_color": 0xFFAAAAAA},
-    "Label::transform": {"font_size": 12, "color": 0xFF8A8777},
-    "Circle::transform": {"background_color": 0x558A8777},
-    "Field::transform": {
-        "background_color": 0xFF23211F,
-        "border_radius": 3,
-        "corner_flag": ui.CornerFlag.RIGHT,
-        "font_size": 12,
+Window_dark_style = {
+    "Window": {"background_color": 0xFF444444}
+}
+
+VStack_A = {
+    "VStack": {
+        "secondary_color": 0x0, 
+        "margin_width": 10, 
+        "margin_height": 0
     }
 }
 
-Label_style = {
+VStack_B = {
+    "VStack": {"margin_width": 15}
+}
+
+Label_A = {
     "Label": {
         "font_size": 12,
         "color": 0xFFDDDDDD
+    }
+}
+
+Label_list = {
+    "Label": {
+        "font_size": 12,
+        "color": 0xFFDDDDDD,
+        "margin_width": 10,
+        "margin_height": 5
     }
 }
 
@@ -82,13 +83,34 @@ ScrollingFrame_style = {
     "ScrollingFrame:pressed": {"secondary_color": 0xFF343432},
 }
 
-class NavsimOperatorCmdExtension(omni.ext.IExt):
+class FlightPlanGenerator(omni.ext.IExt):
     # ext_id is current extension id. It can be used with extension manager to query additional information, like where
     # this extension is located on filesystem.
 
     def on_startup(self, ext_id):
-        # List of manipulable prims
-        self.manipulable_prims = []
+        # Field variables
+        self.waypoint_list = []
+        self.position = []
+        self.velocity = []
+        self.time = 0
+        self.priority = 0
+
+        # Field validity variables
+        self.position_check = True
+        self.velocity_check = True
+        self.time_check = True
+        self.fly_over_check = True
+        self.priority_check = True
+
+        # UI field handles
+        self.position_handles : list[ui.FloatDrag] = []
+        self.velocity_handles : list[ui.FloatDrag] = []
+        self.time_handle = None
+        self.priority_handle = None
+
+        # UI widgets
+        self.waypoint_list_frame = None
+        self.empty_waypoint_list_label = None
 
         # Initialize flight plan
         self.fp = FlightPlan()
@@ -99,120 +121,92 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
         # Build graphical interface
         self.build_window()
                     
-    def get_manipulable_prims(self, prim=None):
-            # Needed list containing the names of the manipulable prims for the dropdown selector
-            manipulable_prims = []
-
-            # First iteration
-            if prim is None:
-                stage = get_current_stage()
-                prim = stage.GetPseudoRoot()
-
-                self.manipulable_prims.clear()
-
-            # Check current prim
-            if prim.GetAttribute("NavSim:Manipulable").IsValid() and prim.GetAttribute("NavSim:Manipulable").Get():
-                manipulable_prims.append(prim.GetName())
-                self.manipulable_prims.append(prim)
-            
-            else:
-                # Check prim's children
-                for child in prim.GetAllChildren():
-                    # First check children
-                    if len(child.GetAllChildren()) > 0:
-                        manipulable_prims += self.get_manipulable_prims(child)
-                    
-                    # Then check current child
-                    elif child.GetAttribute("NavSim:Manipulable").IsValid() and child.GetAttribute("NavSim:Manipulable").Get():
-                        manipulable_prims.append(child.GetName())
-                        self.manipulable_prims.append(prim)
-
-            return manipulable_prims
-
-    def refresh_drone_selector(self):
-        self.drone_selector_dropdown.enabled = True
-        self.drone_selector_dropdown.repopulate()
-
-    def on_click(self):
-        # Get the selected drone
-        try:
-            drone = self.manipulable_prims[self.drone_selector_dropdown.get_selection_index()]
-        except:
-            print("[REMOTE COMMAND ext] No drone selected")
-            return
-        
-        print(f"[REMOTE COMMAND ext] Command sent at simulation time: {self.current_time:.2f}")
-
-        # Create the event to send commands to the UAV
-        self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(drone.GetPath()))
-
     def on_shutdown(self):
         pass
 
     def build_waypoint_frame(self):
         with ui.CollapsableFrame(title="Waypoint", style=CollapsableFrame_style):
-            with ui.VStack(spacing=8, name="frame_v_stack"):
+            with ui.VStack(spacing=8, style=VStack_B):
                 ui.Spacer(height=0)
 
-                # Pose and linear velocity fields
-                components = ["Position", "Velocity"]
+                # Position fields
+                with ui.HStack(spacing=8):
+                    with ui.HStack(width=LABEL_PADDING):
+                        ui.Label("Position", style=Label_A, width=50)
+                        ui.Spacer()
 
-                # Handles to each component FloatDrag
-                self.component_handles : list[ui.FloatDrag] = []
-                for component in components:
+                    # Axis fields
+                    all_axis = ["X", "Y", "Z"]
+                    colors = {"X": 0xFF5555AA, "Y": 0xFF76A371, "Z": 0xFFA07D4F}
+                    for axis in all_axis:
+                        with ui.HStack():
+                            with ui.ZStack(width=15):
 
-                    # Field labels
-                    with ui.HStack(spacing=8):
-                        with ui.HStack(width=LABEL_PADDING):
-                            ui.Label(component, style=Label_style, width=50)
-                            ui.Spacer()
+                                # Colored rectangles
+                                ui.Rectangle(width=15, height=20, style={"background_color": colors[axis], 
+                                                                            "border_radius": 3, 
+                                                                            "corner_flag": ui.CornerFlag.LEFT})
 
-                        # Axis fields
-                        all_axis = ["X", "Y", "Z"]
-                        colors = {"X": 0xFF5555AA, "Y": 0xFF76A371, "Z": 0xFFA07D4F}
-                        for axis in all_axis:
-                            with ui.HStack():
-                                with ui.ZStack(width=15):
+                                # Axis letter label
+                                ui.Label(axis, style=Label_A, alignment=ui.Alignment.CENTER)
 
-                                    # Colored rectangles
-                                    ui.Rectangle(width=15, height=20, style={"background_color": colors[axis], 
-                                                                             "border_radius": 3, 
-                                                                             "corner_flag": ui.CornerFlag.LEFT})
+                            # FloatDrag widgets
+                            self.position_handles.append(ui.FloatDrag(min=-1000000, max=1000000, step=0.01))
 
-                                    # Axis letter label
-                                    ui.Label(axis, style=Label_style, alignment=ui.Alignment.CENTER)
+                    # Enabled field checkboxes
+                    self.position_check = ui.CheckBox(width=0).model.set_value(True)
 
-                                # FloatDrag widgets
-                                self.component_handles.append(ui.FloatDrag(name="transform", min=-1000000, max=1000000, 
-                                                                           step=0.01))
+                # Velocity fields
+                with ui.HStack(spacing=8):
+                    with ui.HStack(width=LABEL_PADDING):
+                        ui.Label("Velocity", style=Label_A, width=50)
+                        ui.Spacer()
 
-                        # Enabled field checkboxes
-                        ui.CheckBox(width=0).model.set_value(True)
+                    # Axis fields
+                    all_axis = ["X", "Y", "Z"]
+                    colors = {"X": 0xFF5555AA, "Y": 0xFF76A371, "Z": 0xFFA07D4F}
+                    for axis in all_axis:
+                        with ui.HStack():
+                            with ui.ZStack(width=15):
+
+                                # Colored rectangles
+                                ui.Rectangle(width=15, height=20, style={"background_color": colors[axis], 
+                                                                            "border_radius": 3, 
+                                                                            "corner_flag": ui.CornerFlag.LEFT})
+
+                                # Axis letter label
+                                ui.Label(axis, style=Label_A, alignment=ui.Alignment.CENTER)
+
+                            # FloatDrag widgets
+                            self.velocity_handles.append(ui.FloatDrag(min=-1000000, max=1000000, step=0.01))
+
+                    # Enabled field checkboxes
+                    self.velocity_check = ui.CheckBox(width=0).model.set_value(True)
 
                 # Add time field
                 with ui.HStack(spacing=8):
-                    ui.Label("Time", style=Label_style, width=LABEL_PADDING)
-                    ui.IntDrag(min=0, max=1000000, step=1)
+                    ui.Label("Time", style=Label_A, width=LABEL_PADDING)
+                    self.time_handle = ui.IntDrag(min=0, max=1000000, step=1)
 
                     # Enabled field checkbox
-                    ui.CheckBox(width=0).model.set_value(True)
+                    self.time_check = ui.CheckBox(width=0).model.set_value(True)
 
                 with ui.HStack(spacing=8):
                     # Fly over label
-                    ui.Label("Fly over", style=Label_style, width=LABEL_PADDING)
+                    ui.Label("Fly over", style=Label_A, width=LABEL_PADDING)
 
                     # Fly over field checkbox
-                    ui.CheckBox(width=0).model.set_value(True)
+                    self.fly_over_check = ui.CheckBox(width=0).model.set_value(True)
 
                 with ui.HStack(spacing=8):
                     # Priority label
-                    ui.Label("Priority", style=Label_style, width=LABEL_PADDING)
+                    ui.Label("Priority", style=Label_A, width=LABEL_PADDING)
 
                     # Priority field checkbox
-                    ui.IntDrag(min=0, max=1000000, step=1)
+                    self.priority_handle = ui.IntDrag(min=0, max=1000000, step=1)
 
                     # Enabled field checkbox
-                    ui.CheckBox(width=0).model.set_value(True)
+                    self.priority_check = ui.CheckBox(width=0).model.set_value(True)
 
                 # Add waypoint button
                 ui.Button("Add waypoint", clicked_fn=self.add_waypoint)
@@ -220,33 +214,35 @@ class NavsimOperatorCmdExtension(omni.ext.IExt):
 
     def build_waypoint_list(self):
         with ui.CollapsableFrame(title="Waypoint list", style=CollapsableFrame_style):
-            self.waypoint_list = ui.ScrollingFrame(
+            self.waypoint_list_frame = ui.ScrollingFrame(
                 height=250,
                 horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_ALWAYS_OFF,
                 vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_ALWAYS_ON,
                 style=ScrollingFrame_style
             )
-            with self.waypoint_list:
+            with self.waypoint_list_frame:
                 with ui.VStack(spacing=8):
                     ui.Spacer(height=0)
-                    self.empty_waypoint_list = ui.Label("Waypoint list is empty", style=Label_style, 
-                                                        alignment=ui.Alignment.CENTER_TOP)
+                    self.empty_waypoint_list_label = ui.Label("Waypoint list is empty", style=Label_A, 
+                                                              alignment=ui.Alignment.CENTER_TOP)
                 
     def add_waypoint(self):
-        new_waypoint = []
-        for handle in self.component_handles:
-            new_waypoint.append(handle.model.floatValue())
+        with self.waypoint_list_frame:
+            with ui.VStack(height = 0, style = VStack_B):
+                with ui.HStack(spacing=0, width=20):
+                    for _ in range(9):
+                        ui.Label("Test", style=Label_list, alignment=ui.Alignment.LEFT_TOP)
     
     def build_window(self):
         # Create extension main window
-        self.window = ui.Window("NavSim - Flight Plan Generator", width=450, height=800)
+        self.window = ui.Window("NavSim - Flight Plan Generator", width=450, height=600)
         self.window.deferred_dock_in("Layers")
-        self.window.setPosition(0, 0)
-        self.window.frame.set_style(DARK_WINDOW_STYLE)
+        self.window.setPosition(100, 100)
+        self.window.frame.set_style(Window_dark_style)
 
         # Populate window frame
         with self.window.frame:
-            with ui.VStack(height=0, name="main_v_stack", spacing=6):
+            with ui.VStack(height=0, style=VStack_A, spacing=6):
                 ui.Spacer(height=0)
                 # Create transform frame
                 self.build_waypoint_frame()
