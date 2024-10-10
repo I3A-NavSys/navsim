@@ -64,9 +64,10 @@ find in your local storage the path to `navsim/ov/extensions` and add it to *Ext
 ![Navsim extensions](./img/navsim_extensions.png)
 
 Then, select *THIRD PARTY* tab and *User* dropdown.
-There you will find our own extensions from NavSim.
-Enable the extensions *NAVSIM - COMMAND GENERATOR* (you can set the extension to autoload when launching the app).
-See how a new window appears with the extension's content.
+There you will find our own navsim extensions.
+From here you can enable and disable the extensions as you want (you can set them to autoload when isaac sim is launched).
+We recommend you to enable all of them since you will use them during the following tutorials.
+Once you enable an extension, see how a new window appears with the its content.
 Move and adjust the window to you pleasure.
 
 ![Navsim extensions loaded](./img/navsim_extensions_loaded.png)
