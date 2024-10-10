@@ -220,7 +220,7 @@ class UAM_minidrone(BehaviorScript):
         self.current_time = 0
         self.delta_time = 0
 
-        self.command.Off()
+        self.command.off()
         self.rotors_off()
 
         self.force_atr.Set(Gf.Vec3f(0,0,0))

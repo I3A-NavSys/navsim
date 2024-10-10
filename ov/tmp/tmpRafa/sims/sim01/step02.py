@@ -13,7 +13,7 @@ project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../
 if project_root_path not in sys.path:
     sys.path.append(project_root_path)
 
-from uspace.flightplan.command import Command
+from uspace.flight_plan.command import Command
 import pickle   # Serialization
 import base64   # Parsing to string
 
