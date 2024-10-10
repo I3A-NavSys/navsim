@@ -33,7 +33,6 @@ class ControllerLogic:
         # Get the bus event stream
         self.msg_bus_event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
 
-    
     def start(self, prim):
         if self._stop:
             self._stop = False
@@ -63,14 +62,12 @@ class ControllerLogic:
             # Start control coroutine
             asyncio.ensure_future(self.control())
 
-
     def stop(self):
         if not self._stop:
             self._stop = True
 
             self.joystick.stop()
             self.keyboard.stop()
-
 
     # -- FUNCTION control --------------------------------------------------------------------------------
     # This method simply gets the inputs from both the joystick and the keyboard, then decide which one to use
@@ -124,7 +121,6 @@ class ControllerLogic:
 
             await asyncio.sleep(0.1)
 
-
     # -- FUNCTION get_inputs --------------------------------------------------------------------------------
     # This method is in charge of returning the valid inputs.
     # It must check which controllers are being used and get the corresponding inputs
@@ -151,7 +147,6 @@ class ControllerLogic:
             
         return False
     
-
     # -- FUNCTION get_cameras -----------------------------------------------------------------------------------
     # This function returns the cameras' prim path
     # The only searched cameras are the ones which have physics to follow the prim
@@ -188,7 +183,6 @@ class ControllerLogic:
         viewport_api = omni.kit.viewport.utility.get_active_viewport()
         viewport_api.set_active_camera(camera)
 
-    
     # -- FUNCTION switch_active_camera --------------------------------------------------------------------------
     # This method changes the follow distance and height of the active based on the received parameters
     # Highlight that it only support cameras of type Drone (neither Look nor Velocity)
