@@ -8,9 +8,7 @@ import omni.ext
 
 
 ##############################################################################
-
 # Adding root 'ov' folder to sys.path
-import sys, os
 
 current_path = os.path.abspath(os.path.dirname(__file__))
 while True:
@@ -29,16 +27,52 @@ if project_root_path not in sys.path:
 
 
 ##############################################################################
-# Abre archivo USD en el entorno de Isaac Sim
-usd_file_path = os.path.join(project_root_path, "assets/worlds/generated_city.usda")
+# Abrimos un escenario desde archivo en el entorno de Isaac Sim
+
+# context = omni.usd.get_context()
+# usd_file_path = os.path.join(project_root_path, "assets/worlds/generated_city.usda")
 # print(f"Directorio: {usd_file_path}")
+# if not context.open_stage(usd_file_path):
+    # raise RuntimeError(f"Error: No se pudo abrir el archivo USD en {usd_file_path}")
+# stage: Usd.Stage = context.get_stage()
+# print(stage.ExportToString())
+
+
+##############################################################################
+# Accedemos al escenario en el entorno de Isaac Sim
 
 context = omni.usd.get_context()
-if not context.open_stage(usd_file_path):
-    raise RuntimeError(f"Error: No se pudo abrir el archivo USD en {usd_file_path}")
-
 stage: Usd.Stage = context.get_stage()
-# print(stage.ExportToString())
+
+
+
+##############################################################################
+# Cargamos el escenario urbano
+# 
+
+# Seleccionamos archivo USD
+usd_file_path = os.path.join(project_root_path, "assets/worlds/generated_city.usda")
+# print(f"Directorio: {usd_file_path}")
+if not os.path.exists(usd_file_path):
+    raise FileNotFoundError(f"Error: No se encontró el archivo USD {usd_file_path}")
+
+# Importamos escenario
+stage2 = Usd.Stage.Open(usd_file_path)
+if not stage2:
+    raise RuntimeError(f"Error: No se pudo abrir el archivo USD {usd_file_path}")
+
+# Obtenemos prim raíz
+root_prim = stage2.GetDefaultPrim()
+if not root_prim:
+    raise RuntimeError(f"Error: No se pudo obtener el prim raíz de {usd_file_path}")
+
+# Cargamos payload
+prim = stage.DefinePrim(f"/World/City")
+prim.GetPayloads().AddPayload(usd_file_path, root_prim.GetPath())
+
+
+
+
 
 
 
@@ -47,24 +81,23 @@ stage: Usd.Stage = context.get_stage()
 # Creamos vertipuertos en posiciones predefinidas
 # 
 
-
 # Seleccionamos archivo USD
-VP_usd_file_path = os.path.join(project_root_path, "assets/vertiports/vertiport.usd")
-# print(f"Directorio: {UAV_usd_file_path}")
-if not os.path.exists(VP_usd_file_path):
-    raise FileNotFoundError(f"Error: No se encontró el archivo USD {VP_usd_file_path}")
+usd_file_path = os.path.join(project_root_path, "assets/vertiports/vertiport.usd")
+# print(f"Directorio: {usd_file_path}")
+if not os.path.exists(usd_file_path):
+    raise FileNotFoundError(f"Error: No se encontró el archivo USD {usd_file_path}")
 
 
 # Importamos el escenario del archivo USD
-VP_stage = Usd.Stage.Open(VP_usd_file_path)
-if not VP_stage:
-    raise RuntimeError(f"Error: No se pudo abrir el archivo USD {VP_usd_file_path}")
+stage2 = Usd.Stage.Open(usd_file_path)
+if not stage2:
+    raise RuntimeError(f"Error: No se pudo abrir el archivo USD {usd_file_path}")
 
 
 # Obtenemos el prim raíz del vertipuerto
-VP_root_prim = VP_stage.GetDefaultPrim()
+VP_root_prim = stage2.GetDefaultPrim()
 if not VP_root_prim:
-    raise RuntimeError(f"Error: No se pudo obtener el prim raíz de {VP_usd_file_path}")
+    raise RuntimeError(f"Error: No se pudo obtener el prim raíz de {usd_file_path}")
 
 
 # Añadimos los vertipuertos al escenario
@@ -92,7 +125,7 @@ for i, loc in enumerate(portsLoc):
 
     # Cargar el payload del vertipuerto
     VP_prim = stage.DefinePrim(VP_prim_path)
-    VP_prim.GetPayloads().AddPayload(VP_usd_file_path, VP_root_prim.GetPath())
+    VP_prim.GetPayloads().AddPayload(usd_file_path, VP_root_prim.GetPath())
 
     # Establecer la posición del vertipuerto
     posX, posY, posZ, rotZ = loc
@@ -154,8 +187,8 @@ for i, loc in enumerate(portsLoc):
 
 ##############################################################################
 # Iniciar la simulación
-import omni.timeline
-timeline = omni.timeline.get_timeline_interface()
-timeline.play()
+# import omni.timeline
+# timeline = omni.timeline.get_timeline_interface()
+# timeline.play()
 
 

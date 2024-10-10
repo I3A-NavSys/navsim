@@ -1,5 +1,3 @@
-
-
 from pxr import Usd
 import sys, os
 import omni
@@ -7,32 +5,35 @@ import omni.usd
 import omni.ext
 import carb.events
 
-# Adding root 'ov' folder to sys.path
-import sys, os
-project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
-if project_root_path not in sys.path:
-    sys.path.append(project_root_path)
-
 from uspace.flight_plan.command import Command
 import pickle   # Serialization
 import base64   # Parsing to string
 
 
+
 ##############################################################################
 # Adding root 'ov' folder to sys.path
-project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
+
+current_path = os.path.abspath(os.path.dirname(__file__))
+while True:
+    if os.path.basename(current_path) == 'ov':
+        project_root_path = current_path
+        break
+    parent_path = os.path.dirname(current_path)
+    if parent_path == current_path:
+        raise RuntimeError("No se encontró el directorio 'ov' en la ruta.")
+    current_path = parent_path
 # print(f"Directorio raíz del proyecto: {project_root_path}")
+
 if project_root_path not in sys.path:
     sys.path.append(project_root_path)
 
+
 ##############################################################################
+# Accedemos al escenario en el entorno de Isaac Sim
 
 context = omni.usd.get_context()
 stage: Usd.Stage = context.get_stage()
-# print(stage.ExportToString())
-
-
-
 
 # Get the bus event stream
 event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
