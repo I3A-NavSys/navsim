@@ -379,8 +379,7 @@ class UAM_minidrone(BehaviorScript):
 
                 else:
                     # Drone in an incorrect starting position
-                    print(f"[{self.current_time:3.2f}] {self.prim_path} discarding FP due to an incorrect starting 
-                          position")
+                    print(f"[{self.current_time:3.2f}] {self.prim_path} discarding FP due to an incorrect starting position")
                     self.fp = None
                     return
 
@@ -405,7 +404,7 @@ class UAM_minidrone(BehaviorScript):
         
         # Change relative vel to absolute
         linear_vel = self.rot.apply(self.linear_vel)
-        self.command = self.fp.GetCommand(self.current_time, self.pos, linear_vel, self.rot, 2)
+        self.command = self.fp.get_command(self.current_time, self.pos, linear_vel, self.rot, 2)
         self.cmd_exp_time = self.current_time + self.command.duration
 
     def servo_control(self):
@@ -419,7 +418,7 @@ class UAM_minidrone(BehaviorScript):
 
         if self.command.duration is not None:
             if self.current_time > self.cmd_exp_time:
-                self.command.Hover()
+                self.command.hover()
 
         # self.primRotStatic.SetActive(False)
         # self.primRotSpinning.SetActive(True)
