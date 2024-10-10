@@ -7,8 +7,8 @@
                 double radius = 5
             }
             dictionary Perspective = {
-                double3 position = (-899.2575362826707, -699.2121569483348, 571.4080716980216)
-                double3 target = (587.1993473676918, 475.9204460415207, -381.14824466673974)
+                double3 position = (-242.730526846052, -285.9080708413006, 120.73197115631693)
+                double3 target = (25.55169785608814, -73.81501081528856, -51.189549420074016)
             }
             dictionary Right = {
                 double3 position = (0, -5, 0)
@@ -113,7 +113,7 @@ def Xform "City"
             float3[] extent = [(-0.5, -0.5, 0), (0.5, 0.5, 0)]
             int[] faceVertexCounts = [4]
             int[] faceVertexIndices = [0, 1, 3, 2]
-            rel material:binding = </City/Looks/OmniPBRBase> (
+            rel material:binding = </City/GroundPlane/OmniPBRBase> (
                 bindMaterialAs = "weakerThanDescendants"
             )
             normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
@@ -130,15 +130,12 @@ def Xform "City"
             double3 xformOp:translate = (0, 0, 0)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
         }
-    }
 
-    def Scope "Looks"
-    {
         def Material "OmniPBRBase"
         {
-            token outputs:mdl:displacement.connect = </City/Looks/OmniPBRBase/Shader.outputs:out>
-            token outputs:mdl:surface.connect = </City/Looks/OmniPBRBase/Shader.outputs:out>
-            token outputs:mdl:volume.connect = </City/Looks/OmniPBRBase/Shader.outputs:out>
+            token outputs:mdl:displacement.connect = </City/GroundPlane/OmniPBRBase/Shader.outputs:out>
+            token outputs:mdl:surface.connect = </City/GroundPlane/OmniPBRBase/Shader.outputs:out>
+            token outputs:mdl:volume.connect = </City/GroundPlane/OmniPBRBase/Shader.outputs:out>
 
             def Shader "Shader"
             {
@@ -1071,6 +1068,26 @@ def Xform "City"
             double3 xformOp:translate = (186, 195, 19.5)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
         }
+    }
+
+    def "Datsun" (
+        prepend payload = @../objects/Datsun.usd@
+    )
+    {
+        double3 xformOp:rotateXYZ = (0, 0, 0)
+        double3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (-124.63949584960938, -216.48699951171875, 0.7618623935159625)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+    }
+
+    def "UAM_aerotaxi" (
+        prepend payload = @../../fleet/UAM_aerotaxi/UAM_aerotaxi.usd@
+    )
+    {
+        quatd xformOp:orient = (0.5012624852591813, 0, 0, -0.86529527958483)
+        double3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (-120.54714965820312, -187.90321350097656, 49.40093104797321)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
     }
 }
 
