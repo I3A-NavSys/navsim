@@ -54,9 +54,22 @@ sudo git clone https://github.com/I3A-NavSys/navsim
 ```
 
 ## Load NAVSIM extensions
-Aqui se describe como configurar el directorio para cargar las extensiones de NavSim.
+Open the extensions window from top menu `Window/Extensions`
 
+![Isaac extensions panel](./img/extensions.png)
 
+Open the the settings `Options/Setting`,
+find in your local storage the path to `navsim/ov/extensions` and add it to *Extension Search Paths*.
+
+![generated_city.usda](./img/ov_extensions.png)
+
+Then, select *THIRD PARTY* tab and *User* dropdown.
+There you will find our own extensions from NavSim.
+Enable the extensions *NAVSIM - COMMAND GENERATOR* (you can set the extension to autoload when launching the app).
+See how a new window appears with the extension's content.
+Move and adjust the window to you pleasure.
+
+![generated_city.usda](./img/ext_remote_command.png)
 
 
 ## Running your first simulation 

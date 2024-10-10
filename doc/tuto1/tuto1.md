@@ -12,7 +12,7 @@ En primer lugar, abrimos el entorno de simulación NVIDIA Isaac Sim, que ofrecer
 
 
 
-## Cargamos las extensiones necesarias
+<!-- ## Cargamos las extensiones necesarias
 
 Abrimos la ventana de extensiones desde el menu superior `Window/Extensions`
 
@@ -30,7 +30,7 @@ Activamos la extensión *NAVSIM REMOTE COMMAND* (podemos marcar la opción de qu
 Observamos como se abre en la pantalla el panel correspondiete.
 Lo desplazamos y ajustamos a la interfaz a nuestro gusto.
 
-![generated_city.usda](./img/ext_remote_command.png)
+![generated_city.usda](./img/ext_remote_command.png) -->
 
 
 ## Launch the scenario
