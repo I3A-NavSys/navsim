@@ -10,7 +10,7 @@ import omni.kit.app
 from omni.isaac.core.utils.stage import get_current_stage
 import omni.kit.viewport.utility
 
-from uspace.flightplan.command import Command
+from uspace.flight_plan.command import Command
 import pickle   # Serialization
 import base64   # Parsing to string
 

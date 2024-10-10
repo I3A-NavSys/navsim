@@ -17,19 +17,12 @@ if project_root_path not in sys.path:
 #     print(path)
 ##############################################################################
 
-from uspace.flightplan.Waypoint   import Waypoint
-from uspace.flightplan.FlightPlan import FlightPlan
-
-
-
+from uspace.flight_plan.waypoint import Waypoint
+from uspace.flight_plan.flight_plan import FlightPlan
 
 # Crear waypoints
 waypoint1 = Waypoint(label='WP1', t= 5,  pos=[  0,   0, 0], vel=[10,  1, 0])
 waypoint2 = Waypoint(label='WP2', t=10,  pos=[100, 100, 0], vel=[ 0, 10, 0])
-
-
-
-
 
 # Crear plan de vuelo
 fp = FlightPlan([waypoint1, waypoint2])
@@ -40,9 +33,6 @@ fp.Print()
 fp.PositionFigure("FP1: POSITION", 0.1)
 fp.VelocityFigure("FP1: VELOCITY", 0.1)
 
-
 for t in range(0, 11):
     i = fp.GetIndexFromTime(t)
     print(f"Index at time {t}: {i}")
-
-

@@ -1,27 +1,30 @@
+# Standard library imports
+import copy
 from re import T
 from typing import List, Optional
+
+# Related third party imports
 import numpy as np
-import copy
 import matplotlib.pyplot as plt
-# from mpl_toolkits.mplot3d import Axes3D  # Necesario para gráficos 3D
-
-from uspace.flightplan.Waypoint import   Waypoint
-from uspace.flightplan.command import Command
-
 from scipy.spatial.transform import Rotation
+
+# Local application/library specific imports
+from uspace.flight_plan.waypoint import Waypoint
+from uspace.flight_plan.command import Command
+
 
 try:
     from tabulate import tabulate
 except:
-    raise Exception("ERROR: 'tabulate' package is not installed. Copy and paste in the Script Editor the folllowing code\n\n" + 
+    raise Exception("ERROR: 'tabulate' package is not installed. Copy and paste in the Script Editor the following" + 
+                    "code:\n\n" + 
                     "# -- START CODE ------------------------------\n" +
                     "import omni.kit.pipapi\n" +
                     "omni.kit.pipapi.install(\"tabulate\")\n" +
                     "# -- END CODE --------------------------------\n")
 
+
 class FlightPlan:
-
-
 
     def __init__(self):
         self.id: int = 0
@@ -32,9 +35,7 @@ class FlightPlan:
         self.waypoints: List[Waypoint] = []
         self.targetYaw = None
 
-
-
-    def SetWaypoint(self, wp=None, label="", time=None, pos=None, vel=None):
+    def set_waypoint(self, wp=None, label="", time=None, pos=None, vel=None):
         numWPs = len(self.waypoints)
 
         if wp is None:
@@ -44,7 +45,7 @@ class FlightPlan:
                 else:
                     time = self.FinishTime() + 1
 
-            if numWPs > 0:      status = self.StatusAtTime(time)
+            if numWPs > 0:      status = self.status_at_time(time)
 
             if pos is None:
                 if numWPs == 0:
@@ -56,14 +57,14 @@ class FlightPlan:
                 if numWPs == 0:
                     vel = [0,0,0]
                 else:
-                    if time <= self.InitTime() or time >= self.FinishTime():
+                    if time <= self.init_time() or time >= self.FinishTime():
                         vel = [0,0,0]
                     else:
                         vel = status.vel
 
             wp = Waypoint(label=label, t=time, pos=pos, vel=vel)
         
-        index = self.GetTargetIndexFromTime(wp.t)
+        index = self.get_target_index_from_time(wp.t)
 
         # Replace if the same time already exists
         if index < numWPs and self.waypoints[index].t == wp.t:
@@ -71,31 +72,22 @@ class FlightPlan:
         else:
             self.waypoints.insert(index, wp)
 
-
-
-    def RemoveWaypointAtTime(self, t: float) -> None:
+    def remove_waypoint_at_time(self, t: float) -> None:
         """Removes the waypoint at a specific time `t` from the flight plan."""
         self.waypoints = list(filter(lambda wp: wp.t != t, self.waypoints))
 
-
-
-    def GetIndexFromLabel(self, label: str) -> Optional[int]:
+    def get_index_from_label(self, label: str) -> Optional[int]:
         for i, wp in enumerate(self.waypoints):
             if wp.label == label:
                 return i
         return None
     
-    
-
-    def GetRunningIndexFromTime(self, t: float):
+    def get_running_index_from_time(self, t: float):
         # It returns the WP the UAV is currently executing
-
-        index = self.GetTargetIndexFromTime(t)
+        index = self.get_target_index_from_time(t)
         return index - 1
     
-
-
-    def GetTargetIndexFromTime(self, t: float):
+    def get_target_index_from_time(self, t: float):
         # It returns the WP the UAV is flying to
         # Note: if t == wp.t, that wp is also considered as target, although they are at the same instant
         if not self.waypoints:
@@ -106,44 +98,32 @@ class FlightPlan:
                 return i
         return i + 1
     
-
-
-    def Copy(self):
+    def copy(self):
         """Realiza una copia profunda de la instancia actual de FlightPlan."""
-        return FlightPlan(
-            waypoints=copy.deepcopy(self.waypoints),
-        )
+        return FlightPlan(waypoints=copy.deepcopy(self.waypoints))
 
+    #------------------------------------------------------------------------------------------------------------------
+    # TIME MANAGEMENT
 
-
-#-------------------------------------------------------------------
-# TIME MANAGEMENT
-
-
-
-    def InitTime(self):
+    def init_time(self):
         # time of the first waypoint
         if not self.waypoints:
             return 0
         else:
             return self.waypoints[0].t
 
-
-
-    def FinishTime(self):
+    def finish_time(self):
         # time of the last waypoint
         if not self.waypoints:
             return 0
         else:
             return self.waypoints[-1].t
 
-
-
-    def SetUniformVelocity(self, wp=None, vel=None):
+    def set_uniform_velocity(self, wp=None, vel=None):
         # Compute MRU velocity for all WPs
         if wp is None and vel is None:
             for i in range(len(self.waypoints)-1):
-                self.SetUniformVelocity(wp=i)
+                self.set_uniform_velocity(wp=i)
 
             # Stop last WP
             self.waypoints[-1].Stop()
@@ -151,7 +131,7 @@ class FlightPlan:
         # Set vel velocity to all WPs
         elif wp is None:
             for i in range(len(self.waypoints)-1):
-                self.SetUniformVelocity(wp=i, vel=vel)
+                self.set_uniform_velocity(wp=i, vel=vel)
 
             # Stop last WP
             self.waypoints[-1].Stop()
@@ -159,7 +139,7 @@ class FlightPlan:
         # Compute MRU velocity just for wp WP
         elif vel is None:
             # Get WP index
-            if isinstance(wp, str):     index = self.GetIndexFromLabel(wp)
+            if isinstance(wp, str):     index = self.get_index_from_label(wp)
             else:                       index = wp
 
             # Return if it is the last WP or it is not found
@@ -170,12 +150,12 @@ class FlightPlan:
             wp2 = self.waypoints[index+1]
 
             # Update wp1.vel
-            wp1.SetUniformVelocity(wp2)        
+            wp1.set_uniform_velocity(wp2)        
 
         # Set vel velocity just to wp WP
         else:
             # Get WP index
-            if isinstance(wp, str):     index = self.GetIndexFromLabel(wp)
+            if isinstance(wp, str):     index = self.get_index_from_label(wp)
             else:                       index = wp
 
             # Return if it is the last WP or it is not found
@@ -188,48 +168,37 @@ class FlightPlan:
             # New time for wp2 according to vel
             t2 = wp1.t + wp1.DistanceTo(wp2) / vel
             # Update wp2.t and postpone following WPs
-            self.PostponeFrom(wp2.t, t2 - wp2.t)
+            self.postpone_from(wp2.t, t2 - wp2.t)
             # Update wp1.vel
-            wp1.SetUniformVelocity(wp2)
+            wp1.set_uniform_velocity(wp2)
 
-
-
-    def PostponeFrom(self, startTime: float, timeStep: float):
+    def postpone_from(self, startTime: float, timeStep: float):
         # Postpone a portion of the Flight Plan a given time_delta,
         # starting from a given startTime
-
         if self.FinishTime() < startTime:
             return
 
         # Find the first waypoint with time greater than or equal to startTime
-        index = self.GetTargetIndexFromTime(startTime)
+        index = self.get_target_index_from_time(startTime)
 
         if index > 0 and timeStep < self.waypoints[index].TimeTo(self.waypoints[index-1]):
             return  # Not enough time in the past
 
         for i in range(index, len(self.waypoints)):
-            self.waypoints[i].Postpone(timeStep)
+            self.waypoints[i].postpone(timeStep)
 
-
-
-    def Postpone(self, timeStep: float) -> None:
+    def postpone(self, timeStep: float) -> None:
         # Postpone the Flight Plan by a given timeStep
-        self.PostponeFrom(self.InitTime(), timeStep)
+        self.postpone_from(self.init_time(), timeStep)
 
-
-
-    def RescheduleAt(self, time: float) -> None:
+    def reschedule_at(self, time: float) -> None:
         # Perform a temporal translation of the Flight Plan to begin at a given time.
-        self.Postpone(time - self.InitTime())
+        self.postpone(time - self.init_time())
 
+    #------------------------------------------------------------------------------------------------------------------
+    # ROUTE MANAGEMENT
 
-
-#-------------------------------------------------------------------
-# ROUTE MANAGEMENT
-
-
-
-    def ConnectWPs(self):
+    def connect_waypoints(self):
         """
         Para cada waypoint con tiempo, posición, velocidad y aceleración determinados,
         obtiene las 3 derivadas siguientes que ejecutan dicho movimiento.
@@ -237,16 +206,13 @@ class FlightPlan:
         for i in range(len(self.waypoints) - 1):
             wpA = self.waypoints[i]
             wpB = self.waypoints[i + 1]
-            wpA.ConnectTo(wpB)
+            wpA.connect_to(wpB)
 
-
-    
-    def SmoothWPSpeed(self, label, angVel):
+    def smooth_waypoint_speed(self, label, angVel):
         # Curva el vertice entre dos rectas
         # manteniendo velocidad y acortando el tiempo de vuelo
         # Para ello descompone dicho waypoint en dos
-
-        i : int = self.GetIndexFromLabel(label)
+        i : int = self.get_index_from_label(label)
         if (i== 0) or (i == len(self.waypoints) - 1) or (i is None):
             raise RuntimeError(f"Trying to smooth invalid WP (received label: {label})")
       
@@ -257,7 +223,7 @@ class FlightPlan:
         if wp2.fly_over:
             raise RuntimeError(f"Trying to smooth a fly over WP (waypoint: {wp2.label})")
         
-        angle = wp1.AngleWith(wp2)
+        angle = wp1.angle_with(wp2)
 
         v1 = np.linalg.norm(wp1.vel)
         v2 = np.linalg.norm(wp2.vel)
@@ -288,10 +254,10 @@ class FlightPlan:
 
         while T2Max - T2Min > 0.05:
             wp2B.t = np.round(np.mean([T2Min, T2Max]), 2)
-            wp2A.ConnectTo(wp2B)
+            wp2A.connect_to(wp2B)
 
             tABmed = np.mean([wp2A.t, wp2B.t])
-            status = wp2A.Interpolation(tABmed)
+            status = wp2A.interpolation(tABmed)
             vMed = np.linalg.norm(status.vel)
 
             if vMed < v:
@@ -306,16 +272,13 @@ class FlightPlan:
         self.SetWaypoint(wp2A)
         self.SetWaypoint(wp2B)
 
-        self.PostponeFrom(wp2B.t + 0.001, wp2B.t - wp2BTinit)
+        self.postpone_from(wp2B.t + 0.001, wp2B.t - wp2BTinit)
 
-        
-
-    def SmoothWPDuration(self, label, angVel, linAcel):
+    def smooth_waypoint_duration(self, label, angVel, linAcel):
         # Curva el vertice entre dos rectas
         # reduciendo velocidad y manteniendo el tiempo de vuelo
         # Para ello descompone dicho waypoint en dos
-
-        i : int = self.GetIndexFromLabel(label)
+        i : int = self.get_index_from_label(label)
         if (i== 0) or (i == len(self.waypoints) - 1) or (i is None):
             return
       
@@ -325,7 +288,7 @@ class FlightPlan:
         if wp2.fly_over:
             return
         
-        angle = wp1.AngleWith(wp2)
+        angle = wp1.angle_with(wp2)
         tc = angle / angVel         # Time spent in the curve
 
         v1 = np.linalg.norm(wp1.vel)
@@ -333,13 +296,10 @@ class FlightPlan:
         ts = np.abs(v2-v1) / linAcel
 
         interval = np.max([tc, ts])
-        self.ExpandWaypoint(i, interval)
+        self.expand_waypoint(i, interval)
 
-        
-
-    def ExpandWaypoint(self, index, interval):
+    def expand_waypoint(self, index, interval):
         # Decompone un waypoint en dos, separados un intervalo dado
-
         i = index
       
         wp1 = self.waypoints[i-1]
@@ -363,19 +323,16 @@ class FlightPlan:
         wp2B.vel = wp2.vel
         wp2B.t = wp2.t + step
 
-        wp2A.ConnectTo(wp2B)
+        wp2A.connect_to(wp2B)
 
         self.RemoveWaypointAtTime(wp2.t)
         self.SetWaypoint(wp2A)
         self.SetWaypoint(wp2B)
 
+    #------------------------------------------------------------------------------------------------------------------
+    # FLIGHT PLAN BEHAVIOUR
 
-#-------------------------------------------------------------------
-# FLIGHT PLAN BEHAVIOUR
-
-
-
-    def StatusAtTime(self, t: float) -> Waypoint:
+    def status_at_time(self, t: float) -> Waypoint:
         """
         Check the status of the flight plan at a given time.
         
@@ -385,9 +342,8 @@ class FlightPlan:
         Returns:
         Waypoint: The interpolated waypoint status at time t.
         """
-        
         # Check if t is outside the flight plan schedule
-        if t <= self.InitTime(): 
+        if t <= self.init_time(): 
             return self.waypoints[0]
         
         if t >= self.FinishTime():
@@ -397,25 +353,22 @@ class FlightPlan:
         for i in range(1, len(self.waypoints)):
             if t < self.waypoints[i].t:
                 wp1 = self.waypoints[i - 1]
-                wp2 = wp1.Interpolation(t)
+                wp2 = wp1.interpolation(t)
                 return wp2
             
         # index = self.GetRunningIndexFromTime(t)
-        # wp2 = self.waypoints[index].Interpolation(t)
+        # wp2 = self.waypoints[index].interpolation(t)
         # return wp2
     
-
-
-    def Trace(self, timeStep):
+    def trace(self, timeStep):
         # This method expands the flight plan behavior over time
-        
-        instants = np.arange(self.InitTime(), self.FinishTime() + timeStep, timeStep)
+        instants = np.arange(self.init_time(), self.FinishTime() + timeStep, timeStep)
         tr = np.zeros((len(instants), 7))
         tr[:, 0] = instants
         
         # Get position at each time instant
         for i in range(len(instants)):
-            wp = self.StatusAtTime(tr[i, 0])
+            wp = self.status_at_time(tr[i, 0])
             tr[i, 1:4] = wp.pos
             tr[i, 4:7] = wp.vel
         
@@ -423,13 +376,10 @@ class FlightPlan:
         
         return tr
 
+    #------------------------------------------------------------------------------------------------------------------
+    # UAV NAVIGATION
 
-
-#-------------------------------------------------------------------
-# UAV NAVIGATION
-
-
-    def GetCommand(self, currentTime, UAVpos, UAVvel, UAVrot : Rotation, tToSolve) -> Command:
+    def get_command(self, currentTime, UAVpos, UAVvel, UAVrot : Rotation, tToSolve) -> Command:
         # UAVvel = current UAV vel in global system
         # This function converts a flight plan position at certain time
         # to a navigation command (desired velocity vector and rotation)        
@@ -438,7 +388,7 @@ class FlightPlan:
         _, _, UAVyaw = UAVrot.as_euler('xyz', degrees=False)
 
         # EXPECTED UAV POSE
-        expected = self.StatusAtTime(currentTime)
+        expected = self.status_at_time(currentTime)
 
         # COMPUTING CORRECTION VELOCITY (to achieve status.pos in 'tToSolve' seconds)
         crVel = (expected.pos - UAVpos) / tToSolve
@@ -499,19 +449,13 @@ class FlightPlan:
 
         return cmd
     
+    #------------------------------------------------------------------------------------------------------------------
+    # CONFLICT DETECTION
 
+    #------------------------------------------------------------------------------------------------------------------
+    # INFORMATION AND FIGURES
 
-#-------------------------------------------------------------------
-# CONFLICT DETECTION
-
-
-
-#-------------------------------------------------------------------
-# INFORMATION AND FIGURES
-
- 
-
-    def Print(self) -> None:
+    def print_waypoints(self) -> None:
         """Prints all waypoints in the flight plan with their time, position, and velocity."""
         data = []
         headers = ["Label", "Time", "Pos", "Vel"]
@@ -522,14 +466,10 @@ class FlightPlan:
         if len(data) > 0:
             print(tabulate(data, headers, tablefmt="plain", colalign=("left", "right", "right", "right")))
 
-
-
     def __repr__(self):
         return f"FlightPlan(id: {self.id}, waypoints: {len(self.waypoints)})"
 
-
-
-    def PositionFigure(self, figName, timeStep):
+    def position_figure(self, figName, timeStep):
         # Display the flight plan trajectory
         
         # Check if the flight plan is empty
@@ -544,7 +484,7 @@ class FlightPlan:
         color = [0, 0.7, 1]
 
         # Get the trace
-        tr = self.Trace(timeStep)
+        tr = self.trace(timeStep)
 
         # POSITION 3D
         # Create plot
@@ -589,7 +529,6 @@ class FlightPlan:
         yPosTimePlot.plot(tr[:,0], tr[:,2], linewidth=2, color=color)
         zPosTimePlot.plot(tr[:,0], tr[:,3], linewidth=2, color=color)
 
-
         # Get waypoints positions to highlight
         xPos = []
         yPos = []
@@ -630,9 +569,7 @@ class FlightPlan:
         # Show the plots
         plt.show(block=False)
 
-
-
-    def VelocityFigure(self, figName, timeStep):
+    def velocity_figure(self, figName, timeStep):
         # Display the flight plan instant velocity
 
         # Check if the flight plan is empty
@@ -647,7 +584,7 @@ class FlightPlan:
         color = [0, 0.7, 1]
 
         # Get the trace
-        tr = self.Trace(timeStep)
+        tr = self.trace(timeStep)
 
         # VELOCITY 3D
         # Create plot
@@ -719,9 +656,7 @@ class FlightPlan:
         # Show the plots
         plt.show(block=False)
 
-
-
-    def AddUAVTrackPos(self, figName, UAVinfo : List[Waypoint]):
+    def add_UAV_track_pos(self, figName, UAVinfo : List[Waypoint]):
         posFig = plt.figure(figName)
         subplots = posFig.get_axes()
         xyzPosPlot = subplots[0]
@@ -752,9 +687,7 @@ class FlightPlan:
         yPosTimePlot.scatter(timeUAV, yPosUAV, color="black", s=10)
         zPosTimePlot.scatter(timeUAV, zPosUAV, color="black", s=10)
 
-
-
-    def AddUAVTrackVel(self, figName, UAVinfo : List[Waypoint]):
+    def add_UAV_track_vel(self, figName, UAVinfo : List[Waypoint]):
         posFig = plt.figure(figName)
         subplots = posFig.get_axes()
         velPlot3D = subplots[0]

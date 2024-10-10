@@ -14,11 +14,11 @@ project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../
 if project_root_path not in sys.path:
     sys.path.append(project_root_path)
 
-from uspace.flightplan.command import Command
+from uspace.flight_plan.command import Command
 import pickle   # Serialization
 import base64   # Parsing to string
 
-from navsim_utils.extensions_utils import ExtUtils
+from navsim_utils.extensions_utils import ExtensionUtils
 
 # Any class derived from `omni.ext.IExt` in top level module (defined in `python.modules` of `extension.toml`) will be
 # instantiated when extension gets enabled and `on_startup(ext_id)` will be called. Later when extension gets disabled
@@ -30,7 +30,7 @@ class CommandGenerator(omni.ext.IExt):
 
     def on_startup(self, ext_id):
         # Buidl ExtUtils instance
-        self.ext_utils = ExtUtils()
+        self.ext_utils = ExtensionUtils()
 
         # Getting the simulation current time
         self.current_time = 0

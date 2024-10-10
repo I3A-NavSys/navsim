@@ -22,13 +22,13 @@ import base64   # Parsing to string
 
 import omni.kit.app
 
-from uspace.flightplan.Waypoint   import Waypoint
-from uspace.flightplan.FlightPlan import FlightPlan
+from uspace.flight_plan.waypoint   import Waypoint
+from uspace.flight_plan.flight_plan import FlightPlan
 
 import omni.physx
 import omni.timeline
 
-from navsim_utils.extensions_utils import ExtUtils
+from navsim_utils.extensions_utils import ExtensionUtils
 
 class FlightPlanExamples(omni.ext.IExt):
 
@@ -36,7 +36,7 @@ class FlightPlanExamples(omni.ext.IExt):
         # print("[REMOTE COMMAND ext] startup")
         
         # Buidl ExtUtils instance
-        self.ext_utils = ExtUtils()
+        self.ext_utils = ExtensionUtils()
 
         # Getting the simulation current time
         self.current_time = 0
@@ -54,7 +54,7 @@ class FlightPlanExamples(omni.ext.IExt):
         self.app_interface = omni.kit.app.get_app_interface()
 
         # Create the window
-        self._window = ui.Window("NavSim - Flightplan Examples", width=400, height=200)
+        self._window = ui.Window("NavSim - Flight Plan Examples", width=400, height=200)
         with self._window.frame:
 
             with ui.VStack(spacing=10, height=0):

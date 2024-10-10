@@ -18,7 +18,7 @@ from omni.isaac.core.utils.stage import get_current_stage
 import asyncio
 from .external_controller import ExternalController
 
-from navsim_utils.extensions_utils import ExtUtils
+from navsim_utils.extensions_utils import ExtensionUtils
 
 try:
     import matplotlib
@@ -55,8 +55,8 @@ class ManualController(omni.ext.IExt):
 
 
     def create_vars(self):
-        # Buidl ExtUtils instance
-        self.ext_utils = ExtUtils()
+        # Build ExtensionUtils instance
+        self.ext_utils = ExtensionUtils()
 
         # UI window
         self.window = ui.Window("NavSim - Manual Controller", width=600, height=600, raster_policy=ui.RasterPolicy.NEVER)   # The ui.RasterPolicy.NEVER is to always update plots line drawing

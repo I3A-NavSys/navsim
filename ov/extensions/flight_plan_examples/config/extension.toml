@@ -5,8 +5,8 @@ order = 0
 [package]
 version = "1.0.0"
 category = ""
-title = "Navsim - Flightplan Generator"
-description="GUI for flightplan generation"
+title = "NavSim - Flight Plan Examples"
+description="UAVs flight plan examples"
 authors = ["I3A-NavSys"]
 repository = ""
 keywords = ["UAM", "Drone"]
@@ -22,7 +22,7 @@ icon = "data/icon.png"
 # PyQt5 pipapi
 
 [[python.module]]
-name = "flightplan_generator_python"
+name = "flight_plan_examples_python"
 
 [[test]]
 # Extra dependencies only to be used during test run

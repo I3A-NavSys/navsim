@@ -1,14 +1,10 @@
+# Related third party imports
 import numpy as np
-
 
 
 class Waypoint:
 
-
-    def __init__(self, label='', t=0, 
-                 pos=[0,0,0], vel=[0,0,0], 
-                 fly_over=False):
- 
+    def __init__(self, label='', t=0, pos=[0,0,0], vel=[0,0,0], fly_over=False):
         self.label: str = label                         # identifier to refer the waypoint
         self.t: float = np.round(t, 2)                  # time          (s)
         self.pos  = np.round(np.array(pos), 2)          # position      (m)
@@ -19,44 +15,33 @@ class Waypoint:
         self.crkl = np.array([0,0,0])                   # ckl           (m/s5)
         self.fly_over = fly_over                        # transito obligado
 
-
-
-    def Stop(self):
+    def stop(self):
         self.vel  = np.zeros(3)
         self.acel = np.zeros(3)
         self.jerk = np.zeros(3)
         self.snap = np.zeros(3)
         self.crkl = np.zeros(3)
 
+    #-------------------------------------------------------------------
+    # TIME MANAGEMENT
 
-
-#-------------------------------------------------------------------
-# TIME MANAGEMENT
-
-
-    def Postpone(self, timeStep):
+    def postpone(self, timeStep):
         self.t += timeStep
         self.t = np.round(self.t, 2)
 
-
-    def TimeTo(self,wp):
+    def time_to(self, wp):
         # Get the time elapsed from this waypoint to another given
         return wp.t - self.t
 
-
-
-#-------------------------------------------------------------------
-# SPACE MANAGEMENT
-
+    #-------------------------------------------------------------------
+    # SPACE MANAGEMENT
    
-    def DistanceTo(self,wp) -> float:
+    def distance_to(self, wp) -> float:
         # Get the distance between two waypoints
         dist = np.linalg.norm(self.pos - wp.pos)
         return float(dist)
 
-
-
-    def DirectionTo(self,wp) -> np.array:
+    def direction_to(self, wp) -> np.array:
         # Get a direction vector from one waypoint to another
         dist = self.DistanceTo(wp)
         if dist == 0:
@@ -64,9 +49,7 @@ class Waypoint:
         else:
             return (wp.pos - self.pos) / dist
 
-
-
-    def CourseTo(self,wp) -> float:
+    def course_to(self, wp) -> float:
         # Get the course from one waypoint to another
         # -X -> -  90
         # +Y ->     0
@@ -82,11 +65,8 @@ class Waypoint:
             angle_deg = np.degrees(angle_rad)
             return angle_deg    
 
-    
-    
-    def AngleWith(self,wp) -> float:
+    def angle_with(self, wp) -> float:
         # Get the angle between the direction of two waypoints
-        
         norm_a_vel = np.linalg.norm(self.vel)
         norm_b_vel = np.linalg.norm(wp.vel)
         
@@ -98,14 +78,11 @@ class Waypoint:
             angle = np.arccos(np.clip(cos_angle, -1.0, 1.0))
             return angle
         
+    #-------------------------------------------------------------------
+    # DYNAMICS MANAGEMENT
 
-
-#-------------------------------------------------------------------
-# DYNAMICS MANAGEMENT
-
-    def SetUniformVelocity(self, wp2):
+    def set_uniform_velocity(self, wp2):
         # Set uniform straight velocity from wp1 to wp2
-
         self.Stop()
 
         # Time between wp1 and wp2
@@ -114,14 +91,11 @@ class Waypoint:
             self.vel = (wp2.pos - self.pos) / t12
             self.vel = np.round(self.vel, 2)
 
-
-
-    def ConnectTo(self,wp2):
+    def connect_to(self, wp2):
         # Dados dos waypoints con 
         #   t1 pos1 vel1 acel1
         #   t2 pos2 vel2 acel2
         # obtiene jerk1, snap1 y crkl1 para ejecutar dicho movimiento
-
         r1 = self.pos
         v1 = self.vel
         a1 = self.acel
@@ -156,10 +130,7 @@ class Waypoint:
         self.snap = X[1]
         self.crkl = X[2]
 
-
-
-    def SetJS0_T(self,wp2):
-
+    def set_JS0_T(self, wp2):
         # Dados dos waypoints con 
         #   t1 pos1 vel1 acel1
         #      pos2 vel2 acel2
@@ -169,12 +140,9 @@ class Waypoint:
         # para ejecutar dicho movimiento
         pass
 
-
-
-    def Interpolation(self,t2):
+    def interpolation(self, t2):
     # Dados dos waypoints con tiempo, posición, velocidad y aceleración nula
     # interpola un tercer waypoint a un tiempo dado
-
         wp2 = Waypoint()
         wp2.t = t2
 
