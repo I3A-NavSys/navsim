@@ -58,8 +58,9 @@ Open the extensions window from top menu `Window/Extensions`
 
 ![Isaac extensions panel](./img/extensions.png)
 
-Open the the settings `Options/Setting`,
-find in your local storage the path to `navsim/ov/extensions` and add it to *Extension Search Paths*.
+Open the the settings `Options/Settings`,
+find in your local storage the path to `navsim/ov/extensions` and add it to *Extension Search Paths* by clicking on the 
+`+` button and pasting the path in the new blank space created.
 
 ![Navsim extensions](./img/navsim_extensions.png)
 
