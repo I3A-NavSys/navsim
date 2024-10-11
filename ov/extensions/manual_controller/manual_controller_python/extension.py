@@ -334,7 +334,7 @@ class ManualController(omni.ext.IExt):
         self.z_angular_vel_label = ui.Label("Z angular velocity (rad/s)", alignment=ui.Alignment.CENTER)
         ui.Spacer(height=5)
         self.z_max_avl = ui.Label("1.0")
-        self.z_av_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_av_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl("#4C73E2")})
+        self.z_av_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_av_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl.orange})
         self.z_min_avl = ui.Label("-1.0")
 
     def second_way(self):
@@ -371,7 +371,7 @@ class ManualController(omni.ext.IExt):
         self.z_angular_vel_label = ui.Label("Z angular velocity (rad/s)", alignment=ui.Alignment.CENTER)
         ui.Spacer(height=5)
         self.z_max_avl = ui.Label("1.0")
-        self.z_av_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_av_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl("#4C73E2")})
+        self.z_av_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_av_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl.orange})
         self.z_min_avl = ui.Label("-1.0")
 
     def third_way(self):
@@ -402,5 +402,5 @@ class ManualController(omni.ext.IExt):
         self.z_angular_vel_label = ui.Label("Z angular velocity (rad/s)", alignment=ui.Alignment.CENTER)
         ui.Spacer(height=5)
         self.z_max_avl = ui.Label("1.0")
-        self.z_av_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_av_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl("#4C73E2")})
+        self.z_av_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_av_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl.orange})
         self.z_min_avl = ui.Label("-1.0")
