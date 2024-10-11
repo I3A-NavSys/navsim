@@ -17,7 +17,10 @@ class KeyboardInput:
     
 
     def stop(self):
-        self.input.unsubscribe_to_keyboard_events(self.keyboard, self.keyboard_sub_id)
+        try:
+            self.input.unsubscribe_to_keyboard_events(self.keyboard, self.keyboard_sub_id)
+        except:
+            pass
 
 
     def on_keyboard_input(self, e: carb.input.KeyboardEvent):
