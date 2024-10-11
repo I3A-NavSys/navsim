@@ -68,9 +68,9 @@ class JoystickInput:
 
                 # Joystick buttons
                 self.inputs[4] = joystick.get_button(0)             # cmd on/off
-                self.inputs[5] = joystick.get_button(4)*-1          # -1 active camera
-                self.inputs[6] = joystick.get_button(5)             # +1 active camera
-                self.inputs[7] = joystick.get_hat(0)[0]             # Follow distance
-                self.inputs[8] = joystick.get_hat(0)[1]             # Follow height
+                self.inputs[5] = joystick.get_button(4)*-1          # Decrease distance
+                self.inputs[6] = joystick.get_button(5)             # Increase distance
+                self.inputs[7] = joystick.get_hat(0)[0]             # Yaw
+                self.inputs[8] = joystick.get_hat(0)[1]             # Pitch
 
             self.event.clear()

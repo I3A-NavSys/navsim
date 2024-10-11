@@ -45,6 +45,9 @@ class ControllerLogic:
             # Build follow velocity camera
             self.camera = self.build_camera()
             self.camera_setted = False
+            self.camera_distance_attr = self.camera.GetAttribute("physxFollowCamera:followMinDistance")
+            self.camera_yaw_attr = self.camera.GetAttribute("physxFollowCamera:yawAngle")
+            self.camera_pitch_attr = self.camera.GetAttribute("physxFollowCamera:pitchAngle")
 
             # Create the event to have a communication between the UAV and the joystick
             self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(self.prim.GetPath()))
@@ -99,9 +102,11 @@ class ControllerLogic:
                 self.set_camera_to_active()
 
             # Update camera distance & height
-            follow_distance = self.inputs[7]
-            follow_height = self.inputs[8]
-            self.update_camera_dist_height(follow_distance, follow_height)
+            derease_distance = self.inputs[5]
+            increase_distance = self.inputs[6]
+            yaw = self.inputs[7]
+            pitch = self.inputs[8]
+            self.move_camera(derease_distance, increase_distance, yaw, pitch)
 
             # Set command
             command = Command(
@@ -145,6 +150,9 @@ class ControllerLogic:
             
         return False
 
+    # -- FUNCTION build_camera --------------------------------------------------------------------------------
+    # This functions builds or overwrite a FollowVelocityCamera, which will be used to follow the UAV
+    # -----------------------------------------------------------------------------------------------------------
     def build_camera(self):
         # Prim subject (target) path
         subject_path = self.prim.GetPath()
@@ -193,24 +201,28 @@ class ControllerLogic:
 
         return follow_camera_prim
 
-    # -- FUNCTION switch_active_camera --------------------------------------------------------------------------
-    # This function change the active camera
+    # -- FUNCTION set_camera_to_active --------------------------------------------------------------------------
+    # This function set the built camera as active each time the controller starts running
     # -----------------------------------------------------------------------------------------------------------
     def set_camera_to_active(self):
         viewport_api = omni.kit.viewport.utility.get_active_viewport()
-        viewport_api.set_active_camera(self.camera)
+        viewport_api.set_active_camera(self.camera.GetPath())
 
-    # -- FUNCTION switch_active_camera --------------------------------------------------------------------------
-    # This method changes the follow distance and height of the active based on the received parameters
-    # Highlight that it only support cameras of type Drone (neither Look nor Velocity)
+    # -- FUNCTION move_camera --------------------------------------------------------------------------
+    # This method moves the camera around the UAV according to the received parameters
+    # Highlight that it only support cameras of type followVelocity (neither Look nor Drone)
     # -----------------------------------------------------------------------------------------------------------
-    def update_camera_dist_height(self, follow_distance, follow_height):
-        active_camera_path = self.cameras[self.active_camera]
-        active_camera_prim = self.stage.GetPrimAtPath(active_camera_path)
+    def move_camera(self, derease_distance, increase_distance, yaw, pitch):
+        distance_increment = derease_distance + increase_distance
 
-        if "Drone" in active_camera_prim.GetName():
-            distance_att = active_camera_prim.GetAttribute("physxDroneCamera:followDistance")
-            height_att = active_camera_prim.GetAttribute("physxDroneCamera:followHeight")
+        current_distance = self.camera_distance_attr.Get()
+        current_yaw = self.camera_yaw_attr.Get()
+        current_pitch = self.camera_pitch_attr.Get()
 
-            distance_att.Set(distance_att.Get() + follow_distance)
-            height_att.Set(height_att.Get() + follow_height)
+        new_distance = current_distance + distance_increment
+        new_yaw = current_yaw + yaw + yaw
+        new_pitch = current_pitch + pitch + pitch
+
+        self.camera_distance_attr.Set(new_distance)
+        self.camera_yaw_attr.Set(new_yaw)
+        self.camera_pitch_attr.Set(new_pitch)
