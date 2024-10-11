@@ -70,10 +70,6 @@ class ManualController(omni.ext.IExt):
         self.build_plots = False
         self.sub = omni.kit.app.get_app().get_update_event_stream().create_subscription_to_pop(self.build_plots_container, name="Plots_building")
 
-        # UI state information
-        self.UI_state_info = {"start_upd_plot_button": {"visible" : True, "enabled": True},
-                              "stop_upd_plot_button": {"visible" : True, "enabled": False}}
-
         # Control variable
         self.stop_update_plot = True
 
@@ -96,7 +92,7 @@ class ManualController(omni.ext.IExt):
                     ui.Spacer(height=10)
 
                     # Controls power
-                    self.controls_power = ui.CollapsableFrame(title="Controls power", collapsed=False)
+                    self.controls_power = ui.CollapsableFrame(title="Control", collapsed=False)
 
                     with self.controls_power:
                         with ui.VStack(style={"margin": 1}, height=0):
@@ -114,8 +110,15 @@ class ManualController(omni.ext.IExt):
                                 self.angular_vel_power = ui.FloatSlider(min=0.5, max=3, step=0.5, precision=1, style={"background_color": cl(0.13), "secondary_color": cl(0.3), "draw_mode": ui.SliderDrawMode.FILLED})
                                 self.angular_vel_power.model.set_value(1)
 
+                            ui.Spacer(height=20)
+
+                            self.start_stop_tool_button = ui.ToolButton(text="START", height=30, 
+                                                                        clicked_fn=self.start_stop_update, 
+                                                                        style={"background_color": cl("#6f9523")})
+
+
                     # Controls ploting
-                    self.controls_ploting = ui.CollapsableFrame(title="Drone control visualization", collapsed=False)
+                    self.controls_ploting = ui.CollapsableFrame(title="Visualization", collapsed=False)
 
                     with self.controls_ploting:
                         self.plots_container = ui.VStack(height=0)
@@ -158,17 +161,11 @@ class ManualController(omni.ext.IExt):
             # Make UI beauty
             ui.Spacer(height=10)
 
-            # Control buttons section
-            with ui.HStack(spacing=5):
-                self.start_control_prim_button = ui.Button("START", clicked_fn=self.start_update, height=5)
-                self.stop_control_prim_button = ui.Button("STOP", clicked_fn=self.stop_update, height=5)
-                self.reset_control_prim_button = ui.Button("RESET PLOTS", clicked_fn=self.reset_plot, height=5)
-
-                self.start_control_prim_button.enabled = self.UI_state_info["start_upd_plot_button"]["enabled"]
-                self.stop_control_prim_button.enabled = self.UI_state_info["stop_upd_plot_button"]["enabled"]
+            self.reset_plots_button = ui.Button("RESET PLOTS", clicked_fn=self.reset_plot, height=35, 
+                                                style={"Button":{"background_color": cl("#952323")}})
 
             # Make UI beauty
-            ui.Spacer(height=10)
+            ui.Spacer(height=30)
 
             # Plots section
             match self.plots_appearance:
@@ -180,6 +177,23 @@ class ManualController(omni.ext.IExt):
 
                 case 2:
                     self.third_way()
+
+    def start_stop_update(self):
+        model = self.start_stop_tool_button.model
+
+        if model.get_value_as_bool():            
+            self.start_update()
+
+            style={"background_color": cl("#952323")}
+            self.start_stop_tool_button.set_style(style)
+            self.start_stop_tool_button.text = "STOP"
+
+        else:
+            self.stop_update()
+            
+            style={"background_color": cl("#6f9523")}
+            self.start_stop_tool_button.set_style(style)
+            self.start_stop_tool_button.text = "START"
 
     async def update_plot(self):
         while not self.stop_update_plot:
@@ -217,20 +231,13 @@ class ManualController(omni.ext.IExt):
 
     def start_update(self):
         if self.UAV_selector_dropdown.get_selection() is None:
-            raise Exception("No drone selected")
+            # Reset start_stop_toolbutton as it changed its model state
+            self.start_stop_tool_button.model.set_value(False)
 
-        print("-- START --")
+            raise Exception("No drone selected")
 
         # Change loop variable value to startloop
         self.stop_update_plot = False
-
-        # Change UI elements state
-        self.start_control_prim_button.enabled = False
-        self.stop_control_prim_button.enabled = True
-
-        # Change UI dictionary state
-        self.UI_state_info["start_upd_plot_button"]["enabled"] = False
-        self.UI_state_info["stop_upd_plot_button"]["enabled"] = True
 
         # Set controls power to controller
         self.linear_vel_limit = self.linear_vel_power.model.get_value_as_float()
@@ -273,18 +280,8 @@ class ManualController(omni.ext.IExt):
         asyncio.ensure_future(self.update_plot())
 
     def stop_update(self):
-        print("-- STOP --")
-
         # Reset loop variable
         self.stop_update_plot = True
-
-        # Reset UI elements state
-        self.start_control_prim_button.enabled = True
-        self.stop_control_prim_button.enabled = False
-
-        # Reset UI dictionary state
-        self.UI_state_info["start_upd_plot_button"]["enabled"] = True
-        self.UI_state_info["stop_upd_plot_button"]["enabled"] = False
 
         # Stop asking for inputs
         self.external_control.stop()
@@ -334,7 +331,7 @@ class ManualController(omni.ext.IExt):
         self.z_angular_vel_label = ui.Label("Z angular velocity (rad/s)", alignment=ui.Alignment.CENTER)
         ui.Spacer(height=5)
         self.z_max_avl = ui.Label("1.0")
-        self.z_av_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_av_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl("#4C73E2")})
+        self.z_av_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_av_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl.orange})
         self.z_min_avl = ui.Label("-1.0")
 
     def second_way(self):
@@ -371,7 +368,7 @@ class ManualController(omni.ext.IExt):
         self.z_angular_vel_label = ui.Label("Z angular velocity (rad/s)", alignment=ui.Alignment.CENTER)
         ui.Spacer(height=5)
         self.z_max_avl = ui.Label("1.0")
-        self.z_av_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_av_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl("#4C73E2")})
+        self.z_av_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_av_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl.orange})
         self.z_min_avl = ui.Label("-1.0")
 
     def third_way(self):
@@ -402,5 +399,5 @@ class ManualController(omni.ext.IExt):
         self.z_angular_vel_label = ui.Label("Z angular velocity (rad/s)", alignment=ui.Alignment.CENTER)
         ui.Spacer(height=5)
         self.z_max_avl = ui.Label("1.0")
-        self.z_av_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_av_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl("#4C73E2")})
+        self.z_av_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_av_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl.orange})
         self.z_min_avl = ui.Label("-1.0")
