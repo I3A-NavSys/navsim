@@ -24,10 +24,10 @@ JOYSTICK MAPPING:
 'Button 1'                  =   Turn on/off rottors
 'Button 5'                  =   Camera zoom in
 'Button 6'                  =   Camera zoom out
-'Thumb mini joystick up'    =   Pitch positive rotation along 'Y' axe from the UAV (VelocityCamera)
-'Thumb mini joystick down'  =   Pitch negative rotation along 'Y' axe from the UAV (VelocityCamera)
-'Thumb mini joystick right' =   Yaw positive rotation along 'Z' axe from the UAV (VelocityCamera)
-'Thumb mini joystick left'  =   Yaw negative rotation along 'Z' axe from the UAV (VelocityCamera)
+'Thumb mini joystick up'    =   (Look down) Pitch positive rotation along 'Y' axe from the UAV (VelocityCamera)
+'Thumb mini joystick down'  =   (Look up) Pitch negative rotation along 'Y' axe from the UAV (VelocityCamera)
+'Thumb mini joystick right' =   (Look left) Yaw positive rotation along 'Z' axe from the UAV (VelocityCamera)
+'Thumb mini joystick left'  =   (Look right) Yaw negative rotation along 'Z' axe from the UAV (VelocityCamera)
 
 KEYBOARD MAPPING:
 'W'     =   Move fordwards
@@ -43,7 +43,14 @@ KEYBOARD MAPPING:
 'Space'             =   Turn on/off rottors
 'NUMPAD_SUBTRACT'   =   Camera zoom in
 'NUMPAD_ADD'        =   Camera zoom out
-'NUMPAD_8'          =   Pitch positive rotation along 'Y' axe from the UAV (VelocityCamera)
-'NUMPAD_2'          =   Pitch negative rotation along 'Y' axe from the UAV (VelocityCamera)
-'NUMPAD_6'          =   Yaw positive rotation along 'Z' axe from the UAV (VelocityCamera)
-'NUMPAD_4'          =   Yaw negative rotation along 'Z' axe from the UAV (VelocityCamera)
+'NUMPAD_8'          =   (Look down) Pitch positive rotation along 'Y' axe from the UAV (VelocityCamera)
+'NUMPAD_2'          =   (Look up) Pitch negative rotation along 'Y' axe from the UAV (VelocityCamera)
+'NUMPAD_6'          =   (Look left) Yaw positive rotation along 'Z' axe from the UAV (VelocityCamera)
+'NUMPAD_4'          =   (Look right) Yaw negative rotation along 'Z' axe from the UAV (VelocityCamera)
+
+'LEFT_CONTROL'   =   Camera zoom in
+'RIGHT_CONTROL'        =   Camera zoom out
+'I'          =   (Look down) Pitch positive rotation along 'Y' axe from the UAV (VelocityCamera)
+'K'          =   (Look up) Pitch negative rotation along 'Y' axe from the UAV (VelocityCamera)
+'L'          =   (Look left) Yaw positive rotation along 'Z' axe from the UAV (VelocityCamera)
+'J'          =   (Look right) Yaw negative rotation along 'Z' axe from the UAV (VelocityCamera)
