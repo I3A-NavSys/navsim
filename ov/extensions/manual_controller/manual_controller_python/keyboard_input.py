@@ -112,44 +112,87 @@ class KeyboardInput:
                 self.inputs[4] = 0
             
 
-        # CAMERA
-        # -1 active camera
+        # CAMERA NUM_PAD
+        # Zoom in
         if e.input == carb.input.KeyboardInput.NUMPAD_SUBTRACT:
             if e.type == KeyboardEventType.KEY_PRESS:
                 self.inputs[5] = -1
             elif e.type == KeyboardEventType.KEY_RELEASE:
                 self.inputs[5] = 0
 
-        # +1 active camera
+        # Zoom out
         if e.input == carb.input.KeyboardInput.NUMPAD_ADD:
             if e.type == KeyboardEventType.KEY_PRESS:
                 self.inputs[6] = 1
             elif e.type == KeyboardEventType.KEY_RELEASE:
                 self.inputs[6] = 0
 
-        # Follow distance
+        # Negative yaw
         if e.input == carb.input.KeyboardInput.NUMPAD_4:
             if e.type == KeyboardEventType.KEY_PRESS:
                 self.inputs[7] = -1
             elif e.type == KeyboardEventType.KEY_RELEASE:
                 self.inputs[7] = 0
 
-        # Follow distance
+        # Positive yaw
         if e.input == carb.input.KeyboardInput.NUMPAD_6:
             if e.type == KeyboardEventType.KEY_PRESS:
                 self.inputs[7] = 1
             elif e.type == KeyboardEventType.KEY_RELEASE:
                 self.inputs[7] = 0
 
-        # Follow height
+        # Positive pitch
         if e.input == carb.input.KeyboardInput.NUMPAD_8:
             if e.type == KeyboardEventType.KEY_PRESS:
                 self.inputs[8] = 1
             elif e.type == KeyboardEventType.KEY_RELEASE:
                 self.inputs[8] = 0
 
-        # Follow height
+        # Negative pitch
         if e.input == carb.input.KeyboardInput.NUMPAD_2:
+            if e.type == KeyboardEventType.KEY_PRESS:
+                self.inputs[8] = -1
+            elif e.type == KeyboardEventType.KEY_RELEASE:
+                self.inputs[8] = 0
+
+        # CAMERA NOT NUM_PAD
+        # Zoom in
+        if e.input == carb.input.KeyboardInput.LEFT_CONTROL:
+            if e.type == KeyboardEventType.KEY_PRESS:
+                self.inputs[5] = -1
+            elif e.type == KeyboardEventType.KEY_RELEASE:
+                self.inputs[5] = 0
+
+        # Zoom out
+        if e.input == carb.input.KeyboardInput.RIGHT_CONTROL:
+            if e.type == KeyboardEventType.KEY_PRESS:
+                self.inputs[6] = 1
+            elif e.type == KeyboardEventType.KEY_RELEASE:
+                self.inputs[6] = 0
+
+        # Negative yaw
+        if e.input == carb.input.KeyboardInput.J:
+            if e.type == KeyboardEventType.KEY_PRESS:
+                self.inputs[7] = -1
+            elif e.type == KeyboardEventType.KEY_RELEASE:
+                self.inputs[7] = 0
+
+        # Positive yaw
+        if e.input == carb.input.KeyboardInput.L:
+            if e.type == KeyboardEventType.KEY_PRESS:
+                self.inputs[7] = 1
+            elif e.type == KeyboardEventType.KEY_RELEASE:
+                self.inputs[7] = 0
+
+        # Positive pitch
+        if e.input == carb.input.KeyboardInput.I:
+            if e.type == KeyboardEventType.KEY_PRESS:
+                self.inputs[8] = 1
+            elif e.type == KeyboardEventType.KEY_RELEASE:
+                self.inputs[8] = 0
+
+        # Negative pitch
+        if e.input == carb.input.KeyboardInput.K:
             if e.type == KeyboardEventType.KEY_PRESS:
                 self.inputs[8] = -1
             elif e.type == KeyboardEventType.KEY_RELEASE:
