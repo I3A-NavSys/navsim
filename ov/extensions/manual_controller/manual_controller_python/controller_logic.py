@@ -7,7 +7,7 @@ import carb.events
 import omni.kit.app
 from omni.isaac.core.utils.stage import get_current_stage
 import omni.kit.viewport.utility
-from pxr import UsdGeom, Gf, UsdPhysics, PhysxSchema
+from pxr import UsdGeom, Gf, PhysxSchema
 
 from uspace.flight_plan.command import Command
 from .joystick_input import JoystickInput
@@ -18,12 +18,10 @@ class ControllerLogic:
         # Loop condition
         self._stop = True
 
-        # For manual gravity computation
-        self.time_step = 1/100
-
-        # Velocity limits
+        # Needed variables
         self.linear_vel_limit = 0.5
         self.ang_vel_limit = 0.5
+        self.current_on = False
 
         # External inputs
         self.joystick = JoystickInput()
@@ -55,7 +53,6 @@ class ControllerLogic:
             # Needed variables
             self.inputs = [0,0,0,0,0,0,0,0]
             self.changed_on = False
-            self.current_on = False
             
             self.joystick.start()
             self.keyboard.start()
@@ -70,7 +67,7 @@ class ControllerLogic:
             self.joystick.stop()
             self.keyboard.stop()
 
-    # -- FUNCTION control --------------------------------------------------------------------------------
+    # -- FUNCTION control ---------------------------------------------------------------------------------------
     # This method simply gets the inputs from both the joystick and the keyboard, then decide which one to use
     # Afterwards, it calls the corresponding methods to control the UAV
     # -----------------------------------------------------------------------------------------------------------
@@ -108,6 +105,8 @@ class ControllerLogic:
             pitch = self.inputs[8]
             self.move_camera(derease_distance, increase_distance, yaw, pitch)
 
+            # print(self.current_on)
+
             # Set command
             command = Command(
                             on = self.current_on,
@@ -124,7 +123,7 @@ class ControllerLogic:
 
             await asyncio.sleep(0.1)
 
-    # -- FUNCTION get_inputs --------------------------------------------------------------------------------
+    # -- FUNCTION get_inputs ------------------------------------------------------------------------------------
     # This method is in charge of returning the valid inputs.
     # It must check which controllers are being used and get the corresponding inputs
     # -----------------------------------------------------------------------------------------------------------
@@ -140,7 +139,7 @@ class ControllerLogic:
         else:
             return key_inputs
 
-    # -- FUNCTION check_inputs --------------------------------------------------------------------------------
+    # -- FUNCTION check_inputs ----------------------------------------------------------------------------------
     # This method just checks if we have any input from the receiving parameter (joystick as it has priority)
     # -----------------------------------------------------------------------------------------------------------
     def check_inputs(self, inputs):
@@ -150,7 +149,7 @@ class ControllerLogic:
             
         return False
 
-    # -- FUNCTION build_camera --------------------------------------------------------------------------------
+    # -- FUNCTION build_camera ----------------------------------------------------------------------------------
     # This functions builds or overwrite a FollowVelocityCamera, which will be used to follow the UAV
     # -----------------------------------------------------------------------------------------------------------
     def build_camera(self):
@@ -158,7 +157,7 @@ class ControllerLogic:
         subject_path = self.prim.GetPath()
 
         # Build the camera prim
-        camera_path = "/FollowVelocityCamera"
+        camera_path = "/manual_controller_CAM"
         usdCamera = UsdGeom.Camera.Define(self.stage, camera_path)
         follow_camera_prim = self.stage.GetPrimAtPath(camera_path)
 
@@ -208,7 +207,7 @@ class ControllerLogic:
         viewport_api = omni.kit.viewport.utility.get_active_viewport()
         viewport_api.set_active_camera(self.camera.GetPath())
 
-    # -- FUNCTION move_camera --------------------------------------------------------------------------
+    # -- FUNCTION move_camera -----------------------------------------------------------------------------------
     # This method moves the camera around the UAV according to the received parameters
     # Highlight that it only support cameras of type followVelocity (neither Look nor Drone)
     # -----------------------------------------------------------------------------------------------------------

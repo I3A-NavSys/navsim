@@ -74,7 +74,7 @@ class ManualController(omni.ext.IExt):
         self.stop_update_plot = True
 
         # Instance of ExternalController
-        self.external_control = ControllerLogic()
+        self.manual_control = ControllerLogic()
 
         # App interface
         self.app_interface = omni.kit.app.get_app_interface()
@@ -98,20 +98,28 @@ class ManualController(omni.ext.IExt):
                         with ui.VStack(style={"margin": 1}, height=0):
                             with ui.HStack():
                                 # Linear velocity (m/s)
-                                ui.Label("Linear velocity (m/s)")
-                                self.linear_vel_power = ui.FloatSlider(min=0.5, max=4, step=0.5, precision=1, style={"background_color": cl(0.13), "secondary_color": cl(0.3), "draw_mode": ui.SliderDrawMode.FILLED})
+                                ui.Label("Linear velocity Max")
+                                self.linear_vel_power = ui.FloatSlider(min=0.5, max=10, step=0.5, precision=1, style={"background_color": cl(0.13), "secondary_color": cl(0.3), "draw_mode": ui.SliderDrawMode.FILLED})
                                 self.linear_vel_power.model.set_value(1)
 
                             ui.Spacer(height=10)
 
                             with ui.HStack():
                                 # Angular velocity (rad/s)
-                                ui.Label("Angular velocity (rad/s)")
-                                self.angular_vel_power = ui.FloatSlider(min=0.5, max=3, step=0.5, precision=1, style={"background_color": cl(0.13), "secondary_color": cl(0.3), "draw_mode": ui.SliderDrawMode.FILLED})
+                                ui.Label("Angular velocity Max")
+                                self.angular_vel_power = ui.FloatSlider(min=0.5, max=6, step=0.5, precision=1, style={"background_color": cl(0.13), "secondary_color": cl(0.3), "draw_mode": ui.SliderDrawMode.FILLED})
                                 self.angular_vel_power.model.set_value(1)
 
-                            ui.Spacer(height=20)
+                            ui.Spacer(height=25)
 
+                            with ui.HStack(spacing=5):
+                                # On/Off init rotors
+                                ui.Label("Start with rotors on")
+                                self.start_rotors_on_off_checkbox = ui.CheckBox()
+
+                            ui.Spacer(height=5)
+
+                            # Start/Stop manual control
                             self.start_stop_tool_button = ui.ToolButton(text="START", height=30, 
                                                                         clicked_fn=self.start_stop_update, 
                                                                         style={"background_color": cl("#6f9523")})
@@ -198,10 +206,10 @@ class ManualController(omni.ext.IExt):
     async def update_plot(self):
         while not self.stop_update_plot:
             # Get external inputs
-            self.x_lv_plot_data.append(self.external_control.inputs[0] * -self.linear_vel_limit)
-            self.y_lv_plot_data.append(self.external_control.inputs[1] * -self.linear_vel_limit)
-            self.z_lv_plot_data.append(self.external_control.inputs[2] * -self.linear_vel_limit)
-            self.z_av_plot_data.append(self.external_control.inputs[3] * -self.angular_vel_limit)
+            self.x_lv_plot_data.append(self.manual_control.inputs[0] * -self.linear_vel_limit)
+            self.y_lv_plot_data.append(self.manual_control.inputs[1] * -self.linear_vel_limit)
+            self.z_lv_plot_data.append(self.manual_control.inputs[2] * -self.linear_vel_limit)
+            self.z_av_plot_data.append(self.manual_control.inputs[3] * -self.angular_vel_limit)
             
             # To have a continuous plot line
             if len(self.x_lv_plot_data) > 50:
@@ -242,9 +250,12 @@ class ManualController(omni.ext.IExt):
         # Set controls power to controller
         self.linear_vel_limit = self.linear_vel_power.model.get_value_as_float()
         self.angular_vel_limit = self.angular_vel_power.model.get_value_as_float()
+        self.rotors_on = self.start_rotors_on_off_checkbox.model.get_value_as_bool()
+        print(self.rotors_on)
 
-        self.external_control.ang_vel_limit = self.angular_vel_limit
-        self.external_control.linear_vel_limit = self.linear_vel_limit
+        self.manual_control.ang_vel_limit = self.angular_vel_limit
+        self.manual_control.linear_vel_limit = self.linear_vel_limit
+        self.manual_control.current_on = self.rotors_on
 
         # Update linear velocity limit labels
         self.x_max_lvl.text = str(self.linear_vel_limit)
@@ -274,7 +285,7 @@ class ManualController(omni.ext.IExt):
         # Get the selected drone
         drone = self.ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
 
-        self.external_control.start(drone)
+        self.manual_control.start(drone)
 
         # Start the coroutine that updates the plots
         asyncio.ensure_future(self.update_plot())
@@ -284,7 +295,7 @@ class ManualController(omni.ext.IExt):
         self.stop_update_plot = True
 
         # Stop asking for inputs
-        self.external_control.stop()
+        self.manual_control.stop()
 
     def reset_plot(self):
         self.x_lv_plot_data = [0.0, 0.0]
