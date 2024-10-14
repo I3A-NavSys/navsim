@@ -99,9 +99,9 @@ class ManualController(omni.ext.IExt):
                     self.controls_power = ui.CollapsableFrame(title="Control", collapsed=False)
 
                     with self.controls_power:
-                        with ui.VStack(style={"margin": 1}, height=0):
-                            with ui.HStack():
-                                # Linear velocity (m/s)
+                        with ui.VStack(style={"margin": 1}, height=0, spacing=5):
+                            # Linear velocity Max
+                            with ui.HStack(alignment=ui.Alignment.RIGHT):
                                 ui.Label("Linear velocity Max")
                                 self.linear_vel_power = ui.FloatSlider(min=0.5, max=10, step=0.5, precision=1, 
                                                                        style={"background_color": cl(0.13), 
@@ -110,10 +110,8 @@ class ManualController(omni.ext.IExt):
                                 self.linear_vel_power.model.set_value(1)
                                 self.linear_vel_power.model.add_value_changed_fn(self.on_linear_vel_power_change)
 
-                            ui.Spacer(height=10)
-
-                            with ui.HStack():
-                                # Angular velocity (rad/s)
+                            # Angular velocity Max
+                            with ui.HStack(alignment=ui.Alignment.RIGHT):
                                 ui.Label("Angular velocity Max")
                                 self.angular_vel_power = ui.FloatSlider(min=0.5, max=6, step=0.5, precision=1, 
                                                                         style={"background_color": cl(0.13), 
@@ -122,14 +120,19 @@ class ManualController(omni.ext.IExt):
                                 self.angular_vel_power.model.set_value(1)
                                 self.angular_vel_power.model.add_value_changed_fn(self.on_angular_vel_power_change)
 
-                            ui.Spacer(height=25)
+                            # Invert camera movement direction
+                            with ui.HStack(alignment=ui.Alignment.RIGHT):
+                                ui.Label("Invert camera movement control")
+                                self.invert_camera_movement_checkbox = ui.CheckBox(width=0)
+                                self.invert_camera_movement_checkbox.model.add_value_changed_fn(
+                                                                                self.on_invert_camera_mov_change)
 
-                            with ui.HStack(spacing=5):
-                                # On/Off init rotors
+                            # On/Off init rotors
+                            with ui.HStack(alignment=ui.Alignment.RIGHT):
                                 ui.Label("Start with rotors on")
-                                self.start_rotors_on_off_checkbox = ui.CheckBox()
+                                self.start_rotors_on_off_checkbox = ui.CheckBox(width=0)
 
-                            ui.Spacer(height=5)
+                            ui.Spacer(height=15)
 
                             # Start/Stop manual control
                             self.start_stop_tool_button = ui.ToolButton(text="START", height=30, 
@@ -152,9 +155,11 @@ class ManualController(omni.ext.IExt):
         
         # Check if the controller is running (START button clicked) to change UAV control
         if not self.stop_update_plot:
-            # Get if rotors should be on/off
+            # Get needed info
             self.rotors_on = self.start_rotors_on_off_checkbox.model.get_value_as_bool()
+            self.invert_camera_movement = self.invert_camera_movement_checkbox.model.get_value_as_bool()
             self.manual_control.current_on = self.rotors_on
+            self.manual_control.invert_camera_movement = self.invert_camera_movement
 
             # Restart manual control
             self.manual_control.stop()
@@ -173,6 +178,9 @@ class ManualController(omni.ext.IExt):
 
         self.update_ui_angular_vel_limits()
     
+    def on_invert_camera_mov_change(self, model):
+        self.manual_control.invert_camera_movement = model.get_value_as_bool()
+
     def change_plot_distribution(self, model, index):        
         item = model.get_item_value_model(index).as_int
 
@@ -291,10 +299,12 @@ class ManualController(omni.ext.IExt):
         self.linear_vel_limit = self.linear_vel_power.model.get_value_as_float()
         self.angular_vel_limit = self.angular_vel_power.model.get_value_as_float()
         self.rotors_on = self.start_rotors_on_off_checkbox.model.get_value_as_bool()
+        self.invert_camera_movement = self.invert_camera_movement_checkbox.model.get_value_as_bool()
 
         self.manual_control.ang_vel_limit = self.angular_vel_limit
         self.manual_control.linear_vel_limit = self.linear_vel_limit
         self.manual_control.current_on = self.rotors_on
+        self.manual_control.invert_camera_movement = self.invert_camera_movement
 
         self.update_ui_linear_vel_limits()
         self.update_ui_angular_vel_limits()

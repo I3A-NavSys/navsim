@@ -22,6 +22,7 @@ class ControllerLogic:
         self.linear_vel_limit = 0.5
         self.ang_vel_limit = 0.5
         self.current_on = False
+        self.invert_camera_movement = False
         self.camera_path = "/manual_controller_CAM"
         self.perspective_camera_path = "/OmniverseKit_Persp"
 
@@ -224,6 +225,10 @@ class ControllerLogic:
     # Highlight that it only support cameras of type followVelocity (neither Look nor Drone)
     # -----------------------------------------------------------------------------------------------------------
     def move_camera(self, derease_distance, increase_distance, yaw, pitch):
+        if self.invert_camera_movement:
+            yaw *= -1
+            pitch *= -1
+
         distance_increment = derease_distance + increase_distance
 
         current_distance = self.camera_distance_attr.Get()

@@ -10,7 +10,9 @@
 - Added support to FollowVelocityCamera
 - Now we build our own camera
 - Added ability to move the camera
+- Added invert camera movement option
 - Parts of the mapping from both the joystick and the keyboard have been modified to support the camera movement
+- Added extra keyboard mapping for those who don't have a keyboard with NUMPAD section (check Overview part)
 
 ## [1.0.2] - 2024-10-08
 - Added joystick mapping explanation to the documentation
