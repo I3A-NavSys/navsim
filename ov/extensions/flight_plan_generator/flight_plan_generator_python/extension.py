@@ -48,6 +48,13 @@ Label_A = {
 }
 
 
+colors = {
+    "R": 0xFF5555AA,
+    "G": 0xFF76A371,
+    "B": 0xFFA07D4F
+}
+
+
 CollapsableFrame_style = {
     "CollapsableFrame": {
         "background_color": 0xFF343432,
@@ -259,7 +266,6 @@ class FlightPlanGenerator(omni.ext.IExt):
             self.empty_waypoint_list_label.visible = True
 
         # Add waypoint to the UI
-        colors = {"X": 0xFF5555AA, "Y": 0xFF76A371, "Z": 0xFFA07D4F}
         with self.waypoint_list_frame:
             with self.waypoint_list:
                 with ui.HStack(height=15, spacing=30):
@@ -269,22 +275,22 @@ class FlightPlanGenerator(omni.ext.IExt):
                     # Position data
                     with ui.HStack(width=0, spacing=5):
                         ui.Label("Position {", width=0, alignment=ui.Alignment.LEFT_TOP)
-                        ui.Label("X:", width=0, style={'color': colors["X"]}, alignment=ui.Alignment.LEFT_TOP)
+                        ui.Label("X:", width=0, style={'color': colors["R"]}, alignment=ui.Alignment.LEFT_TOP)
                         ui.Label(f"{new_waypoint.pos[0]:.2f}", alignment=ui.Alignment.LEFT_TOP)
-                        ui.Label("Y:", width=0, style={'color': colors["Y"]}, alignment=ui.Alignment.LEFT_TOP)
+                        ui.Label("Y:", width=0, style={'color': colors["G"]}, alignment=ui.Alignment.LEFT_TOP)
                         ui.Label(f"{new_waypoint.pos[1]:.2f}", alignment=ui.Alignment.LEFT_TOP)
-                        ui.Label("Z:", width=0, style={'color': colors["Z"]}, alignment=ui.Alignment.LEFT_TOP)
+                        ui.Label("Z:", width=0, style={'color': colors["B"]}, alignment=ui.Alignment.LEFT_TOP)
                         ui.Label(f"{new_waypoint.pos[2]:.2f}", alignment=ui.Alignment.LEFT_TOP)
                         ui.Label("}", width=0, alignment=ui.Alignment.LEFT_TOP)
 
                     # Velocity data
                     with ui.HStack(width=0, spacing=5):
                         ui.Label("Velocity {", width=0, alignment=ui.Alignment.LEFT_TOP)
-                        ui.Label("X:", width=0, style={'color': colors["X"]}, alignment=ui.Alignment.LEFT_TOP)
+                        ui.Label("X:", width=0, style={'color': colors["R"]}, alignment=ui.Alignment.LEFT_TOP)
                         ui.Label(f"{new_waypoint.vel[0]:.2f}", alignment=ui.Alignment.LEFT_TOP)
-                        ui.Label("Y:", width=0, style={'color': colors["Y"]}, alignment=ui.Alignment.LEFT_TOP)
+                        ui.Label("Y:", width=0, style={'color': colors["G"]}, alignment=ui.Alignment.LEFT_TOP)
                         ui.Label(f"{new_waypoint.vel[1]:.2f}", alignment=ui.Alignment.LEFT_TOP)
-                        ui.Label("Z:", width=0, style={'color': colors["Z"]}, alignment=ui.Alignment.LEFT_TOP)
+                        ui.Label("Z:", width=0, style={'color': colors["B"]}, alignment=ui.Alignment.LEFT_TOP)
                         ui.Label(f"{new_waypoint.vel[2]:.2f}", alignment=ui.Alignment.LEFT_TOP)
                         ui.Label("}", width=0, alignment=ui.Alignment.LEFT_TOP)
 
@@ -296,12 +302,15 @@ class FlightPlanGenerator(omni.ext.IExt):
                     # Fly over
                     with ui.HStack(spacing=5):
                         ui.Label("Fly over:", width=0, alignment=ui.Alignment.LEFT_TOP)
-                        ui.Label(str(new_waypoint.fly_over), alignment=ui.Alignment.LEFT_TOP)
+                        if new_waypoint.fly_over:
+                            ui.Label(str(new_waypoint.fly_over), style={'color' : colors["G"]}, alignment=ui.Alignment.LEFT_TOP)
+                        else:
+                            ui.Label(str(new_waypoint.fly_over), style={'color' : colors["R"]}, alignment=ui.Alignment.LEFT_TOP)
                 ui.Separator()
 
     def build_window(self):
         # Create extension main window
-        self.window = ui.Window("NavSim - Flight Plan Generator", width=450, height=600)
+        self.window = ui.Window("NavSim - Flight Plan Generator", width=750, height=500)
         self.window.deferred_dock_in("Layers")
         self.window.setPosition(100, 100)
         self.window.frame.set_style(Window_dark_style)
