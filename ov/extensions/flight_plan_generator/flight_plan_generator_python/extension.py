@@ -153,7 +153,8 @@ class FlightPlanGenerator(omni.ext.IExt):
                             self.position_handles.append(ui.FloatDrag(min=-1000000, max=1000000, step=0.01))
 
                     # Enabled field checkboxes
-                    self.position_check_handle = ui.CheckBox(width=0).model.set_value(True)
+                    self.position_check_handle = ui.CheckBox(width=0)
+                    self.position_check_handle.model.set_value(True)
 
                 # Velocity fields
                 with ui.HStack(spacing=8):
@@ -180,7 +181,8 @@ class FlightPlanGenerator(omni.ext.IExt):
                             self.velocity_handles.append(ui.FloatDrag(min=-1000000, max=1000000, step=0.01))
 
                     # Enabled field checkboxes
-                    self.velocity_check_handle = ui.CheckBox(width=0).model.set_value(True)
+                    self.velocity_check_handle = ui.CheckBox(width=0)
+                    self.velocity_check_handle.model.set_value(True)
 
                 # Add time field
                 with ui.HStack(spacing=8):
@@ -188,14 +190,16 @@ class FlightPlanGenerator(omni.ext.IExt):
                     self.time_handle = ui.IntDrag(min=0, max=1000000, step=1)
 
                     # Enabled field checkbox
-                    self.time_check_handle = ui.CheckBox(width=0).model.set_value(True)
+                    self.time_check_handle = ui.CheckBox(width=0)
+                    self.time_check_handle.model.set_value(True)
 
                 with ui.HStack(spacing=8):
                     # Fly over label
                     ui.Label("Fly over", style=Label_A, width=LABEL_PADDING)
 
                     # Fly over field checkbox
-                    self.fly_over_check_handle = ui.CheckBox(width=0).model.set_value(True)
+                    self.fly_over_check_handle = ui.CheckBox(width=0)
+                    self.fly_over_check_handle.model.set_value(True)
 
                 # Add waypoint button
                 ui.Button("Add waypoint", clicked_fn=self.add_waypoint)
@@ -226,7 +230,7 @@ class FlightPlanGenerator(omni.ext.IExt):
         self.time = self.time_handle.model.as_float
 
         # Fly over
-        if self.fly_over_check_handle:
+        if self.fly_over_check_handle.model.get_value_as_bool():
             self.fly_over = True
         else:
             self.fly_over = False
