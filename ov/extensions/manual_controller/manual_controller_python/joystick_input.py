@@ -1,7 +1,8 @@
 try:
     import pygame
 except:
-    raise Exception("ERROR: 'pygame' package is not installed. Copy and paste in the Script Editor the folllowing code\n\n" + 
+    raise Exception("ERROR: 'pygame' package is not installed. Copy and paste in the Script Editor the " +
+                    "folllowing code\n\n" + 
                     "# -- START CODE ------------------------------\n" +
                     "import omni.kit.pipapi\n" +
                     "omni.kit.pipapi.install(\"pygame\")\n" +
