@@ -22,12 +22,12 @@ JOYSTICK MAPPING:
 'Rotate joystick to right'  =   Turn right
 
 'Button 1'                  =   Turn on/off rottors
-'Button 5'                  =   Change active camera (left)
-'Button 6'                  =   Change active camera (right)
-'Thumb mini joystick up'    =   Increase follow height camera (DroneCamera)
-'Thumb mini joystick down'  =   Decrease follow height camera (DroneCamera)
-'Thumb mini joystick right' =   Increase follow distance camera (DroneCamera)
-'Thumb mini joystick left'  =   Decrease follow distance camera (DroneCamera)
+'Button 5'                  =   Camera zoom in
+'Button 6'                  =   Camera zoom out
+'Thumb mini joystick up'    =   Pitch positive rotation along 'Y' axe from the UAV (VelocityCamera)
+'Thumb mini joystick down'  =   Pitch negative rotation along 'Y' axe from the UAV (VelocityCamera)
+'Thumb mini joystick right' =   Yaw positive rotation along 'Z' axe from the UAV (VelocityCamera)
+'Thumb mini joystick left'  =   Yaw negative rotation along 'Z' axe from the UAV (VelocityCamera)
 
 KEYBOARD MAPPING:
 'W'     =   Move fordwards
@@ -41,9 +41,9 @@ KEYBOARD MAPPING:
 'Right arrow key'   =   Go right
 
 'Space'             =   Turn on/off rottors
-'NUMPAD_SUBTRACT'   =   Change active camera (left)
-'NUMPAD_ADD'        =   Change active camera (right)
-'NUMPAD_8'          =   Increase follow height camera (DroneCamera)
-'NUMPAD_2'          =   Decrease follow height camera (DroneCamera)
-'NUMPAD_6'          =   Increase follow distance camera (DroneCamera)
-'NUMPAD_4'          =   Decrease follow distance camera (DroneCamera)
+'NUMPAD_SUBTRACT'   =   Camera zoom in
+'NUMPAD_ADD'        =   Camera zoom out
+'NUMPAD_8'          =   Pitch positive rotation along 'Y' axe from the UAV (VelocityCamera)
+'NUMPAD_2'          =   Pitch negative rotation along 'Y' axe from the UAV (VelocityCamera)
+'NUMPAD_6'          =   Yaw positive rotation along 'Z' axe from the UAV (VelocityCamera)
+'NUMPAD_4'          =   Yaw negative rotation along 'Z' axe from the UAV (VelocityCamera)
