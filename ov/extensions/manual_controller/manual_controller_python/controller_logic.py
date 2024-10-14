@@ -123,7 +123,8 @@ class ControllerLogic:
             serialized_command = base64.b64encode(pickle.dumps(command)).decode('utf-8')
 
             # Push UAV_EVENT with the inputs
-            self.msg_bus_event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_RemoteCommand", "command": serialized_command})
+            self.msg_bus_event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_RemoteCommand", 
+                                                                    "command": serialized_command})
 
             await asyncio.sleep(0.1)
 

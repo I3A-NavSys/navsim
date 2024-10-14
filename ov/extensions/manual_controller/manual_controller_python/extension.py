@@ -23,7 +23,8 @@ from navsim_utils.extensions_utils import ExtensionUtils
 try:
     import matplotlib
 except:
-    raise Exception("ERROR: 'matplotlib' package is not installed. Copy and paste in the Script Editor the folllowing code\n\n" + 
+    raise Exception("ERROR: 'matplotlib' package is not installed. Copy and paste in the Script Editor the " + 
+                    "folllowing code\n\n" + 
                     "# -- START CODE ------------------------------\n" +
                     "import omni.kit.pipapi\n" +
                     "omni.kit.pipapi.install(\"matplotlib\")\n" +
@@ -32,7 +33,8 @@ except:
 try:
     matplotlib.use("Qt5Agg")
 except:
-    raise Exception("ERROR: 'PyQt5' package is not installed. Copy and paste in the Script Editor the folllowing code\n\n" + 
+    raise Exception("ERROR: 'PyQt5' package is not installed. Copy and paste in the Script Editor the " +
+                    "folllowing code\n\n" + 
                     "# -- START CODE ------------------------------\n" +
                     "import omni.kit.pipapi\n" +
                     "omni.kit.pipapi.install(\"PyQt5\")\n" +
@@ -55,7 +57,8 @@ class ManualController(omni.ext.IExt):
         self.ext_utils = ExtensionUtils()
 
         # UI window
-        self.window = ui.Window("NavSim - Manual Controller", width=600, height=600, raster_policy=ui.RasterPolicy.NEVER)   # The ui.RasterPolicy.NEVER is to always update plots line drawing
+        # The ui.RasterPolicy.NEVER is to always update plots line drawing
+        self.window = ui.Window("NavSim - Manual Controller", width=600, height=600, raster_policy=ui.RasterPolicy.NEVER)
 
         # Plot data
         self.x_lv_plot_data = [0.0, 0.0]
@@ -66,7 +69,9 @@ class ManualController(omni.ext.IExt):
         # Plots appereance
         self.plots_appearance = 1
         self.build_plots = False
-        self.sub = omni.kit.app.get_app().get_update_event_stream().create_subscription_to_pop(self.build_plots_container, name="Plots_building")
+        self.sub = omni.kit.app.get_app().get_update_event_stream().create_subscription_to_pop(
+                                                                                self.build_plots_container, 
+                                                                                name="Plots_building")
 
         # Control variable
         self.stop_update_plot = True
@@ -98,7 +103,10 @@ class ManualController(omni.ext.IExt):
                             with ui.HStack():
                                 # Linear velocity (m/s)
                                 ui.Label("Linear velocity Max")
-                                self.linear_vel_power = ui.FloatSlider(min=0.5, max=10, step=0.5, precision=1, style={"background_color": cl(0.13), "secondary_color": cl(0.3), "draw_mode": ui.SliderDrawMode.FILLED})
+                                self.linear_vel_power = ui.FloatSlider(min=0.5, max=10, step=0.5, precision=1, 
+                                                                       style={"background_color": cl(0.13), 
+                                                                              "secondary_color": cl(0.3), 
+                                                                              "draw_mode": ui.SliderDrawMode.FILLED})
                                 self.linear_vel_power.model.set_value(1)
                                 self.linear_vel_power.model.add_value_changed_fn(self.on_linear_vel_power_change)
 
@@ -107,7 +115,10 @@ class ManualController(omni.ext.IExt):
                             with ui.HStack():
                                 # Angular velocity (rad/s)
                                 ui.Label("Angular velocity Max")
-                                self.angular_vel_power = ui.FloatSlider(min=0.5, max=6, step=0.5, precision=1, style={"background_color": cl(0.13), "secondary_color": cl(0.3), "draw_mode": ui.SliderDrawMode.FILLED})
+                                self.angular_vel_power = ui.FloatSlider(min=0.5, max=6, step=0.5, precision=1, 
+                                                                        style={"background_color": cl(0.13), 
+                                                                               "secondary_color": cl(0.3), 
+                                                                               "draw_mode": ui.SliderDrawMode.FILLED})
                                 self.angular_vel_power.model.set_value(1)
                                 self.angular_vel_power.model.add_value_changed_fn(self.on_angular_vel_power_change)
 
@@ -352,7 +363,8 @@ class ManualController(omni.ext.IExt):
         self.x_linear_vel_label = ui.Label("X linear velocity (m/s)", alignment=ui.Alignment.CENTER)
         ui.Spacer(height=5)
         self.x_max_lvl = ui.Label("1.0")
-        self.x_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.x_lv_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl("#B13333")})
+        self.x_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.x_lv_plot_data, height=50, alignment=ui.Alignment.CENTER, 
+                                 style={"color": cl("#B13333")})
         self.x_min_lvl = ui.Label("-1.0")
 
         ui.Spacer(height=10)
@@ -361,7 +373,8 @@ class ManualController(omni.ext.IExt):
         self.y_linear_vel_label = ui.Label("Y linear velocity (m/s)", alignment=ui.Alignment.CENTER)
         ui.Spacer(height=5)
         self.y_max_lvl = ui.Label("1.0")
-        self.y_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.y_lv_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl("#54B133")})
+        self.y_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.y_lv_plot_data, height=50, alignment=ui.Alignment.CENTER, 
+                                 style={"color": cl("#54B133")})
         self.y_min_lvl = ui.Label("-1.0")
 
         ui.Spacer(height=10)
@@ -370,7 +383,8 @@ class ManualController(omni.ext.IExt):
         self.z_linear_vel_label = ui.Label("Z linear velocity (m/s)", alignment=ui.Alignment.CENTER)
         ui.Spacer(height=5)
         self.z_max_lvl = ui.Label("1.0")
-        self.z_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_lv_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl("#4C73E2")})
+        self.z_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_lv_plot_data, height=50, alignment=ui.Alignment.CENTER, 
+                                 style={"color": cl("#4C73E2")})
         self.z_min_lvl = ui.Label("-1.0")
             
         ui.Spacer(height=10)
@@ -379,7 +393,8 @@ class ManualController(omni.ext.IExt):
         self.z_angular_vel_label = ui.Label("Z angular velocity (rad/s)", alignment=ui.Alignment.CENTER)
         ui.Spacer(height=5)
         self.z_max_avl = ui.Label("1.0")
-        self.z_av_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_av_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl.orange})
+        self.z_av_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_av_plot_data, height=50, alignment=ui.Alignment.CENTER, 
+                                 style={"color": cl.orange})
         self.z_min_avl = ui.Label("-1.0")
 
     def second_way(self):
@@ -391,7 +406,8 @@ class ManualController(omni.ext.IExt):
                 self.x_linear_vel_label = ui.Label("X linear velocity (m/s)", alignment=ui.Alignment.CENTER)
                 ui.Spacer(height=5)
                 self.x_max_lvl = ui.Label("1.0")
-                self.x_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.x_lv_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl("#B13333")})
+                self.x_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.x_lv_plot_data, height=50, 
+                                         alignment=ui.Alignment.CENTER, style={"color": cl("#B13333")})
                 self.x_min_lvl = ui.Label("-1.0")
 
             with ui.VStack():
@@ -399,7 +415,8 @@ class ManualController(omni.ext.IExt):
                 self.y_linear_vel_label = ui.Label("Y linear velocity (m/s)", alignment=ui.Alignment.CENTER)
                 ui.Spacer(height=5)
                 self.y_max_lvl = ui.Label("1.0")
-                self.y_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.y_lv_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl("#54B133")})
+                self.y_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.y_lv_plot_data, height=50, 
+                                         alignment=ui.Alignment.CENTER, style={"color": cl("#54B133")})
                 self.y_min_lvl = ui.Label("-1.0")
 
             with ui.VStack():
@@ -407,7 +424,8 @@ class ManualController(omni.ext.IExt):
                 self.z_linear_vel_label = ui.Label("Z linear velocity (m/s)", alignment=ui.Alignment.CENTER)
                 ui.Spacer(height=5)
                 self.z_max_lvl = ui.Label("1.0")
-                self.z_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_lv_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl("#4C73E2")})
+                self.z_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_lv_plot_data, height=50, 
+                                         alignment=ui.Alignment.CENTER, style={"color": cl("#4C73E2")})
                 self.z_min_lvl = ui.Label("-1.0")
             
         ui.Spacer(height=20)
@@ -416,7 +434,8 @@ class ManualController(omni.ext.IExt):
         self.z_angular_vel_label = ui.Label("Z angular velocity (rad/s)", alignment=ui.Alignment.CENTER)
         ui.Spacer(height=5)
         self.z_max_avl = ui.Label("1.0")
-        self.z_av_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_av_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl.orange})
+        self.z_av_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_av_plot_data, height=50, 
+                                 alignment=ui.Alignment.CENTER, style={"color": cl.orange})
         self.z_min_avl = ui.Label("-1.0")
 
     def third_way(self):
@@ -433,13 +452,16 @@ class ManualController(omni.ext.IExt):
             with frame:
                 with ui.ZStack():
                     # X linear vel
-                    self.x_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.x_lv_plot_data, width=ui.Percent(100), height=50, style={"color": cl("#B13333"), "background_color": 0x00000000})
+                    self.x_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.x_lv_plot_data, width=ui.Percent(100), 
+                                             height=50, style={"color": cl("#B13333"), "background_color": 0x00000000})
 
                     # Y linear vel
-                    self.y_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.y_lv_plot_data, width=ui.Percent(100), height=50, style={"color": cl("#54B133"), "background_color": 0x00000000})
+                    self.y_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.y_lv_plot_data, width=ui.Percent(100), 
+                                             height=50, style={"color": cl("#54B133"), "background_color": 0x00000000})
 
                     # Z linear vel
-                    self.z_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_lv_plot_data, width=ui.Percent(100), height=50, style={"color": cl("#4C73E2"), "background_color": 0x00000000})
+                    self.z_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_lv_plot_data, width=ui.Percent(100), 
+                                             height=50, style={"color": cl("#4C73E2"), "background_color": 0x00000000})
             
         self.x_min_lvl = ui.Label("-1.0")
 
@@ -447,5 +469,6 @@ class ManualController(omni.ext.IExt):
         self.z_angular_vel_label = ui.Label("Z angular velocity (rad/s)", alignment=ui.Alignment.CENTER)
         ui.Spacer(height=5)
         self.z_max_avl = ui.Label("1.0")
-        self.z_av_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_av_plot_data, height=50, alignment=ui.Alignment.CENTER, style={"color": cl.orange})
+        self.z_av_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_av_plot_data, height=50, alignment=ui.Alignment.CENTER, 
+                                 style={"color": cl.orange})
         self.z_min_avl = ui.Label("-1.0")
