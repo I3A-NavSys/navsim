@@ -22,6 +22,8 @@ class ControllerLogic:
         self.linear_vel_limit = 0.5
         self.ang_vel_limit = 0.5
         self.current_on = False
+        self.camera_path = "/manual_controller_CAM"
+        self.perspective_camera_path = "/OmniverseKit_Persp"
 
         # External inputs
         self.joystick = JoystickInput()
@@ -41,11 +43,13 @@ class ControllerLogic:
             self.prim = prim
 
             # Build follow velocity camera
-            self.camera = self.build_camera()
-            self.camera_setted = False
-            self.camera_distance_attr = self.camera.GetAttribute("physxFollowCamera:followMinDistance")
-            self.camera_yaw_attr = self.camera.GetAttribute("physxFollowCamera:yawAngle")
-            self.camera_pitch_attr = self.camera.GetAttribute("physxFollowCamera:pitchAngle")
+            self.camera = self.stage.GetPrimAtPath(self.camera_path)
+            if not self.camera.IsValid():
+                self.camera = self.build_camera()
+                self.camera_setted = False
+                self.camera_distance_attr = self.camera.GetAttribute("physxFollowCamera:followMinDistance")
+                self.camera_yaw_attr = self.camera.GetAttribute("physxFollowCamera:yawAngle")
+                self.camera_pitch_attr = self.camera.GetAttribute("physxFollowCamera:pitchAngle")
 
             # Create the event to have a communication between the UAV and the joystick
             self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(self.prim.GetPath()))
@@ -68,7 +72,7 @@ class ControllerLogic:
             self.keyboard.stop()
 
     # -- FUNCTION control ---------------------------------------------------------------------------------------
-    # This method simply gets the inputs from both the joystick and the keyboard, then decide which one to use
+    # This function simply gets the inputs from both the joystick and the keyboard, then decide which one to use
     # Afterwards, it calls the corresponding methods to control the UAV
     # -----------------------------------------------------------------------------------------------------------
     async def control(self):
@@ -96,7 +100,7 @@ class ControllerLogic:
             # Set velocity camera to active if first time
             if not self.camera_setted:
                 self.camera_setted = True
-                self.set_camera_to_active()
+                self.set_camera_to_active(self.camera_path)
 
             # Update camera distance & height
             derease_distance = self.inputs[5]
@@ -124,7 +128,7 @@ class ControllerLogic:
             await asyncio.sleep(0.1)
 
     # -- FUNCTION get_inputs ------------------------------------------------------------------------------------
-    # This method is in charge of returning the valid inputs.
+    # This function is in charge of returning the valid inputs.
     # It must check which controllers are being used and get the corresponding inputs
     # -----------------------------------------------------------------------------------------------------------
     def get_inputs(self):
@@ -140,7 +144,7 @@ class ControllerLogic:
             return key_inputs
 
     # -- FUNCTION check_inputs ----------------------------------------------------------------------------------
-    # This method just checks if we have any input from the receiving parameter (joystick as it has priority)
+    # This function just checks if we have any input from the receiving parameter (joystick as it has priority)
     # -----------------------------------------------------------------------------------------------------------
     def check_inputs(self, inputs):
         for value in inputs:
@@ -150,16 +154,15 @@ class ControllerLogic:
         return False
 
     # -- FUNCTION build_camera ----------------------------------------------------------------------------------
-    # This functions builds or overwrite a FollowVelocityCamera, which will be used to follow the UAV
+    # This function builds or overwrite a FollowVelocityCamera, which will be used to follow the UAV
     # -----------------------------------------------------------------------------------------------------------
     def build_camera(self):
         # Prim subject (target) path
         subject_path = self.prim.GetPath()
 
         # Build the camera prim
-        camera_path = "/manual_controller_CAM"
-        usdCamera = UsdGeom.Camera.Define(self.stage, camera_path)
-        follow_camera_prim = self.stage.GetPrimAtPath(camera_path)
+        usdCamera = UsdGeom.Camera.Define(self.stage, self.camera_path)
+        follow_camera_prim = self.stage.GetPrimAtPath(self.camera_path)
 
         # Apply the physics API to the camera
         PhysxSchema.PhysxCameraFollowVelocityAPI.Apply(follow_camera_prim)
@@ -167,7 +170,7 @@ class ControllerLogic:
         # Set the subject target
         subject_rel = follow_camera_prim.GetRelationship("physxCamera:subject")
         subject_rel.SetTargets([subject_path])
-        
+
         # Set the parameters
         position_offset = Gf.Vec3f(0, 0, 0)
         camera_position_tc = Gf.Vec3f(0.1, 0.1, 0.1)
@@ -200,15 +203,23 @@ class ControllerLogic:
 
         return follow_camera_prim
 
+    # -- FUNCTION destroy_camera --------------------------------------------------------------------------------
+    # This function just sets the active camera as the perspective one  and deletes our camera from the stage
+    # -----------------------------------------------------------------------------------------------------------
+    def destroy_camera(self, stage):
+        self.set_camera_to_active(self.perspective_camera_path)
+        stage.RemovePrim(self.camera_path)
+        self.camera = None
+
     # -- FUNCTION set_camera_to_active --------------------------------------------------------------------------
     # This function set the built camera as active each time the controller starts running
     # -----------------------------------------------------------------------------------------------------------
-    def set_camera_to_active(self):
+    def set_camera_to_active(self, camera_path):
         viewport_api = omni.kit.viewport.utility.get_active_viewport()
-        viewport_api.set_active_camera(self.camera.GetPath())
+        viewport_api.set_active_camera(camera_path)
 
     # -- FUNCTION move_camera -----------------------------------------------------------------------------------
-    # This method moves the camera around the UAV according to the received parameters
+    # This function moves the camera around the UAV according to the received parameters
     # Highlight that it only support cameras of type followVelocity (neither Look nor Drone)
     # -----------------------------------------------------------------------------------------------------------
     def move_camera(self, derease_distance, increase_distance, yaw, pitch):
@@ -225,3 +236,13 @@ class ControllerLogic:
         self.camera_distance_attr.Set(new_distance)
         self.camera_yaw_attr.Set(new_yaw)
         self.camera_pitch_attr.Set(new_pitch)
+
+    # -- FUNCTION change_camera_subject -------------------------------------------------------------------------
+    # This function modifies the subject property from our camera to look to the corresponding UAV
+    # -----------------------------------------------------------------------------------------------------------
+    def change_camera_subject(self, new_target_path):
+        if hasattr(self, "camera") and (self.camera is not None):
+            subject_rel = self.camera.GetRelationship("physxCamera:subject")
+            subject_rel.SetTargets([new_target_path])
+            self.camera.Unload()
+            self.camera.Load()

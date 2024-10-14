@@ -41,16 +41,14 @@ except:
 import matplotlib.pyplot as plt
 
 class ManualController(omni.ext.IExt):
-    def on_startup(self, ext_id):
-        print("[NavSim.ExternalControl] NavSim ExternalControl startup")
 
+    def on_startup(self, ext_id):
         self.create_vars()
         self.build_ui()
 
     def on_shutdown(self):
-        print("[NavSim.ExternalControl] NavSim ExternalControl shutdown")
-
         self.stop_update()
+        self.manual_control.destroy_camera(get_current_stage())
 
     def create_vars(self):
         # Build ExtensionUtils instance
@@ -73,7 +71,7 @@ class ManualController(omni.ext.IExt):
         # Control variable
         self.stop_update_plot = True
 
-        # Instance of ExternalController
+        # Manual control
         self.manual_control = ControllerLogic()
 
         # App interface
@@ -88,6 +86,7 @@ class ManualController(omni.ext.IExt):
 
                     # UAV selector dropdown
                     self.UAV_selector_dropdown: DropDown = self.ext_utils.build_uav_selector()
+                    self.UAV_selector_dropdown.set_on_selection_fn(self.change_uav_subject)
 
                     ui.Spacer(height=10)
 
@@ -135,15 +134,30 @@ class ManualController(omni.ext.IExt):
 
                         self.build_plot_container_content()
 
-    def on_linear_vel_power_change(self, e):
+    def change_uav_subject(self, uav_name):
+        # Switch the camera subject target to the selected UAV
+        uav = self.ext_utils.get_prim_by_name(uav_name)
+        self.manual_control.change_camera_subject(uav.GetPath())
+        
+        # Check if the controller is running (START button clicked) to change UAV control
+        if not self.stop_update_plot:
+            # Get if rotors should be on/off
+            self.rotors_on = self.start_rotors_on_off_checkbox.model.get_value_as_bool()
+            self.manual_control.current_on = self.rotors_on
+
+            # Restart manual control
+            self.manual_control.stop()
+            self.manual_control.start(uav)
+
+    def on_linear_vel_power_change(self, model):
         # Get and set new limit
-        self.linear_vel_limit = self.linear_vel_power.model.get_value_as_float()
+        self.linear_vel_limit = model.get_value_as_float()
         self.manual_control.linear_vel_limit = self.linear_vel_limit
 
         self.update_ui_linear_vel_limits()
 
-    def on_angular_vel_power_change(self, e):
-        self.angular_vel_limit = self.angular_vel_power.model.get_value_as_float()
+    def on_angular_vel_power_change(self, model):
+        self.angular_vel_limit = model.get_value_as_float()
         self.manual_control.ang_vel_limit = self.angular_vel_limit
 
         self.update_ui_angular_vel_limits()
@@ -257,7 +271,7 @@ class ManualController(omni.ext.IExt):
             # Reset start_stop_toolbutton as it changed its model state
             self.start_stop_tool_button.model.set_value(False)
 
-            raise Exception("No drone selected")
+            raise Exception("No UAV selected")
 
         # Change loop variable value to startloop
         self.stop_update_plot = False
@@ -274,10 +288,10 @@ class ManualController(omni.ext.IExt):
         self.update_ui_linear_vel_limits()
         self.update_ui_angular_vel_limits()
 
-        # Get the selected drone
-        drone = self.ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
+        # Get the selected UAV
+        uav = self.ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
 
-        self.manual_control.start(drone)
+        self.manual_control.start(uav)
 
         # Start the coroutine that updates the plots
         asyncio.ensure_future(self.update_plot())
