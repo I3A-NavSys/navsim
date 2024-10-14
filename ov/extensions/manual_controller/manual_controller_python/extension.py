@@ -101,6 +101,7 @@ class ManualController(omni.ext.IExt):
                                 ui.Label("Linear velocity Max")
                                 self.linear_vel_power = ui.FloatSlider(min=0.5, max=10, step=0.5, precision=1, style={"background_color": cl(0.13), "secondary_color": cl(0.3), "draw_mode": ui.SliderDrawMode.FILLED})
                                 self.linear_vel_power.model.set_value(1)
+                                self.linear_vel_power.model.add_value_changed_fn(self.on_linear_vel_power_change)
 
                             ui.Spacer(height=10)
 
@@ -109,6 +110,7 @@ class ManualController(omni.ext.IExt):
                                 ui.Label("Angular velocity Max")
                                 self.angular_vel_power = ui.FloatSlider(min=0.5, max=6, step=0.5, precision=1, style={"background_color": cl(0.13), "secondary_color": cl(0.3), "draw_mode": ui.SliderDrawMode.FILLED})
                                 self.angular_vel_power.model.set_value(1)
+                                self.angular_vel_power.model.add_value_changed_fn(self.on_angular_vel_power_change)
 
                             ui.Spacer(height=25)
 
@@ -132,6 +134,19 @@ class ManualController(omni.ext.IExt):
                         self.plots_container = ui.VStack(height=0)
 
                         self.build_plot_container_content()
+
+    def on_linear_vel_power_change(self, e):
+        # Get and set new limit
+        self.linear_vel_limit = self.linear_vel_power.model.get_value_as_float()
+        self.manual_control.linear_vel_limit = self.linear_vel_limit
+
+        self.update_ui_linear_vel_limits()
+
+    def on_angular_vel_power_change(self, e):
+        self.angular_vel_limit = self.angular_vel_power.model.get_value_as_float()
+        self.manual_control.ang_vel_limit = self.angular_vel_limit
+
+        self.update_ui_angular_vel_limits()
     
     def change_plot_distribution(self, model, index):        
         item = model.get_item_value_model(index).as_int
@@ -251,12 +266,23 @@ class ManualController(omni.ext.IExt):
         self.linear_vel_limit = self.linear_vel_power.model.get_value_as_float()
         self.angular_vel_limit = self.angular_vel_power.model.get_value_as_float()
         self.rotors_on = self.start_rotors_on_off_checkbox.model.get_value_as_bool()
-        print(self.rotors_on)
 
         self.manual_control.ang_vel_limit = self.angular_vel_limit
         self.manual_control.linear_vel_limit = self.linear_vel_limit
         self.manual_control.current_on = self.rotors_on
 
+        self.update_ui_linear_vel_limits()
+        self.update_ui_angular_vel_limits()
+
+        # Get the selected drone
+        drone = self.ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
+
+        self.manual_control.start(drone)
+
+        # Start the coroutine that updates the plots
+        asyncio.ensure_future(self.update_plot())
+
+    def update_ui_linear_vel_limits(self):
         # Update linear velocity limit labels
         self.x_max_lvl.text = str(self.linear_vel_limit)
         if not self.TRDW:
@@ -268,10 +294,6 @@ class ManualController(omni.ext.IExt):
             self.y_min_lvl.text = str(-self.linear_vel_limit)
             self.z_min_lvl.text = str(-self.linear_vel_limit)
 
-        # Update angular velocity limit labels
-        self.z_max_avl.text = str(self.angular_vel_limit)
-        self.z_min_avl.text = str(-self.angular_vel_limit)
-        
         # Adjust scale to corresponding control power
         self.x_lv_plot.scale_min = -self.linear_vel_limit
         self.x_lv_plot.scale_max = self.linear_vel_limit
@@ -282,13 +304,14 @@ class ManualController(omni.ext.IExt):
         self.z_lv_plot.scale_min = -self.linear_vel_limit
         self.z_lv_plot.scale_max = self.linear_vel_limit
 
-        # Get the selected drone
-        drone = self.ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
+    def update_ui_angular_vel_limits(self):
+        # Update angular velocity limit labels
+        self.z_max_avl.text = str(self.angular_vel_limit)
+        self.z_min_avl.text = str(-self.angular_vel_limit)
 
-        self.manual_control.start(drone)
-
-        # Start the coroutine that updates the plots
-        asyncio.ensure_future(self.update_plot())
+        # Adjust scale to corresponding control power
+        self.z_av_plot.scale_min = -self.angular_vel_limit
+        self.z_av_plot.scale_max = self.angular_vel_limit
 
     def stop_update(self):
         # Reset loop variable
