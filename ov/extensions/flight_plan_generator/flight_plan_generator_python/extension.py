@@ -214,7 +214,7 @@ class FlightPlanGenerator(omni.ext.IExt):
                 style=ScrollingFrame_style
             )
             with self.waypoint_list_frame:
-                self.waypoint_list = ui.VStack(spacing=5)
+                self.waypoint_list = ui.VStack(height=0, spacing=5)
                 with self.waypoint_list:
                     ui.Spacer(height=0)
                     self.empty_waypoint_list_label = ui.Label("Waypoint list is empty", style=Label_A, 
