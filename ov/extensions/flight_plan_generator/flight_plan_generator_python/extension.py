@@ -172,7 +172,7 @@ class FlightPlanGenerator(omni.ext.IExt):
                             # FloatDrag widgets
                             self.position_handles.append(ui.FloatDrag(min=-1000000, max=1000000, step=0.01))
 
-                    # Enabled field checkboxes
+                    # Position field checkboxes
                     self.position_check_handle = ui.CheckBox(width=0)
                     self.position_check_handle.model.set_value(True)
 
@@ -200,19 +200,21 @@ class FlightPlanGenerator(omni.ext.IExt):
                             # FloatDrag widgets
                             self.velocity_handles.append(ui.FloatDrag(min=-1000000, max=1000000, step=0.01))
 
-                    # Enabled field checkboxes
+                    # Velocity field checkboxes
                     self.velocity_check_handle = ui.CheckBox(width=0)
                     self.velocity_check_handle.model.set_value(True)
 
                 # Add time field
                 with ui.HStack(spacing=8):
+                    # Time label
                     ui.Label("Time", style=Label_A, width=LABEL_PADDING)
                     self.time_handle = ui.IntDrag(min=0, max=1000000, step=1)
 
-                    # Enabled field checkbox
+                    # Time field checkbox
                     self.time_check_handle = ui.CheckBox(width=0)
                     self.time_check_handle.model.set_value(True)
 
+                # Fly over field
                 with ui.HStack(spacing=8):
                     # Fly over label
                     ui.Label("Fly over", style=Label_A, width=LABEL_PADDING)
@@ -221,11 +223,22 @@ class FlightPlanGenerator(omni.ext.IExt):
                     self.fly_over_check_handle = ui.CheckBox(width=0)
                     self.fly_over_check_handle.model.set_value(True)
 
+                # Add waypoint id field
+                with ui.HStack(spacing=8):
+                    # Waypoint id label
+                    ui.Label("Waypoint ID", style=Label_A, width=LABEL_PADDING)
+                    self.time_handle = ui.StringField()
+
+                    # Enabled field checkbox
+                    self.time_check_handle = ui.CheckBox(width=0)
+                    self.time_check_handle.model.set_value(True)
+
+                # Add buttons
                 with ui.VStack(height=0):
                     # Add waypoint button
                     ui.Button("Add Waypoint", height=0, clicked_fn=self.add_waypoint)
 
-                    # Send flight plan button
+                    # Reset flight plan button
                     ui.Button("Reset Waypoints", height=0, clicked_fn=self.reset_flight_plan)
 
     def build_waypoint_list(self):
