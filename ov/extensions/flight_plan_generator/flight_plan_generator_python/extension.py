@@ -16,6 +16,7 @@ if project_root_path not in sys.path:
 # Local application/library specific imports
 from uspace.flight_plan.flight_plan import FlightPlan
 from uspace.flight_plan.waypoint import Waypoint
+from navsim_utils.extensions_utils import ExtensionUtils
 
 
 KIT_GREEN = 0xFF8A8777
@@ -36,7 +37,10 @@ VStack_A = {
 
 
 VStack_B = {
-    "VStack": {"margin_width": 15}
+    "VStack": {
+        "margin_width": 10,
+        "margin_height": 5
+    }
 }
 
 
@@ -92,6 +96,9 @@ class FlightPlanGenerator(omni.ext.IExt):
     # this extension is located on filesystem.
 
     def on_startup(self, ext_id):
+        # Initialize utils instance
+        self.extension_utils = ExtensionUtils()
+
         # Waypoint variables
         self.waypoints = []
         self.n_waypoints = 0
@@ -101,6 +108,9 @@ class FlightPlanGenerator(omni.ext.IExt):
         self.velocity = [0, 0, 0]
         self.time = 0
         self.fly_over = None
+
+        # Drone selector handle
+        self.UAV_selector_dropdown = None
 
         # UI field handles
         self.position_handles : list[ui.FloatDrag] = []
@@ -134,6 +144,9 @@ class FlightPlanGenerator(omni.ext.IExt):
         with ui.CollapsableFrame(title="Waypoint", style=CollapsableFrame_style):
             with ui.VStack(spacing=8, style=VStack_B):
                 ui.Spacer(height=0)
+
+                # Drone selector widget
+                self.UAV_selector_dropdown = self.extension_utils.build_uav_selector()
 
                 # Position fields
                 with ui.HStack(spacing=8):
@@ -208,9 +221,12 @@ class FlightPlanGenerator(omni.ext.IExt):
                     self.fly_over_check_handle = ui.CheckBox(width=0)
                     self.fly_over_check_handle.model.set_value(True)
 
-                # Add waypoint button
-                ui.Button("Add waypoint", clicked_fn=self.add_waypoint)
-                ui.Spacer()
+                with ui.VStack(height=0):
+                    # Add waypoint button
+                    ui.Button("Add Waypoint", height=0, clicked_fn=self.add_waypoint)
+
+                    # Send flight plan button
+                    ui.Button("Reset Waypoints", height=0, clicked_fn=self.reset_flight_plan)
 
     def build_waypoint_list(self):
         with ui.CollapsableFrame(title="Waypoint list", style=CollapsableFrame_style):
@@ -226,6 +242,12 @@ class FlightPlanGenerator(omni.ext.IExt):
                     ui.Spacer(height=0)
                     self.empty_waypoint_list_label = ui.Label("Waypoint list is empty", style=Label_A, 
                                                               alignment=ui.Alignment.CENTER_TOP)
+
+    def send_flight_plan(self):
+        pass
+
+    def reset_flight_plan(self):
+        pass
                     
     def update_variables(self):
         # Position and velocity
@@ -310,7 +332,7 @@ class FlightPlanGenerator(omni.ext.IExt):
 
     def build_window(self):
         # Create extension main window
-        self.window = ui.Window("NavSim - Flight Plan Generator", width=750, height=500)
+        self.window = ui.Window("NavSim - Flight Plan Generator", width=0, height=0)
         self.window.deferred_dock_in("Layers")
         self.window.setPosition(100, 100)
         self.window.frame.set_style(Window_dark_style)
@@ -323,3 +345,5 @@ class FlightPlanGenerator(omni.ext.IExt):
                 self.build_waypoint_frame()
                 # Create waypoint list
                 self.build_waypoint_list()
+                # Send flight plan button
+                ui.Button("Send Flight Plan", height=50, clicked_fn=self.send_flight_plan)
