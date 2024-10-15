@@ -183,7 +183,7 @@ class ControllerLogic:
         follow_camera_prim.GetAttribute("physxFollowCamera:cameraPositionTimeConstant").Set(camera_position_tc)
         follow_camera_prim.GetAttribute("physxFollowCamera:followMaxDistance").Set(10.0)
         follow_camera_prim.GetAttribute("physxFollowCamera:followMaxSpeed").Set(30.0)
-        follow_camera_prim.GetAttribute("physxFollowCamera:followMinDistance").Set(7.0)
+        follow_camera_prim.GetAttribute("physxFollowCamera:followMinDistance").Set(6.0)
         follow_camera_prim.GetAttribute("physxFollowCamera:followMinSpeed").Set(3.0)
         follow_camera_prim.GetAttribute("physxFollowCamera:followTurnRateGain").Set(0.0)
         follow_camera_prim.GetAttribute("physxFollowCamera:lookAheadMaxSpeed").Set(20.0)
@@ -193,7 +193,7 @@ class ControllerLogic:
         follow_camera_prim.GetAttribute("physxFollowCamera:lookPositionHeight").Set(0.0)
         follow_camera_prim.GetAttribute("physxFollowCamera:lookAheadMinDistance").Set(0.0)
         follow_camera_prim.GetAttribute("physxFollowCamera:lookPositionTimeConstant").Set(look_position_tc)
-        follow_camera_prim.GetAttribute("physxFollowCamera:pitchAngle").Set(15.0)
+        follow_camera_prim.GetAttribute("physxFollowCamera:pitchAngle").Set(14.0)
         follow_camera_prim.GetAttribute("physxFollowCamera:pitchAngleTimeConstant").Set(0.2)
         follow_camera_prim.GetAttribute("physxFollowCamera:positionOffset").Set(position_offset)
         follow_camera_prim.GetAttribute("physxFollowCamera:slowPitchAngleSpeed").Set(1000.0)
@@ -202,6 +202,9 @@ class ControllerLogic:
         follow_camera_prim.GetAttribute("physxFollowCamera:yawAngle").Set(0.0)
         follow_camera_prim.GetAttribute("physxFollowCamera:yawRateTimeConstant").Set(0.0)
         follow_camera_prim.GetAttribute("physxFollowFollowCamera:lookAheadMaxDistance").Set(0.0)
+
+        # Set the camera invisible
+        follow_camera_prim.GetAttribute("visibility").Set("invisible")
 
         return follow_camera_prim
 
@@ -239,7 +242,7 @@ class ControllerLogic:
         new_yaw = current_yaw + yaw + yaw
         new_pitch = current_pitch + pitch + pitch
 
-        self.camera_distance_attr.Set(new_distance)
+        if new_distance >= 1:   self.camera_distance_attr.Set(new_distance)
         self.camera_yaw_attr.Set(new_yaw)
         self.camera_pitch_attr.Set(new_pitch)
 
