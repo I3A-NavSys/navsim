@@ -39,9 +39,3 @@ icon = "data/icon.png"
 # Main python module this extension provides, it will be publicly available as "import uav_race".
 [[python.module]]
 name = "uav_race_python"
-
-[[test]]
-# Extra dependencies only to be used during test run
-dependencies = [
-    "omni.kit.ui_test" # UI testing extension
-]
