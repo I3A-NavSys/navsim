@@ -115,7 +115,7 @@ class FlightPlan:
                 self.set_uniform_velocity(wp=i)
 
             # Stop last WP
-            self.waypoints[-1].Stop()
+            self.waypoints[-1].stop()
 
         # Set vel velocity to all WPs
         elif wp is None:
@@ -123,7 +123,7 @@ class FlightPlan:
                 self.set_uniform_velocity(wp=i, vel=vel)
 
             # Stop last WP
-            self.waypoints[-1].Stop()
+            self.waypoints[-1].stop()
 
         # Compute MRU velocity just for wp WP
         elif vel is None:
@@ -155,7 +155,7 @@ class FlightPlan:
             wp2 = self.waypoints[index+1]
 
             # New time for wp2 according to vel
-            t2 = wp1.t + wp1.DistanceTo(wp2) / vel
+            t2 = wp1.t + wp1.distance_to(wp2) / vel
             # Update wp2.t and postpone following WPs
             self.postpone_from(wp2.t, t2 - wp2.t)
             # Update wp1.vel
@@ -170,7 +170,7 @@ class FlightPlan:
         # Find the first waypoint with time greater than or equal to startTime
         index = self.get_target_index_from_time(startTime)
 
-        if index > 0 and timeStep < self.waypoints[index].TimeTo(self.waypoints[index-1]):
+        if index > 0 and timeStep < self.waypoints[index].time_to(self.waypoints[index-1]):
             return  # Not enough time in the past
 
         for i in range(index, len(self.waypoints)):
@@ -257,9 +257,9 @@ class FlightPlan:
         if wp2A.t <= wp1.t or wp3.t <= wp2B.t or (wp3.t + wp2B.t - wp2BTinit) <= wp2B.t:
             raise RuntimeError(f"There is not time enough to include the curve in waypoint {wp2.label}")
         
-        self.RemoveWaypointAtTime(wp2.t)
-        self.SetWaypoint(wp2A)
-        self.SetWaypoint(wp2B)
+        self.remove_waypoint_at_time(wp2.t)
+        self.set_waypoint(wp2A)
+        self.set_waypoint(wp2B)
 
         self.postpone_from(wp2B.t + 0.001, wp2B.t - wp2BTinit)
 
@@ -314,9 +314,9 @@ class FlightPlan:
 
         wp2A.connect_to(wp2B)
 
-        self.RemoveWaypointAtTime(wp2.t)
-        self.SetWaypoint(wp2A)
-        self.SetWaypoint(wp2B)
+        self.remove_waypoint_at_time(wp2.t)
+        self.set_waypoint(wp2A)
+        self.set_waypoint(wp2B)
 
     #------------------------------------------------------------------------------------------------------------------
     # FLIGHT PLAN BEHAVIOUR
