@@ -43,7 +43,7 @@ class Waypoint:
 
     def direction_to(self, wp) -> np.array:
         # Get a direction vector from one waypoint to another
-        dist = self.DistanceTo(wp)
+        dist = self.distance_to(wp)
         if dist == 0:
             return np.zeros(3)
         else:
@@ -55,7 +55,7 @@ class Waypoint:
         # +Y ->     0
         # +X -> +  90
         # -Y -> +-180
-        dist = self.DistanceTo(wp)
+        dist = self.distance_to(wp)
         if dist == 0:
             return 0
         else:
@@ -83,10 +83,10 @@ class Waypoint:
 
     def set_uniform_velocity(self, wp2):
         # Set uniform straight velocity from wp1 to wp2
-        self.Stop()
+        self.stop()
 
         # Time between wp1 and wp2
-        t12 = self.TimeTo(wp2)
+        t12 = self.time_to(wp2)
         if t12 != 0:
             self.vel = (wp2.pos - self.pos) / t12
             self.vel = np.round(self.vel, 2)
@@ -104,10 +104,10 @@ class Waypoint:
         a2 = wp2.acel
 
         if np.linalg.norm(r2 - r1) == 0:
-            self.Stop()
+            self.stop()
             return
         
-        t12 = self.TimeTo(wp2)
+        t12 = self.time_to(wp2)
 
         A = np.array([
             [t12**3 / 6,   t12**4 / 24,   t12**5 / 120],
@@ -153,7 +153,7 @@ class Waypoint:
         s1 = self.snap
         c1 = self.crkl
 
-        t12 = self.TimeTo(wp2)
+        t12 = self.time_to(wp2)
         
         r2 = r1 + v1*t12 + 1/2*a1*t12**2 + 1/6*j1*t12**3 + 1/24*s1*t12**4 + 1/120*c1*t12**5
         v2 = v1 + a1*t12 + 1/2*j1*t12**2 + 1/6*s1*t12**3 + 1/24*c1*t12**4
