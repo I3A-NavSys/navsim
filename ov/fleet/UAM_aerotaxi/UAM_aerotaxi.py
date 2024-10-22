@@ -186,7 +186,9 @@ class UAM_minidrone(BehaviorScript):
         ])
         
         self.E_max = 150            # maximum model accumulated error
-
+    
+    def on_destroy(self):
+        self.uav_event_sub = None
     #------------------------------------------------------------------------------------------------------------------
     # EVENT HANDLERS
 
@@ -202,8 +204,7 @@ class UAM_minidrone(BehaviorScript):
         # Update the drone status
         self.imu()
         self.navigation()
-
-        self.command.hover()
+        # self.command.hover()
         self.servo_control()
         self.platform_dynamics()
         self.telemetry()
