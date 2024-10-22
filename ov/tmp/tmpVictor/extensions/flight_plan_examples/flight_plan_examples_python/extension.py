@@ -111,39 +111,39 @@ class FlightPlanExamples(omni.ext.IExt):
         self.fp = FlightPlan()
         self.fp.radius = 2
 
-        self.fp.SetWaypoint(label="wp1L", pos=[-190, -119, 48.1])
-        self.fp.SetWaypoint(label="wp1P", time=5, pos=[-190, -119, 48.1])
-        self.fp.SetWaypoint(label="wp1", pos=[-190, -119, 70])
-        self.fp.SetWaypoint(label="wp2", pos=[-90, -19, 70])
-        self.fp.SetWaypoint(label="wp3", pos=[-90, 181, 70])
-        self.fp.SetWaypoint(label="wp4", pos=[110, 181, 70])
-        self.fp.SetWaypoint(label="wp5", pos=[110, -119, 70])
-        self.fp.SetWaypoint(label="wp6", pos=[-152, -106, 70])
-        self.fp.SetWaypoint(label="wp6L", pos=[-152, -106, 49.1])
-        self.fp.SetWaypoint(label="wp6P", time=18, pos=[-152, -106, 49.1])
+        self.fp.set_waypoint(label="wp1L", pos=[-190, -119, 48.1])
+        self.fp.set_waypoint(label="wp1P", time=5, pos=[-190, -119, 48.1])
+        self.fp.set_waypoint(label="wp1", pos=[-190, -119, 70])
+        self.fp.set_waypoint(label="wp2", pos=[-90, -19, 70])
+        self.fp.set_waypoint(label="wp3", pos=[-90, 181, 70])
+        self.fp.set_waypoint(label="wp4", pos=[110, 181, 70])
+        self.fp.set_waypoint(label="wp5", pos=[110, -119, 70])
+        self.fp.set_waypoint(label="wp6", pos=[-152, -106, 70])
+        self.fp.set_waypoint(label="wp6L", pos=[-152, -106, 49.1])
+        self.fp.set_waypoint(label="wp6P", time=18, pos=[-152, -106, 49.1])
 
-        self.fp.SetUniformVelocity("wp1P", 2)
-        self.fp.SetUniformVelocity("wp1", 8)
-        self.fp.SetUniformVelocity("wp2", 8)
-        self.fp.SetUniformVelocity("wp3", 8)
-        self.fp.SetUniformVelocity("wp4", 8)
-        self.fp.SetUniformVelocity("wp5", 8)
-        self.fp.SetUniformVelocity("wp6", 2)
-        self.fp.SetUniformVelocity()
+        self.fp.set_uniform_velocity("wp1P", 2)
+        self.fp.set_uniform_velocity("wp1", 8)
+        self.fp.set_uniform_velocity("wp2", 8)
+        self.fp.set_uniform_velocity("wp3", 8)
+        self.fp.set_uniform_velocity("wp4", 8)
+        self.fp.set_uniform_velocity("wp5", 8)
+        self.fp.set_uniform_velocity("wp6", 2)
+        self.fp.set_uniform_velocity()
 
         ang_vel = 0.1
         lin_acel = 0.4
 
-        self.fp.SmoothWPDuration('wp1P',ang_vel, lin_acel)
-        self.fp.SmoothWPDuration('wp1',ang_vel, lin_acel)
-        self.fp.SmoothWPSpeed('wp2',ang_vel)
-        self.fp.SmoothWPSpeed('wp3',ang_vel)
-        self.fp.SmoothWPSpeed('wp4',ang_vel)
-        self.fp.SmoothWPSpeed('wp5',ang_vel)
-        self.fp.SmoothWPDuration('wp6',ang_vel, lin_acel)
-        self.fp.SmoothWPDuration('wp6L',ang_vel, lin_acel)
+        self.fp.smooth_waypoint_duration('wp1P',ang_vel, lin_acel)
+        self.fp.smooth_waypoint_duration('wp1',ang_vel, lin_acel)
+        self.fp.smooth_waypoint_speed('wp2',ang_vel)
+        self.fp.smooth_waypoint_speed('wp3',ang_vel)
+        self.fp.smooth_waypoint_speed('wp4',ang_vel)
+        self.fp.smooth_waypoint_speed('wp5',ang_vel)
+        self.fp.smooth_waypoint_duration('wp6',ang_vel, lin_acel)
+        self.fp.smooth_waypoint_duration('wp6L',ang_vel, lin_acel)
 
-        self.fp.Postpone(self.current_time + delay)
+        self.fp.postpone(self.current_time + delay)
 
         self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(drone.GetPath()))
 
@@ -163,30 +163,30 @@ class FlightPlanExamples(omni.ext.IExt):
         # Crear plan de vuelo
         self.fp = FlightPlan()
         self.fp.radius = 2
-        self.fp.SetWaypoint(label='WPI', time=0,  pos=[0.0, 0.0, 1.0])
-        self.fp.SetWaypoint(label='WPIP', time=5,  pos=[0.0, 0.0, 2.0])
-        self.fp.SetWaypoint(label='WP1', time=15,  pos=[0.0, 10.0, 2.0])
-        self.fp.SetWaypoint(label='WP2', time=25,  pos=[-10.0, 10.0, 2.0])
-        self.fp.SetWaypoint(label='WP3', time=35,  pos=[-10.0, 0.0, 2.0])
-        self.fp.SetWaypoint(label='WP4', time=45,  pos=[.0, -10.0, 2.0])
-        self.fp.SetWaypoint(label='WP5', time=55,  pos=[10.0, 10.0, 2.0])
-        self.fp.SetWaypoint(label='WP6', time=65,  pos=[10.0, 0.0, 2.0])
-        self.fp.SetWaypoint(label='WP7', time=75,  pos=[10.0, -10.0, 2.0])
-        self.fp.SetWaypoint(label='WPF', time=85,  pos=[-10.0, -10.0, 2.0])
-        self.fp.SetWaypoint(label='WPFP', time=90,  pos=[-10.0, -10.0, 1.0])
+        self.fp.set_waypoint(label='WPI', time=0,  pos=[0.0, 0.0, 1.0])
+        self.fp.set_waypoint(label='WPIP', time=5,  pos=[0.0, 0.0, 2.0])
+        self.fp.set_waypoint(label='WP1', time=15,  pos=[0.0, 10.0, 2.0])
+        self.fp.set_waypoint(label='WP2', time=25,  pos=[-10.0, 10.0, 2.0])
+        self.fp.set_waypoint(label='WP3', time=35,  pos=[-10.0, 0.0, 2.0])
+        self.fp.set_waypoint(label='WP4', time=45,  pos=[.0, -10.0, 2.0])
+        self.fp.set_waypoint(label='WP5', time=55,  pos=[10.0, 10.0, 2.0])
+        self.fp.set_waypoint(label='WP6', time=65,  pos=[10.0, 0.0, 2.0])
+        self.fp.set_waypoint(label='WP7', time=75,  pos=[10.0, -10.0, 2.0])
+        self.fp.set_waypoint(label='WPF', time=85,  pos=[-10.0, -10.0, 2.0])
+        self.fp.set_waypoint(label='WPFP', time=90,  pos=[-10.0, -10.0, 1.0])
 
-        self.fp.SetUniformVelocity()
+        self.fp.set_uniform_velocity()
         
-        self.fp.SmoothWPSpeed("WPIP", 0.3)
-        self.fp.SmoothWPSpeed("WP1", 0.3)
-        self.fp.SmoothWPSpeed("WP2", 0.3)
-        self.fp.SmoothWPSpeed("WP3", 0.3)
-        self.fp.SmoothWPSpeed("WP4", 0.3)
-        self.fp.SmoothWPSpeed("WP5", 0.8)
-        self.fp.SmoothWPSpeed("WP7", 0.3)
-        self.fp.SmoothWPSpeed("WPF", 0.3)
+        self.fp.smooth_waypoint_speed("WPIP", 0.3)
+        self.fp.smooth_waypoint_speed("WP1", 0.3)
+        self.fp.smooth_waypoint_speed("WP2", 0.3)
+        self.fp.smooth_waypoint_speed("WP3", 0.3)
+        self.fp.smooth_waypoint_speed("WP4", 0.3)
+        self.fp.smooth_waypoint_speed("WP5", 0.8)
+        self.fp.smooth_waypoint_speed("WP7", 0.3)
+        self.fp.smooth_waypoint_speed("WPF", 0.3)
 
-        self.fp.Postpone(self.current_time + delay)
+        self.fp.postpone(self.current_time + delay)
 
         self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(drone.GetPath()))
 
@@ -206,14 +206,14 @@ class FlightPlanExamples(omni.ext.IExt):
         # Creamos plan de vuelo
         self.fp = FlightPlan()
         self.fp.radius = 2
-        self.fp.SetWaypoint(label="wp1", time=0,  pos=[  0.0,  0.0,  1.0 ])
-        self.fp.SetWaypoint(label="wp2", time=10,  pos=[  0.0,  0.0,  2.0 ])
-        self.fp.SetWaypoint(label="wp3", time=20, pos=[ 0.0,  10.0,  2.0 ])
-        self.fp.SetWaypoint(label="wp4", time=30, pos=[ 0.0,  10.0,  1.0 ])
+        self.fp.set_waypoint(label="wp1", time=0,  pos=[  0.0,  0.0,  1.0 ])
+        self.fp.set_waypoint(label="wp2", time=10,  pos=[  0.0,  0.0,  2.0 ])
+        self.fp.set_waypoint(label="wp3", time=20, pos=[ 0.0,  10.0,  2.0 ])
+        self.fp.set_waypoint(label="wp4", time=30, pos=[ 0.0,  10.0,  1.0 ])
 
-        self.fp.SetUniformVelocity()
+        self.fp.set_uniform_velocity()
 
-        self.fp.Postpone(self.current_time + delay)
+        self.fp.postpone(self.current_time + delay)
 
         # Comunicamos plan de vuelo
         self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(drone.GetPath()))
@@ -233,17 +233,17 @@ class FlightPlanExamples(omni.ext.IExt):
         # Creamos plan de vuelo
         self.fp = FlightPlan()
         self.fp.radius = 2
-        self.fp.SetWaypoint(label="wp1", time=0,  pos=[  0.0,  0.0,  1.0 ])
-        self.fp.SetWaypoint(label="wp2", time=5,  pos=[  0.0,  0.0,  2.0 ])
-        self.fp.SetWaypoint(label="wp3", time=15, pos=[ 10.0,  0.0,  2.0 ])
-        self.fp.SetWaypoint(label="wp4", time=25, pos=[ 10.0,  -10.0,  2.0 ])
-        self.fp.SetWaypoint(label="wp5", time=30, pos=[ 10.0,  -10.0,  1.0 ])
+        self.fp.set_waypoint(label="wp1", time=0,  pos=[  0.0,  0.0,  1.0 ])
+        self.fp.set_waypoint(label="wp2", time=5,  pos=[  0.0,  0.0,  2.0 ])
+        self.fp.set_waypoint(label="wp3", time=15, pos=[ 10.0,  0.0,  2.0 ])
+        self.fp.set_waypoint(label="wp4", time=25, pos=[ 10.0,  -10.0,  2.0 ])
+        self.fp.set_waypoint(label="wp5", time=30, pos=[ 10.0,  -10.0,  1.0 ])
 
-        self.fp.SetUniformVelocity()
+        self.fp.set_uniform_velocity()
 
-        self.fp.SmoothWPSpeed("wp3", 0.11)
+        self.fp.smooth_waypoint_speed("wp3", 0.11)
 
-        self.fp.Postpone(self.current_time + delay)
+        self.fp.postpone(self.current_time + delay)
 
         # Comunicamos plan de vuelo
         self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(drone.GetPath()))
