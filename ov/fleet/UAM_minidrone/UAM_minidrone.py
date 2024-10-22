@@ -12,6 +12,10 @@ import matplotlib.pyplot as plt
 from omni.kit.scripting import BehaviorScript
 from pxr import Sdf, Gf
 from scipy.spatial.transform import Rotation
+import omni.physx
+import omni.timeline
+# DEBUG
+import logging
 
 
 project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
@@ -29,6 +33,9 @@ from uspace.flight_plan.command import Command
 class UAM_minidrone(BehaviorScript):
 
     def on_init(self):
+        # DEBUG
+        self.logger = logging.getLogger("A_my_logger")
+
         self.current_time = 0
         self.delta_time = 0
 
@@ -198,6 +205,18 @@ class UAM_minidrone(BehaviorScript):
     def on_play(self):
         # print(f"PLAY    {self.prim_path}")
         # print(f"\t {self.current_time} \t {self.delta_time}")
+        # print(f"PLAY  {self.prim_path} \t {self.current_time:.3f} \t {self.delta_time:.3f}")
+
+        self.event_timer_callback = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
+            int(omni.timeline.TimelineEventType.STOP), self.reset_current_time)
+
+        self.physx_interface = omni.physx.get_physx_interface()
+        if hasattr(self, "physics_timer_callback"):
+                self.logger.info("DELETING PLAY")
+                del self.physics_timer_callback
+        self.physics_timer_callback = self.physx_interface.subscribe_physics_step_events(self.on_physics_step)
+        self.logger.info(f"PLAY {self.prim_path}: Conectando físicas")
+
 
         # Tracking
         self.show_tracking = False
@@ -214,6 +233,14 @@ class UAM_minidrone(BehaviorScript):
     def on_pause(self):
         # print(f"PAUSE   {self.prim_path}")
         pass
+
+    def on_physics_step(self, step_size):
+        self.current_time += step_size
+        self.delta_time = step_size
+        self.update()
+
+    def reset_current_time(self, event):
+        self.current_time = 0
 
     def on_stop(self):
         # print(f"STOP    {self.prim_path}")
@@ -240,12 +267,15 @@ class UAM_minidrone(BehaviorScript):
         self.tracking_figure_builded = False
         self.track_info = []
 
-    def on_update(self, current_time: float, delta_time: float):
+    # def on_update(self, current_time: float, delta_time: float):
+    def update(self):
         # print(f"UPDATE  {self.prim_path} \t {current_time:.3f} \t {delta_time:.3f}")
+        # print(f"UPDATE  {self.prim_path} \t {self.current_time:.3f} \t {self.delta_time:.3f}")
+        # self.logger.info(f"UPDATE  {self.prim_path} \t {self.current_time:.3f} \t {self.delta_time:.3f}")
 
         # Get current simulation time
-        self.current_time = current_time
-        self.delta_time = delta_time
+        # self.current_time = current_time
+        # self.delta_time = delta_time
 
         self.animate_rotors()
 
@@ -277,6 +307,16 @@ class UAM_minidrone(BehaviorScript):
         if self.command.duration is not None:
             self.cmd_exp_time = self.current_time + self.command.duration
             print(f"[{self.current_time}] {self.prim_path}: command received")
+
+            # Adapt command to horizont axes
+            # vel_x = np.cos(self.pitch) * self.command.velX
+            # vel_y = np.cos(self.roll) * self.command.velY
+            # vel_z = np.sin(self.pitch) + np.sin(self.roll) + self.command.velZ
+            
+            # self.command.set(self.command.on, vel_x, vel_y, vel_z, self.command.rotZ, self.command.duration)
+            # self.command.velX = vel_x
+            # self.command.velY = vel_y
+            # self.command.velZ = vel_z
         
     def eventFn_FlightPlan(self, fp):
         self.fp :FlightPlan = pickle.loads(base64.b64decode(fp))
@@ -425,10 +465,10 @@ class UAM_minidrone(BehaviorScript):
         self.are_rotors_on = True
 
         # Assign the model reference to be followed
-        self.r[0, 0] = self.command.velX       # bXdot
-        self.r[1, 0] = self.command.velY       # bYdot
-        self.r[2, 0] = self.command.velZ       # bZdot
-        self.r[3, 0] = self.command.rotZ       # hZdot
+        self.r[0, 0] = np.cos(self.pitch) * self.command.velX                           # bXdot
+        self.r[1, 0] = np.cos(self.roll) * self.command.velY                            # bYdot
+        self.r[2, 0] = np.sin(self.pitch) + np.sin(self.roll) + self.command.velZ       # bZdot
+        self.r[3, 0] = self.command.rotZ                                                # hZdot
         # print(f"r: {np.round(self.r.T, 2)}")
 
         # Assign model state
