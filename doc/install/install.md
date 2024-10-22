@@ -73,8 +73,8 @@ Once you enable an extension, see how a new window appears with the its content.
 Move and adjust the window to you pleasure.
 
 If no window appears when enabling the extension, this is caused by the fact that we need to tell omniverse that we are 
-using third party libraries (pygame and PyQt5). In order to solve the problem, open the script editor and paste the 
-following code:
+using third party libraries (pygame and PyQt5). In order to solve the problem, open the script editor 
+(`Window/Script Editor`) and paste the following code:
 ```bash
 import omni.kit.pipapi
 omni.kit.pipapi.install("pygame")
