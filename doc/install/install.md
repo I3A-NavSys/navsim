@@ -80,7 +80,7 @@ import omni.kit.pipapi
 omni.kit.pipapi.install("pygame")
 omni.kit.pipapi.install("PyQt5")
 ```
-This will install all necessary modules
+This will install all necessary modules.
 
 ![Navsim extensions loaded](./img/navsim_extensions_loaded.png)
 
