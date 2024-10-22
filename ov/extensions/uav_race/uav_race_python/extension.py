@@ -110,11 +110,29 @@ class Uav_raceExtension(omni.ext.IExt):
                 # with self.add_viewports_collapsable:
                 #     ui.Label("Joystick1")
 
+    # def add_viewports(self):
+    #     amount_viewports = len(self.viewports)
+        
+    #     viewport_width = ui.Workspace.get_main_window_width()/4
+    #     viewport_height = ui.Workspace.get_main_window_height()/3
+
+    #     viewport_window = ui.Window(title=f"User {amount_viewports + 1}", width=viewport_width, height=viewport_height+20, 
+    #                                 raster_policy=ui.RasterPolicy.NEVER)
+    #     viewport_window.set_visibility_changed_fn(self.viewport_on_visibility_change)
+    #     with viewport_window.frame:
+    #         viewport_widget = ViewportWidget(resolution=(640, 360))
+
+    #     viewport_api = viewport_widget.viewport_api
+    #     viewport_api.camera_path = self.follow_UAV_camera_path
+
+    #     self.viewports[viewport_window.title] = (viewport_window, viewport_widget)
+
     def add_viewports(self):
         amount_viewports = 0
-        for viewport in omni.kit.viewport.window.get_viewport_window_instances():
-            if not viewport.visible:
-                viewport.destroy()
+        for viewport_window in omni.kit.viewport.window.get_viewport_window_instances():
+            if not viewport_window.visible:
+                viewport_window.viewport_widget.destroy()
+                viewport_window.destroy()
                 continue
 
             amount_viewports += 1
@@ -123,41 +141,24 @@ class Uav_raceExtension(omni.ext.IExt):
         viewport_height = ui.Workspace.get_main_window_height()/3
         render_resolution_scale = 0.5
 
-        viewport_window = ui.Window(title=f"User {amount_viewports}", width=viewport_width, height=viewport_height+20, 
-                                    raster_policy=ui.RasterPolicy.NEVER)
-        viewport_window.set_visibility_changed_fn(self.viewport_on_visibility_change)
-        with viewport_window.frame:
-            viewport_widget = ViewportWidget(resolution=(640, 360))
-
-        viewport_api = viewport_widget.viewport_api
-        viewport_api.camera_path = self.perspective_camera_path
-
-        # print(viewport_api.projection)
-        # print(viewport_api.transform)
-
         viewport_window = omni.kit.viewport.window.ViewportWindow(name=f"User {amount_viewports}", 
                                                                   width=viewport_width, height=viewport_height)
-        viewport_window.setPosition(viewport_width, 0)
-        viewport_window.viewport_api.set_active_camera(self.perspective_camera_path)
+
+        viewport_window.setPosition(viewport_width*(amount_viewports - 1), viewport_height*2)
+        viewport_window.viewport_api.set_active_camera(self.follow_UAV_camera_path)
         viewport_window.set_visibility_changed_fn(self.viewport_on_visibility_change)
 
         viewport_api = viewport_window.viewport_api
 
-        # Performance settings
-        # viewport_window.viewport_api.get_render_settings().antialiasing_mode = 0
-        # viewport_window.viewport_api.get_render_settings().enable_shadows(False)
-        # viewport_window.viewport_api.get_render_settings().max_fps = 30
-        # viewport_api.resolution_scale = 0.5
-        viewport_api.resolution = (640, 360)
-        # viewport_window.viewport_api.enable_culling(True)
-        # viewport_window.viewport_api.get_render_settings().enable_bloom(False)
-        # viewport_window.viewport_api.get_render_settings().enable_ambient_occlusion(False)
-        # viewport_window.viewport_api.get_render_settings().enable_depth_of_field(False)
-
-        self.viewports[viewport_window.title] = viewport_window
-
     def viewport_on_visibility_change(self, visible):
         for viewport_window in omni.kit.viewport.window.get_viewport_window_instances():
             if not viewport_window.visible:
+                # self.viewports.pop(viewport_window.title)
+                viewport_window.viewport_widget.destroy()
                 viewport_window.destroy()
-                self.viewports.pop(viewport_window.title)
+
+    # def viewport_on_visibility_change(self, visible):
+    #     for viewport_window in self.viewports.values():
+    #         if not viewport_window.visible:
+    #             viewport_window.destroy()
+    #             self.viewports.pop(viewport_window.title)
