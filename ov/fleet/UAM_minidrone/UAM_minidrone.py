@@ -398,7 +398,7 @@ class UAM_minidrone(BehaviorScript):
             return
 
         # Check FP vigency
-        WP = self.fp.GetTargetIndexFromTime(self.current_time)
+        WP = self.fp.get_target_index_from_time(self.current_time)
         numWPs = len(self.fp.waypoints)
 
         if self.currentWP is None and WP != 0:
@@ -431,11 +431,11 @@ class UAM_minidrone(BehaviorScript):
 
                 # Uncomment this to show the corresponding plots
                 # plt.close(plt.gcf())
-                # self.fp.PositionFigure("FP1: POSITION", 0.01)
-                # self.fp.VelocityFigure("FP1: VELOCITY", 0.01)
+                # self.fp.position_figure("FP1: POSITION", 0.01)
+                # self.fp.velocity_figure("FP1: VELOCITY", 0.01)
                 
-                # self.fp.AddUAVTrackPos("FP1: POSITION", self.track_info)
-                # self.fp.AddUAVTrackVel("FP1: VELOCITY", self.track_info)
+                # self.fp.add_UAV_track_pos("FP1: POSITION", self.track_info)
+                # self.fp.add_UAV_track_vel("FP1: VELOCITY", self.track_info)
 
                 self.fp = None
                 return
