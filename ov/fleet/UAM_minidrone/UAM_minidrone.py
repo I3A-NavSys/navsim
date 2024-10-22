@@ -465,10 +465,10 @@ class UAM_minidrone(BehaviorScript):
         self.are_rotors_on = True
 
         # Assign the model reference to be followed
-        self.r[0, 0] = np.cos(self.pitch) * self.command.velX                           # bXdot
-        self.r[1, 0] = np.cos(self.roll) * self.command.velY                            # bYdot
-        self.r[2, 0] = np.sin(self.pitch) + np.sin(self.roll) + self.command.velZ       # bZdot
-        self.r[3, 0] = self.command.rotZ                                                # hZdot
+        self.r[0, 0] = self.command.velX        # bXdot
+        self.r[1, 0] = self.command.velY        # bYdot
+        self.r[2, 0] = self.command.velZ        # bZdot
+        self.r[3, 0] = self.command.rotZ        # hZdot
         # print(f"r: {np.round(self.r.T, 2)}")
 
         # Assign model state
