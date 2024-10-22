@@ -18,9 +18,15 @@ from uspace.flight_plan.flight_plan import FlightPlan
 from uspace.flight_plan.waypoint import Waypoint
 from navsim_utils.extensions_utils import ExtensionUtils
 
-
+# TODO comment
 KIT_GREEN = 0xFF8A8777
 LABEL_PADDING = 120
+
+# Spacings
+SPACING_S = 8
+SPACING_M = SPACING_S * 2
+SPACING_L = SPACING_M * 2
+SPACING_XL = SPACING_L * 2
 
 
 Window_dark_style = {
@@ -142,14 +148,14 @@ class FlightPlanGenerator(omni.ext.IExt):
 
     def build_waypoint_frame(self):
         with ui.CollapsableFrame(title="Waypoint", style=CollapsableFrame_style):
-            with ui.VStack(spacing=8, style=VStack_B):
+            with ui.VStack(spacing=SPACING_S, style=VStack_B):
                 ui.Spacer(height=0)
 
                 # Drone selector widget
                 self.UAV_selector_dropdown = self.extension_utils.build_uav_selector()
 
                 # Position fields
-                with ui.HStack(spacing=8):
+                with ui.HStack(spacing=SPACING_S):
                     with ui.HStack(width=LABEL_PADDING):
                         ui.Label("Position", style=Label_A, width=50)
                         ui.Spacer()
@@ -177,7 +183,7 @@ class FlightPlanGenerator(omni.ext.IExt):
                     self.position_check_handle.model.set_value(True)
 
                 # Velocity fields
-                with ui.HStack(spacing=8):
+                with ui.HStack(spacing=SPACING_S):
                     with ui.HStack(width=LABEL_PADDING):
                         ui.Label("Velocity", style=Label_A, width=50)
                         ui.Spacer()
@@ -205,7 +211,7 @@ class FlightPlanGenerator(omni.ext.IExt):
                     self.velocity_check_handle.model.set_value(True)
 
                 # Add time field
-                with ui.HStack(spacing=8):
+                with ui.HStack(spacing=SPACING_S):
                     # Time label
                     ui.Label("Time", style=Label_A, width=LABEL_PADDING)
                     self.time_handle = ui.IntDrag(min=0, max=1000000, step=1)
@@ -215,7 +221,7 @@ class FlightPlanGenerator(omni.ext.IExt):
                     self.time_check_handle.model.set_value(True)
 
                 # Fly over field
-                with ui.HStack(spacing=8):
+                with ui.HStack(spacing=SPACING_S):
                     # Fly over label
                     ui.Label("Fly over", style=Label_A, width=LABEL_PADDING)
 
@@ -224,7 +230,7 @@ class FlightPlanGenerator(omni.ext.IExt):
                     self.fly_over_check_handle.model.set_value(True)
 
                 # Add waypoint id field
-                with ui.HStack(spacing=8):
+                with ui.HStack(spacing=SPACING_S):
                     # Waypoint id label
                     ui.Label("Waypoint ID", style=Label_A, width=LABEL_PADDING)
                     self.time_handle = ui.StringField()
@@ -250,7 +256,7 @@ class FlightPlanGenerator(omni.ext.IExt):
                 style=ScrollingFrame_style
             )
             with self.waypoint_list_frame:
-                self.waypoint_list = ui.VStack(height=0, spacing=5)
+                self.waypoint_list = ui.VStack(height=0, spacing=SPACING_S)
                 with self.waypoint_list:
                     ui.Spacer(height=0)
                     self.empty_waypoint_list_label = ui.Label("Waypoint list is empty", style=Label_A, 
@@ -303,12 +309,12 @@ class FlightPlanGenerator(omni.ext.IExt):
         # Add waypoint to the UI
         with self.waypoint_list_frame:
             with self.waypoint_list:
-                with ui.HStack(height=15, spacing=30):
+                with ui.HStack(height=15, spacing=SPACING_XL):
                     # Waypoint label
                     ui.Label(new_waypoint.label, width=30, alignment=ui.Alignment.LEFT_TOP)
 
                     # Position data
-                    with ui.HStack(width=0, spacing=5):
+                    with ui.HStack(width=0, spacing=SPACING_S):
                         ui.Label("Position {", width=0, alignment=ui.Alignment.LEFT_TOP)
                         ui.Label("X:", width=0, style={'color': colors["R"]}, alignment=ui.Alignment.LEFT_TOP)
                         ui.Label(f"{new_waypoint.pos[0]:.2f}", alignment=ui.Alignment.LEFT_TOP)
@@ -319,7 +325,7 @@ class FlightPlanGenerator(omni.ext.IExt):
                         ui.Label("}", width=0, alignment=ui.Alignment.LEFT_TOP)
 
                     # Velocity data
-                    with ui.HStack(width=0, spacing=5):
+                    with ui.HStack(width=0, spacing=SPACING_S):
                         ui.Label("Velocity {", width=0, alignment=ui.Alignment.LEFT_TOP)
                         ui.Label("X:", width=0, style={'color': colors["R"]}, alignment=ui.Alignment.LEFT_TOP)
                         ui.Label(f"{new_waypoint.vel[0]:.2f}", alignment=ui.Alignment.LEFT_TOP)
@@ -330,12 +336,12 @@ class FlightPlanGenerator(omni.ext.IExt):
                         ui.Label("}", width=0, alignment=ui.Alignment.LEFT_TOP)
 
                     # Time
-                    with ui.HStack(width=0, spacing=5):
+                    with ui.HStack(width=0, spacing=SPACING_S):
                         ui.Label("Time:", width=0, alignment=ui.Alignment.LEFT_TOP)
                         ui.Label(f"{new_waypoint.t:.2f}", alignment=ui.Alignment.LEFT_TOP)
 
                     # Fly over
-                    with ui.HStack(spacing=5):
+                    with ui.HStack(spacing=SPACING_S):
                         ui.Label("Fly over:", width=0, alignment=ui.Alignment.LEFT_TOP)
                         if new_waypoint.fly_over:
                             ui.Label(str(new_waypoint.fly_over), style={'color' : colors["G"]}, alignment=ui.Alignment.LEFT_TOP)
@@ -352,7 +358,7 @@ class FlightPlanGenerator(omni.ext.IExt):
 
         # Populate window frame
         with self.window.frame:
-            with ui.VStack(height=0, style=VStack_A, spacing=6):
+            with ui.VStack(height=0, style=VStack_A, spacing=SPACING_S):
                 ui.Spacer(height=0)
                 # Create transform frame
                 self.build_waypoint_frame()
