@@ -35,6 +35,13 @@ class UAM_minidrone(BehaviorScript):
     def on_init(self):
         # DEBUG
         self.logger = logging.getLogger("A_my_logger")
+        self.logger.info(f"INIT  {self.prim_path}")
+
+        self.timeline_sub = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
+            int(omni.timeline.TimelineEventType.STOP), self.reset_current_time)
+
+        self.physx_interface = omni.physx.get_physx_interface()
+        self.physics_sub = self.physx_interface.subscribe_physics_step_events(self.on_physics_step)
 
         self.current_time = 0
         self.delta_time = 0
@@ -79,7 +86,7 @@ class UAM_minidrone(BehaviorScript):
         # Create the omniverse event associated to this UAV
         self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(self.prim.GetPath()))
         bus = omni.kit.app.get_app().get_message_bus_event_stream()
-        self.eventSub = bus.create_subscription_to_push_by_type(self.UAV_EVENT, self.push_subscripted_event_method)
+        self.uav_event_sub = bus.create_subscription_to_push_by_type(self.UAV_EVENT, self.push_subscripted_event_method)
 
         #--------------------------------------------------------------------------------------------------------------
         # NAVIGATION PARAMETERS
@@ -199,6 +206,10 @@ class UAM_minidrone(BehaviorScript):
         
         self.E_max = 15  # previous value 5, maximum model accumulated error
 
+    def on_destroy(self):
+        self.timeline_sub = None
+        self.physics_sub = None
+        self.uav_event_sub = None
     #------------------------------------------------------------------------------------------------------------------
     # EVENT HANDLERS
 
@@ -206,17 +217,6 @@ class UAM_minidrone(BehaviorScript):
         # print(f"PLAY    {self.prim_path}")
         # print(f"\t {self.current_time} \t {self.delta_time}")
         # print(f"PLAY  {self.prim_path} \t {self.current_time:.3f} \t {self.delta_time:.3f}")
-
-        self.event_timer_callback = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
-            int(omni.timeline.TimelineEventType.STOP), self.reset_current_time)
-
-        self.physx_interface = omni.physx.get_physx_interface()
-        if hasattr(self, "physics_timer_callback"):
-                self.logger.info("DELETING PLAY")
-                del self.physics_timer_callback
-        self.physics_timer_callback = self.physx_interface.subscribe_physics_step_events(self.on_physics_step)
-        self.logger.info(f"PLAY {self.prim_path}: Conectando físicas")
-
 
         # Tracking
         self.show_tracking = False
@@ -271,7 +271,7 @@ class UAM_minidrone(BehaviorScript):
     def update(self):
         # print(f"UPDATE  {self.prim_path} \t {current_time:.3f} \t {delta_time:.3f}")
         # print(f"UPDATE  {self.prim_path} \t {self.current_time:.3f} \t {self.delta_time:.3f}")
-        # self.logger.info(f"UPDATE  {self.prim_path} \t {self.current_time:.3f} \t {self.delta_time:.3f}")
+        self.logger.info(f"UPDATE  {self.prim_path} \t {self.current_time:.3f} \t {self.delta_time:.3f}")
 
         # Get current simulation time
         # self.current_time = current_time
