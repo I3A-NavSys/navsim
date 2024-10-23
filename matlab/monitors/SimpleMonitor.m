@@ -347,7 +347,7 @@ function VelocityFigure(obj,UAVid,fp,time_step)
     Ytile   = nexttile([1,2]);
     hold on
     grid on
-    ylabel("xy [m/s]");
+    ylabel("vy [m/s]");
 
     plot(FPdata(:,1),FPdata(:,6), ...
         '-', ...
