@@ -1,3 +1,4 @@
+import numpy as np
 try:
     import pygame
 except:
@@ -42,7 +43,7 @@ class Joysticks:
             inputs[3] = round(joystick.get_axis(2), 2)     # Rotation Left - Right
             inputs[4] = joystick.get_button(0)             # cmd on/off
 
-            self.joysticks_inputs[joystick.get_instance_id()] = inputs
+            self.joysticks_inputs[joystick.get_instance_id()] = np.array(inputs)
 
         return self.joysticks_ids, self.joysticks_inputs
 
