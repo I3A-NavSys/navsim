@@ -10,13 +10,13 @@ from pxr import UsdGeom, Gf, PhysxSchema
 import omni.physx
 
 from uspace.flight_plan.command import Command
-from navsim_utils.extensions_utils import ExtensionUtils as ext_utils
+from navsim_utils.extensions_utils import ExtensionUtils
 from .joysticks import Joysticks
 
 class Controller:
     def __init__(self):
         self.is_running = False
-        self.linear_vel_limit = 1
+        self.linear_vel_limit = 3.5
         self.ang_vel_limit = 1
         self.invert_camera_movement = False
         self.camera_path = "/manual_controller_CAM"
@@ -24,6 +24,7 @@ class Controller:
         self.joysticks = Joysticks()
         self.event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
         self.uav_events = []
+        self.ext_utils = ExtensionUtils()
 
     def start(self):
         if not self.is_running:
@@ -48,10 +49,10 @@ class Controller:
             self.physics_sub = None
             self.joysticks.stop()
 
-    def control(self):
+    def control(self, event):
         joysticks_ids, joysticks_inputs = self.joysticks.get_inputs()
 
-        for i in range(len(self.uavs)):
+        for i in range(len(joysticks_ids)):
             # Get required info
             joystick_id = joysticks_ids[i]
             joystick_input = joysticks_inputs[joystick_id]
@@ -92,8 +93,8 @@ class Controller:
         
     def get_uavs(self):
         uavs = []
-        uav_names = ext_utils.get_navsim_UAV_names()
+        uav_names = self.ext_utils.get_navsim_UAV_names()
         for name in uav_names:
-            uavs.append(ext_utils.get_prim_by_name(name))
+            uavs.append(self.ext_utils.get_prim_by_name(name))
 
         return uavs

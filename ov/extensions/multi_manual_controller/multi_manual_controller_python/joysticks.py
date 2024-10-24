@@ -1,4 +1,5 @@
 import numpy as np
+import logging
 try:
     import pygame
 except:
@@ -14,6 +15,7 @@ class Joysticks:
         self.joysticks_inputs = {}
         self.joysticks: list[pygame.joystick.JoystickType] = []
         self.joysticks_ids = []
+        self.logger = logging.getLogger("A_joy")
 
     def start(self):
         # Initialize pygame environment
@@ -24,6 +26,10 @@ class Joysticks:
         # Finish pygame environment
         pygame.joystick.quit()
         pygame.quit()
+
+        self.joysticks_inputs = {}
+        self.joysticks: list[pygame.joystick.JoystickType] = []
+        self.joysticks_ids = []
 
     def get_inputs(self):
         # Check if joystick is connected
@@ -43,7 +49,8 @@ class Joysticks:
             inputs[3] = round(joystick.get_axis(2), 2)     # Rotation Left - Right
             inputs[4] = joystick.get_button(0)             # cmd on/off
 
-            self.joysticks_inputs[joystick.get_instance_id()] = np.array(inputs)
+            # Order when using get_id: top to bottom; right to left; frontal connectors are the last ones
+            self.joysticks_inputs[joystick.get_id()] = np.array(inputs)
 
         return self.joysticks_ids, self.joysticks_inputs
 

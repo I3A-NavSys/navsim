@@ -17,7 +17,9 @@ class Multi_manual_controllerExtension(omni.ext.IExt):
         self.window = ui.Window("NavSim - Multi Manual Controller", width=600, height=600)
         
         with self.window.frame:
+            with ui.VStack(spacing=10):
                 ui.Button(text="START", clicked_fn=self.start)
+                ui.Button(text="STOP", clicked_fn=self.stop)
 
     def start(self):
         self.controller.start()

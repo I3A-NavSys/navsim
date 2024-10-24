@@ -1,3 +1,6 @@
+[core]
+order = 1000
+
 [package]
 # Semantic Versioning is used: https://semver.org/
 version = "1.0.0"
