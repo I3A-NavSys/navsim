@@ -126,7 +126,8 @@ class FlightPlanGenerator(omni.ext.IExt):
         self.fly_over_check_handle = None
 
         # UI widgets
-        self.waypoint_list_frame = None
+        self.waypoint_list_collapsable_frame = None
+        self.waypoint_list_scrolling_frame = None
         self.waypoint_list = None
         self.empty_waypoint_list_label = None
 
@@ -244,14 +245,15 @@ class FlightPlanGenerator(omni.ext.IExt):
                     ui.Button("Reset Waypoints", height=0, clicked_fn=self.reset_waypoints)
 
     def build_waypoint_list(self):
-        with ui.CollapsableFrame(title="Waypoint list", style=CollapsableFrame_style):
-            self.waypoint_list_frame = ui.ScrollingFrame(
+        self.waypoint_list_collapsable_frame = ui.CollapsableFrame(title="Waypoint list", style=CollapsableFrame_style)
+        with self.waypoint_list_collapsable_frame:
+            self.waypoint_list_scrolling_frame = ui.ScrollingFrame(
                 height=250,
                 horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
                 vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
                 style=ScrollingFrame_style
             )
-            with self.waypoint_list_frame:
+            with self.waypoint_list_scrolling_frame:
                 self.waypoint_list = ui.VStack(height=0, spacing=SPACING_S)
                 with self.waypoint_list:
                     ui.Spacer(height=0)
@@ -262,7 +264,7 @@ class FlightPlanGenerator(omni.ext.IExt):
         pass
 
     def reset_waypoints(self):
-        pass
+        self.waypoint_list.clear()
                     
     def update_variables(self):
         # Position and velocity
@@ -283,72 +285,71 @@ class FlightPlanGenerator(omni.ext.IExt):
         # Update variables from UI fields
         self.update_variables()
 
-        # Create the new waypoint
-        new_waypoint = Waypoint(
-            label="wp"+str(len(self.flight_plan.waypoints)),
-            t=self.time,
-            pos=self.position,
-            vel=self.velocity,
-            fly_over=self.fly_over
-        )
+        # Create the new waypoint variables
+        label = "wp" + str(len(self.flight_plan.waypoints))
+        time = self.time
+        pos = self.position
+        vel = self.velocity
+        fly_over = self.fly_over
 
         # Add waypoint to the list
-        self.flight_plan.set_waypoint(new_waypoint)
+        self.flight_plan.set_waypoint(label=label, time=time, pos=pos, vel=vel)
         
         # Modify empty list label visibility
         if len(self.flight_plan.waypoints) > 0:
             self.empty_waypoint_list_label.visible = False
         else:
             self.empty_waypoint_list_label.visible = True
-
+        
         # Add waypoint to the UI
-        with self.waypoint_list_frame:
+        with self.waypoint_list_scrolling_frame:
             with self.waypoint_list:
-                with ui.HStack(height=15, spacing=SPACING_XL):
-                    # Waypoint label
-                    ui.Label(self.flight_plan.waypoints[len(self.flight_plan.waypoints)-1].label, width=30, alignment=ui.Alignment.LEFT_TOP)
+                for waypoint in self.flight_plan.waypoints:
+                    with ui.HStack(height=15, spacing=SPACING_XL):
+                        # Waypoint label
+                        ui.Label(waypoint.label, width=30, alignment=ui.Alignment.LEFT_TOP)
 
-                    # Position data
-                    with ui.HStack(width=0, spacing=SPACING_S):
-                        ui.Label("Position {", width=0, alignment=ui.Alignment.LEFT_TOP)
-                        ui.Label("X:", width=0, style={'color': colors["R"]}, alignment=ui.Alignment.LEFT_TOP)
-                        ui.Label(f"{self.flight_plan.waypoints[len(self.flight_plan.waypoints)-1].pos[0]:.2f}", alignment=ui.Alignment.LEFT_TOP)
-                        ui.Label("Y:", width=0, style={'color': colors["G"]}, alignment=ui.Alignment.LEFT_TOP)
-                        ui.Label(f"{self.flight_plan.waypoints[len(self.flight_plan.waypoints)-1].pos[1]:.2f}", alignment=ui.Alignment.LEFT_TOP)
-                        ui.Label("Z:", width=0, style={'color': colors["B"]}, alignment=ui.Alignment.LEFT_TOP)
-                        ui.Label(f"{self.flight_plan.waypoints[len(self.flight_plan.waypoints)-1].pos[2]:.2f}", alignment=ui.Alignment.LEFT_TOP)
-                        ui.Label("}", width=0, alignment=ui.Alignment.LEFT_TOP)
+                        # Position data
+                        with ui.HStack(width=0, spacing=SPACING_S):
+                            ui.Label("Position {", width=0, alignment=ui.Alignment.LEFT_TOP)
+                            ui.Label("X:", width=0, style={'color': colors["R"]}, alignment=ui.Alignment.LEFT_TOP)
+                            ui.Label(f"{waypoint.pos[0]:.2f}", alignment=ui.Alignment.LEFT_TOP)
+                            ui.Label("Y:", width=0, style={'color': colors["G"]}, alignment=ui.Alignment.LEFT_TOP)
+                            ui.Label(f"{waypoint.pos[1]:.2f}", alignment=ui.Alignment.LEFT_TOP)
+                            ui.Label("Z:", width=0, style={'color': colors["B"]}, alignment=ui.Alignment.LEFT_TOP)
+                            ui.Label(f"{waypoint.pos[2]:.2f}", alignment=ui.Alignment.LEFT_TOP)
+                            ui.Label("}", width=0, alignment=ui.Alignment.LEFT_TOP)
 
-                    # Velocity data
-                    with ui.HStack(width=0, spacing=SPACING_S):
-                        ui.Label("Velocity {", width=0, alignment=ui.Alignment.LEFT_TOP)
-                        ui.Label("X:", width=0, style={'color': colors["R"]}, alignment=ui.Alignment.LEFT_TOP)
-                        ui.Label(f"{self.flight_plan.waypoints[len(self.flight_plan.waypoints)-1].vel[0]:.2f}", alignment=ui.Alignment.LEFT_TOP)
-                        ui.Label("Y:", width=0, style={'color': colors["G"]}, alignment=ui.Alignment.LEFT_TOP)
-                        ui.Label(f"{self.flight_plan.waypoints[len(self.flight_plan.waypoints)-1].vel[1]:.2f}", alignment=ui.Alignment.LEFT_TOP)
-                        ui.Label("Z:", width=0, style={'color': colors["B"]}, alignment=ui.Alignment.LEFT_TOP)
-                        ui.Label(f"{self.flight_plan.waypoints[len(self.flight_plan.waypoints)-1].vel[2]:.2f}", alignment=ui.Alignment.LEFT_TOP)
-                        ui.Label("}", width=0, alignment=ui.Alignment.LEFT_TOP)
+                        # Velocity data
+                        with ui.HStack(width=0, spacing=SPACING_S):
+                            ui.Label("Velocity {", width=0, alignment=ui.Alignment.LEFT_TOP)
+                            ui.Label("X:", width=0, style={'color': colors["R"]}, alignment=ui.Alignment.LEFT_TOP)
+                            ui.Label(f"{waypoint.vel[0]:.2f}", alignment=ui.Alignment.LEFT_TOP)
+                            ui.Label("Y:", width=0, style={'color': colors["G"]}, alignment=ui.Alignment.LEFT_TOP)
+                            ui.Label(f"{waypoint.vel[1]:.2f}", alignment=ui.Alignment.LEFT_TOP)
+                            ui.Label("Z:", width=0, style={'color': colors["B"]}, alignment=ui.Alignment.LEFT_TOP)
+                            ui.Label(f"{waypoint.vel[2]:.2f}", alignment=ui.Alignment.LEFT_TOP)
+                            ui.Label("}", width=0, alignment=ui.Alignment.LEFT_TOP)
 
-                    # Time
-                    with ui.HStack(width=0, spacing=SPACING_S):
-                        ui.Label("Time:", width=0, alignment=ui.Alignment.LEFT_TOP)
-                        ui.Label(f"{self.flight_plan.waypoints[len(self.flight_plan.waypoints)-1].t:.2f}", alignment=ui.Alignment.LEFT_TOP)
+                        # Time
+                        with ui.HStack(width=0, spacing=SPACING_S):
+                            ui.Label("Time:", width=0, alignment=ui.Alignment.LEFT_TOP)
+                            ui.Label(f"{waypoint.t:.2f}", alignment=ui.Alignment.LEFT_TOP)
 
-                    # Fly over
-                    with ui.HStack(spacing=SPACING_S):
-                        ui.Label("Fly over:", width=0, alignment=ui.Alignment.LEFT_TOP)
-                        if self.flight_plan.waypoints[len(self.flight_plan.waypoints)-1].fly_over:
-                            ui.Label(str(self.flight_plan.waypoints[len(self.flight_plan.waypoints)-1].fly_over), style={'color' : colors["G"]}, alignment=ui.Alignment.LEFT_TOP)
-                        else:
-                            ui.Label(str(self.flight_plan.waypoints[len(self.flight_plan.waypoints)-1].fly_over), style={'color' : colors["R"]}, alignment=ui.Alignment.LEFT_TOP)
-                ui.Separator()
+                        # Fly over
+                        with ui.HStack(spacing=SPACING_S):
+                            ui.Label("Fly over:", width=0, alignment=ui.Alignment.LEFT_TOP)
+                            if waypoint.fly_over:
+                                ui.Label(str(waypoint.fly_over), style={'color' : colors["G"]}, alignment=ui.Alignment.LEFT_TOP)
+                            else:
+                                ui.Label(str(waypoint.fly_over), style={'color' : colors["R"]}, alignment=ui.Alignment.LEFT_TOP)
+                    ui.Separator()
 
     def build_window(self):
         # Create extension main window
         self.window = ui.Window("NavSim - Flight Plan Generator", width=0, height=0)
         self.window.deferred_dock_in("Layers")
-        self.window.setPosition(100, 100)
+        self.window.setPosition(25, 25)
         self.window.frame.set_style(Window_dark_style)
 
         # Populate window frame
