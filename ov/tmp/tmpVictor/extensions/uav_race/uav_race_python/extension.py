@@ -188,12 +188,12 @@ class Uav_raceExtension(omni.ext.IExt):
         viewport_api = viewport_window.viewport_api
         viewport_api.set_texture_resolution((viewport_width, viewport_height))
 
-    # def viewport_on_visibility_change(self, visible):
-    #     for viewport_window in omni.kit.viewport.window.get_viewport_window_instances():
-    #         if not viewport_window.visible:
-    #             # self.viewports.pop(viewport_window.title)
-    #             viewport_window.viewport_widget.destroy()
-    #             viewport_window.destroy()
+    def viewport_on_visibility_change(self, visible):
+        for viewport_window in omni.kit.viewport.window.get_viewport_window_instances():
+            if not viewport_window.visible:
+                # self.viewports.pop(viewport_window.title)
+                viewport_window.viewport_widget.destroy()
+                viewport_window.destroy()
 
     # def viewport_on_visibility_change(self, visible):
     #     to_pop = []
@@ -208,13 +208,13 @@ class Uav_raceExtension(omni.ext.IExt):
     #     for pop in to_pop:
     #         self.viewports.pop(pop)
 
-    def viewport_on_visibility_change(self, visible):
-        to_pop = []
-        for viewports in self.viewports.values():
-            if not viewports[0].visible:
-                viewports[1].destroy()
-                viewports[0].destroy()
-                to_pop.append(viewports[0].title)
+    # def viewport_on_visibility_change(self, visible):
+    #     to_pop = []
+    #     for viewports in self.viewports.values():
+    #         if not viewports[0].visible:
+    #             viewports[1].destroy()
+    #             viewports[0].destroy()
+    #             to_pop.append(viewports[0].title)
 
-        for pop in to_pop:
-            self.viewports.pop(pop)
+    #     for pop in to_pop:
+    #         self.viewports.pop(pop)
