@@ -16,6 +16,7 @@ class Multi_manual_controllerExtension(omni.ext.IExt):
 
     def create_vars(self):
         self.controller = Controller()
+        self.max_joysticks = 4
 
         self.timeline = omni.timeline.get_timeline_interface()
         self.timeline_stop_event_sub = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
@@ -26,8 +27,14 @@ class Multi_manual_controllerExtension(omni.ext.IExt):
         
         with self.window.frame:
             with ui.VStack(spacing=10):
-                ui.Button(text="START", clicked_fn=self.start)
-                ui.Button(text="STOP", clicked_fn=self.stop)
+                with ui.HStack(spacing=10):
+                    ui.Button(text="START", clicked_fn=self.start)
+                    ui.Button(text="STOP", clicked_fn=self.stop)
+
+                for i in range(self.max_joysticks):
+                    # with ui.HStack(spacing=5):
+                    ui.Label("User" + str(i+1))
+                    ui.Separator()
 
     def start(self):
         self.controller.start()
