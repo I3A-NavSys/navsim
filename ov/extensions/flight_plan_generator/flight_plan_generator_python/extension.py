@@ -4,6 +4,9 @@ import sys, os
 # Related third party imports
 import omni.ext
 import omni.ui as ui
+import carb.events
+import pickle
+import base64
 from omni.isaac.ui.element_wrappers import *
 
 
@@ -269,7 +272,21 @@ class FlightPlanGenerator(omni.ext.IExt):
                                                               alignment=ui.Alignment.CENTER_TOP)
 
     def send_flight_plan(self):
-        pass
+        # Check if an UAV has been selected
+        if self.UAV_selector_dropdown.get_selection() is None:
+            raise Exception("ERROR: No drone selected")
+        
+        # Get the UAV prim
+        selected_UAV = self.extension_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
+
+        # Create the event to send the flightplan to the UAV
+        self.UAV_event = carb.events.type_from_string("NavSim." + str(selected_UAV.GetPath()))
+
+        # Serialize flight plan
+        serialized_command = base64.b64encode(pickle.dumps(self.flight_plan)).decode('utf-8')
+
+        # Push to the event stream the serialized command
+        self.event_stream.push(self.UAV_event, payload={"method": "eventFn_new_flight_plan", "command": serialized_command})
 
     def reset_waypoints(self):
         self.waypoint_list.clear()
