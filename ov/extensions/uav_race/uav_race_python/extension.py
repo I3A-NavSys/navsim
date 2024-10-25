@@ -94,6 +94,10 @@ class Uav_raceExtension(omni.ext.IExt):
     def create_vars(self):
         self.perspective_camera_path = "/OmniverseKit_Persp"
         self.follow_UAV_camera_path = "/manual_controller_CAM"
+        self.camera_1 = "/UAM_minidrone/UAM_minidrone_cam"
+        self.camera_2 = "/UAM_minidrone_01/UAM_minidrone_01_cam"
+        self.camera_3 = "/UAM_minidrone_02/UAM_minidrone_02_cam"
+        self.camera_4 = "/UAM_minidrone_03/UAM_minidrone_03_cam"
         self.amount_users = 4
         self.viewports = {}
 
@@ -110,6 +114,7 @@ class Uav_raceExtension(omni.ext.IExt):
                 # with self.add_viewports_collapsable:
                 #     ui.Label("Joystick1")
 
+    # Each viewport widget in a different window
     # def add_viewports(self):
     #     amount_viewports = len(self.viewports)
         
@@ -127,6 +132,38 @@ class Uav_raceExtension(omni.ext.IExt):
 
     #     self.viewports[viewport_window.title] = (viewport_window, viewport_widget)
 
+    # 4 viewports widgets in the same window
+    # def add_viewports(self):
+    #     viewport_width = ui.Workspace.get_main_window_width()/4
+    #     viewport_height = ui.Workspace.get_main_window_height()/3
+
+    #     viewport_window = ui.Window(title=f"Viewports", width=viewport_width, height=viewport_height+20, 
+    #                                 raster_policy=ui.RasterPolicy.NEVER)
+    #     viewport_window.set_visibility_changed_fn(self.viewport_on_visibility_change)
+    #     with viewport_window.frame:
+    #         with ui.VStack():
+    #             with ui.HStack():
+    #                 viewport_widget_1 = ViewportWidget(resolution=(640, 360))
+    #                 viewport_widget_2 = ViewportWidget(resolution=(640, 360))
+
+    #             with ui.HStack():
+    #                 viewport_widget_3 = ViewportWidget(resolution=(640, 360))
+    #                 viewport_widget_4 = ViewportWidget(resolution=(640, 360))
+
+
+    #     viewport_api_1 = viewport_widget_1.viewport_api
+    #     viewport_api_1.camera_path = self.camera_1
+    #     viewport_api_2 = viewport_widget_2.viewport_api
+    #     viewport_api_2.camera_path = self.camera_2
+    #     viewport_api_3 = viewport_widget_3.viewport_api
+    #     viewport_api_3.camera_path = self.camera_3
+    #     viewport_api_4 = viewport_widget_4.viewport_api
+    #     viewport_api_4.camera_path = self.camera_4
+        
+
+    #     self.viewports[viewport_window.title] = (viewport_window, [viewport_widget_1, viewport_widget_2, viewport_widget_3, viewport_widget_4])
+
+    # normal viewports, no widget used
     def add_viewports(self):
         amount_viewports = 0
         for viewport_window in omni.kit.viewport.window.get_viewport_window_instances():
@@ -149,16 +186,35 @@ class Uav_raceExtension(omni.ext.IExt):
         viewport_window.set_visibility_changed_fn(self.viewport_on_visibility_change)
 
         viewport_api = viewport_window.viewport_api
-
-    def viewport_on_visibility_change(self, visible):
-        for viewport_window in omni.kit.viewport.window.get_viewport_window_instances():
-            if not viewport_window.visible:
-                # self.viewports.pop(viewport_window.title)
-                viewport_window.viewport_widget.destroy()
-                viewport_window.destroy()
+        viewport_api.set_texture_resolution((viewport_width, viewport_height))
 
     # def viewport_on_visibility_change(self, visible):
-    #     for viewport_window in self.viewports.values():
+    #     for viewport_window in omni.kit.viewport.window.get_viewport_window_instances():
     #         if not viewport_window.visible:
+    #             # self.viewports.pop(viewport_window.title)
+    #             viewport_window.viewport_widget.destroy()
     #             viewport_window.destroy()
-    #             self.viewports.pop(viewport_window.title)
+
+    # def viewport_on_visibility_change(self, visible):
+    #     to_pop = []
+    #     for viewports in self.viewports.values():
+    #         if not viewports[0].visible:
+    #             viewports[0].destroy()
+    #             for widget in viewports[1]:
+    #                 widget.destroy()
+
+    #             to_pop.append(viewports[0].title)
+
+    #     for pop in to_pop:
+    #         self.viewports.pop(pop)
+
+    def viewport_on_visibility_change(self, visible):
+        to_pop = []
+        for viewports in self.viewports.values():
+            if not viewports[0].visible:
+                viewports[1].destroy()
+                viewports[0].destroy()
+                to_pop.append(viewports[0].title)
+
+        for pop in to_pop:
+            self.viewports.pop(pop)
