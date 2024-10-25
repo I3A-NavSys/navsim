@@ -4,7 +4,6 @@ import omni.physx
 import omni.timeline
 import omni.kit.viewport.window
 
-
 from .controller import Controller
 
 class MultiManualController(omni.ext.IExt):
@@ -74,11 +73,7 @@ class MultiManualController(omni.ext.IExt):
                                                                   width=viewport_width, height=viewport_height)
 
         viewport_window.setPosition(viewport_width*(amount_viewports - 1), viewport_height*2)
-        viewport_window.viewport_api.set_active_camera(self.follow_UAV_camera_path)
         viewport_window.set_visibility_changed_fn(self.viewport_on_visibility_change)
-
-        viewport_api = viewport_window.viewport_api
-        viewport_api.set_texture_resolution((viewport_width, viewport_height))
 
     def viewport_on_visibility_change(self, visible):
         for viewport_window in omni.kit.viewport.window.get_viewport_window_instances():
