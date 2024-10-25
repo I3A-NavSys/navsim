@@ -36,8 +36,9 @@ class Joysticks:
         for event in pygame.event.get():
             if event.type == pygame.JOYDEVICEADDED:
                 self.joysticks.append(pygame.joystick.Joystick(event.device_index))
-                self.joysticks_inputs[event.device_index] = []
-                self.joysticks_ids.append(event.device_index)
+                id = self.joysticks[-1].get_id()
+                self.joysticks_inputs[id] = []
+                self.joysticks_ids.append(id)
 
         # Get the joystick inputs
         for joystick in self.joysticks:

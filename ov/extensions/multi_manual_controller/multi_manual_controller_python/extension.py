@@ -1,5 +1,9 @@
 import omni.ext
 import omni.ui as ui
+import omni.physx
+import omni.timeline
+
+
 from .controller import Controller
 
 class Multi_manual_controllerExtension(omni.ext.IExt):
@@ -13,6 +17,10 @@ class Multi_manual_controllerExtension(omni.ext.IExt):
     def create_vars(self):
         self.controller = Controller()
 
+        self.timeline = omni.timeline.get_timeline_interface()
+        self.timeline_stop_event_sub = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
+            int(omni.timeline.TimelineEventType.STOP), self.on_timeline_stop)
+
     def build_ui(self):
         self.window = ui.Window("NavSim - Multi Manual Controller", width=600, height=600)
         
@@ -25,4 +33,7 @@ class Multi_manual_controllerExtension(omni.ext.IExt):
         self.controller.start()
 
     def stop(self):
+        self.controller.stop()
+
+    def on_timeline_stop(self, event):
         self.controller.stop()
