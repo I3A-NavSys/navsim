@@ -230,11 +230,11 @@ class FlightPlanGenerator(omni.ext.IExt):
                 with ui.HStack(spacing=SPACING_S):
                     # Waypoint id label
                     ui.Label("Waypoint ID", style=Label_A, width=LABEL_PADDING)
-                    self.time_handle = ui.StringField()
+                    self.waypoind_id = ui.StringField()
 
                     # Enabled field checkbox
-                    self.time_check_handle = ui.CheckBox(width=0)
-                    self.time_check_handle.model.set_value(True)
+                    self.check_waypoind_id = ui.CheckBox(width=0)
+                    self.check_waypoind_id.model.set_value(True)
 
                 # Add buttons
                 with ui.VStack(height=0):
@@ -282,11 +282,13 @@ class FlightPlanGenerator(omni.ext.IExt):
             self.fly_over = False
                 
     def add_waypoint(self):
+        self.reset_waypoints()
+        
         # Update variables from UI fields
         self.update_variables()
 
         # Create the new waypoint variables
-        label = "wp" + str(len(self.flight_plan.waypoints))
+        label = self.waypoind_id.model.get_value_as_string()
         time = self.time
         pos = self.position
         vel = self.velocity
