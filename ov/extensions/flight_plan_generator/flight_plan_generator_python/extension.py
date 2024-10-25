@@ -181,7 +181,7 @@ class FlightPlanGenerator(omni.ext.IExt):
                                 ui.Label(axis, style=Label_A, alignment=ui.Alignment.CENTER)
 
                             # FloatDrag widgets
-                            self.position_handles.append(ui.FloatDrag(min=-1000000, max=1000000, step=0.01))
+                            self.position_handles.append(ui.FloatDrag(min=-1000000, max=1000000, step=0.1))
 
                     # Position field checkboxes
                     self.position_check_handle = ui.CheckBox(width=MINIMAL_WIDTH)
@@ -209,7 +209,7 @@ class FlightPlanGenerator(omni.ext.IExt):
                                 ui.Label(axis, style=Label_A, alignment=ui.Alignment.CENTER)
 
                             # FloatDrag widgets
-                            self.velocity_handles.append(ui.FloatDrag(min=-1000000, max=1000000, step=0.01))
+                            self.velocity_handles.append(ui.FloatDrag(min=-1000000, max=1000000, step=0.1))
 
                     # Velocity field checkboxes
                     self.velocity_check_handle = ui.CheckBox(width=MINIMAL_WIDTH)
