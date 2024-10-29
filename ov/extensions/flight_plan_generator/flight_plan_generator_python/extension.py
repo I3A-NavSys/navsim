@@ -4,6 +4,9 @@ import sys, os
 # Related third party imports
 import omni.ext
 import omni.ui as ui
+import carb.events
+import pickle
+import base64
 from omni.isaac.ui.element_wrappers import *
 
 
@@ -18,16 +21,24 @@ from uspace.flight_plan.flight_plan import FlightPlan
 from uspace.flight_plan.waypoint import Waypoint
 from navsim_utils.extensions_utils import ExtensionUtils
 
-# TODO comment
+
+# Color
 KIT_GREEN = 0xFF8A8777
+
+# Label
 LABEL_PADDING = 120
 
-# Spacings
+# Spacing
 SPACING_S = 8
 SPACING_M = SPACING_S * 2
 SPACING_L = SPACING_M * 2
 SPACING_XL = SPACING_L * 2
 
+# Height
+MINIMAL_HEIGHT = 0
+
+# Width
+MINIMAL_WIDTH = 0
 
 Window_dark_style = {
     "Window": {"background_color": 0xFF444444}
@@ -146,7 +157,7 @@ class FlightPlanGenerator(omni.ext.IExt):
     def build_waypoint_frame(self):
         with ui.CollapsableFrame(title="Waypoint", style=CollapsableFrame_style):
             with ui.VStack(spacing=SPACING_S, style=VStack_B):
-                ui.Spacer(height=0)
+                ui.Spacer(height=MINIMAL_HEIGHT)
 
                 # Drone selector widget
                 self.UAV_selector_dropdown = self.extension_utils.build_uav_selector()
@@ -173,10 +184,10 @@ class FlightPlanGenerator(omni.ext.IExt):
                                 ui.Label(axis, style=Label_A, alignment=ui.Alignment.CENTER)
 
                             # FloatDrag widgets
-                            self.position_handles.append(ui.FloatDrag(min=-1000000, max=1000000, step=0.01))
+                            self.position_handles.append(ui.FloatDrag(min=-1000000, max=1000000, step=0.1))
 
                     # Position field checkboxes
-                    self.position_check_handle = ui.CheckBox(width=0)
+                    self.position_check_handle = ui.CheckBox(width=MINIMAL_WIDTH)
                     self.position_check_handle.model.set_value(True)
 
                 # Velocity fields
@@ -201,10 +212,10 @@ class FlightPlanGenerator(omni.ext.IExt):
                                 ui.Label(axis, style=Label_A, alignment=ui.Alignment.CENTER)
 
                             # FloatDrag widgets
-                            self.velocity_handles.append(ui.FloatDrag(min=-1000000, max=1000000, step=0.01))
+                            self.velocity_handles.append(ui.FloatDrag(min=-1000000, max=1000000, step=0.1))
 
                     # Velocity field checkboxes
-                    self.velocity_check_handle = ui.CheckBox(width=0)
+                    self.velocity_check_handle = ui.CheckBox(width=MINIMAL_WIDTH)
                     self.velocity_check_handle.model.set_value(True)
 
                 # Add time field
@@ -214,7 +225,7 @@ class FlightPlanGenerator(omni.ext.IExt):
                     self.time_handle = ui.IntDrag(min=0, max=1000000, step=1)
 
                     # Time field checkbox
-                    self.time_check_handle = ui.CheckBox(width=0)
+                    self.time_check_handle = ui.CheckBox(width=MINIMAL_WIDTH)
                     self.time_check_handle.model.set_value(True)
 
                 # Fly over field
@@ -223,7 +234,7 @@ class FlightPlanGenerator(omni.ext.IExt):
                     ui.Label("Fly over", style=Label_A, width=LABEL_PADDING)
 
                     # Fly over field checkbox
-                    self.fly_over_check_handle = ui.CheckBox(width=0)
+                    self.fly_over_check_handle = ui.CheckBox(width=MINIMAL_WIDTH)
                     self.fly_over_check_handle.model.set_value(True)
 
                 # Add waypoint id field
@@ -233,16 +244,16 @@ class FlightPlanGenerator(omni.ext.IExt):
                     self.waypoind_id = ui.StringField()
 
                     # Enabled field checkbox
-                    self.check_waypoind_id = ui.CheckBox(width=0)
+                    self.check_waypoind_id = ui.CheckBox(width=MINIMAL_WIDTH)
                     self.check_waypoind_id.model.set_value(True)
 
                 # Add buttons
-                with ui.VStack(height=0):
+                with ui.VStack(height=MINIMAL_HEIGHT):
                     # Add waypoint button
-                    ui.Button("Add Waypoint", height=0, clicked_fn=self.add_waypoint)
+                    ui.Button("Add Waypoint", height=MINIMAL_HEIGHT, clicked_fn=self.add_waypoint)
 
                     # Reset flight plan button
-                    ui.Button("Reset Waypoints", height=0, clicked_fn=self.reset_waypoints)
+                    ui.Button("Reset Waypoints", height=MINIMAL_HEIGHT, clicked_fn=self.reset_waypoints)
 
     def build_waypoint_list(self):
         self.waypoint_list_collapsable_frame = ui.CollapsableFrame(title="Waypoint list", style=CollapsableFrame_style)
@@ -254,14 +265,28 @@ class FlightPlanGenerator(omni.ext.IExt):
                 style=ScrollingFrame_style
             )
             with self.waypoint_list_scrolling_frame:
-                self.waypoint_list = ui.VStack(height=0, spacing=SPACING_S)
+                self.waypoint_list = ui.VStack(height=MINIMAL_HEIGHT, spacing=SPACING_S)
                 with self.waypoint_list:
-                    ui.Spacer(height=0)
+                    ui.Spacer(height=MINIMAL_HEIGHT)
                     self.empty_waypoint_list_label = ui.Label("Waypoint list is empty", style=Label_A, 
                                                               alignment=ui.Alignment.CENTER_TOP)
 
     def send_flight_plan(self):
-        pass
+        # Check if an UAV has been selected
+        if self.UAV_selector_dropdown.get_selection() is None:
+            raise Exception("ERROR: No drone selected")
+        
+        # Get the UAV prim
+        selected_UAV = self.extension_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
+
+        # Create the event to send the flightplan to the UAV
+        self.UAV_event = carb.events.type_from_string("NavSim." + str(selected_UAV.GetPath()))
+
+        # Serialize flight plan
+        serialized_command = base64.b64encode(pickle.dumps(self.flight_plan)).decode('utf-8')
+
+        # Push to the event stream the serialized command
+        self.event_stream.push(self.UAV_event, payload={"method": "eventFn_new_flight_plan", "command": serialized_command})
 
     def reset_waypoints(self):
         self.waypoint_list.clear()
@@ -282,6 +307,7 @@ class FlightPlanGenerator(omni.ext.IExt):
             self.fly_over = False
                 
     def add_waypoint(self):
+        # Remove waypoints from UI
         self.reset_waypoints()
         
         # Update variables from UI fields
@@ -312,35 +338,35 @@ class FlightPlanGenerator(omni.ext.IExt):
                         ui.Label(waypoint.label, width=30, alignment=ui.Alignment.LEFT_TOP)
 
                         # Position data
-                        with ui.HStack(width=0, spacing=SPACING_S):
-                            ui.Label("Position {", width=0, alignment=ui.Alignment.LEFT_TOP)
-                            ui.Label("X:", width=0, style={'color': colors["R"]}, alignment=ui.Alignment.LEFT_TOP)
+                        with ui.HStack(width=MINIMAL_WIDTH, spacing=SPACING_S):
+                            ui.Label("Position {", width=MINIMAL_WIDTH, alignment=ui.Alignment.LEFT_TOP)
+                            ui.Label("X:", width=MINIMAL_WIDTH, style={'color': colors["R"]}, alignment=ui.Alignment.LEFT_TOP)
                             ui.Label(f"{waypoint.pos[0]:.2f}", alignment=ui.Alignment.LEFT_TOP)
-                            ui.Label("Y:", width=0, style={'color': colors["G"]}, alignment=ui.Alignment.LEFT_TOP)
+                            ui.Label("Y:", width=MINIMAL_WIDTH, style={'color': colors["G"]}, alignment=ui.Alignment.LEFT_TOP)
                             ui.Label(f"{waypoint.pos[1]:.2f}", alignment=ui.Alignment.LEFT_TOP)
-                            ui.Label("Z:", width=0, style={'color': colors["B"]}, alignment=ui.Alignment.LEFT_TOP)
+                            ui.Label("Z:", width=MINIMAL_WIDTH, style={'color': colors["B"]}, alignment=ui.Alignment.LEFT_TOP)
                             ui.Label(f"{waypoint.pos[2]:.2f}", alignment=ui.Alignment.LEFT_TOP)
-                            ui.Label("}", width=0, alignment=ui.Alignment.LEFT_TOP)
+                            ui.Label("}", width=MINIMAL_WIDTH, alignment=ui.Alignment.LEFT_TOP)
 
                         # Velocity data
-                        with ui.HStack(width=0, spacing=SPACING_S):
-                            ui.Label("Velocity {", width=0, alignment=ui.Alignment.LEFT_TOP)
-                            ui.Label("X:", width=0, style={'color': colors["R"]}, alignment=ui.Alignment.LEFT_TOP)
+                        with ui.HStack(width=MINIMAL_WIDTH, spacing=SPACING_S):
+                            ui.Label("Velocity {", width=MINIMAL_WIDTH, alignment=ui.Alignment.LEFT_TOP)
+                            ui.Label("X:", width=MINIMAL_WIDTH, style={'color': colors["R"]}, alignment=ui.Alignment.LEFT_TOP)
                             ui.Label(f"{waypoint.vel[0]:.2f}", alignment=ui.Alignment.LEFT_TOP)
-                            ui.Label("Y:", width=0, style={'color': colors["G"]}, alignment=ui.Alignment.LEFT_TOP)
+                            ui.Label("Y:", width=MINIMAL_WIDTH, style={'color': colors["G"]}, alignment=ui.Alignment.LEFT_TOP)
                             ui.Label(f"{waypoint.vel[1]:.2f}", alignment=ui.Alignment.LEFT_TOP)
-                            ui.Label("Z:", width=0, style={'color': colors["B"]}, alignment=ui.Alignment.LEFT_TOP)
+                            ui.Label("Z:", width=MINIMAL_WIDTH, style={'color': colors["B"]}, alignment=ui.Alignment.LEFT_TOP)
                             ui.Label(f"{waypoint.vel[2]:.2f}", alignment=ui.Alignment.LEFT_TOP)
-                            ui.Label("}", width=0, alignment=ui.Alignment.LEFT_TOP)
+                            ui.Label("}", width=MINIMAL_WIDTH, alignment=ui.Alignment.LEFT_TOP)
 
                         # Time
-                        with ui.HStack(width=0, spacing=SPACING_S):
-                            ui.Label("Time:", width=0, alignment=ui.Alignment.LEFT_TOP)
+                        with ui.HStack(width=MINIMAL_WIDTH, spacing=SPACING_S):
+                            ui.Label("Time:", width=MINIMAL_WIDTH, alignment=ui.Alignment.LEFT_TOP)
                             ui.Label(f"{waypoint.t:.2f}", alignment=ui.Alignment.LEFT_TOP)
 
                         # Fly over
                         with ui.HStack(spacing=SPACING_S):
-                            ui.Label("Fly over:", width=0, alignment=ui.Alignment.LEFT_TOP)
+                            ui.Label("Fly over:", width=MINIMAL_WIDTH, alignment=ui.Alignment.LEFT_TOP)
                             if waypoint.fly_over:
                                 ui.Label(str(waypoint.fly_over), style={'color' : colors["G"]}, alignment=ui.Alignment.LEFT_TOP)
                             else:
@@ -349,15 +375,15 @@ class FlightPlanGenerator(omni.ext.IExt):
 
     def build_window(self):
         # Create extension main window
-        self.window = ui.Window("NavSim - Flight Plan Generator", width=0, height=0)
+        self.window = ui.Window("NavSim - Flight Plan Generator", width=MINIMAL_WIDTH, height=MINIMAL_HEIGHT)
         self.window.deferred_dock_in("Layers")
         self.window.setPosition(25, 25)
         self.window.frame.set_style(Window_dark_style)
 
         # Populate window frame
         with self.window.frame:
-            with ui.VStack(height=0, style=VStack_A, spacing=SPACING_S):
-                ui.Spacer(height=0)
+            with ui.VStack(height=MINIMAL_HEIGHT, style=VStack_A, spacing=SPACING_S):
+                ui.Spacer(height=MINIMAL_HEIGHT)
                 # Create transform frame
                 self.build_waypoint_frame()
                 # Create waypoint list
