@@ -1,23 +1,24 @@
+import pickle   # Serialization
+import base64   # Parsing to string
+
+
 import omni.ext
 import omni.ui as ui
 from omni.ui import color as cl
-
 from omni.isaac.ui.ui_utils import dropdown_builder
 from omni.isaac.core.utils.stage import get_current_stage
 from omni.isaac.ui.element_wrappers import *
-
 import carb.events
-
+import omni.timeline
+import omni.physx
 # Adding root 'ov' folder to sys.path
 import sys, os
 project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
 if project_root_path not in sys.path:
     sys.path.append(project_root_path)
 
-from uspace.flight_plan.command import Command
-import pickle   # Serialization
-import base64   # Parsing to string
 
+from uspace.flight_plan.command import Command
 from navsim_utils.extensions_utils import ExtensionUtils
 
 # Any class derived from `omni.ext.IExt` in top level module (defined in `python.modules` of `extension.toml`) will be
