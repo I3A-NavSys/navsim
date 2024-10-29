@@ -89,7 +89,9 @@ class FlightPlan:
     
     def copy(self):
         """Realiza una copia profunda de la instancia actual de FlightPlan."""
-        return FlightPlan(waypoints=copy.deepcopy(self.waypoints))
+        fp = FlightPlan()
+        fp.waypoints = copy.deepcopy(self.waypoints)
+        return fp
 
     #------------------------------------------------------------------------------------------------------------------
     # TIME MANAGEMENT
