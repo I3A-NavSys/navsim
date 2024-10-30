@@ -42,13 +42,14 @@ class Joysticks:
 
         # Get the joystick inputs
         for joystick in self.joysticks:
-            inputs = [0,0,0,0,0]
+            inputs = [0,0,0,0,0,0]
 
             inputs[0] = round(joystick.get_axis(1), 2)     # Left - Right
             inputs[1] = round(joystick.get_axis(0), 2)     # Fordward - Backward
             inputs[2] = round(joystick.get_axis(3), 2)     # Slider
             inputs[3] = round(joystick.get_axis(2), 2)     # Rotation Left - Right
             inputs[4] = joystick.get_button(0)             # cmd on/off
+            inputs[5] = joystick.get_button(1)             # reset position
 
             # Order when using get_id: top to bottom; right to left; frontal connectors are the last ones
             self.joysticks_inputs[joystick.get_id()] = np.array(inputs)

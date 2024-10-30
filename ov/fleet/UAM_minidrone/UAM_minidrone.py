@@ -322,6 +322,14 @@ class UAM_minidrone(BehaviorScript):
         self.fp :FlightPlan = pickle.loads(base64.b64decode(fp))
         self.currentWP = None
         print(f"[{self.current_time}] {self.prim_path}: flightplan received")
+
+    def eventFn_ResetControl(self):
+        self.x  = np.zeros((8, 1))  # model state
+        self.y  = np.zeros((4, 1))  # model output
+        self.u  = np.zeros((4, 1))  # input (rotors speeds)
+        self.r  = np.zeros((4, 1))  # model reference
+        self.e  = np.zeros((4, 1))  # model error
+        self.E  = np.zeros((4, 1))  # model accumulated error
             
     #------------------------------------------------------------------------------------------------------------------
     # FLYING FUNCTIONS

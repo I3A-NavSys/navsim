@@ -25,7 +25,9 @@ class Controller:
         self.event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
         self.uav_events = []
         self.ext_utils = ExtensionUtils()
-
+        self.init_positions = [Gf.Vec3f(0,0,1), Gf.Vec3f(10,0,1), Gf.Vec3f(10,10,1), Gf.Vec3f(0,10,1)]
+        self.init_orientation = Gf.Quatd(1,0,0,0)
+        
     def start(self):
         if not self.is_running:
             self.is_running = True
@@ -54,9 +56,10 @@ class Controller:
 
         for i in range(len(joysticks_ids)):
             # Get required info
+            uav_event = self.uav_events[i]
+            uav = self.uavs[i]
             joystick_id = joysticks_ids[i]
             joystick_input = joysticks_inputs[joystick_id]
-            uav_event = self.uav_events[i]
             rottors_on_change = self.uavs_rottors_on_change[i]
             current_rottors_on = self.uavs_current_rottors_on[i]
 
@@ -66,6 +69,15 @@ class Controller:
 
             # Get rottors on/off
             rottors_on = joystick_input[4]
+
+            # Get position reseting
+            reset_position = joystick_input[5]
+
+            # Reset position if that is the case
+            if reset_position == 1:
+                self.event_stream.push(uav_event, payload={"method": "eventFn_ResetControl"})
+                uav.GetAttribute("xformOp:translate").Set(self.init_positions[i])
+                uav.GetAttribute("xformOp:orient").Set(self.init_orientation)
 
             # Evaluate whether rottors should be on off according to same button
             if rottors_on == 1 and not rottors_on_change:
