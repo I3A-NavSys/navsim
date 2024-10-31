@@ -103,6 +103,11 @@ class Controller:
             self.event_stream.push(uav_event, payload={"method": "eventFn_RemoteCommand", 
                                                                     "command": serialized_command})
         
+
+    def check_joysticks(self):
+        joysticks_ids, joysticks_inputs = self.joysticks.get_inputs()
+        return joysticks_inputs
+
     def get_uavs(self):
         uavs = []
         uav_names = self.ext_utils.get_navsim_UAV_names()
