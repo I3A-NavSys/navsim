@@ -170,6 +170,22 @@ class CommandGenerator(omni.ext.IExt):
         serialized_command = base64.b64encode(pickle.dumps(command)).decode('utf-8')
         self.event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_RemoteCommand", "command": serialized_command})
 
+    # def on_click(self):        
+    #     command = Command(
+    #         on = 1, 
+    #         velX = 1, 
+    #         velY = 0, 
+    #         velZ = 0,
+    #         rotZ = 1,
+    #         duration = 100)
+
+    #     serialized_command = base64.b64encode(pickle.dumps(command)).decode('utf-8')
+
+    #     for uav_name in self.ext_utils.get_navsim_UAV_names():
+    #         uav = self.ext_utils.get_prim_by_name(uav_name)
+    #         self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(uav.GetPath()))
+    #         self.event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_RemoteCommand", "command": serialized_command})
+
 
 
 
