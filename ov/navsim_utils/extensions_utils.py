@@ -37,8 +37,8 @@ class ExtensionUtils:
         
         if stage is not None:
             for prim in stage.Traverse():
-                att = prim.GetAttribute("NavSim:UAV")
-                if att.IsValid() and att.Get():
+                att = prim.GetAttribute("NavSim:type")
+                if att.IsValid() and att.Get() == "UAV":
                         manipulable_UAV_names.append(prim.GetName())
 
         return manipulable_UAV_names
