@@ -4,7 +4,7 @@ import omni.ext
 import omni.ui as ui
 import omni.physx
 import omni.timeline
-import omni.kit.viewport.window
+import omni.kit.viewport.window as vp_window
 
 from .controller import Controller
 
@@ -25,10 +25,10 @@ class MultiManualController(omni.ext.IExt):
 
         self.perspective_camera_path = "/OmniverseKit_Persp"
         self.follow_UAV_camera_path = "/manual_controller_CAM"
-        self.camera_1 = "/UAM_minidrone/UAM_minidrone_cam"
-        self.camera_2 = "/UAM_minidrone_01/UAM_minidrone_01_cam"
-        self.camera_3 = "/UAM_minidrone_02/UAM_minidrone_02_cam"
-        self.camera_4 = "/UAM_minidrone_03/UAM_minidrone_03_cam"
+        self.camera_1 = "/Drones/drone1/drone1_camera"
+        self.camera_2 = "/Drones/drone2/drone2_camera"
+        self.camera_3 = "/Drones/drone3/drone3_camera"
+        self.camera_4 = "/Drones/drone4/drone4_camera"
         self.viewports = {}
 
         self.timeline = omni.timeline.get_timeline_interface()
@@ -38,6 +38,15 @@ class MultiManualController(omni.ext.IExt):
             int(omni.timeline.TimelineEventType.STOP), self.on_timeline_stop)
 
     def build_ui(self):
+        toggle_on_button_style = {"background_color": ui.color("#6f9523"),
+                            "border_radius": 5, ":hovered": {"background_color": ui.color("#939393")}}
+        checker_container_style = {"background_color": ui.color("#787878"), "border_color": ui.color.white, 
+                                    "border_width": 1, "border_radius": 5}
+        checker_style = {"background_color": ui.color("#952323"), "border_color": ui.color.white,
+                        "border_width": 0, "border_radius": 5}
+        username_container_style = {"background_color": ui.color("#5b5b5b"), "border_color": ui.color.white, 
+                        "border_width": 1, "border_radius": 5}
+
         self.window = ui.Window("NavSim - Multi Manual Controller", width=0, height=0, 
                                 raster_policy=ui.RasterPolicy.NEVER)
         
@@ -49,9 +58,8 @@ class MultiManualController(omni.ext.IExt):
                 # Checking joystick part
                 with ui.HStack(spacing=20):
                     # Start/Stop button
-                    self.toggle_on_checking_button = ui.ToolButton(text="CHECK", width=80, height=100, style={"background_color": ui.color("#6f9523"),
-                            "border_radius": 5, ":hovered": {"background_color": ui.color("#939393")}},
-                            clicked_fn=self.toggle_checking)
+                    self.toggle_on_checking_button = ui.ToolButton(text="CHECK", width=80, height=100, 
+                            style=toggle_on_button_style, clicked_fn=self.toggle_checking)
                     
                     ui.Spacer(width=0)
 
@@ -65,8 +73,7 @@ class MultiManualController(omni.ext.IExt):
                         with ui.VStack(spacing=5):
                             with ui.ZStack():
                                 # User container
-                                ui.Rectangle(width=75, height=75, style={"background_color": ui.color("#787878"), 
-                                                "border_color": ui.color.white, "border_width": 1, "border_radius": 5})
+                                ui.Rectangle(width=75, height=75, style=checker_container_style)
                                 
                                 with ui.Frame(width=75, height=75):
                                     with ui.VStack(height=0, spacing=5):
@@ -75,39 +82,32 @@ class MultiManualController(omni.ext.IExt):
                                         with ui.HStack():
                                             # +X
                                             ui.Spacer(width=20)
-                                            x_checker.append(ui.Rectangle(width=10, height=10, style={"background_color": ui.color("#952323"), 
-                                                        "border_color": ui.color.white, "border_width": 0, "border_radius": 5}))
+                                            x_checker.append(ui.Rectangle(width=10, height=10, style=checker_style))
                                             # +Z
                                             ui.Spacer(width=25)
-                                            z_checker.append(ui.Rectangle(width=10, height=10, style={"background_color": ui.color("#952323"), 
-                                                        "border_color": ui.color.white, "border_width": 0, "border_radius": 5}))
+                                            z_checker.append(ui.Rectangle(width=10, height=10, style=checker_style))
                                             
                                         with ui.HStack():
                                             # +Y
                                             ui.Spacer(width=5)
-                                            y_checker.append(ui.Rectangle(width=10, height=10, style={"background_color": ui.color("#952323"), 
-                                                        "border_color": ui.color.white, "border_width": 0, "border_radius": 5}))
+                                            y_checker.append(ui.Rectangle(width=10, height=10, style=checker_style))
                                             # -Y
                                             ui.Spacer(width=20)
-                                            y_checker.append(ui.Rectangle(width=10, height=10, style={"background_color": ui.color("#952323"), 
-                                                        "border_color": ui.color.white, "border_width": 0, "border_radius": 5}))
+                                            y_checker.append(ui.Rectangle(width=10, height=10, style=checker_style))
                                         
                                         with ui.HStack():
                                             # -X
                                             ui.Spacer(width=20)
-                                            x_checker.append(ui.Rectangle(width=10, height=10, style={"background_color": ui.color("#952323"), 
-                                                        "border_color": ui.color.white, "border_width": 0, "border_radius": 5}))
+                                            x_checker.append(ui.Rectangle(width=10, height=10, style=checker_style))
                                             # -Z
                                             ui.Spacer(width=25)
-                                            z_checker.append(ui.Rectangle(width=10, height=10, style={"background_color": ui.color("#952323"), 
-                                                        "border_color": ui.color.white, "border_width": 0, "border_radius": 5}))
+                                            z_checker.append(ui.Rectangle(width=10, height=10, style=checker_style))
 
                             # Username
                             with ui.ZStack():
-                                ui.Rectangle(width=75, height=20, style={"background_color": ui.color("#5b5b5b"), 
-                                        "border_color": ui.color.white, "border_width": 1, "border_radius": 5})
+                                ui.Rectangle(width=75, height=20, style=username_container_style)
                                 with ui.Frame(width=75, height=20):
-                                    ui.Label("User" + str(i+1), alignment=ui.Alignment.CENTER)
+                                    ui.Label("User " + str(i+1), alignment=ui.Alignment.CENTER)
 
                             user_checker.append(x_checker)
                             user_checker.append(y_checker)
@@ -142,6 +142,9 @@ class MultiManualController(omni.ext.IExt):
             self.controller.joysticks.start()
             joystick_inputs = self.controller.check_joysticks()
 
+            style={"background_color": ui.color("#6f9523"), "border_color": ui.color.white, "border_width": 0, 
+                    "border_radius": 5}
+
             for i in range(len(joystick_inputs)):
                 input = joystick_inputs[i]
                 x_value = input[0]
@@ -154,9 +157,6 @@ class MultiManualController(omni.ext.IExt):
                 neg_y_checker: ui.Rectangle = self.joystick_checkers[i][1][1]
                 pos_z_checker: ui.Rectangle = self.joystick_checkers[i][2][0]
                 neg_z_checker: ui.Rectangle = self.joystick_checkers[i][2][1]
-
-                style={"background_color": ui.color("#6f9523"), "border_color": ui.color.white, "border_width": 0, 
-                    "border_radius": 5}
 
                 if x_value < 0:
                     pos_x_checker.set_style(style)
@@ -197,7 +197,7 @@ class MultiManualController(omni.ext.IExt):
 
     def add_viewports(self):
         amount_viewports = 0
-        for viewport_window in omni.kit.viewport.window.get_viewport_window_instances():
+        for viewport_window in vp_window.get_viewport_window_instances():
             if not viewport_window.visible:
                 viewport_window.viewport_widget.destroy()
                 viewport_window.destroy()
@@ -205,15 +205,31 @@ class MultiManualController(omni.ext.IExt):
 
             amount_viewports += 1
         
+        window_name = f"User {amount_viewports}"
         viewport_width = ui.Workspace.get_main_window_width()/4
         viewport_height = ui.Workspace.get_main_window_height()/3
-        render_resolution_scale = 0.5
 
-        viewport_window = omni.kit.viewport.window.ViewportWindow(name=f"User {amount_viewports}", 
-                                                                  width=viewport_width, height=viewport_height)
+        viewport_window = vp_window.ViewportWindow(name=window_name, width=viewport_width, height=viewport_height)
+        viewport_api = viewport_window.viewport_api
 
         viewport_window.setPosition(viewport_width*(amount_viewports - 1), viewport_height*2)
         viewport_window.set_visibility_changed_fn(self.viewport_on_visibility_change)
+
+        match(window_name):
+            case "User 1":
+                viewport_api.set_active_camera(self.camera_1)
+                # viewport_window.setPosition(0, 0)
+            case "User 2":
+                viewport_api.set_active_camera(self.camera_2)
+                # viewport_window.setPosition(viewport_width, 0)
+            case "User 3":
+                viewport_api.set_active_camera(self.camera_3)
+                # viewport_window.setPosition(0, viewport_height)
+            case "User 4":
+                viewport_api.set_active_camera(self.camera_4)
+                # viewport_window.setPosition(viewport_width, viewport_height)
+            case _:
+                pass
 
     def viewport_on_visibility_change(self, visible):
         for viewport_window in omni.kit.viewport.window.get_viewport_window_instances():
