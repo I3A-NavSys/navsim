@@ -21,6 +21,7 @@ class MultiManualController(omni.ext.IExt):
         self.max_joysticks = 4
         self.is_running = False
         self.is_checking = False
+        self.is_controlling = False
         self.joystick_checkers = []
 
         self.perspective_camera_path = "/OmniverseKit_Persp"
@@ -38,31 +39,34 @@ class MultiManualController(omni.ext.IExt):
             int(omni.timeline.TimelineEventType.STOP), self.on_timeline_stop)
 
     def build_ui(self):
-        toggle_on_button_style = {"background_color": ui.color("#6f9523"),
+        toggle_checking_button_style = {"background_color": ui.color("#db8f26"),
                             "border_radius": 5, ":hovered": {"background_color": ui.color("#939393")}}
+        
         checker_container_style = {"background_color": ui.color("#787878"), "border_color": ui.color.white, 
                                     "border_width": 1, "border_radius": 5}
-        checker_style = {"background_color": ui.color("#952323"), "border_color": ui.color.white,
+        
+        checker_style = {"background_color": ui.color("#db8f26"), "border_color": ui.color.white,
                         "border_width": 0, "border_radius": 5}
+        
         username_container_style = {"background_color": ui.color("#5b5b5b"), "border_color": ui.color.white, 
                         "border_width": 1, "border_radius": 5}
+        
+        add_viewport_button_style = {"border_radius": 5}
+
+        toggle_control_button_style = {"background_color": ui.color("#952323"),
+                            "border_radius": 5, ":hovered": {"background_color": ui.color("#939393")}}
 
         self.window = ui.Window("NavSim - Multi Manual Controller", width=0, height=0, 
                                 raster_policy=ui.RasterPolicy.NEVER)
         
         with self.window.frame:
-            with ui.VStack(height=0, spacing=10):
-                # Add viewport button
-                self.add_viewports_button = ui.Button("ADD VIEWPORT", height=50, clicked_fn=self.add_viewports)
-
+            with ui.HStack(width=0, spacing=10):
                 # Checking joystick part
-                with ui.HStack(spacing=20):
+                with ui.VStack(height=0, spacing=20):
                     # Start/Stop button
-                    self.toggle_on_checking_button = ui.ToolButton(text="CHECK", width=80, height=100, 
-                            style=toggle_on_button_style, clicked_fn=self.toggle_checking)
+                    self.toggle_checking_button = ui.ToolButton(text="CHECK", width=80, height=100, 
+                            style=toggle_checking_button_style, clicked_fn=self.toggle_checking)
                     
-                    ui.Spacer(width=0)
-
                     # Checking part
                     for i in range(self.max_joysticks):
                         user_checker = []
@@ -114,25 +118,51 @@ class MultiManualController(omni.ext.IExt):
                             user_checker.append(z_checker)
                             self.joystick_checkers.append(user_checker)
 
-                ui.Spacer(height=0)
+                # Add viewport button
+                self.add_viewports_button = ui.Button("ADD VIEWPORT", style= add_viewport_button_style,
+                                                       clicked_fn=self.add_viewports)
 
-    def toggle_checking(self):
-        model = self.toggle_on_checking_button.model
+                # Control/Not control
+                self.toggle_control_button = ui.ToolButton(text="NO CONTROL", width=90,
+                                                    style=toggle_control_button_style, clicked_fn=self.toggle_control)
+                self.toggle_control_button.model.set_value(True)
+
+    def toggle_control(self):
+        model = self.toggle_control_button.model
 
         if model.get_value_as_bool():
             style={"background_color": ui.color("#952323"),"border_radius": 5, 
                    ":hovered": {"background_color": ui.color("#939393")}}
-            self.toggle_on_checking_button.set_style(style)
-            self.toggle_on_checking_button.text = "CHECKING"
+            self.toggle_control_button.set_style(style)
+            self.toggle_control_button.text = "NO CONTROL"
+
+            self.is_controlling = False
+
+        else:
+            style={"background_color": ui.color("#6f9523"),"border_radius": 5, 
+                   ":hovered": {"background_color": ui.color("#939393")}}
+            self.toggle_control_button.set_style(style)
+            self.toggle_control_button.text = "CONTROL"
+
+            self.is_controlling = True
+
+    def toggle_checking(self):
+        model = self.toggle_checking_button.model
+
+        if model.get_value_as_bool():
+            style={"background_color": ui.color("#952323"),"border_radius": 5, 
+                   ":hovered": {"background_color": ui.color("#939393")}}
+            self.toggle_checking_button.set_style(style)
+            self.toggle_checking_button.text = "CHECKING"
 
             self.is_checking = True
             asyncio.ensure_future(self.start_checking())
 
         else:
-            style={"background_color": ui.color("#6f9523"),"border_radius": 5, 
+            style={"background_color": ui.color("#db8f26"),"border_radius": 5, 
                    ":hovered": {"background_color": ui.color("#939393")}}
-            self.toggle_on_checking_button.set_style(style)
-            self.toggle_on_checking_button.text = "CHECK"
+            self.toggle_checking_button.set_style(style)
+            self.toggle_checking_button.text = "CHECK"
 
             self.is_checking = False
             self.stop_checking()
@@ -178,7 +208,7 @@ class MultiManualController(omni.ext.IExt):
     def stop_checking(self):
         self.controller.joysticks.stop()
 
-        style={"background_color": ui.color("#952323"), "border_color": ui.color.white, "border_width": 0, 
+        style={"background_color": ui.color("#db8f26"), "border_color": ui.color.white, "border_width": 0, 
                    "border_radius": 5}
         
         for checker in self.joystick_checkers:
@@ -187,13 +217,14 @@ class MultiManualController(omni.ext.IExt):
                     rectangle.set_style(style)
 
     def on_timeline_play(self, event):
-        if not self.is_running:
+        if not self.is_running and self.is_controlling:
             self.is_running = True
             self.controller.start()
 
     def on_timeline_stop(self, event):
-        self.controller.stop()
-        self.is_running = False
+        if self.is_running:
+            self.controller.stop()
+            self.is_running = False
 
     def add_viewports(self):
         amount_viewports = 0
