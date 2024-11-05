@@ -60,13 +60,13 @@ class MultiManualController(omni.ext.IExt):
                                 raster_policy=ui.RasterPolicy.NEVER)
         
         with self.window.frame:
-            with ui.HStack(width=0, spacing=10):
+            with ui.VStack(height=0, spacing=10):
                 # Checking joystick part
-                with ui.VStack(height=0, spacing=20):
-                    # Start/Stop button
-                    self.toggle_checking_button = ui.ToolButton(text="CHECK", width=80, height=100, 
-                            style=toggle_checking_button_style, clicked_fn=self.toggle_checking)
+                # Check button
+                self.toggle_checking_button = ui.ToolButton(text="CHECK", height=50, 
+                        style=toggle_checking_button_style, clicked_fn=self.toggle_checking)
                     
+                with ui.HStack(height=0, spacing=20):                    
                     # Checking part
                     for i in range(self.max_joysticks):
                         user_checker = []
@@ -118,12 +118,14 @@ class MultiManualController(omni.ext.IExt):
                             user_checker.append(z_checker)
                             self.joystick_checkers.append(user_checker)
 
+                ui.Spacer(height=50)
+
                 # Add viewport button
-                self.add_viewports_button = ui.Button("ADD VIEWPORT", style= add_viewport_button_style,
+                self.add_viewports_button = ui.Button("ADD VIEWPORT", height=40, style= add_viewport_button_style,
                                                        clicked_fn=self.add_viewports)
 
                 # Control/Not control
-                self.toggle_control_button = ui.ToolButton(text="NO CONTROL", width=90,
+                self.toggle_control_button = ui.ToolButton(text="NO CONTROL", height=40,
                                                     style=toggle_control_button_style, clicked_fn=self.toggle_control)
                 self.toggle_control_button.model.set_value(True)
 
