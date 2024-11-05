@@ -423,13 +423,18 @@ class FlightPlanGenerator(omni.ext.IExt):
 
         # Populate window frame
         with self.window.frame:
-            with ui.VStack(height=MINIMAL_HEIGHT, style=VStack_A, spacing=SPACING_S):
-                ui.Spacer(height=MINIMAL_HEIGHT)
-                # Drone selector widget
-                self.UAV_selector_dropdown = self.extension_utils.build_uav_selector()
-                # Create transform frame
-                self.build_waypoint_frame()
-                # Create waypoint list
-                self.build_waypoint_list()
-                # Send flight plan button
-                ui.Button("Send Flight Plan", height=50, clicked_fn=self.send_flight_plan)
+            self.main_window_scrolling_frame = ui.ScrollingFrame(
+                    horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
+                    vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
+                )
+            with self.main_window_scrolling_frame:
+                with ui.VStack(height=MINIMAL_HEIGHT, style=VStack_A, spacing=SPACING_S):
+                    ui.Spacer(height=MINIMAL_HEIGHT)
+                    # Drone selector widget
+                    self.UAV_selector_dropdown = self.extension_utils.build_uav_selector()
+                    # Create transform frame
+                    self.build_waypoint_frame()
+                    # Create waypoint list
+                    self.build_waypoint_list()
+                    # Send flight plan button
+                    ui.Button("Send Flight Plan", height=50, clicked_fn=self.send_flight_plan)
