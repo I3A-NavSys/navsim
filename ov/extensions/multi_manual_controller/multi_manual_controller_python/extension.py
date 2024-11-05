@@ -150,7 +150,7 @@ class MultiManualController(omni.ext.IExt):
         model = self.toggle_checking_button.model
 
         if model.get_value_as_bool():
-            style={"background_color": ui.color("#952323"),"border_radius": 5, 
+            style={"background_color": ui.color("#e14e27"),"border_radius": 5, 
                    ":hovered": {"background_color": ui.color("#939393")}}
             self.toggle_checking_button.set_style(style)
             self.toggle_checking_button.text = "CHECKING"
