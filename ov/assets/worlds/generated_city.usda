@@ -3,12 +3,12 @@
     customLayerData = {
         dictionary cameraSettings = {
             dictionary Front = {
-                double3 position = (5, 0, 0)
-                double radius = 5
+                double3 position = (49923.294598860455, -218.31547657270195, 22.35882451600972)
+                double radius = 31.248489379882812
             }
             dictionary Perspective = {
-                double3 position = (-242.730526846052, -285.9080708413006, 120.73197115631693)
-                double3 target = (25.55169785608814, -73.81501081528856, -51.189549420074016)
+                double3 position = (-170.6897822225793, -1176.624974848361, 706.7517338247058)
+                double3 target = (-61.7431013427975, -47.68213323446503, -77.47659976721047)
             }
             dictionary Right = {
                 double3 position = (0, -5, 0)
@@ -113,7 +113,7 @@ def Xform "City"
             float3[] extent = [(-0.5, -0.5, 0), (0.5, 0.5, 0)]
             int[] faceVertexCounts = [4]
             int[] faceVertexIndices = [0, 1, 3, 2]
-            rel material:binding = </City/GroundPlane/OmniPBRBase> (
+            rel material:binding = </City/streets/Materials/Road1> (
                 bindMaterialAs = "weakerThanDescendants"
             )
             normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
@@ -161,6 +161,7 @@ def Xform "City"
 
     def Xform "Environment"
     {
+        token visibility = "inherited"
         quatd xformOp:orient = (1, 0, 0, 0)
         double3 xformOp:scale = (1, 1, 1)
         double3 xformOp:translate = (0, 0, 0)
@@ -215,6 +216,8 @@ def Xform "City"
         kind = "assembly"
     )
     {
+        token visibility = "inherited"
+
         def Cube "building__200__176" (
             prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
@@ -1070,24 +1073,42 @@ def Xform "City"
         }
     }
 
-    def "Datsun" (
-        prepend payload = @../objects/Datsun.usd@
-    )
-    {
-        double3 xformOp:rotateXYZ = (0, 0, 0)
-        double3 xformOp:scale = (1, 1, 1)
-        double3 xformOp:translate = (-124.63949584960938, -216.48699951171875, 0.7618623935159625)
-        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
-    }
-
     def "UAM_aerotaxi" (
         prepend payload = @../../fleet/UAM_aerotaxi/UAM_aerotaxi.usd@
     )
     {
+        vector3f physxForce:force = (0, 0, 0)
+        vector3f physxForce:torque = (0, 0, 0)
+        token visibility = "inherited"
         quatd xformOp:orient = (0.5012624852591813, 0, 0, -0.86529527958483)
         double3 xformOp:scale = (1, 1, 1)
         double3 xformOp:translate = (-120.54714965820312, -187.90321350097656, 49.40093104797321)
         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+
+        over "rotors"
+        {
+            token visibility = "inherited"
+
+            over "NE"
+            {
+                vector3f physxForce:force = (0, 0, 0)
+            }
+
+            over "NW"
+            {
+                vector3f physxForce:force = (0, 0, 0)
+            }
+
+            over "SE"
+            {
+                vector3f physxForce:force = (0, 0, 0)
+            }
+
+            over "SW"
+            {
+                vector3f physxForce:force = (0, 0, 0)
+            }
+        }
     }
 }
 
