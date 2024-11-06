@@ -321,7 +321,7 @@ class FlightPlanGenerator(omni.ext.IExt):
         flightplan_to_send = self.flight_plan.copy()
 
         # Set the waypoints' uniform vector velocities
-        flightplan_to_send.set_uniform_velocity()
+        # flightplan_to_send.set_uniform_velocity()
 
         # Delay a bit the flightplan
         flightplan_to_send.postpone(self.current_time + 5.0)
@@ -382,6 +382,7 @@ class FlightPlanGenerator(omni.ext.IExt):
 
         # Add waypoint to the list
         self.flight_plan.set_waypoint(label=label, time=time, pos=pos, vel=vel)
+        self.flight_plan.set_uniform_velocity()
         
         # Add waypoint to the UI
         with self.waypoint_list:                        
