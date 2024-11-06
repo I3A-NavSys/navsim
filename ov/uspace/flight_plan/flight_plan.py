@@ -34,7 +34,7 @@ class FlightPlan:
                 else:
                     time = self.finish_time() + 1
 
-            if numWPs > 0:      status = self.status_at_time(time)
+            if numWPs > 0:  status = self.status_at_time(time)
 
             if pos is None:
                 if numWPs == 0:
@@ -46,7 +46,7 @@ class FlightPlan:
                 if numWPs == 0:
                     vel = [0,0,0]
                 else:
-                    if time <= self.init_time() or time >= self.finish_time():
+                    if time <= self.init_time():
                         vel = [0,0,0]
                     else:
                         vel = status.vel
@@ -117,7 +117,7 @@ class FlightPlan:
                 self.set_uniform_velocity(wp=i)
 
             # Stop last WP
-            self.waypoints[-1].stop()
+            # self.waypoints[-1].stop()
 
         # Set vel velocity to all WPs
         elif wp is None:
@@ -140,8 +140,9 @@ class FlightPlan:
             wp1 = self.waypoints[index]
             wp2 = self.waypoints[index+1]
 
-            # Update wp1.vel
-            wp1.set_uniform_velocity(wp2)        
+            # Update wp1.vel if has no velocity yet or positions are the same
+            if np.sum(wp1.vel) == 0 or np.array_equal(wp1.pos, wp2.pos):
+                wp1.set_uniform_velocity(wp2)        
 
         # Set vel velocity just to wp WP
         else:
@@ -337,8 +338,11 @@ class FlightPlan:
         if t <= self.init_time(): 
             return self.waypoints[0]
         
-        if t >= self.finish_time():
+        if t == self.finish_time():
             return self.waypoints[-1]
+
+        if t > self.finish_time():
+            return self.waypoints[-1].interpolation(t)
 
         # Get the current waypoint
         for i in range(1, len(self.waypoints)):
