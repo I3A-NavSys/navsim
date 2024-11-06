@@ -66,7 +66,7 @@ class MultiManualController(omni.ext.IExt):
                 self.toggle_checking_button = ui.ToolButton(text="CHECK", height=50, 
                         style=toggle_checking_button_style, clicked_fn=self.toggle_checking)
                     
-                with ui.HStack(height=0, spacing=20):                    
+                with ui.HStack(spacing=500):
                     # Checking part
                     for i in range(self.max_joysticks):
                         user_checker = []
@@ -111,7 +111,7 @@ class MultiManualController(omni.ext.IExt):
                             with ui.ZStack():
                                 ui.Rectangle(width=75, height=20, style=username_container_style)
                                 with ui.Frame(width=75, height=20):
-                                    ui.Label("User " + str(i+1), alignment=ui.Alignment.CENTER)
+                                    ui.Label("Jugador " + str(i+1), alignment=ui.Alignment.CENTER)
 
                             user_checker.append(x_checker)
                             user_checker.append(y_checker)
