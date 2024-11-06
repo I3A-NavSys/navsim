@@ -131,9 +131,14 @@ class CommandGenerator(omni.ext.IExt):
                 with ui.HStack():
                     #send button
                     ui.Button(
-                        "SEND", 
+                        "UP", 
                         height=50,
                         clicked_fn = self.on_click)
+                    
+                    ui.Button(
+                        "ROTATE", 
+                        height=50,
+                        clicked_fn = self.on_click_2)
 
 
 
@@ -147,46 +152,65 @@ class CommandGenerator(omni.ext.IExt):
 
 
 
-    def on_click(self):   
-        if self.UAV_selector_dropdown.get_selection() is None:
-            raise Exception("[REMOTE COMMAND ext] No drone selected")
+    # def on_click(self):   
+    #     if self.UAV_selector_dropdown.get_selection() is None:
+    #         raise Exception("[REMOTE COMMAND ext] No drone selected")
         
-        drone = self.ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
+    #     drone = self.ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
         
-        print(f"[REMOTE COMMAND ext] Command sent at simulation time: {self.current_time:.2f}")
+    #     print(f"[REMOTE COMMAND ext] Command sent at simulation time: {self.current_time:.2f}")
 
-        # Create the event to send commands to the UAV
-        self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(drone.GetPath()))
+    #     # Create the event to send commands to the UAV
+    #     self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(drone.GetPath()))
                 
-        # Set command data structure
-        command = Command(
-                        on = self.rotors_CB.checked, 
-                        velX = self.velX_FF.model.get_value_as_float(), 
-                        velY = self.velY_FF.model.get_value_as_float(), 
-                        velZ = self.velZ_FF.model.get_value_as_float(),
-                        rotZ = self.rotZ_FF.model.get_value_as_float(),
-                        duration = self.duration_FF.model.get_value_as_float())
-
-        serialized_command = base64.b64encode(pickle.dumps(command)).decode('utf-8')
-        self.event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_RemoteCommand", "command": serialized_command})
-
-    # def on_click(self):        
+    #     # Set command data structure
     #     command = Command(
-    #         on = 1, 
-    #         velX = 1, 
-    #         velY = 0, 
-    #         velZ = 0,
-    #         rotZ = 1,
-    #         duration = 100)
+    #                     on = self.rotors_CB.checked, 
+    #                     velX = self.velX_FF.model.get_value_as_float(), 
+    #                     velY = self.velY_FF.model.get_value_as_float(), 
+    #                     velZ = self.velZ_FF.model.get_value_as_float(),
+    #                     rotZ = self.rotZ_FF.model.get_value_as_float(),
+    #                     duration = self.duration_FF.model.get_value_as_float())
 
     #     serialized_command = base64.b64encode(pickle.dumps(command)).decode('utf-8')
+    #     self.event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_RemoteCommand", "command": serialized_command})
 
-    #     for uav_name in self.ext_utils.get_navsim_UAV_names():
-    #         uav = self.ext_utils.get_prim_by_name(uav_name)
-    #         self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(uav.GetPath()))
-    #         self.event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_RemoteCommand", "command": serialized_command})
+    def on_click(self):
+        command = Command(
+            on = 1, 
+            velX = 0, 
+            velY = 0, 
+            velZ = 1,
+            rotZ = 0,
+            duration = 1)
 
+        serialized_command = base64.b64encode(pickle.dumps(command)).decode('utf-8')
+        abejorros_prim = get_current_stage().GetPrimAtPath("/World/abejorros")
+        children = abejorros_prim.GetChildren()
+        for uav in children:
+            self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(uav.GetPath()))
+            self.event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_RemoteCommand", "command": serialized_command})
+        
+        # for uav_name in self.ext_utils.get_navsim_UAV_names():
+        #     uav = self.ext_utils.get_prim_by_name(uav_name)
+        #     self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(uav.GetPath()))
+        #     self.event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_RemoteCommand", "command": serialized_command})
 
+    def on_click_2(self):
+        command = Command(
+            on = 1, 
+            velX = 1, 
+            velY = 0, 
+            velZ = 0,
+            rotZ = 1,
+            duration = 100)
+
+        serialized_command = base64.b64encode(pickle.dumps(command)).decode('utf-8')
+        abejorros_prim = get_current_stage().GetPrimAtPath("/World/abejorros")
+        children = abejorros_prim.GetChildren()
+        for uav in children:
+            self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(uav.GetPath()))
+            self.event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_RemoteCommand", "command": serialized_command})
 
 
     def on_shutdown(self):
