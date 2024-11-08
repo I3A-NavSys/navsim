@@ -5,7 +5,12 @@ import omni.ui as ui
 import omni.physx
 import omni.timeline
 import omni.kit.viewport.window as vp_window
-
+# Adding root 'ov' folder to sys.path
+import sys, os
+project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
+if project_root_path not in sys.path:
+    sys.path.append(project_root_path)
+    
 from .controller import Controller
 
 class MultiManualController(omni.ext.IExt):
