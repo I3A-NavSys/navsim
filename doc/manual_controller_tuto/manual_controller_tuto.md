@@ -24,6 +24,5 @@ quadcopter in the scene. You can elevate it a bit (using the *Property* panel) a
 simulation. You will see that the UAV falls. Besides, you can have a look at its internal components under the *Stage*
 panel.
 
-https://youtu.be/knypxlYSphU
-[![Drop minidrone](https://img.youtube.com/vi/knypxlYSphU/maxresdefault.jpg)](https://youtu.be/knypxlYSphU)
+[![Drop minidrone](https://img.youtube.com/vi/knypxlYSphU/hqdefault.jpg)](https://youtu.be/knypxlYSphU)
 
