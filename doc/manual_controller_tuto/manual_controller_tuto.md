@@ -53,6 +53,10 @@ have a look at the *OVERVIEW* section from the extension within the `Window/Exte
 
 ![joystick_mapping](./img/joystick_mapping.png)
 
+In case you do not have any joystick, we also have support to keyboard. Here you have the mapping:
+
+![keyboard_mapping](./img/keyboard_mapping.png)
+
 Let's play with a bigger UAV now!
 Repeat the same process as in the *Launch the scenario* section (this time do not open campus.usd as it is already 
 loaded), but focus on the `World/Vertiports/aerotaxi_vertiport` and drag and drop the file 
@@ -61,10 +65,3 @@ Under the *NavSim - Manual Controller* extension refresh and select the new UAV.
 and start playing.
 
 https://github.com/user-attachments/assets/c91937dc-aedb-44f1-bc43-e06f3ec806af
-
-
-### Note
-
-We have also implemented support to keyboard control. Here you have the mapping:
-
-![keyboard_mapping](./img/keyboard_mapping.png)
