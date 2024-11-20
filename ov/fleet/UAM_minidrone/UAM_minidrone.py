@@ -277,7 +277,7 @@ class UAM_minidrone(BehaviorScript):
         # self.current_time = current_time
         # self.delta_time = delta_time
 
-        self.animate_rotors()
+        # self.animate_rotors()
 
         # Update the drone status
         self.imu()
@@ -340,8 +340,8 @@ class UAM_minidrone(BehaviorScript):
         self.w_rotor_NW = 0
         self.w_rotor_SE = 0
         self.w_rotor_SW = 0
-        # self.primRotStatic.SetActive(True)
-        # self.primRotSpinning.SetActive(False)
+        self.primRotStatic.SetActive(True)
+        self.primRotSpinning.SetActive(False)
         self.are_rotors_on = False
 
         # Reset del control
@@ -468,8 +468,8 @@ class UAM_minidrone(BehaviorScript):
             if self.current_time > self.cmd_exp_time:
                 self.command.hover()
 
-        # self.primRotStatic.SetActive(False)
-        # self.primRotSpinning.SetActive(True)
+        self.primRotStatic.SetActive(False)
+        self.primRotSpinning.SetActive(True)
         self.are_rotors_on = True
 
         # Assign the model reference to be followed
