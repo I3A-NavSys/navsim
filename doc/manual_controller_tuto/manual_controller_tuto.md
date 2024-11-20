@@ -43,10 +43,19 @@ In this extension we have two main parts, the *Control* and *Visualization* tabs
 
 In order to control a UAV we have to tell the extension which one we want, so click on *REFRESH* button at the top of 
 the extension to repopulate the dropdown selector. Then you can choose the desired UAV.
+
+![select_drone](./img/select_drone.png)
+
 Right now we will only set *Linear velocity Max* parameter to 4. Then we are ready to click on *START* button. This 
 will create a camera which will follow the UAV during the simulation. You can move it using the joystick too.
-Before begging the simulation, have a look at the controls of the joystick in the follwing picture (for further details
-have a look at the *OVERVIEW* section from the extension within the `Window/Extensions` panel), then you can start 
-it by clicking on the *PLAY* button as when you launched the scenario.
+Before begging the simulation, have a look at the controls of the joystick in the following picture (for further details
+have a look at the *OVERVIEW* section from the extension within the `Window/Extensions` panel).
 
 ![joystick_mapping](./img/joystick_mapping.png)
+
+Let's play with a bigger UAN now!
+Repeat the same process as in the *Launch the scenario* section (this time do not open campus.usd as it is already 
+loaded), but focus on the `World/Vertiports/aerotaxi_vertiport` and drag and drop the file 
+`navim/of/fleet/UAM_aerotaxi/UAM_aerotaxi.usd`.
+Under the *NavSim - Manual Controller* extension refresh and select the new UAV. Increase the linear velocity Max to 10
+and start playing.
