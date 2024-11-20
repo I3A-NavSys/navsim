@@ -1,28 +1,27 @@
 # 01: Running your first simulation
 
-En este tutorial aprenderás a ejecutar una simulación abriendo un escenario, 
-colocaremos varios drones sobre el terreno y los controlaremos mediante la emisión de comandos básicos.
+In this tutorial you will learn to execute a simulation by opening a scenario, placing some UAVs over the terrain and 
+controlling them by means of a Thrustmaster joystick (other joysticks may work but it is no guaranteed).
 
 ## Launch Isaac Sim
 
-En primer lugar, abrimos el entorno de simulación NVIDIA Isaac Sim, que ofrecerá un aspecto similar al de la figura siguiente 
-(los paneles pueden variar en función de la configuración personal):
+First, open the simulation environment NVIDIA Isaac Sim. Once opened, it will offer a similar aspect as the following
+picture (the panels' location may differ depending on the personal configuration):
 
-![Isaac Sim](./img/isaac_sim.png)
+![Isaac Sim](./img/isaac_sim_launched.png)
 
 ## Launch the scenario
 
+In the *Content* panel, find the file `navsim/ov/assets/worlds/campus/campus.usd` and doble click on it.
+It will open a scenario where our campus is detailed.
 
-En la ventana de contenidos, buscamos el archivo `ov/assets/worlds/generated_city.usda`, y hacemos doble click sobre él. 
-Se abre un escenario de 500x500 metros, con 61 bloques que representan edificios.
+![campus.usd](./img/campus_usd.png)
 
-![generated_city.usda](./img/generated_city.png)
+Under *Stage* panel, find `World/Vertiports/minidrone_vertiport` prim (a prim is how models are called in USD), select 
+it and press *F* key to focus (make zoom) on it.
+Then drag and drop the file `navsim/ov/fleet/UAM_minidrone/UAM_minidrone.usd` over the vertiport. It will appear a 
+quadcopter in the scene. You can elevate it a bit (using the *Property* panel) and click on *PLAY* button to start the
+simulation. You will see that the UAV falls. Besides, you can have a look at its internal components under the *Stage*
+panel.
 
-
-Con la rueda del ratón hacemos zoom hasta mostrar la azotea de un edificio.
-Buscamos en el panel *Content* el archivo `navsim/ov/fleet/UAM_minidrone/UAM_minidrones.usd` y lo arrastramos al escenario 3 veces.
-Aparecen tres quadricopteros en escena, elévalos ligeramente por encima del tejado del edificio y pulsa *PLAY*. Los drones caen sobre la superficie.
-En el panel *Stage* observamos los tres drones convenientemente renombrados. Podemos estudiar sus componentes internas.
-
-
-![Minidrones](./img/minidrones.png)
+![Minidrones](./img/minidrone_dropped.png)
