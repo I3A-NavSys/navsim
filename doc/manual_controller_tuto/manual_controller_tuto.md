@@ -62,3 +62,9 @@ and start playing.
 
 https://github.com/user-attachments/assets/c91937dc-aedb-44f1-bc43-e06f3ec806af
 
+
+### Note
+
+We have also implemented support to keyboard control. Here you have the mapping:
+
+![keyboard_mapping](./img/keyboard_mapping.png)
