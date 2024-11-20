@@ -20,12 +20,17 @@ It will open a scenario where our campus is detailed.
 Under *Stage* panel, find `World/Vertiports/minidrone_vertiport` prim (a prim is how models are called in USD), select 
 it and press *F* key to focus (make zoom) on it.
 Then drag and drop the file `navsim/ov/fleet/UAM_minidrone/UAM_minidrone.usd` over the vertiport. It will appear a 
-quadcopter in the scene. You can elevate it a bit (using the *Property* panel) and click on *PLAY* button to start the
+quadcopter in the scene. You can elevate it a bit and click on *PLAY* button to start the
 simulation. You will see that the UAV falls. Besides, you can have a look at its internal components under the *Stage*
 panel.
 
-<!-- ![campus.usd](./img/minidrone_dropped_2.mp4) -->
-<!-- [![Drop minidrone](https://img.youtube.com/vi/knypxlYSphU/hqdefault.jpg)](https://youtu.be/knypxlYSphU) -->
-
 https://github.com/user-attachments/assets/68807db9-35ee-4cd5-9f48-3e62e3f2b44c
+
+## Control the UAV
+
+Now we are going to control the UAV using the joystick. For this we need to work with our own extension named 
+*Navsim - Manual Controller*.
+In this extension we have two main parts, the *Control* and *Visualization* tabs.
+- Control: 
+    - Here we have configurable parameters 
 
