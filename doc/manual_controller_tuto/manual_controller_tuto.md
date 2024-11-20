@@ -31,6 +31,22 @@ https://github.com/user-attachments/assets/68807db9-35ee-4cd5-9f48-3e62e3f2b44c
 Now we are going to control the UAV using the joystick. For this we need to work with our own extension named 
 *Navsim - Manual Controller*.
 In this extension we have two main parts, the *Control* and *Visualization* tabs.
-- Control: 
-    - Here we have configurable parameters 
+- Control
+    - Linear velocity Max: It limits the linear velocity the UAV can reach.
+    - Angular velocity Max: As linear one but for rotation.
+    - Invert camera movement control: Invert the axes movevement from the camera that follows the UAV.
+    - Start with rotors on: Whether to start controlling the UAV with its rottors on or not.
 
+- Visualization
+    - Plot appereance: It changes the distribution of the plots within this tab.
+    - This is used to make sure our joystick is working, so once we have made sure it does we can collapse the tab.
+
+In order to control a UAV we have to tell the extension which one we want, so click on *REFRESH* button at the top of 
+the extension to repopulate the dropdown selector. Then you can choose the desired UAV.
+Right now we will only set *Linear velocity Max* parameter to 4. Then we are ready to click on *START* button. This 
+will create a camera which will follow the UAV during the simulation. You can move it using the joystick too.
+Before begging the simulation, have a look at the controls of the joystick in the follwing picture (for further details
+have a look at the *OVERVIEW* section from the extension within the `Window/Extensions` panel), then you can start 
+it by clicking on the *PLAY* button as when you launched the scenario.
+
+![joystick_mapping](./img/joystick_mapping.png)
