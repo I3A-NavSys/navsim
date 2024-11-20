@@ -25,5 +25,5 @@ simulation. You will see that the UAV falls. Besides, you can have a look at its
 panel.
 
 https://youtu.be/knypxlYSphU
-[![Drop minidrone](https://img.youtube.com/vi/knypxlYSphU/hqdefault.jpg)](https://youtu.be/knypxlYSphU)
+[![Drop minidrone](https://img.youtube.com/vi/knypxlYSphU/maxresdefault.jpg)](https://youtu.be/knypxlYSphU)
 
