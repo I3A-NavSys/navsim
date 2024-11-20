@@ -53,9 +53,12 @@ have a look at the *OVERVIEW* section from the extension within the `Window/Exte
 
 ![joystick_mapping](./img/joystick_mapping.png)
 
-Let's play with a bigger UAN now!
+Let's play with a bigger UAV now!
 Repeat the same process as in the *Launch the scenario* section (this time do not open campus.usd as it is already 
 loaded), but focus on the `World/Vertiports/aerotaxi_vertiport` and drag and drop the file 
 `navim/of/fleet/UAM_aerotaxi/UAM_aerotaxi.usd`.
 Under the *NavSim - Manual Controller* extension refresh and select the new UAV. Increase the linear velocity Max to 10
 and start playing.
+
+https://github.com/user-attachments/assets/c91937dc-aedb-44f1-bc43-e06f3ec806af
+
