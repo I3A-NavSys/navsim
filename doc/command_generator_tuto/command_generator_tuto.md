@@ -51,15 +51,43 @@ https://github.com/user-attachments/assets/90c780dd-71e7-4563-924a-ae71366c553e
 
 ## Python implementation
 
-Rearging code, first we take the event associated with the selected drone:
+If what you want is to be able to send commands using just code, we have a little example to show you how.
+First open the `Window/Script Editor` panel and paste in the *Python 0* tab the following code:
 
-![get_uav_event](./img/get_uav_to_send.png)
+```bash
+# Import necessary modules
+from omni.isaac.core.utils.stage import get_current_stage
+import carb.events
+from uspace.flight_plan.command import Command
+import pickle
+import base64
+import omni.kit.app as app
 
-Next, we build the command:
+# Get the current stage
+stage = get_current_stage()
+# Get the recently added drone
+uav = stage.GetPrimAtPath("/UAM_minidrone")
+# Get its associated event
+uav_event = carb.events.type_from_string("NavSim." + str(uav.GetPath()))
 
-![build_command](./img/build_command.png)
+# Build the command
+command = Command(
+    on = True,
+    velX = 1,
+    velY = 0,
+    velZ = 0,
+    rotZ = 1.57,
+    duration = 4
+)
 
-Finally, we send the command:
+# Serialize the command
+serialized_cmd = base64.b64encode(pickle.dumps(command)).decode("utf-8")
 
-![send_command](./img/send_command.png)
+# Get the bus event stream
+bus_event_stream = app.get_app_interface().get_message_bus_event_stream()
+# Send the command
+bus_event_stream.push(uav_event, payload={"method": "eventFn_RemoteCommand",
+                                          "command": serialized_cmd})
+```
 
+Finally click on *Run (Ctrl + Enter)* button to run the script. You will see how the UAV does a 360º lap.
