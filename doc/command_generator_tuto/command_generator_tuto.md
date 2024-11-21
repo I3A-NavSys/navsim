@@ -1,4 +1,4 @@
-# 01: Controlling a UAV via commands
+# 01: Controlling an UAV via commands
 
 In this tutorial you will learn how to send commands to an UAV to control its movement.
 

@@ -1,4 +1,4 @@
-# 01: Running your first simulation
+# 01: Controlling an UAV via joystick
 
 In this tutorial you will learn to execute a simulation by opening a scenario, placing some UAVs over the terrain and 
 controlling them by means of a Thrustmaster joystick (other joysticks may work but it is no guaranteed).
