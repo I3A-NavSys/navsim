@@ -29,12 +29,12 @@ https://github.com/user-attachments/assets/68807db9-35ee-4cd5-9f48-3e62e3f2b44c
 
 For this tutorial we need to work with our own extension named *NavSim - Command Generator*. This extension has two
 main parts, the first one is in charge of selecting a UAV from the scene to send the command to, and the second one is
-the set of parameters from the command to be modified. Finally, at the end of the extensions there a *SEND* button to 
+the set of parameters from the command to be modified. Finally, at the end of the extensions there is a *SEND* button to 
 submit the Command.
 
 ![command_generator_extensions](./img/command_generator_extension.png)
 
-The parameter are:
+The parameters are:
 - ON: It is a checkbox to indicate whether to turn on the rotors or not
 - duration: It is a positive float field to tell the UAV during how many seconds you want the command to be executed
 - velX: linear velocity along X axis in m/s (forward)
@@ -44,10 +44,10 @@ The parameter are:
 
 To send a command, first click on *REFRESH* button to repopulate the UAVs selector dropdown and choose one among the
 options. Afterwards, set the *duration* parameter to 2 and the *velZ* to 1. Finally start the simulation by clicking
-on the *PLAY* button, zoom out a bit to see how the UAV raises, ans then click on *SEND* button to remit the command. 
+on the *PLAY* button, zoom out a bit to see how the UAV raises, and then click on *SEND* button to remit the command. 
 You will see that the drone elevates 2 meters high, 1 meter per second during 2 seconds.
 
-<!-- video -->
+https://github.com/user-attachments/assets/90c780dd-71e7-4563-924a-ae71366c553e
 
 ## Python implementation
 
@@ -62,3 +62,4 @@ Next, we build the command:
 Finally, we send the command:
 
 ![send_command](./img/send_command.png)
+
