@@ -65,3 +65,10 @@ Under the *NavSim - Manual Controller* extension refresh and select the new UAV.
 and start playing.
 
 https://github.com/user-attachments/assets/c91937dc-aedb-44f1-bc43-e06f3ec806af
+
+
+## Inside the control
+
+The control of the UAV is done by means of commands. These commands have information about rotors, if they must be on 
+or not, what linear and angular velocities the drone must have, as well as the duration of the command. This way we can
+translate the inputs received by the joystick to a command, assigning each value to the corresponding parameter.
