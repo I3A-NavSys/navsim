@@ -81,7 +81,7 @@ https://github.com/user-attachments/assets/38b11870-94a4-4309-9640-19287bd6b189
 
 Let's try to build a bigger flight plan in a bigger UAV!  
 
-First, locate `World/Vertiports/aerotaxi_vertiport` prim, focus on it and drag and drop the file 
+First, locate `World/Vertiports/aerotaxi_vertiport` prim, focus on it (press *F* key) and drag and drop the file 
 `navsim/ov/fleet/UAM_aerotaxi/UAM_aerotaxi.usd` over the vertiport.  
 
 Afterwards, open the `Window/Script Editor` panel and paste in the *Python 0* tab the following code:
@@ -105,16 +105,16 @@ uav_event = carb.events.type_from_string("NavSim." + str(uav.GetPath()))
 # Create the FlightPlan
 fp = FlightPlan()
 # Build the waypoints
-fp.set_waypoint(label="wp1", time=0, pos=[28,15,16])
-fp.set_waypoint(label="wp2", time=5, pos=[28,15,16])
-fp.set_waypoint(label="wp3", time=15, pos=[28,15,30])
-fp.set_waypoint(label="wp4", time=20, pos=[28,15,30])
-fp.set_waypoint(label="wp5", time=30, pos=[28,25,30])
-fp.set_waypoint(label="wp6", time=40, pos=[18,25,30])
-fp.set_waypoint(label="wp7", time=50, pos=[18,15,30])
-fp.set_waypoint(label="wp8", time=60, pos=[28,15,30])
-fp.set_waypoint(label="wp9", time=70, pos=[28,15,30])
-fp.set_waypoint(label="wp10", time=75, pos=[28,15,16])
+fp.set_waypoint(label="wp1", time=0, pos=[28.0,15.0,16.0])
+fp.set_waypoint(label="wp2", time=5, pos=[28.0,15.0,16.0])
+fp.set_waypoint(label="wp3", time=15, pos=[28.0,15.0,30.0])
+fp.set_waypoint(label="wp4", time=20, pos=[28.0,15.0,30.0])
+fp.set_waypoint(label="wp5", time=30, pos=[28.0,25.0,30.0])
+fp.set_waypoint(label="wp6", time=40, pos=[18.0,25.0,30.0])
+fp.set_waypoint(label="wp7", time=50, pos=[18.0,15.0,30.0])
+fp.set_waypoint(label="wp8", time=60, pos=[28.0,15.0,30.0])
+fp.set_waypoint(label="wp9", time=70, pos=[28.0,15.0,30.0])
+fp.set_waypoint(label="wp10", time=75, pos=[28.0,15.0,16.0])
 # Set linear uniform velocities
 fp.set_uniform_velocity()
 # Postpone 10 seconds the flightplan
@@ -131,4 +131,9 @@ bus_event_stream.push(uav_event, payload={"method": "eventFn_FlightPlan",
 ```
 
 Finally begin the simulation by clicking on *PLAY* button and then click on *Run (Ctrl + Enter)* button to run the
-script.
+script.  
+
+NOTE: It is important to run the script as soon as the simulation starts, because if simulation time gets greater than
+the initial flightplan time slot, which is 10s, then the flighplan will be discarded as it cannot be executed.
+This is solved by postponing the flighplan the current simulation time plus some extra seconds. However, we did not do
+this in the example for code simplicity.
