@@ -74,3 +74,6 @@ Once all waypoints have been added, the resulting waypoint list should be as fol
 
 Finally, click on *REFRESH* button at the top of the extension, select an UAV among the options, click on *PLAY*
 button to start the simulation and click on *Send Flight Plan* at the bottom of the extension to submit the flight plan.
+
+https://github.com/user-attachments/assets/38b11870-94a4-4309-9640-19287bd6b189
+
