@@ -320,7 +320,7 @@ class UAM_minidrone(BehaviorScript):
             return
 
         # Check FP vigency
-        WP = self.fp.GetTargetIndexFromTime(self.current_time)
+        WP = self.fp.get_target_index_from_time(self.current_time)
         numWPs = len(self.fp.waypoints)
 
         if self.currentWP is None and WP != 0:
