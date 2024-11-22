@@ -92,3 +92,5 @@ bus_event_stream.push(uav_event, payload={"method": "eventFn_RemoteCommand",
 
 Finally begin the simulation by clicking on *PLAY* button and then click on *Run (Ctrl + Enter)* button to run the
 script. You will see how the UAV does a 360º lap.
+
+![minidrone_flying](./img/minidrone_flying.png)
