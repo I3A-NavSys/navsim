@@ -137,3 +137,5 @@ NOTE: It is important to run the script as soon as the simulation starts, becaus
 the initial flightplan time slot, which is 10s, then the flighplan will be discarded as it cannot be executed.
 This is solved by postponing the flighplan the current simulation time plus some extra seconds. However, we did not do
 this in the example for code simplicity.
+
+![aerotaxi_flying](./img/aerotaxi_flying.png)
