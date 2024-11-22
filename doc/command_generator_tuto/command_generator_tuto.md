@@ -90,4 +90,5 @@ bus_event_stream.push(uav_event, payload={"method": "eventFn_RemoteCommand",
                                           "command": serialized_cmd})
 ```
 
-Finally click on *Run (Ctrl + Enter)* button to run the script. You will see how the UAV does a 360º lap.
+Finally begin the simulation by clicking on *PLAY* button and then click on *Run (Ctrl + Enter)* button to run the
+script. You will see how the UAV does a 360º lap.
