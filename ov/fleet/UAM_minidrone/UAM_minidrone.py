@@ -58,19 +58,23 @@ class UAM_minidrone(BehaviorScript):
         self.torque_atr.Set(Gf.Vec3f(0,0,0))
 
         primNE = self.prim.GetChild("rotor_NE")
-        self.forceNE_atr = primNE.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
+        # self.forceNE_atr = primNE.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
+        self.forceNE_atr = primNE.GetAttribute("physxForce:force")
         self.forceNE_atr.Set(Gf.Vec3f(0,0,0))
 
         primNW = self.prim.GetChild("rotor_NW")
-        self.forceNW_atr = primNW.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
+        # self.forceNW_atr = primNW.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
+        self.forceNW_atr = primNW.GetAttribute("physxForce:force")
         self.forceNW_atr.Set(Gf.Vec3f(0,0,0))
 
         primSE = self.prim.GetChild("rotor_SE")
-        self.forceSE_atr = primSE.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
+        # self.forceSE_atr = primSE.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
+        self.forceSE_atr = primSE.GetAttribute("physxForce:force")
         self.forceSE_atr.Set(Gf.Vec3f(0,0,0))
 
         primSW = self.prim.GetChild("rotor_SW")
-        self.forceSW_atr = primSW.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
+        # self.forceSW_atr = primSW.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
+        self.forceSW_atr = primSW.GetAttribute("physxForce:force")
         self.forceSW_atr.Set(Gf.Vec3f(0,0,0))        
         
         self.primRotSpinning = self.prim.GetChild("rotors_spinning")
@@ -257,10 +261,11 @@ class UAM_minidrone(BehaviorScript):
         self.forceSE_atr.Set(Gf.Vec3f(0,0,0))
         self.forceSW_atr.Set(Gf.Vec3f(0,0,0))
     
-        self.prim_rotor_NE_rot_att.Set(Gf.Quatd(1,0,0,0))
-        self.prim_rotor_NW_rot_att.Set(Gf.Quatd(1,0,0,0))
-        self.prim_rotor_SE_rot_att.Set(Gf.Quatd(1,0,0,0))
-        self.prim_rotor_SW_rot_att.Set(Gf.Quatd(1,0,0,0))
+        # Rotors animation
+        # self.prim_rotor_NE_rot_att.Set(Gf.Quatd(1,0,0,0))
+        # self.prim_rotor_NW_rot_att.Set(Gf.Quatd(1,0,0,0))
+        # self.prim_rotor_SE_rot_att.Set(Gf.Quatd(1,0,0,0))
+        # self.prim_rotor_SW_rot_att.Set(Gf.Quatd(1,0,0,0))
 
         self.fp = None
 
