@@ -88,5 +88,5 @@ This will install all necessary modules.
 ## Running your first simulation 
 
 Now, you are prepared to go to the 
-[first tutorial](https://github.com/I3A-NavSys/navsim/blob/main/doc/tuto1/tuto1.md)
+[first tutorial](../manual_controller_tuto/manual_controller_tuto.md)
 to execute a simulation.
