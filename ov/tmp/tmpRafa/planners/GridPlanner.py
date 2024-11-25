@@ -17,6 +17,8 @@ class GridPlanner:
         devuelve los dos nodos a los que podemos conectar al despegue
         """
         (i,j) = np.array(posXY) // self.cell_side
+        i = int(i)
+        j = int(j)
         s = time // self.slot_time
         if j % 2 == 0:
             return [(i+1,j  ,'X',s+2), (i-1,j+1,'X',s+2)]
@@ -30,6 +32,8 @@ class GridPlanner:
         devuelve los dos nodos desde los que podemos aterrizar
         """
         (i,j) = np.array(posXY) // self.cell_side
+        i = int(i)
+        j = int(j)
         if j % 2 == 0:
             return [(i+1,j+1,'X',None), (i-1,j  ,'X',None)]
         else:
