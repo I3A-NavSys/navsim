@@ -1,5 +1,6 @@
 import numpy as np
 from collections import deque
+import time
 
 class GridPlanner:
 
@@ -91,6 +92,7 @@ class GridPlanner:
         Dados dos nodos, devuelve una ruta libre del primero al segundo,
         partiendo en el slot especificado.
         """
+        start_time = time.time()
         (i2,j2,L2,s2) = node2
         # BFS
         explored_nodes = []
@@ -106,10 +108,24 @@ class GridPlanner:
             if node in self.grid:
                 continue
             if (i,j,L) == (i2,j2,L2):
+                end_time = time.time()
+                elapsed_time = end_time - start_time
+                print(f"Search finished")
+                print(f"\t-> Elapsed time: {elapsed_time}")
+                print(f"\t-> Explored nodes: {len(explored_nodes)}")
+                print()
                 return route
             routes.append( route + [self.GetNextNode(node)] )
             routes.append( route + [self.GetCrossNode(node)]  )
         return None
+    
+    def print_route(self, route):
+        print("-- ROUTE -----")
+        
+        for i in range(len(route)):
+            print(f"{i+1}: ({route[i][0]}, {route[i][1]}, {route[i][2]}, {route[i][3]})")
+        
+        print("--------------")
 
     def RouteLength(self, route):
         """
