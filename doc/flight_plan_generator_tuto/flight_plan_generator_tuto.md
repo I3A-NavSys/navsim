@@ -77,6 +77,13 @@ button to start the simulation and click on *Send Flight Plan* at the bottom of 
 
 https://github.com/user-attachments/assets/38b11870-94a4-4309-9640-19287bd6b189
 
+When the drone finishes the flight plan, two new windows will pop up. In those figures you will see two different lines,
+one blue continuous line (flight plan) and another black dotted line (UAV). The first figure shows the position in the
+3D space as well as the position versus time. On the other hand, the second figure shows the velocity versus time.  
+Thanks to this we can have an idea of how well the drone followed the plan.
+
+![telemetry](./img/telemetry.png)
+
 ## Python implementation
 
 Let's try to build a bigger flight plan in a bigger UAV!  
