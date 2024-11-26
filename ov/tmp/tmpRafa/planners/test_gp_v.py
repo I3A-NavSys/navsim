@@ -2,7 +2,7 @@ import sys
 import os
 
 #borrar consola
-os.system('cls')
+# os.system('cls')
 
 # Añadir el directorio principal al sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -10,10 +10,12 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 ##############################################################################
 
 
-from grid_planner_v import GridPlanner
+from grid_planner_v import GridPlanner as gp_v
+from GridPlanner import GridPlanner as gp_r
 
 
-gp = GridPlanner()
+# gp = gp_v()
+gp = gp_r()
 
 TOpos = (320, 270)  # posición de despegue   (m)
 TOtime = 33         # tiempo de despegue     (s)

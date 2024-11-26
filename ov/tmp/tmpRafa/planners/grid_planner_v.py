@@ -2,6 +2,7 @@ import numpy as np
 from collections import deque
 from queue import PriorityQueue
 from grid_planner_node import GridPlannerNode
+import time
 
 class GridPlanner:
 
@@ -90,7 +91,7 @@ class GridPlanner:
         Dados dos nodos, devuelve una ruta libre del primero al segundo,
         partiendo en el slot especificado.
         """
-
+        start_time = time.time()
         explored_nodes = []
         generation = 0
         prio_queue = PriorityQueue()
@@ -109,7 +110,14 @@ class GridPlanner:
                 continue
 
             if (node.i, node.j, node.L) == (end_node.i, end_node.j, end_node.L):
-                print(f"Search finished -> Explored nodes: {len(explored_nodes)}")
+                end_time = time.time()
+                elapsed_time = end_time - start_time
+
+                print(f"Search finished")
+                print(f"\t-> Elapsed time: {elapsed_time}")
+                print(f"\t-> Explored nodes: {len(explored_nodes)}")
+                print()
+
                 return self.get_route_from_node(node)
 
             next_node = self.GetNextNode(node)
