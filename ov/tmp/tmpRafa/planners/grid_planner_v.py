@@ -160,7 +160,7 @@ class GridPlanner:
         # if L == "X": This is for better implementation
 
         # Going right
-        if node.i % 2 == 0:
+        if node.j % 2 == 0:
             if i_dir > 0:   hi_dir = 0  # Correct direction
             else:           hi_dir = 1  # Incorrect direction
         
@@ -170,7 +170,7 @@ class GridPlanner:
             else:           hi_dir = 0  # Correct direction
 
         # Going up
-        if node.j % 2 == 0:
+        if node.i % 2 == 0:
             if j_dir > 0:   hj_dir = 0  # Correct direction
             else:           hj_dir = 1  # Incorrect direction
         
