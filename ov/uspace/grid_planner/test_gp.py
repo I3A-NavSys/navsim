@@ -5,14 +5,14 @@ import os
 os.system('cls')
 
 # Añadir el directorio principal al sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 ##############################################################################
 
 
-from grid_planner_v import GridPlanner as gp_v
-from GridPlanner import GridPlanner as gp_r
-from grid_planner_node import GridPlannerNode
+from grid_planner import GridPlanner as gp_v
+from tmp.tmpRafa.planners.GridPlanner import GridPlanner as gp_r
+from grid_node import GridNode
 
 
 gp_victor = gp_v()
@@ -93,7 +93,7 @@ Lnodes_victor  = gp_victor.get_landing_nodes(Lpos)
 # print()
 
 print("-------------------")
-route = gp_victor.get_route(GridPlannerNode(2, 4, 'X', 5, 0, None), GridPlannerNode(8, 4, 'X', -1, 0, None))
+route = gp_victor.get_route(GridNode(2, 4, 'X', 5, 0, None), GridNode(8, 4, 'X', -1, 0, None))
 
 gp_victor.print_route(route)
 print(gp_victor.route_length(route))
@@ -104,7 +104,7 @@ if not conflicts:
     gp_victor.reserve_nodes(route)
 
 print("-------------------")
-route = gp_victor.get_route(GridPlannerNode(1, 4, 'X', 4, 0, None), GridPlannerNode(8, 4, 'X', -1, 0, None))
+route = gp_victor.get_route(GridNode(1, 4, 'X', 4, 0, None), GridNode(8, 4, 'X', -1, 0, None))
 
 gp_victor.print_route(route)
 print(gp_victor.route_length(route))
@@ -115,7 +115,7 @@ if not conflicts:
     gp_victor.reserve_nodes(route)
 
 print("-------------------")
-route = gp_victor.get_route(GridPlannerNode(1, 8, 'X', 4, 0, None), GridPlannerNode(8, 4, 'X', -1, 0, None))
+route = gp_victor.get_route(GridNode(1, 8, 'X', 4, 0, None), GridNode(8, 4, 'X', -1, 0, None))
 
 gp_victor.print_route(route)
 print(gp_victor.route_length(route))

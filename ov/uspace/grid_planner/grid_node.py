@@ -1,4 +1,4 @@
-class GridPlannerNode:
+class GridNode:
     def __init__(self, i, j, L, s, cost, parent):
         self.i = i
         self.j = j

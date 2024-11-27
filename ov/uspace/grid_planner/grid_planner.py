@@ -1,7 +1,6 @@
 import numpy as np
-from collections import deque
 from queue import PriorityQueue
-from grid_planner_node import GridPlannerNode
+from grid_node import GridNode
 import time
 
 class GridPlanner:
@@ -23,9 +22,9 @@ class GridPlanner:
         j = int(j)
         s = time // self.slot_time
         if j % 2 == 0:
-            return [GridPlannerNode(i+1, j, 'X', s+2, 0, None), GridPlannerNode(i-1, j+1, 'X', s+2, 0, None)]
+            return [GridNode(i+1, j, 'X', s+2, 0, None), GridNode(i-1, j+1, 'X', s+2, 0, None)]
         else:
-            return [GridPlannerNode(i+1, j+1, 'X', s+2, 0, None), GridPlannerNode(i-1, j, 'X', s+2, 0, None)]
+            return [GridNode(i+1, j+1, 'X', s+2, 0, None), GridNode(i-1, j, 'X', s+2, 0, None)]
         
     def get_landing_nodes(self, posXY):
         """
@@ -36,57 +35,57 @@ class GridPlanner:
         i = int(i)
         j = int(j)
         if j % 2 == 0:
-            return [GridPlannerNode(i+1, j+1, 'X', None, 0, None), GridPlannerNode(i-1, j, 'X', None, 0, None)]
+            return [GridNode(i+1, j+1, 'X', None, 0, None), GridNode(i-1, j, 'X', None, 0, None)]
         else:
-            return [GridPlannerNode(i-1, j+1, 'X', None, 0, None), GridPlannerNode(i+1, j, 'X', None, 0, None)]
+            return [GridNode(i-1, j+1, 'X', None, 0, None), GridNode(i+1, j, 'X', None, 0, None)]
 
-    def get_next_node(self, node: GridPlannerNode):
+    def get_next_node(self, node: GridNode):
         """
         Dado un nodo, devuelve el nodo siguiente en línea recta.
         """
         if node.L == 'X':
             if node.j % 2 == 0:                  
-                return GridPlannerNode(node.i+1, node.j, 'X', node.s+1, node.cost+1, node)        # rumbo ESTE
+                return GridNode(node.i+1, node.j, 'X', node.s+1, node.cost+1, node)        # rumbo ESTE
             else:                           
-                return GridPlannerNode(node.i-1, node.j, 'X', node.s+1, node.cost+1, node)        # rumbo OESTE
+                return GridNode(node.i-1, node.j, 'X', node.s+1, node.cost+1, node)        # rumbo OESTE
         
         # L == 'Y'
         else:
             if node.i % 2 == 0:                  
-                return GridPlannerNode(node.i, node.j+1, 'Y', node.s+1, node.cost+1, node)        # rumbo NORTE
+                return GridNode(node.i, node.j+1, 'Y', node.s+1, node.cost+1, node)        # rumbo NORTE
             else:                           
-                return GridPlannerNode(node.i, node.j-1, 'Y', node.s+1, node.cost+1, node)        # rumbo SUR
+                return GridNode(node.i, node.j-1, 'Y', node.s+1, node.cost+1, node)        # rumbo SUR
 
-    def get_cross_node(self, node: GridPlannerNode):
+    def get_cross_node(self, node: GridNode):
         """
         Dado un nodo, devuelve el nodo siguiente en cruce.
         """
         if node.L == 'X':
             if node.j % 2 == 0:                  
                 if node.i % 2 == 0:              
-                    return GridPlannerNode(node.i+1, node.j-1, 'Y', node.s+1, node.cost+1, node)    # giro ESTE -> SUR
+                    return GridNode(node.i+1, node.j-1, 'Y', node.s+1, node.cost+1, node)    # giro ESTE -> SUR
                 else:                       
-                    return GridPlannerNode(node.i+1, node.j, 'Y', node.s+1, node.cost+1, node)    # giro ESTE -> NORTE
+                    return GridNode(node.i+1, node.j, 'Y', node.s+1, node.cost+1, node)    # giro ESTE -> NORTE
             else:                           
                 if node.i % 2 == 0:              
-                    return GridPlannerNode(node.i, node.j, 'Y', node.s+1, node.cost+1, node)    # giro OESTE -> NORTE
+                    return GridNode(node.i, node.j, 'Y', node.s+1, node.cost+1, node)    # giro OESTE -> NORTE
                 else:                       
-                    return GridPlannerNode(node.i, node.j-1, 'Y', node.s+1, node.cost+1, node)    # giro OESTE -> SUR
+                    return GridNode(node.i, node.j-1, 'Y', node.s+1, node.cost+1, node)    # giro OESTE -> SUR
         
         # L == 'Y'
         else:
             if node.i % 2 == 0:                  
                 if node.j % 2 == 0:              
-                    return GridPlannerNode(node.i-1, node.j+1, 'X', node.s+1, node.cost+1, node)    # giro NORTE -> OESTE
+                    return GridNode(node.i-1, node.j+1, 'X', node.s+1, node.cost+1, node)    # giro NORTE -> OESTE
                 else:                       
-                    return GridPlannerNode(node.i, node.j+1, 'X', node.s+1, node.cost+1, node)    # giro NORTE -> ESTE
+                    return GridNode(node.i, node.j+1, 'X', node.s+1, node.cost+1, node)    # giro NORTE -> ESTE
             else:                           
                 if node.j % 2 == 0:              
-                    return GridPlannerNode(node.i, node.j, 'X', node.s+1, node.cost+1, node)    # giro SUR -> ESTE
+                    return GridNode(node.i, node.j, 'X', node.s+1, node.cost+1, node)    # giro SUR -> ESTE
                 else:                       
-                    return GridPlannerNode(node.i-1, node.j, 'X', node.s+1, node.cost+1, node)    # giro SUR -> OESTE
+                    return GridNode(node.i-1, node.j, 'X', node.s+1, node.cost+1, node)    # giro SUR -> OESTE
 
-    def get_route(self, start_node: GridPlannerNode, end_node: GridPlannerNode):
+    def get_route(self, start_node: GridNode, end_node: GridNode):
         """
         Dados dos nodos, devuelve una ruta libre del primero al segundo,
         partiendo en el slot especificado.
@@ -100,7 +99,7 @@ class GridPlanner:
         # prio_queue.put((0, h_start_node, generation, start_node))
 
         while not prio_queue.empty():
-            node: GridPlannerNode = prio_queue.get()[2]
+            node: GridNode = prio_queue.get()[2]
 
             if (node.i, node.j, node.L) in explored_nodes:
                 continue
@@ -134,7 +133,7 @@ class GridPlanner:
 
         return None
     
-    def get_route_from_node(self, node: GridPlannerNode):
+    def get_route_from_node(self, node: GridNode):
         route = []
 
         while node.parent is not None:
@@ -144,7 +143,7 @@ class GridPlanner:
         route.insert(0, node)
         return route
 
-    def evaluate_node(self, node: GridPlannerNode, end_node: GridPlannerNode):
+    def evaluate_node(self, node: GridNode, end_node: GridNode):
         i_diff = end_node.i - node.i
         j_diff = end_node.j - node.j
 
@@ -177,7 +176,7 @@ class GridPlanner:
         return heuristic + distance
 
 
-    def get_heuristic_dir(self, i_dir, j_dir, node: GridPlannerNode):
+    def get_heuristic_dir(self, i_dir, j_dir, node: GridNode):
         # if node.L == "X":
         # Going right
         if node.j % 2 == 0:
