@@ -44,7 +44,7 @@ class UAM_minidrone(BehaviorScript):
 
         # Create rigid prim view
         prim_paths = ["/aerotaxi/body_link", "/aerotaxi/(NE|NW|SE|SW)_rotor_link"]
-        self.rigid_prim_view = RigidPrimView(prim_paths)   
+        self.rigid_prim_view = RigidPrimView(prim_paths)
         
         # Create the omniverse event associated to this UAV
         self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(self.prim.GetPath()))
@@ -202,7 +202,7 @@ class UAM_minidrone(BehaviorScript):
         pass
 
     def on_update(self, current_time: float, delta_time: float):
-        # print(f"UPDATE  {self.prim_path} \t {current_time:.3f} \t {delta_time:.3f}")
+        self.rigid_prim_view.initialize()
 
         # Get current simulation time
         self.current_time = current_time
@@ -285,12 +285,18 @@ class UAM_minidrone(BehaviorScript):
         self.body_link_lin = lin[0]
         self.body_link_ang = ang[0]
 
-        print(f"Position: {self.body_link_pos}")
-        print(f"Roll: {self.roll}")
-        print(f"Pitch: {self.pitch}")
-        print(f"Yaw: {self.yaw}")
-        print(f"Linear Vel: {self.body_link_lin}")
-        print(f"Angular Vel: {self.body_link_ang}\n")
+        dynamic_states = self.rigid_prim_view.get_current_dynamic_state()
+
+        # print(f"Position: {self.body_link_pos}")
+        # print(f"Roll: {self.roll}")
+        # print(f"Pitch: {self.pitch}")
+        # print(f"Yaw: {self.yaw}")
+        # print(f"Linear Vel: {self.body_link_lin}")
+        # print(f"Angular Vel: {self.body_link_ang}\n")
+
+        print(f"Position: {dynamic_states.positions[0]}")
+        print(f"Linear Vel: {dynamic_states.linear_velocities[0]}")
+        print(f"Angular Vel: {dynamic_states.angular_velocities[0]}\n")
 
         # self.linear_vel  = self.linVel_atr.Get()
         # self.angular_vel = self.angVel_atr.Get() * np.pi / 180
