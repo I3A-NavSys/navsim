@@ -45,6 +45,7 @@ class UAM_minidrone(BehaviorScript):
         # Create rigid prim view
         prim_paths = ["/aerotaxi/body_link", "/aerotaxi/(NE|NW|SE|SW)_rotor_link"]
         self.rigid_prim_view = RigidPrimView(prim_paths)
+        self.rigid_prim_view_initialized = False
         
         # Create the omniverse event associated to this UAV
         self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(self.prim.GetPath()))
@@ -182,6 +183,7 @@ class UAM_minidrone(BehaviorScript):
         pass
 
     def on_stop(self):
+        self.rigid_prim_view_initialized = False
         # self.current_time = 0
         # self.delta_time = 0
 
@@ -202,8 +204,10 @@ class UAM_minidrone(BehaviorScript):
         pass
 
     def on_update(self, current_time: float, delta_time: float):
-        self.rigid_prim_view.initialize()
-
+        if not self.rigid_prim_view_initialized:
+            self.rigid_prim_view.initialize()
+            self.rigid_prim_view_initialized = True
+        
         # Get current simulation time
         self.current_time = current_time
         self.delta_time = delta_time
@@ -214,6 +218,8 @@ class UAM_minidrone(BehaviorScript):
         # self.servo_control()
         # self.platform_dynamics()
         # self.telemetry()
+
+        print(f"LINEAR: {self.body_link_lin}\n")
 
     def push_subscripted_event_method(self, e):       
 
@@ -285,21 +291,17 @@ class UAM_minidrone(BehaviorScript):
         self.body_link_lin = lin[0]
         self.body_link_ang = ang[0]
 
-        dynamic_states = self.rigid_prim_view.get_current_dynamic_state()
+        self.NE_rotor_link_lin = lin[1]
+        self.NE_rotor_link_ang = ang[1]
 
-        # print(f"Position: {self.body_link_pos}")
-        # print(f"Roll: {self.roll}")
-        # print(f"Pitch: {self.pitch}")
-        # print(f"Yaw: {self.yaw}")
-        # print(f"Linear Vel: {self.body_link_lin}")
-        # print(f"Angular Vel: {self.body_link_ang}\n")
+        self.NW_rotor_link_lin = lin[2]
+        self.NW_rotor_link_ang = ang[2]
 
-        print(f"Position: {dynamic_states.positions[0]}")
-        print(f"Linear Vel: {dynamic_states.linear_velocities[0]}")
-        print(f"Angular Vel: {dynamic_states.angular_velocities[0]}\n")
+        self.SE_rotor_link_lin = lin[3]
+        self.SE_rotor_link_ang = ang[3]
 
-        # self.linear_vel  = self.linVel_atr.Get()
-        # self.angular_vel = self.angVel_atr.Get() * np.pi / 180
+        self.SW_rotor_link_lin = lin[4]
+        self.SW_rotor_link_ang = ang[4]
 
     def navigation(self):
         # This function converts a flight plan position at certain time to a navigation command
