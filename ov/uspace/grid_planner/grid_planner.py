@@ -19,6 +19,7 @@ class GridPlanner:
         self.x_height = x_height    # Altura del subnivel este/oeste (m)
         self.y_height = y_height    # Altura del subnivel norte/sur  (m)
         self.grid = {}              # Diccionario de celdas
+        self.cost_only = False
 
     def get_take_off_nodes(self, posXY, time):
         """
@@ -71,34 +72,35 @@ class GridPlanner:
         if node.L == 'X':
             if node.j % 2 == 0:                  
                 if node.i % 2 == 0:              
-                    return GridNode(node.i+1, node.j-1, 'Y', node.s+1, node.cost+1, node)    # giro ESTE -> SUR
+                    return GridNode(node.i+1, node.j-1, 'Y', node.s+1, node.cost+2, node)    # giro ESTE -> SUR
                 else:                       
-                    return GridNode(node.i+1, node.j, 'Y', node.s+1, node.cost+1, node)    # giro ESTE -> NORTE
+                    return GridNode(node.i+1, node.j, 'Y', node.s+1, node.cost+2, node)    # giro ESTE -> NORTE
             else:                           
                 if node.i % 2 == 0:              
-                    return GridNode(node.i, node.j, 'Y', node.s+1, node.cost+1, node)    # giro OESTE -> NORTE
+                    return GridNode(node.i, node.j, 'Y', node.s+1, node.cost+2, node)    # giro OESTE -> NORTE
                 else:                       
-                    return GridNode(node.i, node.j-1, 'Y', node.s+1, node.cost+1, node)    # giro OESTE -> SUR
+                    return GridNode(node.i, node.j-1, 'Y', node.s+1, node.cost+2, node)    # giro OESTE -> SUR
         
         # L == 'Y'
         else:
             if node.i % 2 == 0:                  
                 if node.j % 2 == 0:              
-                    return GridNode(node.i-1, node.j+1, 'X', node.s+1, node.cost+1, node)    # giro NORTE -> OESTE
+                    return GridNode(node.i-1, node.j+1, 'X', node.s+1, node.cost+2, node)    # giro NORTE -> OESTE
                 else:                       
-                    return GridNode(node.i, node.j+1, 'X', node.s+1, node.cost+1, node)    # giro NORTE -> ESTE
+                    return GridNode(node.i, node.j+1, 'X', node.s+1, node.cost+2, node)    # giro NORTE -> ESTE
             else:                           
                 if node.j % 2 == 0:              
-                    return GridNode(node.i, node.j, 'X', node.s+1, node.cost+1, node)    # giro SUR -> ESTE
+                    return GridNode(node.i, node.j, 'X', node.s+1, node.cost+2, node)    # giro SUR -> ESTE
                 else:                       
-                    return GridNode(node.i-1, node.j, 'X', node.s+1, node.cost+1, node)    # giro SUR -> OESTE
+                    return GridNode(node.i-1, node.j, 'X', node.s+1, node.cost+2, node)    # giro SUR -> OESTE
 
-    def get_route(self, start_node: GridNode, end_node: GridNode):
+    def get_route(self, start_node: GridNode, end_node: GridNode, cost_only=False):
         """
         Dados dos nodos, devuelve una ruta libre del primero al segundo,
         partiendo en el slot especificado.
         """
         start_time = time.time()
+        self.cost_only = cost_only
         explored_nodes = []
         generation = 0
         prio_queue = PriorityQueue()
@@ -176,7 +178,9 @@ class GridPlanner:
 
         # return heuristic + jumps
         # return heuristic
-        return heuristic + distance
+
+        if not self.cost_only:  return heuristic + distance
+        else:                   return node.cost
 
 
     def get_heuristic_dir(self, i_dir, j_dir, node: GridNode):
@@ -243,8 +247,7 @@ class GridPlanner:
         :param route: Lista de nodos que forman la ruta.
         """
         for node in route:
-            if node in self.grid:
-                del self.grid[node]
+            self.grid.pop((node.i, node.j, node.L, node.s))
 
     def are_there_conflicts(self, route):
         """
