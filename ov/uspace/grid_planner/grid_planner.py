@@ -1,7 +1,15 @@
 import numpy as np
 from queue import PriorityQueue
-from grid_node import GridNode
 import time
+
+class GridNode:
+    def __init__(self, i, j, L, s, cost, parent):
+        self.i = i
+        self.j = j
+        self.L = L
+        self.s = s
+        self.cost = cost
+        self.parent = parent
 
 class GridPlanner:
 
@@ -113,12 +121,7 @@ class GridPlanner:
                 end_time = time.time()
                 elapsed_time = end_time - start_time
 
-                print(f"Search finished")
-                print(f"\t-> Elapsed time: {elapsed_time}")
-                print(f"\t-> Explored nodes: {len(explored_nodes)}")
-                print()
-
-                return self.get_route_from_node(node)
+                return self.get_route_from_node(node), elapsed_time, len(explored_nodes)
 
             next_node = self.get_next_node(node)
             h_next_node = self.evaluate_node(next_node, end_node)
@@ -204,8 +207,12 @@ class GridPlanner:
     def print_route(self, route):
         print("-- ROUTE -----")
         
-        for i in range(len(route)):
-            print(f"{i+1}: ({route[i].i}, {route[i].j}, {route[i].L}, {route[i].s})")
+        if route is None:
+            print("No route could be found. Try a different time slot")
+        
+        else:
+            for i in range(len(route)):
+                print(f"{i+1}: ({route[i].i}, {route[i].j}, {route[i].L}, {route[i].s})")
         
         print("--------------")
 
