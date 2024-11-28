@@ -219,8 +219,6 @@ class UAM_minidrone(BehaviorScript):
         # self.platform_dynamics()
         # self.telemetry()
 
-        print(f"LINEAR: {self.body_link_lin}\n")
-
     def push_subscripted_event_method(self, e):       
 
         try:
