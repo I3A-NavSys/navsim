@@ -352,12 +352,12 @@ class UAM_minidrone(BehaviorScript):
                 print(f"[{self.current_time:3.2f}] {self.prim_path} has completed its flight plan")
 
                 # Uncomment this to show the corresponding plots
-                # plt.close(plt.gcf())
-                # self.fp.PositionFigure("FP1: POSITION", 0.01)
-                # self.fp.VelocityFigure("FP1: VELOCITY", 0.01)
+                plt.close(plt.gcf())
+                self.fp.position_figure("FP1: POSITION", 0.01)
+                self.fp.velocity_figure("FP1: VELOCITY", 0.01)
                 
-                # self.fp.AddUAVTrackPos("FP1: POSITION", self.track_info)
-                # self.fp.AddUAVTrackVel("FP1: VELOCITY", self.track_info)
+                self.fp.add_UAV_track_pos("FP1: POSITION", self.track_info)
+                self.fp.add_UAV_track_vel("FP1: VELOCITY", self.track_info)
 
                 self.fp = None
                 return
