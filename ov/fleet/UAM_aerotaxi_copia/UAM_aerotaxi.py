@@ -446,11 +446,11 @@ class UAM_minidrone(BehaviorScript):
 
         # Apply forces and torques to all UAV links
         # forces = np.array([FD, FT_NE, FT_NW, FT_SE, FT_SW])
-        forces = np.array([FD, [0, 0, 18375], [0, 0, 18375], [0, 0, 3676], [0, 0, 3676]])
+        forces = np.array([FD, [0, 0, 81670], [0, 0, 81670], [0, 0, 16340], [0, 0, 16340]])
 
         # torques = np.array([body_link_torque, zero_torque, zero_torque, zero_torque, zero_torque])
         torques = np.array([zero_torque, zero_torque, zero_torque, zero_torque, zero_torque])
-        
+
         self.rigid_prim_view.apply_forces_and_torques_at_pos(forces=forces, torques=torques)
         print(forces)
 
