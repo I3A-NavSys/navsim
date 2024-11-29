@@ -134,7 +134,10 @@ class GridPlanner:
             prio_queue.put((h_next_node, generation, next_node))
             
             generation += 1
-            prio_queue.put((h_cross_node, generation, cross_node))
+            if not self.cost_only:
+                prio_queue.put((h_cross_node+1, generation, cross_node))
+            else:
+                prio_queue.put((h_cross_node, generation, cross_node))
 
         return None
     
@@ -184,26 +187,24 @@ class GridPlanner:
 
 
     def get_heuristic_dir(self, i_dir, j_dir, node: GridNode):
-        # if node.L == "X":
         # Going right
         if node.j % 2 == 0:
-            if i_dir > 0:   heuristic = 0  # Correct direction
+            if i_dir >= 0:   heuristic = 0  # Correct direction
             else:           heuristic = 1  # Incorrect direction
         
         # Going left
         else:
-            if i_dir > 0:   heuristic = 1  # Incorrect direction
+            if i_dir >= 0:   heuristic = 1  # Incorrect direction
             else:           heuristic = 0  # Correct direction
 
-        # else:
         # Going up
         if node.i % 2 == 0:
-            if j_dir > 0:   heuristic = 0  # Correct direction
+            if j_dir >= 0:   heuristic = 0  # Correct direction
             else:           heuristic = 1  # Incorrect direction
         
         # Going down
         else:
-            if j_dir > 0:   heuristic = 1  # Incorrect direction
+            if j_dir >= 0:   heuristic = 1  # Incorrect direction
             else:           heuristic = 0  # Correct direction
 
         return heuristic
