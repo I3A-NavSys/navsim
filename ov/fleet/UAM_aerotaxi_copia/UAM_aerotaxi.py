@@ -174,21 +174,21 @@ class UAM_minidrone(BehaviorScript):
         # Update the drone status
         self.imu()
         self.navigation()
-        # self.command.hover()
-        # self.servo_control()
-        # self.platform_dynamics()
-        # self.telemetry()
+        self.command.hover()
+        self.servo_control()
+        self.platform_dynamics()
+        self.telemetry()
 
     def on_pause(self):
         pass
 
     def on_stop(self):
         self.rigid_prim_view_initialized = False
-        # self.current_time = 0
-        # self.delta_time = 0
+        self.current_time = 0
+        self.delta_time = 0
 
-        # self.command.off()
-        # self.rotors_off()
+        self.command.off()
+        self.rotors_off()
 
         # self.force_atr.Set(Gf.Vec3f(0,0,0))
         # self.torque_atr.Set(Gf.Vec3f(0,0,0))
@@ -197,11 +197,10 @@ class UAM_minidrone(BehaviorScript):
         # self.forceSE_atr.Set(Gf.Vec3f(0,0,0))
         # self.forceSW_atr.Set(Gf.Vec3f(0,0,0))
     
-        # self.fp = None
+        self.fp = None
 
-        # self.tracking_figure_builded = False
-        # self.track_info = []
-        pass
+        self.tracking_figure_builded = False
+        self.track_info = []
 
     def on_update(self, current_time: float, delta_time: float):
         if not self.rigid_prim_view_initialized:
@@ -215,9 +214,9 @@ class UAM_minidrone(BehaviorScript):
         # Update the drone status
         self.imu()
         self.navigation()
-        # self.servo_control()
-        # self.platform_dynamics()
-        # self.telemetry()
+        self.servo_control()
+        self.platform_dynamics()
+        self.telemetry()
 
     def push_subscripted_event_method(self, e):       
 
@@ -255,7 +254,6 @@ class UAM_minidrone(BehaviorScript):
         self.w_rotor_NW = 0
         self.w_rotor_SE = 0
         self.w_rotor_SW = 0
-        self.primRotors.GetAttribute("visibility").Set("inherited")
 
         # Reset control
         self.E = np.zeros((4, 1))
@@ -343,13 +341,12 @@ class UAM_minidrone(BehaviorScript):
         self.currentWP = WP
         
         # Change relative vel to absolute
-        linear_vel = self.rot.apply(self.body_link_lin)
-        self.command = self.fp.get_command(self.current_time, self.body_link_pos, linear_vel, self.rot, 2)
+        linear_vel = self.body_link_rot.apply(self.body_link_lin)
+        self.command = self.fp.get_command(self.current_time, self.body_link_pos, linear_vel, self.body_link_rot, 2)
         self.cmd_exp_time = self.current_time + self.command.duration
 
     def servo_control(self):
         # This function converts a navigation command into speeds of the four rotors
-
         if not self.command.on:
             self.rotors_off()
             return
@@ -357,8 +354,6 @@ class UAM_minidrone(BehaviorScript):
         if self.command.duration is not None:
             if self.current_time > self.cmd_exp_time:
                 self.command.hover()
-
-        self.primRotors.GetAttribute("visibility").Set("invisible")
 
         # Assign the model reference to be followed
         self.r[0, 0] = self.command.velX       # bXdot
@@ -420,37 +415,44 @@ class UAM_minidrone(BehaviorScript):
     def platform_dynamics(self):
         # Translate rotor speeds into forces and moments of the free solid to simulate lift rotation.
         # Apply thrust force
-        FT_NE = Gf.Vec3f(0, 0, self.kFT_N * self.w_rotor_NE**2)
-        FT_NW = Gf.Vec3f(0, 0, self.kFT_N * self.w_rotor_NW**2)
-        FT_SE = Gf.Vec3f(0, 0, self.kFT_S * self.w_rotor_SE**2)
-        FT_SW = Gf.Vec3f(0, 0, self.kFT_S * self.w_rotor_SW**2)
-        self.forceNE_atr.Set(FT_NE)
-        self.forceNW_atr.Set(FT_NW)
-        self.forceSE_atr.Set(FT_SE)
-        self.forceSW_atr.Set(FT_SW)
+        FT_NE = np.array([0, 0, self.kFT_N * self.w_rotor_NE**2])
+        FT_NW = np.array([0, 0, self.kFT_N * self.w_rotor_NW**2])
+        FT_SE = np.array([0, 0, self.kFT_S * self.w_rotor_SE**2])
+        FT_SW = np.array([0, 0, self.kFT_S * self.w_rotor_SW**2])
 
         # Apply the air friction force to the aerotaxi
-        FD = Gf.Vec3f(
+        FD = np.array([
             -self.kFDx * self.body_link_lin[0] * abs(self.body_link_lin[0]),
             -self.kFDy * self.body_link_lin[1] * abs(self.body_link_lin[1]),
-            -self.kFDz * self.body_link_lin[2] * abs(self.body_link_lin[2]))
-        self.force_atr.Set(FD)
+            -self.kFDz * self.body_link_lin[2] * abs(self.body_link_lin[2])])
+        # self.force_atr.Set(FD)
       
         # Compute the drag moment
         MDR_NE = self.kMDR_N * self.w_rotor_NE**2
         MDR_NW = self.kMDR_N * self.w_rotor_NW**2
         MDR_SE = self.kMDR_S * self.w_rotor_SE**2
         MDR_SW = self.kMDR_S * self.w_rotor_SW**2
-        MDR = Gf.Vec3f(0, 0, MDR_NE - MDR_NW - MDR_SE + MDR_SW)
+        MDR = np.array([0, 0, MDR_NE - MDR_NW - MDR_SE + MDR_SW])
 
         # Compute the air friction moment
-        MD = Gf.Vec3f(
+        MD = np.array([
             -self.kMDx * self.body_link_ang[0] * abs(self.body_link_ang[0]),
             -self.kMDy * self.body_link_ang[1] * abs(self.body_link_ang[1]),
-            -self.kMDz * self.body_link_ang[2] * abs(self.body_link_ang[2]))
+            -self.kMDz * self.body_link_ang[2] * abs(self.body_link_ang[2])])
 
-        # Apply the moments to the drone
-        self.torque_atr.Set(MDR + MD)
+        # Compute drone moment
+        body_link_torque = MDR + MD
+        zero_torque = np.array([0, 0, 0])
+
+        # Apply forces and torques to all UAV links
+        # forces = np.array([FD, FT_NE, FT_NW, FT_SE, FT_SW])
+        forces = np.array([FD, [0, 0, 18375], [0, 0, 18375], [0, 0, 3676], [0, 0, 3676]])
+
+        # torques = np.array([body_link_torque, zero_torque, zero_torque, zero_torque, zero_torque])
+        torques = np.array([zero_torque, zero_torque, zero_torque, zero_torque, zero_torque])
+        
+        self.rigid_prim_view.apply_forces_and_torques_at_pos(forces=forces, torques=torques)
+        print(forces)
 
     #------------------------------------------------------------------------------------------------------------------
     # TRACKING FUNCTIONS
@@ -462,7 +464,7 @@ class UAM_minidrone(BehaviorScript):
             self.last_time_track = self.current_time
 
             # Change relative vel to absolute
-            linear_vel = self.rot.apply(self.body_link_lin)
+            linear_vel = self.body_link_rot.apply(self.body_link_lin)
 
             # Get tracking information
             self.track_info.append(Waypoint(t=self.current_time, pos=self.body_link_pos, vel=linear_vel))
