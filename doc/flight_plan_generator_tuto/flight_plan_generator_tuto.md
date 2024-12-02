@@ -166,4 +166,4 @@ the initial flightplan time slot, which is 10s (once postponed), then the flighp
 executed. This is solved by postponing the flighplan the current simulation time plus some extra seconds. However, we 
 did not do this in the example for code simplicity.
 
-![aerotaxi_flying](./img/bostom_flightplan.mp4)
+https://github.com/user-attachments/assets/84cf7dde-e62b-437e-80ac-eec80e55bac3
