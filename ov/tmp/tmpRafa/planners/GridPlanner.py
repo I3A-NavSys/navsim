@@ -110,11 +110,8 @@ class GridPlanner:
             if (i,j,L) == (i2,j2,L2):
                 end_time = time.time()
                 elapsed_time = end_time - start_time
-                print(f"Search finished")
-                print(f"\t-> Elapsed time: {elapsed_time}")
-                print(f"\t-> Explored nodes: {len(explored_nodes)}")
-                print()
-                return route
+                
+                return route, elapsed_time, len(explored_nodes)
             routes.append( route + [self.GetNextNode(node)] )
             routes.append( route + [self.GetCrossNode(node)]  )
         return None

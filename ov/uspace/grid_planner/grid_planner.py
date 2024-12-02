@@ -18,6 +18,7 @@ class GridPlanner:
         self.slot_time = slot_time  # Duración de cada slot          (s)
         self.x_height = x_height    # Altura del subnivel este/oeste (m)
         self.y_height = y_height    # Altura del subnivel norte/sur  (m)
+        self.level_height_diff = y_height - x_height
         self.grid = {}              # Diccionario de celdas
         self.cost_only = False
 
@@ -106,7 +107,6 @@ class GridPlanner:
         prio_queue = PriorityQueue()
         h_start_node = self.evaluate_node(start_node, end_node)
         prio_queue.put((h_start_node, generation, start_node))
-        # prio_queue.put((0, h_start_node, generation, start_node))
 
         while not prio_queue.empty():
             node: GridNode = prio_queue.get()[2]
@@ -139,7 +139,7 @@ class GridPlanner:
             else:
                 prio_queue.put((h_cross_node, generation, cross_node))
 
-        return None
+        return None, None, None
     
     def get_route_from_node(self, node: GridNode):
         route = []
@@ -152,60 +152,85 @@ class GridPlanner:
         return route
 
     def evaluate_node(self, node: GridNode, end_node: GridNode):
-        i_diff = end_node.i - node.i
-        j_diff = end_node.j - node.j
+        # Euclidean distance
+        i = node.i
+        j = node.j
+        end_i = end_node.i
+        end_j = end_node.j
 
-        heuristic = self.get_heuristic_dir(i_diff, j_diff, node)
+        if node.L == "X":       i += 0.5
+        else:                   j += 0.5
 
+        if end_node.L == "X":   end_i += 0.5
+        else:                   end_j += 0.5
+
+        i_diff = end_i - i
+        j_diff = end_j - j
+
+        distance = np.sqrt(abs(i_diff)**2 + abs(j_diff)**2) 
+
+        # Heuristic based on airlines' direction
+        heuristic = self.get_heuristic_dir(i_diff, j_diff, node, end_node)     
+
+        if not self.cost_only:  return heuristic + distance
+        else:                   return node.cost + distance
+
+    def get_heuristic_dir(self, i_diff, j_diff, node: GridNode, end_node: GridNode):
+        heuristic = 0
+        
+        # Evaluate which direction we should follow and the one we actually are following due to the aeroline we are in
+        if node.L == "X":
+            # Going right
+            if node.j % 2 == 0:
+                if i_diff == 0:      heuristic = -1 # Reward been at same level
+                elif i_diff > 0:     heuristic = 0  # Correct direction
+                else:               heuristic = 1   # Incorrect direction
+            
+            # Going left
+            else:
+                if i_diff == 0:      heuristic = -1 # Reward been at same level
+                elif i_diff > 0:     heuristic = 1  # Incorrect direction
+                else:               heuristic = 0   # Correct direction
+
+        else:
+            # Going up
+            if node.i % 2 == 0:
+                if j_diff == 0:      heuristic = -1 # Reward been at same level
+                elif j_diff > 0:     heuristic = 0  # Correct direction
+                else:               heuristic = 1   # Incorrect direction
+            
+            # Going down
+            else:
+                if j_diff == 0:      heuristic = -1 # Reward been at same level
+                elif j_diff > 0:     heuristic = 1  # Incorrect direction
+                else:               heuristic = 0   # Correct direction
+
+        # Penalize if we are not arriving to end node from correct direction
         if end_node.L == "X":
+            # Arrive from left
             if end_node.j % 2 == 0:
+                # Arriving from right
                 if i_diff < 0:
                     heuristic += 1
 
+            # Arrive from right
             else:
+                # Arriving from left
                 if i_diff > 0:
                     heuristic += 1
 
         else:
+            # Arrive from bot
             if end_node.i % 2 == 0:
+                # Arriving from top
                 if j_diff < 0:
                     heuristic += 1
 
+            # Arrive from top
             else:
+                # Arriving from bot
                 if j_diff > 0:
                     heuristic += 1
-
-        distance = np.sqrt(abs(i_diff)**2 + abs(j_diff)**2)
-
-        # jumps = abs(i_diff) + abs(j_diff)
-
-        # return heuristic + jumps
-        # return heuristic
-
-        if not self.cost_only:  return heuristic + distance
-        else:                   return node.cost
-
-
-    def get_heuristic_dir(self, i_dir, j_dir, node: GridNode):
-        # Going right
-        if node.j % 2 == 0:
-            if i_dir >= 0:   heuristic = 0  # Correct direction
-            else:           heuristic = 1  # Incorrect direction
-        
-        # Going left
-        else:
-            if i_dir >= 0:   heuristic = 1  # Incorrect direction
-            else:           heuristic = 0  # Correct direction
-
-        # Going up
-        if node.i % 2 == 0:
-            if j_dir >= 0:   heuristic = 0  # Correct direction
-            else:           heuristic = 1  # Incorrect direction
-        
-        # Going down
-        else:
-            if j_dir >= 0:   heuristic = 1  # Incorrect direction
-            else:           heuristic = 0  # Correct direction
 
         return heuristic
     
