@@ -73,19 +73,12 @@ class UAM_minidrone(BehaviorScript):
 
         self.g = 9.81
 
-        mass_attr = self.prim.GetAttribute("physics:mass")
-        self.mass = mass_attr.Get()
-        self.mass = 2000
-
-        inertia_attr = self.prim.GetAttribute("physics:diagonalInertia")
-        self.inertia = inertia_attr.Get()
-
-        self.body_link_pos = Gf.Vec3f(0, 0, 0)
+        self.body_link_pos = np.array([0, 0, 0])
         self.roll = 0
         self.pitch = 0
         self.yaw = 0
-        self.body_link_lin = Gf.Vec3f(0, 0, 0)
-        self.body_link_ang = Gf.Vec3f(0, 0, 0)
+        self.body_link_lin = np.array([0, 0, 0])
+        self.body_link_ang = np.array([0, 0, 0])
 
         # Rotors speed (rad/s)
         self.w_rotor_NE = 0.0
@@ -174,7 +167,6 @@ class UAM_minidrone(BehaviorScript):
         # Update the drone status
         self.imu()
         self.navigation()
-        self.command.hover()
         self.servo_control()
         self.platform_dynamics()
         self.telemetry()
@@ -189,13 +181,6 @@ class UAM_minidrone(BehaviorScript):
 
         self.command.off()
         self.rotors_off()
-
-        # self.force_atr.Set(Gf.Vec3f(0,0,0))
-        # self.torque_atr.Set(Gf.Vec3f(0,0,0))
-        # self.forceNE_atr.Set(Gf.Vec3f(0,0,0))
-        # self.forceNW_atr.Set(Gf.Vec3f(0,0,0))
-        # self.forceSE_atr.Set(Gf.Vec3f(0,0,0))
-        # self.forceSW_atr.Set(Gf.Vec3f(0,0,0))
     
         self.fp = None
 
@@ -263,19 +248,19 @@ class UAM_minidrone(BehaviorScript):
         pos, rot = self.rigid_prim_view.get_world_poses()
 
         self.body_link_pos = pos[0]
-        self.body_link_rot = Rotation.from_quat(rot[0])
+        self.body_link_rot = Rotation.from_quat([rot[0][1], rot[0][2], rot[0][3], rot[0][0]])
 
         self.NE_rotor_link_pos = pos[1]
-        self.NE_rotor_link_rot = Rotation.from_quat(rot[1])
+        self.NE_rotor_link_rot = Rotation.from_quat([rot[1][1], rot[1][2], rot[1][3], rot[1][0]])
 
         self.NW_rotor_link_pos = pos[2]
-        self.NW_rotor_link_rot = Rotation.from_quat(rot[2])
+        self.NW_rotor_link_rot = Rotation.from_quat([rot[2][1], rot[2][2], rot[2][3], rot[2][0]])
 
         self.SE_rotor_link_pos = pos[3]
-        self.SE_rotor_link_rot = Rotation.from_quat(rot[3])
+        self.SE_rotor_link_rot = Rotation.from_quat([rot[3][1], rot[3][2], rot[3][3], rot[3][0]])
 
         self.SW_rotor_link_pos = pos[4]
-        self.SW_rotor_link_rot = Rotation.from_quat(rot[4])
+        self.SW_rotor_link_rot = Rotation.from_quat([rot[4][1], rot[4][2], rot[4][3], rot[4][0]])
 
         # Get body_link roll, pitch and yaw in euler angles
         self.roll, self.pitch, self.yaw = self.body_link_rot.as_euler('xyz', degrees=False)
@@ -445,14 +430,9 @@ class UAM_minidrone(BehaviorScript):
         zero_torque = np.array([0, 0, 0])
 
         # Apply forces and torques to all UAV links
-        # forces = np.array([FD, FT_NE, FT_NW, FT_SE, FT_SW])
-        forces = np.array([FD, [0, 0, 81670], [0, 0, 81670], [0, 0, 16340], [0, 0, 16340]])
-
-        # torques = np.array([body_link_torque, zero_torque, zero_torque, zero_torque, zero_torque])
-        torques = np.array([zero_torque, zero_torque, zero_torque, zero_torque, zero_torque])
-
+        forces = np.array([FD, FT_NE, FT_NW, FT_SE, FT_SW])
+        torques = np.array([body_link_torque, zero_torque, zero_torque, zero_torque, zero_torque])
         self.rigid_prim_view.apply_forces_and_torques_at_pos(forces=forces, torques=torques)
-        print(forces)
 
     #------------------------------------------------------------------------------------------------------------------
     # TRACKING FUNCTIONS
