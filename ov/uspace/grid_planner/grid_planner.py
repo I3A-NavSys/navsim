@@ -20,7 +20,8 @@ class GridPlanner:
         self.y_height = y_height    # Altura del subnivel norte/sur  (m)
         self.level_height_diff = y_height - x_height
         self.grid = {}              # Diccionario de celdas
-        self.cost_only = False
+        self.is_cost_only = False
+        self.respect_limits = True
 
     def get_take_off_nodes(self, posXY, time):
         """
@@ -54,16 +55,32 @@ class GridPlanner:
         Dado un nodo, devuelve el nodo siguiente en línea recta.
         """
         if node.L == 'X':
-            if node.j % 2 == 0:                  
+            if node.j % 2 == 0:
+                # Return None when we get out of the limits of the grid
+                if self.respect_limits and node.i + 1 > self.cell_side / self.slot_time:
+                    return None
+
                 return GridNode(node.i+1, node.j, 'X', node.s+1, node.cost+1, node)        # rumbo ESTE
-            else:                           
+            else:
+                # Return None when we get out of the limits of the grid
+                if self.respect_limits and node.i - 1 < 0:
+                    return None
+                
                 return GridNode(node.i-1, node.j, 'X', node.s+1, node.cost+1, node)        # rumbo OESTE
         
         # L == 'Y'
         else:
-            if node.i % 2 == 0:                  
+            if node.i % 2 == 0:           
+                # Return None when we get out of the limits of the grid
+                if self.respect_limits and node.j + 1 > self.cell_side / self.slot_time:
+                    return None
+
                 return GridNode(node.i, node.j+1, 'Y', node.s+1, node.cost+1, node)        # rumbo NORTE
-            else:                           
+            else:
+                # Return None when we get out of the limits of the grid
+                if self.respect_limits and node.j - 1 < 0:
+                    return None
+
                 return GridNode(node.i, node.j-1, 'Y', node.s+1, node.cost+1, node)        # rumbo SUR
 
     def get_cross_node(self, node: GridNode):
@@ -72,36 +89,65 @@ class GridPlanner:
         """
         if node.L == 'X':
             if node.j % 2 == 0:                  
-                if node.i % 2 == 0:              
+                if node.i % 2 == 0:
+                    # Return None when we get out of the limits of the grid
+                    if self.respect_limits and node.i + 1 > self.cell_side / self.slot_time:
+                        return None
+                    if self.respect_limits and node.j - 1 < 0:
+                        return None
+
                     return GridNode(node.i+1, node.j-1, 'Y', node.s+1, node.cost+2, node)    # giro ESTE -> SUR
-                else:                       
+                else:
+                    # Return None when we get out of the limits of the grid
+                    if self.respect_limits and node.i + 1 > self.cell_side / self.slot_time:
+                        return None
+
                     return GridNode(node.i+1, node.j, 'Y', node.s+1, node.cost+2, node)    # giro ESTE -> NORTE
             else:                           
                 if node.i % 2 == 0:              
                     return GridNode(node.i, node.j, 'Y', node.s+1, node.cost+2, node)    # giro OESTE -> NORTE
-                else:                       
+                else:
+                    # Return None when we get out of the limits of the grid
+                    if self.respect_limits and node.j - 1 < 0:
+                        return None
+                    
                     return GridNode(node.i, node.j-1, 'Y', node.s+1, node.cost+2, node)    # giro OESTE -> SUR
         
         # L == 'Y'
         else:
             if node.i % 2 == 0:                  
-                if node.j % 2 == 0:              
+                if node.j % 2 == 0:
+                    # Return None when we get out of the limits of the grid
+                    if self.respect_limits and node.i - 1 < 0:
+                        return None
+                    if self.respect_limits and node.j + 1 > self.cell_side / self.slot_time:
+                        return None
+
                     return GridNode(node.i-1, node.j+1, 'X', node.s+1, node.cost+2, node)    # giro NORTE -> OESTE
-                else:                       
+                else:
+                    # Return None when we get out of the limits of the grid
+                    if self.respect_limits and node.j + 1 > self.cell_side / self.slot_time:
+                        return None
+
                     return GridNode(node.i, node.j+1, 'X', node.s+1, node.cost+2, node)    # giro NORTE -> ESTE
             else:                           
                 if node.j % 2 == 0:              
                     return GridNode(node.i, node.j, 'X', node.s+1, node.cost+2, node)    # giro SUR -> ESTE
-                else:                       
+                else:
+                    # Return None when we get out of the limits of the grid
+                    if self.respect_limits and node.i - 1 < 0:
+                        return None
+
                     return GridNode(node.i-1, node.j, 'X', node.s+1, node.cost+2, node)    # giro SUR -> OESTE
 
-    def get_route(self, start_node: GridNode, end_node: GridNode, cost_only=False):
+    def get_route(self, start_node: GridNode, end_node: GridNode, cost_only=False, respect_limits=True):
         """
         Dados dos nodos, devuelve una ruta libre del primero al segundo,
         partiendo en el slot especificado.
         """
         start_time = time.time()
-        self.cost_only = cost_only
+        self.is_cost_only = cost_only
+        self.respect_limits = respect_limits
         explored_nodes = []
         generation = 0
         prio_queue = PriorityQueue()
@@ -126,20 +172,25 @@ class GridPlanner:
                 return self.get_route_from_node(node), elapsed_time, len(explored_nodes)
 
             next_node = self.get_next_node(node)
-            h_next_node = self.evaluate_node(next_node, end_node)
             cross_node = self.get_cross_node(node)
-            h_cross_node = self.evaluate_node(cross_node, end_node)
 
-            generation += 1
-            prio_queue.put((h_next_node, generation, next_node))
+            if next_node is not None:
+                h_next_node = self.evaluate_node(next_node, end_node)
+                generation += 1
+                prio_queue.put((h_next_node, generation, next_node))
             
-            generation += 1
-            if not self.cost_only:
-                prio_queue.put((h_cross_node+1, generation, cross_node))
-            else:
-                prio_queue.put((h_cross_node, generation, cross_node))
+            if cross_node is not None:
+                h_cross_node = self.evaluate_node(cross_node, end_node)
+                generation += 1
+                if not self.is_cost_only:
+                    prio_queue.put((h_cross_node+1, generation, cross_node))
+                else:
+                    prio_queue.put((h_cross_node, generation, cross_node))
 
-        return None, None, None
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+
+        return None, elapsed_time, len(explored_nodes)
     
     def get_route_from_node(self, node: GridNode):
         route = []
@@ -172,7 +223,7 @@ class GridPlanner:
         # Heuristic based on airlines' direction
         heuristic = self.get_heuristic_dir(i_diff, j_diff, node, end_node)     
 
-        if not self.cost_only:  return heuristic + distance
+        if not self.is_cost_only:  return heuristic + distance
         else:                   return node.cost + distance
 
     def get_heuristic_dir(self, i_diff, j_diff, node: GridNode, end_node: GridNode):
@@ -265,7 +316,9 @@ class GridPlanner:
                 self.grid[(node1.i, node1.j, node1.L, node1.s)] = 'STR'    # STRaight line
             else:
                 self.grid[(node1.i, node1.j, node1.L, node1.s)] = 'TRN'    # TuRN
-        self.grid[(node2.i, node2.j, node2.L, node2.s)] = 'END'            # END
+                
+        last_node = route[-1]
+        self.grid[(last_node.i, last_node.j, last_node.L, last_node.s)] = 'END'            # END
 
     def clear_route(self, route):
         """
