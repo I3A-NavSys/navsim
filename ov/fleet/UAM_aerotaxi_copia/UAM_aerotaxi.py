@@ -167,6 +167,7 @@ class UAM_minidrone(BehaviorScript):
         # Update the drone status
         self.imu()
         self.navigation()
+        self.command.hover()
         self.servo_control()
         self.platform_dynamics()
         self.telemetry()
