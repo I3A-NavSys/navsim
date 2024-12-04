@@ -88,8 +88,8 @@ Thanks to this we can have an idea of how well the drone followed the plan.
 
 Let's try to build a bigger flight plan with a bigger UAV in a bigger city!  
 
-Open the file `navsim/ov/assets/worlds/bostom_city/bostom_city.usd`. You will see a low poly representation of Bostom
-city. If you have a look at the *stage* panel you can see that the scene is already set, there is an aerotaxi and two
+Open the file `navsim/ov/sims/boston/main.usd`. You will see a low poly representation of Boston city.
+If you have a look at the *stage* panel you can see that the scene is already set, there is an aerotaxi and two
 vertiports well positioned, as well as  three different cameras to follow the aerotaxi along its flight plan. You can
 switch between these cameras by clicking on the *camera* icon at the top of the *viewport*.
 
@@ -109,7 +109,7 @@ import omni.kit.app as app
 # Get the current stage
 stage = get_current_stage()
 # Get the recently added drone
-uav = stage.GetPrimAtPath("/UAM_aerotaxi")
+uav = stage.GetPrimAtPath("/Fleet/UAV_01")
 # Get its associated event
 uav_event = carb.events.type_from_string("NavSim." + str(uav.GetPath()))
 
@@ -157,6 +157,12 @@ bus_event_stream = app.get_app_interface().get_message_bus_event_stream()
 bus_event_stream.push(uav_event, payload={"method": "eventFn_FlightPlan",
                                                 "fp": serialized_fp})
 ```
+
+This code builds a flightplan based on some waypoints which you can see in the scene so that we can have a hint about
+which is the direction the UAV must follow. You can hide/show these objects by clicking on the *eye* icon on the
+*waypoints.usd* layer under the *Layer* panel
+
+![mute_layer](./img/mute_layer.png)
 
 Finally begin the simulation by clicking on *PLAY* button and then click on *Run (Ctrl + Enter)* button to run the
 script.  
