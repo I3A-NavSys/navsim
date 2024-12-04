@@ -157,11 +157,6 @@ class GridPlanner:
         while not prio_queue.empty():
             node: GridNode = prio_queue.get()[2]
 
-            if (node.i, node.j, node.L) in explored_nodes:
-                continue
-
-            explored_nodes.append((node.i, node.j, node.L))
-            
             if (node.i, node.j, node.L, node.s) in self.grid:
                 continue
 
@@ -170,6 +165,11 @@ class GridPlanner:
                 elapsed_time = end_time - start_time
 
                 return self.get_route_from_node(node), elapsed_time, len(explored_nodes)
+
+            if (node.i, node.j, node.L) in explored_nodes:
+                continue
+            
+            explored_nodes.append((node.i, node.j, node.L))
 
             next_node = self.get_next_node(node)
             cross_node = self.get_cross_node(node)
@@ -224,7 +224,7 @@ class GridPlanner:
         heuristic = self.get_heuristic_dir(i_diff, j_diff, node, end_node)     
 
         if not self.is_cost_only:  return heuristic + distance
-        else:                   return node.cost + distance
+        else:                   return node.cost + distance + heuristic
 
     def get_heuristic_dir(self, i_diff, j_diff, node: GridNode, end_node: GridNode):
         heuristic = 0
