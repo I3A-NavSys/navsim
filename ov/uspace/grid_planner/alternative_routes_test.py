@@ -24,7 +24,28 @@ respect_limits = True
 start_grid = 0
 end_grid = 1000
 grid_nodes = 10
+takeoff_nodes_list = []
+landing_nodes_list = []
+routes = []
 
+for k in range(routes_amount):
+    t_takeoff = k * 10
+
+    i = random.randint(start_grid, end_grid)
+    j = random.randint(start_grid, end_grid)
+
+    i2 = random.randint(start_grid, end_grid)
+    j2 = random.randint(start_grid, end_grid)
+
+    while i == i2 and j == j2:
+        i2 = random.randint(start_grid, end_grid)
+        j2 = random.randint(start_grid, end_grid)
+
+    takeoff_nodes = gp.get_take_off_nodes((i, j), t_takeoff)
+    landing_nodes = gp.get_landing_nodes((i2, j2))
+
+    takeoff_nodes_list.append(takeoff_nodes)
+    landing_nodes_list.append(landing_nodes)
 
 # Define grid parameters
 x = np.arange(start_grid-150, end_grid+201, 100)
@@ -130,50 +151,29 @@ plt.grid(True)
 
 # ###########################################################################################
 # A* HEURISTICS ROUTES
-takeoff_nodes_list = []
-landing_nodes_list = []
-alt_takeoff_nodes_list = []
-alt_landing_nodes_list = []
-routes = []
-
-def only_heuristics():
+def only_heuristics(verbose=True):
     for c in range(routes_amount):
-        t_takeoff = c * 10
+        if verbose:
+            print("###################################")
+            print(f"COMPUTING ROUTE {c}")
+            print(f"Origin: {takeoff_nodes_list[c][0].i, takeoff_nodes_list[c][0].j, takeoff_nodes_list[c][0].L, takeoff_nodes_list[c][0].s}")
+            print(f"Destination: {landing_nodes_list[c][0].i, landing_nodes_list[c][0].j, landing_nodes_list[c][0].L, landing_nodes_list[c][0].s}")
+            print()
 
-        i = random.randint(start_grid, end_grid)
-        j = random.randint(start_grid, end_grid)
-
-        i2 = random.randint(start_grid, end_grid)
-        j2 = random.randint(start_grid, end_grid)
-
-        while i == i2 and j == j2:
-            i2 = random.randint(start_grid, end_grid)
-            j2 = random.randint(start_grid, end_grid)
-
-        takeoff_nodes = gp.get_take_off_nodes((i, j), t_takeoff)
-        landing_nodes = gp.get_landing_nodes((i2, j2))
-
-        takeoff_nodes_list.append(takeoff_nodes)
-        landing_nodes_list.append(landing_nodes)
-
-        print("###################################")
-        print(f"COMPUTING ROUTE {c}")
-        print(f"Origin: {takeoff_nodes[0].i, takeoff_nodes[0].j, takeoff_nodes[0].L, takeoff_nodes[0].s}")
-        print(f"Destination: {landing_nodes[0].i, landing_nodes[0].j, landing_nodes[0].L, landing_nodes[0].s}")
-        print()
-
-        route, e_time, explored_nodes = gp.get_route(takeoff_nodes[0], landing_nodes[0], respect_limits=respect_limits)
+        route, e_time, explored_nodes = gp.get_route(takeoff_nodes_list[c][0], landing_nodes_list[c][0], cost_only=False, 
+                                                    respect_limits=respect_limits)
         
         if route is not None:
             routes.append(route)
-            gp.print_route(route)
             conflicts = gp.are_there_conflicts(route)
             length = gp.route_length(route)
 
-            print(f"Conflicts: {conflicts}")
-            print(f"Length: {length}")
-            print(f"Time: {e_time}")
-            print(f"Explored nodes: {explored_nodes}")
+            if verbose:
+                gp.print_route(route)
+                print(f"Conflicts: {conflicts}")
+                print(f"Length: {length}")
+                print(f"Time: {e_time}")
+                print(f"Explored nodes: {explored_nodes}")
 
             if not conflicts:
                 gp.reserve_nodes(route)
@@ -195,15 +195,17 @@ def only_heuristics():
             ax2.scatter(X[-1], Y[-1], color="lightsteelblue")
 
         else:
-            print(f"Route could not be found in time slot {takeoff_nodes[0].s}")
-            print("--------------")
-            print(f"Time: {e_time}")
-            print(f"Explored nodes: {explored_nodes}")
-            print("--------------")
-        print("###################################")
-        print()
-only_heuristics()
-
+            if verbose:
+                print(f"Route could not be found in time slot {takeoff_nodes[0].s}")
+                print("--------------")
+                print(f"Time: {e_time}")
+                print(f"Explored nodes: {explored_nodes}")
+                print("--------------")
+        if verbose:
+            print("###################################")
+            print()
+only_heuristics(verbose=False)
+print(gp.grid)
 # ###########################################################################################
 # Alternative routes given a range of time
 t_takeoff = routes_amount*10 // 2
@@ -220,31 +222,31 @@ while i == i2 and j == j2:
     i2 = random.randint(start_grid, end_grid)
     j2 = random.randint(start_grid, end_grid)
 
-def alt_routes(cost_only, t_takeoff):
+def alt_routes(cost_only, t_takeoff, verbose=True):
     for alt_route in range(alternative_routes_amount*2):
         takeoff_nodes = gp.get_take_off_nodes((i, j), t_takeoff)
         landing_nodes = gp.get_landing_nodes((i2, j2))
-        alt_takeoff_nodes_list.append(takeoff_nodes)
-        alt_landing_nodes_list.append(landing_nodes)
 
-        print("###################################")
-        print(f"COMPUTING ALTERNATIVE {alt_route}")
-        print(f"Origin: {takeoff_nodes[0].i, takeoff_nodes[0].j, takeoff_nodes[0].L, takeoff_nodes[0].s}")
-        print(f"Destination: {landing_nodes[0].i, landing_nodes[0].j, landing_nodes[0].L, landing_nodes[0].s}")
-        print()
+        if verbose:
+            print("###################################")
+            print(f"COMPUTING ALTERNATIVE {alt_route}")
+            print(f"Origin: {takeoff_nodes[0].i, takeoff_nodes[0].j, takeoff_nodes[0].L, takeoff_nodes[0].s}")
+            print(f"Destination: {landing_nodes[0].i, landing_nodes[0].j, landing_nodes[0].L, landing_nodes[0].s}")
+            print()
 
         route, e_time, explored_nodes = gp.get_route(takeoff_nodes[0], landing_nodes[0], 
                                                      cost_only=cost_only, respect_limits=respect_limits)
         
         if route is not None:
-            gp.print_route(route)
             conflicts = gp.are_there_conflicts(route)
             length = gp.route_length(route)
 
-            print(f"Conflicts: {conflicts}")
-            print(f"Length: {length}")
-            print(f"Time: {e_time}")
-            print(f"Explored nodes: {explored_nodes}")
+            if verbose:
+                gp.print_route(route)
+                print(f"Conflicts: {conflicts}")
+                print(f"Length: {length}")
+                print(f"Time: {e_time}")
+                print(f"Explored nodes: {explored_nodes}")
 
             X = []
             Y = []
@@ -266,16 +268,19 @@ def alt_routes(cost_only, t_takeoff):
                 ax2.legend(loc="upper right", fontsize=8, bbox_to_anchor=(1.25, 1.15), borderaxespad=0.)
         
         else:
-            print(f"Route could not be found in time slot {takeoff_nodes[0].s}")
-            print("--------------")
-            print(f"Time: {e_time}")
-            print(f"Explored nodes: {explored_nodes}")
-            print("--------------")
+            if verbose:
+                print(f"Route could not be found in time slot {takeoff_nodes[0].s}")
+                print("--------------")
+                print(f"Time: {e_time}")
+                print(f"Explored nodes: {explored_nodes}")
+                print("--------------")
+        
+        if verbose:
             print("###################################")
             print()
 
         t_takeoff += step
-alt_routes(False, t_takeoff)
-alt_routes(True, t_takeoff)
+alt_routes(False, t_takeoff, verbose=True)
+alt_routes(True, t_takeoff, verbose=False)
 
 plt.show()
