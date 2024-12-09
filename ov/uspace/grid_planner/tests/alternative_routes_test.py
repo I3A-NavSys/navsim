@@ -8,11 +8,11 @@ import numpy as np
 os.system('cls')
 
 # Añadir el directorio principal al sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
 
 ##############################################################################
 
-from grid_planner import GridPlanner
+from uspace.grid_planner.grid_planner import GridPlanner
 
 
 gp = GridPlanner()
