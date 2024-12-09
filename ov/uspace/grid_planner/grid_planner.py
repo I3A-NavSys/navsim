@@ -177,15 +177,20 @@ class GridPlanner:
             if next_node is not None:
                 h_next_node = self.evaluate_node(next_node, end_node)
                 generation += 1
-                prio_queue.put((h_next_node, generation, next_node))
+
+                if not self.is_cost_only:
+                    prio_queue.put((h_next_node, generation, next_node))
+                else:
+                    prio_queue.put((h_next_node + next_node.cost, generation, next_node))
             
             if cross_node is not None:
                 h_cross_node = self.evaluate_node(cross_node, end_node)
                 generation += 1
+
                 if not self.is_cost_only:
-                    prio_queue.put((h_cross_node+1, generation, cross_node))
+                    prio_queue.put((h_cross_node + 1, generation, cross_node))
                 else:
-                    prio_queue.put((h_cross_node, generation, cross_node))
+                    prio_queue.put((h_cross_node + cross_node.cost, generation, cross_node))
 
         end_time = time.time()
         elapsed_time = end_time - start_time
@@ -221,70 +226,76 @@ class GridPlanner:
         distance = np.sqrt(abs(i_diff)**2 + abs(j_diff)**2) 
 
         # Heuristic based on airlines' direction
-        heuristic = self.get_heuristic_dir(i_diff, j_diff, node, end_node)     
+        heuristic = self.get_heuristic(i_diff, j_diff, node, end_node)
 
-        if not self.is_cost_only:  return heuristic + distance
-        else:                   return node.cost + distance + heuristic
+        return heuristic + distance
 
-    def get_heuristic_dir(self, i_diff, j_diff, node: GridNode, end_node: GridNode):
+    def get_heuristic(self, i_diff, j_diff, node: GridNode, end_node: GridNode):
         heuristic = 0
         
         # Evaluate which direction we should follow and the one we actually are following due to the aeroline we are in
         if node.L == "X":
             # Going right
             if node.j % 2 == 0:
-                if i_diff == 0:      heuristic = -1 # Reward been at same level
+                if self.is_cost_only and i_diff == 0:      heuristic = -1 # Reward been at same level
                 elif i_diff > 0:     heuristic = 0  # Correct direction
-                else:               heuristic = 1   # Incorrect direction
+                else:               heuristic = 3   # Incorrect direction
             
             # Going left
             else:
-                if i_diff == 0:      heuristic = -1 # Reward been at same level
-                elif i_diff > 0:     heuristic = 1  # Incorrect direction
+                if self.is_cost_only and i_diff == 0:      heuristic = -1 # Reward been at same level
+                elif i_diff > 0:     heuristic = 3  # Incorrect direction
                 else:               heuristic = 0   # Correct direction
 
         else:
             # Going up
             if node.i % 2 == 0:
-                if j_diff == 0:      heuristic = -1 # Reward been at same level
+                if self.is_cost_only and j_diff == 0:      heuristic = -1 # Reward been at same level
                 elif j_diff > 0:     heuristic = 0  # Correct direction
-                else:               heuristic = 1   # Incorrect direction
+                else:               heuristic = 3   # Incorrect direction
             
             # Going down
             else:
-                if j_diff == 0:      heuristic = -1 # Reward been at same level
-                elif j_diff > 0:     heuristic = 1  # Incorrect direction
+                if self.is_cost_only and j_diff == 0:      heuristic = -1 # Reward been at same level
+                elif j_diff > 0:     heuristic = 3  # Incorrect direction
                 else:               heuristic = 0   # Correct direction
 
+        if not self.is_cost_only:
+            # Additional penalty for transitions if misaligned
+            if node.L != end_node.L:
+                heuristic += 2  # Penalty for crossing levels unnecessarily
+
+            # Penalize sharp turns and unnecessary deviations
+            if abs(i_diff) > 1 or abs(j_diff) > 1:
+                heuristic += 1  # Slight penalty for non-optimal alignments
+
         # Penalize if we are not arriving to end node from correct direction
-        if end_node.L == "X":
-            # Arrive from left
-            if end_node.j % 2 == 0:
-                # Arriving from right
-                if i_diff < 0:
-                    heuristic += 1
+        # Arrive from left
+        if end_node.j % 2 == 0:
+            # Arriving from right
+            if i_diff < 0:
+                heuristic += 2
 
-            # Arrive from right
-            else:
-                # Arriving from left
-                if i_diff > 0:
-                    heuristic += 1
-
+        # Arrive from right
         else:
-            # Arrive from bot
-            if end_node.i % 2 == 0:
-                # Arriving from top
-                if j_diff < 0:
-                    heuristic += 1
+            # Arriving from left
+            if i_diff > 0:
+                heuristic += 2
 
-            # Arrive from top
-            else:
-                # Arriving from bot
-                if j_diff > 0:
-                    heuristic += 1
+        # Arrive from bot
+        if end_node.i % 2 == 0:
+            # Arriving from top
+            if j_diff < 0:
+                heuristic += 2
+
+        # Arrive from top
+        else:
+            # Arriving from bot
+            if j_diff > 0:
+                heuristic += 2
 
         return heuristic
-    
+
     def print_route(self, route):
         print("-- ROUTE -----")
         
