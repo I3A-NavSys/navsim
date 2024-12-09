@@ -14,7 +14,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')
 ##############################################################################
 
 
-from uspace.grid_planner.grid_planner import GridPlanner
+from uspace.grid_planner.grid_planner import GridPlanner as gp_A
 from tmp.tmpRafa.planners.GridPlanner import GridPlanner as gp_NA
 
 
