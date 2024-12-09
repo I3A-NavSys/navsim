@@ -191,4 +191,5 @@ When the UAV finishes, you can see how well it followed the route with the stati
 
 ![fp_graphs](./img/fp_graphs.png)
 
-https://github.com/user-attachments/assets/84cf7dde-e62b-437e-80ac-eec80e55bac3
+https://github.com/user-attachments/assets/3854de7c-7dd4-4df0-a664-5af846bcc93b
+
