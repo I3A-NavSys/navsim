@@ -18,14 +18,15 @@ from uspace.grid_planner.grid_planner import GridPlanner
 gp = GridPlanner()
 
 random.seed(1)
-routes_amount = 300
+routes_amount = 10
 respect_limits = False
-start_grid = -500
-end_grid = 500
+start_grid = -1000
+end_grid = 1000
 grid_nodes = 10
 takeoff_nodes_list = []
 landing_nodes_list = []
-routes = []
+h_routes = {}
+c_routes = {}
 
 for k in range(routes_amount):
     t_takeoff = k * 10
@@ -95,7 +96,6 @@ def heuristics_plot():
     ax.set_ylabel('Position Y (m)')
 
     return ax
-ax = heuristics_plot()
 
 # ###########################################################################################
 # A* COST PLOT
@@ -144,108 +144,231 @@ def cost_plot():
     ax2.set_ylabel('Position Y (m)')
 
     return ax2
-ax2 = cost_plot()
-
-plt.grid(True)
 
 # ###########################################################################################
 # A* HEURISTICS ROUTES
-def only_heuristics():
+def only_heuristics(verbose=False, plot_routes=True):
     for c in range(routes_amount):
-        print("###################################")
-        print(f"COMPUTING ROUTE {c}")
-        print(f"Origin: {takeoff_nodes_list[c][0].i, takeoff_nodes_list[c][0].j, takeoff_nodes_list[c][0].L, takeoff_nodes_list[c][0].s}")
-        print(f"Destination: {landing_nodes_list[c][0].i, landing_nodes_list[c][0].j, landing_nodes_list[c][0].L, landing_nodes_list[c][0].s}")
-        print()
+        if verbose:
+            print("###################################")
+            print(f"COMPUTING ROUTE {c}")
+            print(f"Origin: {takeoff_nodes_list[c][0].i, takeoff_nodes_list[c][0].j, takeoff_nodes_list[c][0].L, takeoff_nodes_list[c][0].s}")
+            print(f"Destination: {landing_nodes_list[c][0].i, landing_nodes_list[c][0].j, landing_nodes_list[c][0].L, landing_nodes_list[c][0].s}")
+            print()
 
         route, e_time, explored_nodes = gp.get_route(takeoff_nodes_list[c][0], landing_nodes_list[c][0], cost_only=False, 
                                                     respect_limits=respect_limits)
         
         if route is not None:
-            routes.append(route)
-            gp.print_route(route)
+            h_routes[c] = route
             conflicts = gp.are_there_conflicts(route)
             length = gp.route_length(route)
 
-            print(f"Conflicts: {conflicts}")
-            print(f"Length: {length}")
-            print(f"Time: {e_time}")
-            print(f"Explored nodes: {explored_nodes}")
+            if verbose:
+                gp.print_route(route)
+                print(f"Conflicts: {conflicts}")
+                print(f"Length: {length}")
+                print(f"Time: {e_time}")
+                print(f"Explored nodes: {explored_nodes}")
 
             if not conflicts:
                 gp.reserve_nodes(route)
 
-            X = []
-            Y = []
+            if plot_routes:
+                X = []
+                Y = []
 
-            for node in route:
-                X.append(node.i * 100 + 50 if node.L == "X" else node.i * 100)
-                Y.append(node.j * 100 + 50 if node.L == "Y" else node.j * 100)
+                for node in route:
+                    X.append(node.i * 100 + 50 if node.L == "X" else node.i * 100)
+                    Y.append(node.j * 100 + 50 if node.L == "Y" else node.j * 100)
 
-            line = ax.plot(X, Y, zorder=3, label=f"Route {c}: {length} - {round(e_time, 3)}s - {explored_nodes}")
-            sc = ax.scatter(X[0], Y[0])
-            ax.scatter(X[-1], Y[-1], color=sc.get_facecolor()[0])
-            ax.legend(loc="upper right", fontsize=8, bbox_to_anchor=(1.25, 1.15), borderaxespad=0.)
+                line = ax.plot(X, Y, zorder=3, label=f"Route {c}: {length} - {round(e_time, 3)}s - {explored_nodes}")
+                sc = ax.scatter(X[0], Y[0])
+                ax.scatter(X[-1], Y[-1], color=sc.get_facecolor()[0])
+                ax.legend(loc="upper right", fontsize=8, bbox_to_anchor=(1.25, 1.15), borderaxespad=0.)
 
         else:
-            print(f"Route could not be found in time slot {c}")
-            print("--------------")
-            print(f"Time: {e_time}")
-            print(f"Explored nodes: {explored_nodes}")
-            print("--------------")
-        print("###################################")
-        print()
-only_heuristics()
-
-for route in routes:
-    gp.clear_route(route)
+            if verbose:
+                print(f"Route could not be found in time slot {c}")
+                print("--------------")
+                print(f"Time: {e_time}")
+                print(f"Explored nodes: {explored_nodes}")
+                print("--------------")
+        if verbose:
+            print("###################################")
+            print()
     
 # ###########################################################################################
 # A* COST ROUTES
-def only_cost():
+def only_cost(verbose=False, plot_routes=True):
     for c in range(routes_amount):
-        print("###################################")
-        print(f"COMPUTING ROUTE {c}")
-        print(f"Origin: {takeoff_nodes_list[c][0].i, takeoff_nodes_list[c][0].j, takeoff_nodes_list[c][0].L, takeoff_nodes_list[c][0].s}")
-        print(f"Destination: {landing_nodes_list[c][0].i, landing_nodes_list[c][0].j, landing_nodes_list[c][0].L, landing_nodes_list[c][0].s}")
-        print()
+        if verbose:
+            print("###################################")
+            print(f"COMPUTING ROUTE {c}")
+            print(f"Origin: {takeoff_nodes_list[c][0].i, takeoff_nodes_list[c][0].j, takeoff_nodes_list[c][0].L, takeoff_nodes_list[c][0].s}")
+            print(f"Destination: {landing_nodes_list[c][0].i, landing_nodes_list[c][0].j, landing_nodes_list[c][0].L, landing_nodes_list[c][0].s}")
+            print()
 
         route, e_time, explored_nodes = gp.get_route(takeoff_nodes_list[c][0], landing_nodes_list[c][0], cost_only=True, 
                                                     respect_limits=respect_limits)
         
         if route is not None:
-            routes.append(route)
-            gp.print_route(route)
+            c_routes[c] = route
             conflicts = gp.are_there_conflicts(route)
             length = gp.route_length(route)
 
-            print(f"Conflicts: {conflicts}")
-            print(f"Length: {length}")
-            print(f"Time: {e_time}")
-            print(f"Explored nodes: {explored_nodes}")
+            if verbose:
+                gp.print_route(route)
+                print(f"Conflicts: {conflicts}")
+                print(f"Length: {length}")
+                print(f"Time: {e_time}")
+                print(f"Explored nodes: {explored_nodes}")
 
             if not conflicts:
                 gp.reserve_nodes(route)
 
-            X = []
-            Y = []
+            if plot_routes:
+                X = []
+                Y = []
 
-            for node in route:
-                X.append(node.i * 100 + 50 if node.L == "X" else node.i * 100)
-                Y.append(node.j * 100 + 50 if node.L == "Y" else node.j * 100)
+                for node in route:
+                    X.append(node.i * 100 + 50 if node.L == "X" else node.i * 100)
+                    Y.append(node.j * 100 + 50 if node.L == "Y" else node.j * 100)
 
-            line = ax2.plot(X, Y, zorder=3, label=f"Route {c}: {length} - {round(e_time, 3)}s - {explored_nodes}")
-            sc = ax2.scatter(X[0], Y[0])
-            ax2.scatter(X[-1], Y[-1], color=sc.get_facecolor()[0])
-            ax2.legend(loc="upper right", fontsize=8, bbox_to_anchor=(1.25, 1.15), borderaxespad=0.)
+                line = ax2.plot(X, Y, zorder=3, label=f"Route {c}: {length} - {round(e_time, 3)}s - {explored_nodes}")
+                sc = ax2.scatter(X[0], Y[0])
+                ax2.scatter(X[-1], Y[-1], color=sc.get_facecolor()[0])
+                ax2.legend(loc="upper right", fontsize=8, bbox_to_anchor=(1.25, 1.15), borderaxespad=0.)
 
         else:
-            print(f"Route could not be found in time slot {c}")
-            print("--------------")
-            print(f"Time: {e_time}")
-            print(f"Explored nodes: {explored_nodes}")
-            print("--------------")
-        print("###################################")
-        print()
-only_cost()
-plt.show()
+            if verbose:
+                print(f"Route could not be found in time slot {c}")
+                print("--------------")
+                print(f"Time: {e_time}")
+                print(f"Explored nodes: {explored_nodes}")
+                print("--------------")
+        if verbose:
+            print("###################################")
+            print()
+
+def compare_algorithms(h_routes, c_routes):
+    # -1 -> H is worse than C
+    # 0 -> H is equal to C
+    # 1 -> H is better than C
+    result = []
+    w_routes = []
+    e_routes = []
+    b_routes = []
+
+    for key in h_routes.keys():
+        if key not in c_routes: continue
+
+        h_length = gp.route_length(h_routes[key])
+        c_length = gp.route_length(c_routes[key])
+
+        if h_length < c_length:
+            result.append(1)
+            b_routes.append(key)
+        elif h_length == c_length:
+            result.append(0)
+            e_routes.append(key)
+        else:
+            result.append(-1)
+            w_routes.append(key)
+
+    print("###################################")
+    print("COMPARISON RESULTS")
+    print(f"Total routes: {len(result)}")
+    print(f"H better than C: {result.count(1)}")
+    print(f"H equal to C: {result.count(0)}")
+    print(f"H worse than C: {result.count(-1)}")
+    print("-----------------------------------")
+    print(f"Better routes: {b_routes}")
+    print(f"Equal routes: {e_routes}")
+    print(f"Worse routes: {w_routes}")
+    print("###################################")
+
+    return result, w_routes, e_routes, b_routes
+        
+def plot_comparison(comparison="better", b_routes=None, e_routes=None, w_routes=None):
+    if comparison == "better":
+        routes = b_routes
+    elif comparison == "equal":
+        routes = e_routes
+    else:
+        routes = w_routes
+
+    for key in routes:
+        X = []
+        Y = []
+
+        route = h_routes[key]
+        for node in route:
+            X.append(node.i * 100 + 50 if node.L == "X" else node.i * 100)
+            Y.append(node.j * 100 + 50 if node.L == "Y" else node.j * 100)
+
+        line = ax.plot(X, Y, zorder=3, label=f"Route {key}: {gp.route_length(route)}")
+        sc = ax.scatter(X[0], Y[0])
+        ax.scatter(X[-1], Y[-1], color=sc.get_facecolor()[0])
+        ax.legend(loc="upper right", fontsize=8, bbox_to_anchor=(1.25, 1.15), borderaxespad=0.)
+
+        X = []
+        Y = []
+
+        route = c_routes[key]
+        for node in route:
+            X.append(node.i * 100 + 50 if node.L == "X" else node.i * 100)
+            Y.append(node.j * 100 + 50 if node.L == "Y" else node.j * 100)
+
+        line = ax2.plot(X, Y, zorder=3, label=f"Route {key}: {gp.route_length(route)}")
+        sc = ax2.scatter(X[0], Y[0])
+        ax2.scatter(X[-1], Y[-1], color=sc.get_facecolor()[0])
+        ax2.legend(loc="upper right", fontsize=8, bbox_to_anchor=(1.25, 1.15), borderaxespad=0.)
+
+def plot_desired_routes(start, end):
+    for key in range(start, end):
+        X = []
+        Y = []
+
+        route = h_routes[key]
+        for node in route:
+            X.append(node.i * 100 + 50 if node.L == "X" else node.i * 100)
+            Y.append(node.j * 100 + 50 if node.L == "Y" else node.j * 100)
+
+        line = ax.plot(X, Y, zorder=3, label=f"Route {key}: {gp.route_length(route)}")
+        sc = ax.scatter(X[0], Y[0])
+        ax.scatter(X[-1], Y[-1], color=sc.get_facecolor()[0])
+        ax.legend(loc="upper right", fontsize=8, bbox_to_anchor=(1.25, 1.15), borderaxespad=0.)
+
+        X = []
+        Y = []
+
+        route = c_routes[key]
+        for node in route:
+            X.append(node.i * 100 + 50 if node.L == "X" else node.i * 100)
+            Y.append(node.j * 100 + 50 if node.L == "Y" else node.j * 100)
+
+        line = ax2.plot(X, Y, zorder=3, label=f"Route {key}: {gp.route_length(route)}")
+        sc = ax2.scatter(X[0], Y[0])
+        ax2.scatter(X[-1], Y[-1], color=sc.get_facecolor()[0])
+        ax2.legend(loc="upper right", fontsize=8, bbox_to_anchor=(1.25, 1.15), borderaxespad=0.)
+
+if __name__ == "__main__":
+    ax = heuristics_plot()
+    ax2 = cost_plot()
+    plt.grid(True)
+
+    only_heuristics(verbose=False, plot_routes=True)
+    for route in h_routes.values():
+        gp.clear_route(route)
+
+    only_cost(verbose=False, plot_routes=True)
+    for route in c_routes.values():
+        gp.clear_route(route)
+
+    # result, w_routes, e_routes, b_routes = compare_algorithms(h_routes, c_routes)
+    # plot_comparison(comparison="better", b_routes=b_routes, e_routes=e_routes, w_routes=w_routes)
+    # plot_comparison(comparison="worse", b_routes=b_routes, e_routes=e_routes, w_routes=w_routes)
+    # plot_desired_routes(0, 10)
+
+    plt.show()
