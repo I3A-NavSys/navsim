@@ -48,41 +48,41 @@ class UAM_minidrone(BehaviorScript):
         self.current_time = 0
         self.delta_time = 0
 
-        self.stage_id = omni.usd.get_context().get_stage_id()
-        self.stage = Usd.Stage.Attach(self.stage_id)
-        self.prim_path = Sdf.Path("/aerotaxi")
-        self.prim = self.stage.GetPrimAtPath(self.prim_path)
+        self.usdrt_stage_id = omni.usd.get_context().get_stage_id()
+        self.usdrt_stage = Usd.Stage.Attach(self.usdrt_stage_id)
+        self.usdrt_prim_path = Sdf.Path("/aerotaxi")
+        self.usdrt_prim = self.usdrt_stage.GetPrimAtPath(self.usdrt_prim_path)
 
-        self.pos_atr    = self.prim.GetAttribute("xformOp:translate")
-        self.ori_atr    = self.prim.GetAttribute("xformOp:orient")
+        self.pos_atr    = self.usdrt_prim.GetAttribute("xformOp:translate")
+        self.ori_atr    = self.usdrt_prim.GetAttribute("xformOp:orient")
 
-        self.linVel_atr = self.prim.GetAttribute("physics:velocity")
-        self.angVel_atr = self.prim.GetAttribute("physics:angularVelocity")
+        self.linVel_atr = self.usdrt_prim.GetAttribute("physics:velocity")
+        self.angVel_atr = self.usdrt_prim.GetAttribute("physics:angularVelocity")
 
-        self.force_atr = self.prim.GetAttribute("physxForce:force")
+        self.force_atr = self.usdrt_prim.GetAttribute("physxForce:force")
         self.force_atr.Set(Gf.Vec3f(0,0,0))
-        self.torque_atr = self.prim.GetAttribute("physxForce:torque")
+        self.torque_atr = self.usdrt_prim.GetAttribute("physxForce:torque")
         self.torque_atr.Set(Gf.Vec3f(0,0,0))
 
-        self.primRotors = self.prim.GetChild("rotors")
-        primNE = self.primRotors.GetChild("NE")
+        self.usdrt_primRotors = self.usdrt_prim.GetChild("rotors")
+        primNE = self.usdrt_primRotors.GetChild("NE")
         self.forceNE_atr = primNE.GetAttribute("physxForce:force")
         self.forceNE_atr.Set(Gf.Vec3f(0,0,0))
 
-        primNW = self.primRotors.GetChild("NW")
+        primNW = self.usdrt_primRotors.GetChild("NW")
         self.forceNW_atr = primNW.GetAttribute("physxForce:force")
         self.forceNW_atr.Set(Gf.Vec3f(0,0,0))
 
-        primSE = self.primRotors.GetChild("SE")
+        primSE = self.usdrt_primRotors.GetChild("SE")
         self.forceSE_atr = primSE.GetAttribute("physxForce:force")
         self.forceSE_atr.Set(Gf.Vec3f(0,0,0))
 
-        primSW = self.primRotors.GetChild("SW")
+        primSW = self.usdrt_primRotors.GetChild("SW")
         self.forceSW_atr = primSW.GetAttribute("physxForce:force")
         self.forceSW_atr.Set(Gf.Vec3f(0,0,0))        
         
         # Create the omniverse event associated to this UAV
-        self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(self.prim.GetPath()))
+        self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(self.usdrt_prim.GetPath()))
         bus = omni.kit.app.get_app().get_message_bus_event_stream()
         self.eventSub = bus.create_subscription_to_push_by_type(self.UAV_EVENT, self.push_subscripted_event_method)
 
@@ -107,12 +107,12 @@ class UAM_minidrone(BehaviorScript):
 
         self.g    = 9.81
 
-        mass_attr = self.prim.GetAttribute("physics:mass")
+        mass_attr = self.usdrt_prim.GetAttribute("physics:mass")
         self.mass = mass_attr.Get()
         self.mass = 2000
         # print(f"mass: {self.mass}")
 
-        inertia_attr = self.prim.GetAttribute("physics:diagonalInertia")
+        inertia_attr = self.usdrt_prim.GetAttribute("physics:diagonalInertia")
         self.inertia = inertia_attr.Get()
         # print(f"inertia: {self.inertia}")
 
@@ -199,7 +199,7 @@ class UAM_minidrone(BehaviorScript):
     # EVENT HANDLERS
 
     def on_play(self):
-        # print(f"PLAY    {self.prim_path}")
+        # print(f"PLAY    {self.usdrt_prim_path}")
         # print(f"\t {self.current_time} \t {self.delta_time}")
 
         # Tracking
@@ -216,11 +216,11 @@ class UAM_minidrone(BehaviorScript):
         self.telemetry()
 
     def on_pause(self):
-        # print(f"PAUSE   {self.prim_path}")
+        # print(f"PAUSE   {self.usdrt_prim_path}")
         pass
 
     def on_stop(self):
-        # print(f"STOP    {self.prim_path}")
+        # print(f"STOP    {self.usdrt_prim_path}")
         self.current_time = 0
         self.delta_time = 0
 
@@ -240,7 +240,7 @@ class UAM_minidrone(BehaviorScript):
         self.track_info = []
 
     def on_update(self, current_time: float, delta_time: float):
-        # print(f"UPDATE  {self.prim_path} \t {current_time:.3f} \t {delta_time:.3f}")
+        # print(f"UPDATE  {self.usdrt_prim_path} \t {current_time:.3f} \t {delta_time:.3f}")
 
         # Get current simulation time
         self.current_time = current_time
@@ -273,12 +273,12 @@ class UAM_minidrone(BehaviorScript):
         self.command : Command = pickle.loads(base64.b64decode(command))
         if self.command.duration is not None:
             self.cmd_exp_time = self.current_time + self.command.duration
-            print(f"[{self.current_time}] {self.prim_path}: command received")
+            print(f"[{self.current_time}] {self.usdrt_prim_path}: command received")
         
     def eventFn_FlightPlan(self, fp):
         self.fp :FlightPlan = pickle.loads(base64.b64decode(fp))
         self.currentWP = None
-        print(f"[{self.current_time}] {self.prim_path}: flightplan received")
+        print(f"[{self.current_time}] {self.usdrt_prim_path}: flightplan received")
             
     #------------------------------------------------------------------------------------------------------------------
     # FLYING FUNCTIONS
@@ -289,7 +289,7 @@ class UAM_minidrone(BehaviorScript):
         self.w_rotor_NW = 0
         self.w_rotor_SE = 0
         self.w_rotor_SW = 0
-        self.primRotors.GetAttribute("visibility").Set("inherited")
+        self.usdrt_primRotors.GetAttribute("visibility").Set("inherited")
 
         # Reset del control
         self.E = np.zeros((4, 1))
@@ -331,7 +331,7 @@ class UAM_minidrone(BehaviorScript):
 
         if self.currentWP is None and WP != 0:
             # This flight plan is obsolete
-            print(f"[{self.current_time:3.2f}] {self.prim_path} discarding FP due to it is obsolete")
+            print(f"[{self.current_time:3.2f}] {self.usdrt_prim_path} discarding FP due to it is obsolete")
             self.fp = None
             return
         
@@ -343,19 +343,19 @@ class UAM_minidrone(BehaviorScript):
 
                 if np.linalg.norm(initPos) < self.fp.radius:
                     # Drone waiting to start the flight
-                    print(f"[{self.current_time:3.2f}] {self.prim_path} waiting to start a FP")
+                    print(f"[{self.current_time:3.2f}] {self.usdrt_prim_path} waiting to start a FP")
 
                 else:
                     # Drone in an incorrect starting position
-                    print(f"[{self.current_time:3.2f}] {self.prim_path} discarding FP due to an incorrect starting position")
+                    print(f"[{self.current_time:3.2f}] {self.usdrt_prim_path} discarding FP due to an incorrect starting position")
                     self.fp = None
                     return
 
             elif WP < numWPs:
-                print(f"[{self.current_time:3.2f}] {self.prim_path} flying to {self.fp.waypoints[WP].label}")
+                print(f"[{self.current_time:3.2f}] {self.usdrt_prim_path} flying to {self.fp.waypoints[WP].label}")
 
             else:
-                print(f"[{self.current_time:3.2f}] {self.prim_path} has completed its flight plan")
+                print(f"[{self.current_time:3.2f}] {self.usdrt_prim_path} has completed its flight plan")
 
                 # Uncomment this to show the corresponding plots
                 plt.close(plt.gcf())
@@ -388,7 +388,7 @@ class UAM_minidrone(BehaviorScript):
             if self.current_time > self.cmd_exp_time:
                 self.command.hover()
 
-        self.primRotors.GetAttribute("visibility").Set("invisible")
+        self.usdrt_primRotors.GetAttribute("visibility").Set("invisible")
 
         # Assign the model reference to be followed
         self.r[0, 0] = self.command.velX       # bXdot
