@@ -10,8 +10,10 @@ import carb.events
 import numpy as np
 import matplotlib.pyplot as plt
 from omni.kit.scripting import BehaviorScript
-from usdrt import Usd, Sdf
 from scipy.spatial.transform import Rotation
+
+import omni.usd
+from usdrt import Usd, Gf, Sdf
 
 
 ##############################################################################
@@ -45,9 +47,10 @@ class UAM_minidrone(BehaviorScript):
     def on_init(self):
         self.current_time = 0
         self.delta_time = 0
-        
-        self.stage = Usd.Stage.Open("C:/Users/aurelio/code/navsim/ov/fleet/UAM_aerotaxi copia_USDRT")
-        self.prim_path = Sdf.Path("/aguila")
+
+        self.stage_id = omni.usd.get_context().get_stage_id()
+        self.stage = Usd.Stage.Attach(self.stage_id)
+        self.prim_path = Sdf.Path("/aerotaxi")
         self.prim = self.stage.GetPrimAtPath(self.prim_path)
 
         self.pos_atr    = self.prim.GetAttribute("xformOp:translate")
@@ -63,19 +66,19 @@ class UAM_minidrone(BehaviorScript):
 
         self.primRotors = self.prim.GetChild("rotors")
         primNE = self.primRotors.GetChild("NE")
-        self.forceNE_atr = primNE.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
+        self.forceNE_atr = primNE.GetAttribute("physxForce:force")
         self.forceNE_atr.Set(Gf.Vec3f(0,0,0))
 
         primNW = self.primRotors.GetChild("NW")
-        self.forceNW_atr = primNW.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
+        self.forceNW_atr = primNW.GetAttribute("physxForce:force")
         self.forceNW_atr.Set(Gf.Vec3f(0,0,0))
 
         primSE = self.primRotors.GetChild("SE")
-        self.forceSE_atr = primSE.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
+        self.forceSE_atr = primSE.GetAttribute("physxForce:force")
         self.forceSE_atr.Set(Gf.Vec3f(0,0,0))
 
         primSW = self.primRotors.GetChild("SW")
-        self.forceSW_atr = primSW.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
+        self.forceSW_atr = primSW.GetAttribute("physxForce:force")
         self.forceSW_atr.Set(Gf.Vec3f(0,0,0))        
         
         # Create the omniverse event associated to this UAV
@@ -197,7 +200,7 @@ class UAM_minidrone(BehaviorScript):
 
     def on_play(self):
         # print(f"PLAY    {self.prim_path}")
-        # print(f"/t {self.current_time} /t {self.delta_time}")
+        # print(f"\t {self.current_time} \t {self.delta_time}")
 
         # Tracking
         self.show_tracking = False
@@ -207,7 +210,7 @@ class UAM_minidrone(BehaviorScript):
         # Update the drone status
         self.imu()
         self.navigation()
-        # self.command.hover()
+        self.command.hover()
         self.servo_control()
         self.platform_dynamics()
         self.telemetry()
@@ -237,7 +240,7 @@ class UAM_minidrone(BehaviorScript):
         self.track_info = []
 
     def on_update(self, current_time: float, delta_time: float):
-        # print(f"UPDATE  {self.prim_path} /t {current_time:.3f} /t {delta_time:.3f}")
+        # print(f"UPDATE  {self.prim_path} \t {current_time:.3f} \t {delta_time:.3f}")
 
         # Get current simulation time
         self.current_time = current_time
@@ -293,10 +296,10 @@ class UAM_minidrone(BehaviorScript):
 
     def imu(self):
         self.pos  = self.pos_atr.Get()
-        # print(f"/nposition:  {self.pos}")
+        # print(f"\nposition:  {self.pos}")
 
         ori  = self.ori_atr.Get()
-        # print(f"/norientation:  {self.ori}")
+        # print(f"\norientation:  {self.ori}")
      
         W = ori.real
         X = ori.imaginary[0]
@@ -495,7 +498,7 @@ class UAM_minidrone(BehaviorScript):
 
         # Apply the moments to the drone
         self.torque_atr.Set(MDR + MD)
-        # print(f"Torque Z => /t {MDR[2]:.4f} + {MD[2]:.4f} = {MDR[2] + MD[2]:.4f}")
+        # print(f"Torque Z => \t {MDR[2]:.4f} + {MD[2]:.4f} = {MDR[2] + MD[2]:.4f}")
 
     #------------------------------------------------------------------------------------------------------------------
     # TRACKING FUNCTIONS
