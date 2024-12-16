@@ -11,7 +11,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from omni.kit.scripting import BehaviorScript
 from scipy.spatial.transform import Rotation
-
+import omni.physx
+import omni.timeline
 import omni.usd
 from usdrt import Usd, Gf, Sdf
 
@@ -44,15 +45,20 @@ from uspace.flight_plan.command import Command
 
 class UAM_minidrone(BehaviorScript):
 
-    def on_init(self):
+    def on_physics_step(self, step_size):
+        self.current_time += step_size
+        self.delta_time = step_size
+
+        if not self.are_attributes_initialized:
+            self.init_attributes()
+            self.are_attributes_initialized = True
+
+        self.update()
+
+    def reset_current_time(self, event):
         self.current_time = 0
-        self.delta_time = 0
 
-        self.usdrt_stage_id = omni.usd.get_context().get_stage_id()
-        self.usdrt_stage = Usd.Stage.Attach(self.usdrt_stage_id)
-        self.usdrt_prim_path = Sdf.Path("/aerotaxi")
-        self.usdrt_prim = self.usdrt_stage.GetPrimAtPath(self.usdrt_prim_path)
-
+    def init_attributes(self):
         self.pos_atr    = self.usdrt_prim.GetAttribute("xformOp:translate")
         self.ori_atr    = self.usdrt_prim.GetAttribute("xformOp:orient")
 
@@ -79,7 +85,31 @@ class UAM_minidrone(BehaviorScript):
 
         primSW = self.usdrt_primRotors.GetChild("SW")
         self.forceSW_atr = primSW.GetAttribute("physxForce:force")
-        self.forceSW_atr.Set(Gf.Vec3f(0,0,0))        
+        self.forceSW_atr.Set(Gf.Vec3f(0,0,0))
+
+        mass_attr = self.usdrt_prim.GetAttribute("physics:mass")
+        self.mass = mass_attr.Get()
+        self.mass = 2000
+
+        inertia_attr = self.usdrt_prim.GetAttribute("physics:diagonalInertia")
+        self.inertia = inertia_attr.Get()
+
+    def on_init(self):
+        self.timeline_sub_stop = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
+            int(omni.timeline.TimelineEventType.STOP), self.reset_current_time)
+
+        self.physx_interface = omni.physx.get_physx_interface()
+        self.physics_sub = self.physx_interface.subscribe_physics_step_events(self.on_physics_step)
+
+        self.current_time = 0
+        self.delta_time = 0
+
+        self.are_attributes_initialized = False
+
+        self.usdrt_stage_id = omni.usd.get_context().get_stage_id()
+        self.usdrt_stage = Usd.Stage.Attach(self.usdrt_stage_id)
+        self.usdrt_prim_path = Sdf.Path("/aerotaxi")
+        self.usdrt_prim = self.usdrt_stage.GetPrimAtPath(self.usdrt_prim_path)
         
         # Create the omniverse event associated to this UAV
         self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(self.usdrt_prim.GetPath()))
@@ -106,15 +136,6 @@ class UAM_minidrone(BehaviorScript):
         # QUADCOPTER PARAMETERS
 
         self.g    = 9.81
-
-        mass_attr = self.usdrt_prim.GetAttribute("physics:mass")
-        self.mass = mass_attr.Get()
-        self.mass = 2000
-        # print(f"mass: {self.mass}")
-
-        inertia_attr = self.usdrt_prim.GetAttribute("physics:diagonalInertia")
-        self.inertia = inertia_attr.Get()
-        # print(f"inertia: {self.inertia}")
 
         self.pos   = Gf.Vec3f(0, 0, 0)
         self.roll  = 0
@@ -194,33 +215,30 @@ class UAM_minidrone(BehaviorScript):
         self.E_max = 150            # maximum model accumulated error
     
     def on_destroy(self):
+        self.timeline_sub_stop = None
+        self.physics_sub = None
         self.uav_event_sub = None
     #------------------------------------------------------------------------------------------------------------------
     # EVENT HANDLERS
 
     def on_play(self):
-        # print(f"PLAY    {self.usdrt_prim_path}")
-        # print(f"\t {self.current_time} \t {self.delta_time}")
-
         # Tracking
         self.show_tracking = False
         self.refresh_rate = 1
         self.last_time_track = 0
 
         # Update the drone status
-        self.imu()
-        self.navigation()
+        # self.imu()
+        # self.navigation()
         self.command.hover()
-        self.servo_control()
-        self.platform_dynamics()
-        self.telemetry()
+        # self.servo_control()
+        # self.platform_dynamics()
+        # self.telemetry()
 
     def on_pause(self):
-        # print(f"PAUSE   {self.usdrt_prim_path}")
         pass
 
     def on_stop(self):
-        # print(f"STOP    {self.usdrt_prim_path}")
         self.current_time = 0
         self.delta_time = 0
 
@@ -239,14 +257,7 @@ class UAM_minidrone(BehaviorScript):
         self.tracking_figure_builded = False
         self.track_info = []
 
-    def on_update(self, current_time: float, delta_time: float):
-        # print(f"UPDATE  {self.usdrt_prim_path} \t {current_time:.3f} \t {delta_time:.3f}")
-
-        # Get current simulation time
-        self.current_time = current_time
-        self.delta_time = delta_time
-
-        # Update the drone status
+    def update(self):
         self.imu()
         self.navigation()
         self.servo_control()
@@ -296,28 +307,20 @@ class UAM_minidrone(BehaviorScript):
 
     def imu(self):
         self.pos  = self.pos_atr.Get()
-        # print(f"\nposition:  {self.pos}")
 
         ori  = self.ori_atr.Get()
-        # print(f"\norientation:  {self.ori}")
      
         W = ori.real
         X = ori.imaginary[0]
         Y = ori.imaginary[1]
         Z = ori.imaginary[2]
-        # print(f"Orientation:  {W:.4f} {X:.4f} {Y:.4f} {Z:.4f}")
 
         self.rot = Rotation.from_quat([X,Y,Z,W])     
         self.roll, self.pitch, self.yaw = self.rot.as_euler('xyz', degrees=False)
-        # print(f"Euler RPY (rad):  {self.roll:.2f} {self.pitch:.2f} {self.yaw:.2f}")
-        # roll, pitch, yaw = rot.as_euler('xyz', degrees=True)
-        # print(f"Euler RPY (deg):  {roll:.0f} {pitch:.0f} {yaw:.0f}")
 
         self.linear_vel  = self.linVel_atr.Get()
-        # print(f"linear velocity  (local):  {self.linear_vel}")
 
         self.angular_vel = self.angVel_atr.Get() * np.pi / 180
-        # print(f"angular velocity (local):  {self.angular_vel}")
 
     def navigation(self):
         # This function converts a flight plan position at certain time
@@ -395,7 +398,6 @@ class UAM_minidrone(BehaviorScript):
         self.r[1, 0] = self.command.velY       # bYdot
         self.r[2, 0] = self.command.velZ       # bZdot
         self.r[3, 0] = self.command.rotZ       # hZdot
-        # print(f"r: {np.round(self.r.T, 2)}")
 
         # Assign model state
         self.x[0, 0] = self.roll           # ePhi
@@ -406,23 +408,19 @@ class UAM_minidrone(BehaviorScript):
         self.x[5, 0] = self.linear_vel[0]  # bXdot
         self.x[6, 0] = self.linear_vel[1]  # bYdot
         self.x[7, 0] = self.linear_vel[2]  # bZdot
-        # print(f"x: {np.round(self.x.T, 2)}")
 
         # Assign model output
         self.y[0, 0] = self.x[5, 0]        # bXdot
         self.y[1, 0] = self.x[6, 0]        # bYdot
         self.y[2, 0] = self.x[7, 0]        # bZdot
         self.y[3, 0] = self.x[4, 0]        # bWz
-        # print(f"y: {np.round(self.y.T, 2)}")
 
         # Error between the output and the reference 
         # (between the commanded velocity and the drone velocity)
         self.e = self.y - self.r
-        # print(f"e: {np.round(self.e.T, 2)}")
 
         # Cumulative error
         self.E = self.E + (self.e * self.delta_time)
-        # print(f"E: {np.round(self.E.T, 2)}")
 
         # Error saturation
         # if self.E[0, 0] >  self.E_max : self.E[0, 0] =  self.E_max
@@ -436,7 +434,6 @@ class UAM_minidrone(BehaviorScript):
 
         # Dynamic system control
         self.u = self.Hs - self.Kx @ self.x - self.Ky @ self.E
-        # print(f"u: {np.round(self.u.T, 2)}")
 
         # Rotor speed saturation
         if self.u[0, 0] > self.w_max : self.u[0, 0] = self.w_max
@@ -487,18 +484,15 @@ class UAM_minidrone(BehaviorScript):
         MDR_SE = self.kMDR_S * self.w_rotor_SE**2
         MDR_SW = self.kMDR_S * self.w_rotor_SW**2
         MDR = Gf.Vec3f(0, 0, MDR_NE - MDR_NW - MDR_SE + MDR_SW)
-        # print(f"MDR  = {MDR}")
 
         # Compute the air friction moment
         MD = Gf.Vec3f(
             -self.kMDx * self.angular_vel[0] * abs(self.angular_vel[0]),
             -self.kMDy * self.angular_vel[1] * abs(self.angular_vel[1]),
             -self.kMDz * self.angular_vel[2] * abs(self.angular_vel[2]))
-        # print(f"MD  = {MD}")
 
         # Apply the moments to the drone
         self.torque_atr.Set(MDR + MD)
-        # print(f"Torque Z => \t {MDR[2]:.4f} + {MD[2]:.4f} = {MDR[2] + MD[2]:.4f}")
 
     #------------------------------------------------------------------------------------------------------------------
     # TRACKING FUNCTIONS
