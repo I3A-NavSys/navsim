@@ -12,6 +12,7 @@ class FuerzasRpv(BehaviorScript):
         self.rpv_initialized = False
         self.force = np.array([0,0,9.81])
         self.torque = np.array([0,0,1.0])
+        self.mass = np.array([1.0])
 
     def on_destroy(self):
         pass
@@ -28,6 +29,7 @@ class FuerzasRpv(BehaviorScript):
     def on_update(self, current_time: float, delta_time: float):
         if not self.rpv_initialized:
             self.rigid_prim_view.initialize()
+            self.rigid_prim_view.set_masses(np.array(self.mass))
             self.rpv_initialized = True
 
         self.rigid_prim_view.apply_forces_and_torques_at_pos(forces=np.array(self.force), torques=np.array(self.torque))
