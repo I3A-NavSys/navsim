@@ -6,6 +6,7 @@ import base64   # Parsing to string
 
 # Related third party imports
 import omni.kit.app
+import omni.physx
 import carb.events
 import numpy as np
 import matplotlib.pyplot as plt
@@ -41,6 +42,10 @@ class UAM_minidrone(BehaviorScript):
     def on_init(self):
         self.current_time = 0
         self.delta_time = 0
+
+        # Physx related
+        self.physx_interface = omni.physx.get_physx_interface()
+        self.physics_timer_callback = self.physx_interface.subscribe_physics_step_events(self.on_physics_step)
 
         # Create rigid prim view
         prim_paths = ["/aerotaxi/body_link", "/aerotaxi/(NE|NW|SE|SW)_rotor_link"]
@@ -189,13 +194,14 @@ class UAM_minidrone(BehaviorScript):
         self.track_info = []
 
     def on_update(self, current_time: float, delta_time: float):
-        if not self.rigid_prim_view_initialized:
-            self.rigid_prim_view.initialize()
-            self.rigid_prim_view_initialized = True
-        
         # Get current simulation time
         self.current_time = current_time
         self.delta_time = delta_time
+
+    def on_physics_step(self, dt):
+        if not self.rigid_prim_view_initialized:
+            self.rigid_prim_view.initialize()
+            self.rigid_prim_view_initialized = True
 
         # Update the drone status
         self.imu()
