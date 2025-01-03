@@ -11,7 +11,7 @@ class FuerzasUsd(BehaviorScript):
         self.force_atr = self.prim.GetAttribute("physxForce:force")
         self.force_atr.Set(Gf.Vec3f(0,0,0))
         self.torque_atr = self.prim.GetAttribute("physxForce:torque")
-        self.torque_atr.Set(Gf.Vec3f(0,0,0))
+        self.torque_atr.Set(Gf.Vec3f(0,0,0.1))
 
     def on_destroy(self):
         pass
@@ -26,5 +26,5 @@ class FuerzasUsd(BehaviorScript):
         pass
 
     def on_update(self, current_time: float, delta_time: float):
-        self.force_atr.Set(Gf.Vec3f(0,-0.1,9.81))
+        self.force_atr.Set(Gf.Vec3f(0,0,9.81))
         self.torque_atr.Set(Gf.Vec3f(0,0,0))

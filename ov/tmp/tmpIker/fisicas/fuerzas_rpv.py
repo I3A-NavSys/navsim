@@ -13,8 +13,8 @@ class FuerzasRpv(BehaviorScript):
         self.physx_interface_sub = self.physx_interface.subscribe_physics_on_step_events(self.on_physics_step, True, 0)
         self.rigid_prim_view = RigidPrimView("/World/cube_rpv")
         self.rpv_initialized = False
-        self.force = np.array([0,-0.1,9.81])
-        self.torque = np.array([0,0,0])
+        self.force = np.array([0,0,9.81])
+        self.torque = np.array([0,0,0.1])
 
     def on_destroy(self):
         pass
