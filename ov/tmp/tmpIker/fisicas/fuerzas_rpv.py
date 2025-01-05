@@ -15,6 +15,7 @@ class FuerzasRpv(BehaviorScript):
         self.rpv_initialized = False
         self.force = np.array([0,0,9.81])
         self.torque = np.array([0,0,0.1])
+        self.time_steps = 0
 
     def on_destroy(self):
         pass
@@ -27,6 +28,7 @@ class FuerzasRpv(BehaviorScript):
 
     def on_stop(self):
         self.rpv_initialized = False
+        self.time_steps = 0
 
     def on_update(self, current_time: float, delta_time: float):
         pass
@@ -37,4 +39,5 @@ class FuerzasRpv(BehaviorScript):
             self.rpv_initialized = True
 
         self.rigid_prim_view.apply_forces_and_torques_at_pos(forces=np.array(self.force), torques=np.array(self.torque))
-        carb.log_info("on_physics_step!!!\n")
+        self.time_steps = self.time_steps + 1
+        carb.log_info(f"(rpv_cube) time step = {self.time_steps}")
