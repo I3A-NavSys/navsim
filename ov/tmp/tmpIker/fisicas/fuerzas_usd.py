@@ -9,7 +9,7 @@ class FuerzasUsd(BehaviorScript):
     def on_init(self):
         carb.log_info(f"{type(self).__name__}.on_init()->{self.prim_path}")
         self.physx_interface = omni.physx.get_physx_interface()
-        self.physx_interface_sub = self.physx_interface.subscribe_physics_step_events(self.on_physics_step)
+        self.physx_interface_sub = self.physx_interface.subscribe_physics_on_step_events(self.on_physics_step, True, 0)
         self.force_atr = self.prim.GetAttribute("physxForce:force")
         self.torque_atr = self.prim.GetAttribute("physxForce:torque")
         self.time_steps = 0
