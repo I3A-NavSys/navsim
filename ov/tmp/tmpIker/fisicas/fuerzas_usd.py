@@ -32,4 +32,5 @@ class FuerzasUsd(BehaviorScript):
     def on_physics_step(self, dt):
         self.force_atr.Set(Gf.Vec3f(0,0,9.81))
         self.torque_atr.Set(Gf.Vec3f(0,0,0.1))
+        self.time_steps = self.time_steps + 1
         carb.log_info(f"(usd_cube) time step = {self.time_steps}")
