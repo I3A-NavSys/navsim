@@ -1,9 +1,9 @@
 import carb
 import numpy as np
+import omni.physx
 
 from omni.kit.scripting import BehaviorScript
 from omni.isaac.core.prims import RigidPrimView
-import omni.physx
 
 
 class FuerzasRpv(BehaviorScript):

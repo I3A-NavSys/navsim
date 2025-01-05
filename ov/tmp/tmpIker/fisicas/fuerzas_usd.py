@@ -1,8 +1,8 @@
 import carb
+import omni.physx
 
 from omni.kit.scripting import BehaviorScript
 from pxr import Gf
-import omni.physx
 
 
 class FuerzasUsd(BehaviorScript):
