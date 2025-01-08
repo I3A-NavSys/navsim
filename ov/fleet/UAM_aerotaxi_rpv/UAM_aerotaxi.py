@@ -45,17 +45,17 @@ class UAM_minidrone(BehaviorScript):
 
         # Physx related
         self.physx_interface = omni.physx.get_physx_interface()
-        self.physics_timer_callback = self.physx_interface.subscribe_physics_step_events(self.on_physics_step)
+        self.physx_sub = self.physx_interface.subscribe_physics_on_step_events(self.on_physics_step, True, 0)
 
         # Create rigid prim view
-        prim_paths = ["/aerotaxi/body_link", "/aerotaxi/(NE|NW|SE|SW)_rotor_link"]
+        prim_paths = ["/aerotaxi", "/aerotaxi", "/aerotaxi", "/aerotaxi", "/aerotaxi"]
         self.rigid_prim_view = RigidPrimView(prim_paths)
         self.rigid_prim_view_initialized = False
         
         # Create the omniverse event associated to this UAV
         self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(self.prim.GetPath()))
         bus = omni.kit.app.get_app().get_message_bus_event_stream()
-        self.eventSub = bus.create_subscription_to_push_by_type(self.UAV_EVENT, self.push_subscripted_event_method)
+        self.event_sub = bus.create_subscription_to_push_by_type(self.UAV_EVENT, self.push_subscripted_event_method)
 
         #--------------------------------------------------------------------------------------------------------------
         # NAVIGATION PARAMETERS
@@ -78,6 +78,7 @@ class UAM_minidrone(BehaviorScript):
 
         self.g = 9.81
 
+        self.positions = np.array([[0,0,0], [0.5, -1.95, 0.6], [0.5, 1.95, 0.6], [-2.5, -1.55, 0.6], [-2.5, 1.55, 0.6]])
         self.body_link_pos = np.array([0, 0, 0])
         self.roll = 0
         self.pitch = 0
@@ -158,7 +159,8 @@ class UAM_minidrone(BehaviorScript):
         self.E_max = 150
     
     def on_destroy(self):
-        self.uav_event_sub = None
+        self.physx_sub = None
+        self.event_sub = None
     
     #------------------------------------------------------------------------------------------------------------------
     # EVENT HANDLERS
@@ -439,7 +441,7 @@ class UAM_minidrone(BehaviorScript):
         # Apply forces and torques to all UAV links
         forces = np.array([FD, FT_NE, FT_NW, FT_SE, FT_SW])
         torques = np.array([body_link_torque, zero_torque, zero_torque, zero_torque, zero_torque])
-        self.rigid_prim_view.apply_forces_and_torques_at_pos(forces=forces, torques=torques, is_global=False)
+        self.rigid_prim_view.apply_forces_and_torques_at_pos(forces=forces, torques=torques, positions=self.positions, is_global=False)
 
     #------------------------------------------------------------------------------------------------------------------
     # TRACKING FUNCTIONS
