@@ -73,7 +73,9 @@ class UAM_minidrone(BehaviorScript):
 
         primSW = self.primRotors.GetChild("SW")
         self.forceSW_atr = primSW.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
-        self.forceSW_atr.Set(Gf.Vec3f(0,0,0))        
+        self.forceSW_atr.Set(Gf.Vec3f(0,0,0))
+
+        self.steps = 0        
         
         # Create the omniverse event associated to this UAV
         self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(self.prim.GetPath()))
@@ -204,7 +206,8 @@ class UAM_minidrone(BehaviorScript):
         # Update the drone status
         self.imu()
         self.navigation()
-        # self.command.hover()
+        self.command.hover()
+        #self.command.rotZ = 1
         self.servo_control()
         self.platform_dynamics()
         self.telemetry()
@@ -232,6 +235,8 @@ class UAM_minidrone(BehaviorScript):
 
         self.tracking_figure_builded = False
         self.track_info = []
+
+        self.steps = 0
 
     def on_update(self, current_time: float, delta_time: float):
         # print(f"UPDATE  {self.prim_path} \t {current_time:.3f} \t {delta_time:.3f}")
@@ -312,6 +317,15 @@ class UAM_minidrone(BehaviorScript):
 
         self.angular_vel = self.angVel_atr.Get() * np.pi / 180
         # print(f"angular velocity (local):  {self.angular_vel}")
+
+        # Print imu data
+        carb.log_info(f"step {self.steps}")
+        carb.log_info(f"position:\n    {self.pos[0]}\n    {self.pos[1]}\n    {self.pos[2]}")
+        carb.log_info(f"rotation:\n    {self.roll}\n    {self.pitch}\n    {self.yaw}")
+        carb.log_info(f"linear velocity:\n    {self.linear_vel[0]}\n    {self.linear_vel[1]}\n    {self.linear_vel[2]}")
+        carb.log_info(f"angular velocity:\n    {self.angular_vel[0]}\n    {self.angular_vel[1]}\n    {self.angular_vel[2]}\n")
+
+        self.steps = self.steps + 1
 
     def navigation(self):
         # This function converts a flight plan position at certain time
