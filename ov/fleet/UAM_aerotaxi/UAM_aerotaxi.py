@@ -207,7 +207,8 @@ class UAM_minidrone(BehaviorScript):
         self.imu()
         self.navigation()
         self.command.hover()
-        #self.command.rotZ = 1
+        self.command.rotZ = 1
+        carb.log_info("step,position_x,position_y,position_z,rotation_x,rotation_y,rotation_z,linear_velocity_x,linear_velocity_y,linear_velocity_z,angular_velocity_x,angular_velocity_y,angular_velocity_z")
         self.servo_control()
         self.platform_dynamics()
         self.telemetry()
@@ -319,11 +320,7 @@ class UAM_minidrone(BehaviorScript):
         # print(f"angular velocity (local):  {self.angular_vel}")
 
         # Print imu data
-        carb.log_info(f"step {self.steps}")
-        carb.log_info(f"position:\n    {self.pos[0]}\n    {self.pos[1]}\n    {self.pos[2]}")
-        carb.log_info(f"rotation:\n    {self.roll}\n    {self.pitch}\n    {self.yaw}")
-        carb.log_info(f"linear velocity:\n    {self.linear_vel[0]}\n    {self.linear_vel[1]}\n    {self.linear_vel[2]}")
-        carb.log_info(f"angular velocity:\n    {self.angular_vel[0]}\n    {self.angular_vel[1]}\n    {self.angular_vel[2]}\n")
+        carb.log_info(f"{self.steps},{self.pos[0]},{self.pos[1]},{self.pos[2]},{self.roll},{self.pitch},{self.yaw},{self.linear_vel[0]},{self.linear_vel[1]},{self.linear_vel[2]},{self.angular_vel[0]},{self.angular_vel[1]},{self.angular_vel[2]}")
 
         self.steps = self.steps + 1
 

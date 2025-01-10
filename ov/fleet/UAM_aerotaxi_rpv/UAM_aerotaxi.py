@@ -175,7 +175,8 @@ class UAM_minidrone(BehaviorScript):
 
         # Initial command
         self.command.hover()
-        #self.command.rotZ = 1.0
+        self.command.rotZ = 1.0
+        carb.log_info("step,position_x,position_y,position_z,rotation_x,rotation_y,rotation_z,linear_velocity_x,linear_velocity_y,linear_velocity_z,angular_velocity_x,angular_velocity_y,angular_velocity_z")
 
     def on_pause(self):
         pass
@@ -297,11 +298,7 @@ class UAM_minidrone(BehaviorScript):
         self.SW_rotor_link_ang = ang[4]
 
         # Print imu data
-        carb.log_info(f"step {self.steps}")
-        carb.log_info(f"position:\n    {self.body_link_pos[0]}\n    {self.body_link_pos[1]}\n    {self.body_link_pos[2]}")
-        carb.log_info(f"rotation:\n    {self.roll}\n    {self.pitch}\n    {self.yaw}")
-        carb.log_info(f"linear velocity:\n    {self.body_link_lin[0]}\n    {self.body_link_lin[1]}\n    {self.body_link_lin[2]}")
-        carb.log_info(f"angular velocity:\n    {self.body_link_ang[0]}\n    {self.body_link_ang[1]}\n    {self.body_link_ang[2]}\n")
+        carb.log_info(f"{self.steps},{self.body_link_pos[0]},{self.body_link_pos[1]},{self.body_link_pos[2]},{self.roll},{self.pitch},{self.yaw},{self.body_link_lin[0]},{self.body_link_lin[1]},{self.body_link_lin[2]},{self.body_link_ang[0]},{self.body_link_ang[1]},{self.body_link_ang[2]}")
 
     def navigation(self):
         # This function converts a flight plan position at certain time to a navigation command
