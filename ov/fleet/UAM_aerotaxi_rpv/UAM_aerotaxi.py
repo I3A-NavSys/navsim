@@ -302,10 +302,10 @@ class UAM_minidrone(BehaviorScript):
 
         # Print imu data
         carb.log_info(f"step {self.steps}")
-        carb.log_info(f"position: ({self.body_link_pos[0]}, {self.body_link_pos[1]}, {self.body_link_pos[2]})")
-        carb.log_info(f"rotation: ({self.roll}, {self.pitch}, {self.yaw})")
-        carb.log_info(f"linear velocity: ({self.body_link_lin[0]}, {self.body_link_lin[1]}, {self.body_link_lin[2]})")
-        carb.log_info(f"linear velocity: ({self.body_link_ang[0]}, {self.body_link_ang[1]}, {self.body_link_ang[2]})\n")
+        carb.log_info(f"position:\n    {self.body_link_pos[0]}\n    {self.body_link_pos[1]}\n    {self.body_link_pos[2]})")
+        carb.log_info(f"rotation:\n    {self.roll}    \n {self.pitch}    \n {self.yaw})")
+        carb.log_info(f"linear velocity:\n    {self.body_link_lin[0]}\n    {self.body_link_lin[1]}\n    {self.body_link_lin[2]})")
+        carb.log_info(f"angular velocity:\n    {self.body_link_ang[0]}\n    {self.body_link_ang[1]}\n    {self.body_link_ang[2]})\n")
 
     def navigation(self):
         # This function converts a flight plan position at certain time to a navigation command
