@@ -207,7 +207,7 @@ class UAM_minidrone(BehaviorScript):
         self.imu()
         self.navigation()
         self.command.hover()
-        self.command.rotZ = 1
+        #self.command.rotZ = 1
         carb.log_info("step,position_x,position_y,position_z,rotation_x,rotation_y,rotation_z,linear_velocity_x,linear_velocity_y,linear_velocity_z,angular_velocity_x,angular_velocity_y,angular_velocity_z")
         self.servo_control()
         self.platform_dynamics()
