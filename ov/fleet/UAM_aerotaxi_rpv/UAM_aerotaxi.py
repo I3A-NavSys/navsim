@@ -57,6 +57,8 @@ class UAM_minidrone(BehaviorScript):
         bus = omni.kit.app.get_app().get_message_bus_event_stream()
         self.event_sub = bus.create_subscription_to_push_by_type(self.UAV_EVENT, self.push_subscripted_event_method)
 
+        self.steps = 0
+
         #--------------------------------------------------------------------------------------------------------------
         # NAVIGATION PARAMETERS
 
@@ -212,6 +214,9 @@ class UAM_minidrone(BehaviorScript):
         self.platform_dynamics()
         self.telemetry()
 
+        # Update steps
+        self.steps = self.steps + 1
+
     def push_subscripted_event_method(self, e):       
 
         try:
@@ -292,6 +297,13 @@ class UAM_minidrone(BehaviorScript):
 
         self.SW_rotor_link_lin = lin[4]
         self.SW_rotor_link_ang = ang[4]
+
+        # Print imu data
+        carb.log_info(f"step {self.steps}")
+        carb.log_info(f"position: ({self.body_link_pos[0]}, {self.body_link_pos[1]}, {self.body_link_pos[2]})")
+        carb.log_info(f"rotation: ({self.roll}, {self.pitch}, {self.yaw})")
+        carb.log_info(f"linear velocity: ({self.body_link_lin[0]}, {self.body_link_lin[1]}, {self.body_link_lin[2]})")
+        carb.log_info(f"linear velocity: ({self.body_link_ang[0]}, {self.body_link_ang[1]}, {self.body_link_ang[2]})\n")
 
     def navigation(self):
         # This function converts a flight plan position at certain time to a navigation command
