@@ -197,6 +197,8 @@ class UAM_minidrone(BehaviorScript):
         self.tracking_figure_builded = False
         self.track_info = []
 
+        self.steps = 0
+
     def on_update(self, current_time: float, delta_time: float):
         # Get current simulation time
         self.current_time = current_time
