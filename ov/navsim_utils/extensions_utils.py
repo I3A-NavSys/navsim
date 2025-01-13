@@ -16,6 +16,101 @@ if project_root_path not in sys.path:
 
 class ExtensionUtils:
 
+    def init(self):
+         # Color
+        self.KIT_GREEN = 0xFF8A8777
+
+        # Label
+        self.LABEL_PADDING = 120
+
+        # Spacing
+        self.SPACING_S = 8
+        self.SPACING_M = self.SPACING_S * 2
+        self.SPACING_L = self.SPACING_M * 2
+        self.SPACING_XL = self.SPACING_L * 2
+
+        # Height
+        self.MINIMAL_HEIGHT = 0
+
+        # Width
+        self.MINIMAL_WIDTH = 0
+
+        self.Window_dark_style = {
+            "Window": {"background_color": 0xFF444444}
+        }
+
+
+        self.VStack_A = {
+            "VStack": {
+                "margin_width": 10, 
+                "margin_height": 0
+            }
+        }
+
+
+        self.VStack_B = {
+            "VStack": {
+                "margin_width": 10,
+                "margin_height": 5
+            }
+        }
+
+
+        self.HStack_A = {
+            "HStack": {
+                "margin_width": 10,
+                "margin_height": 5
+            }
+        }
+
+
+        self.Label_A = {
+            "Label": {
+                "font_size": 12,
+                "color": 0xFFDDDDDD
+            }
+        }
+
+
+        self.colors = {
+            "R": 0xFF5555AA,
+            "G": 0xFF76A371,
+            "B": 0xFFA07D4F
+        }
+
+
+        self.CollapsableFrame_style = {
+            "CollapsableFrame": {
+                "background_color": 0xFF343432,
+                "secondary_color": 0xFF343432,
+                "color": 0xFFAAAAAA,
+                "border_radius": 4.0,
+                "border_color": 0x0,
+                "border_width": 0,
+                "font_size": 14,
+                "padding": 0,
+            },
+            "HStack::header": {"margin": 5},
+            "CollapsableFrame:hovered": {"secondary_color": 0xFF3A3A3A},
+            "CollapsableFrame:pressed": {"secondary_color": 0xFF343432},
+        }
+
+        self.ScrollingFrame_style = {
+            "ScrollingFrame": {
+                "background_color": 0xFF343432,
+                "secondary_color": 0xFF343432,
+                "color": 0xFFAAAAAA,
+                "border_radius": 4.0,
+                "border_color": 0x0,
+                "border_width": 0,
+                "font_size": 14,
+                "padding": 0,
+            },
+            "HStack::header": {"margin": 5},
+            "ScrollingFrame:hovered": {"secondary_color": 0xFF3A3A3A},
+            "ScrollingFrame:pressed": {"secondary_color": 0xFF343432},
+        }
+
     #------------------------------------------------------------------------------------------------------------------
     # USER INTERFACE
 
