@@ -12,29 +12,18 @@ import matplotlib.pyplot as plt
 from omni.kit.scripting import BehaviorScript
 from pxr import Sdf, Gf
 from scipy.spatial.transform import Rotation
+import omni.physx
+import omni.timeline
+# DEBUG
+import logging
 
 
-
-##############################################################################
-# Adding root 'ov' folder to sys.path
-
-current_path = os.path.abspath(os.path.dirname(__file__))
-while True:
-    if os.path.basename(current_path) == 'ov':
-        project_root_path = current_path
-        break
-    parent_path = os.path.dirname(current_path)
-    if parent_path == current_path:
-        raise RuntimeError("No se encontró el directorio 'ov' en la ruta.")
-    current_path = parent_path
-# print(f"Directorio raíz del proyecto: {project_root_path}")
-
+project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+# Add root 'project' folder to sys.path
 if project_root_path not in sys.path:
     sys.path.append(project_root_path)
 
 
-
-##############################################################################
 # Local application/library specific imports
 from uspace.flight_plan.flight_plan import FlightPlan
 from uspace.flight_plan.waypoint import Waypoint
@@ -44,6 +33,16 @@ from uspace.flight_plan.command import Command
 class UAM_minidrone(BehaviorScript):
 
     def on_init(self):
+        # DEBUG
+        self.logger = logging.getLogger("A_my_logger")
+        self.logger.info(f"INIT  {self.prim_path}")
+
+        self.timeline_sub = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
+            int(omni.timeline.TimelineEventType.STOP), self.reset_current_time)
+
+        self.physx_interface = omni.physx.get_physx_interface()
+        self.physics_sub = self.physx_interface.subscribe_physics_step_events(self.on_physics_step)
+
         self.current_time = 0
         self.delta_time = 0
 
@@ -58,29 +57,40 @@ class UAM_minidrone(BehaviorScript):
         self.torque_atr = self.prim.GetAttribute("physxForce:torque")
         self.torque_atr.Set(Gf.Vec3f(0,0,0))
 
-        self.primRotors = self.prim.GetChild("rotors")
-        primNE = self.primRotors.GetChild("NE")
-        self.forceNE_atr = primNE.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
+        primNE = self.prim.GetChild("rotor_NE")
+        # self.forceNE_atr = primNE.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
+        self.forceNE_atr = primNE.GetAttribute("physxForce:force")
         self.forceNE_atr.Set(Gf.Vec3f(0,0,0))
 
-        primNW = self.primRotors.GetChild("NW")
-        self.forceNW_atr = primNW.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
+        primNW = self.prim.GetChild("rotor_NW")
+        # self.forceNW_atr = primNW.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
+        self.forceNW_atr = primNW.GetAttribute("physxForce:force")
         self.forceNW_atr.Set(Gf.Vec3f(0,0,0))
 
-        primSE = self.primRotors.GetChild("SE")
-        self.forceSE_atr = primSE.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
+        primSE = self.prim.GetChild("rotor_SE")
+        # self.forceSE_atr = primSE.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
+        self.forceSE_atr = primSE.GetAttribute("physxForce:force")
         self.forceSE_atr.Set(Gf.Vec3f(0,0,0))
 
-        primSW = self.primRotors.GetChild("SW")
-        self.forceSW_atr = primSW.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
-        self.forceSW_atr.Set(Gf.Vec3f(0,0,0))
-
-        self.steps = 0        
+        primSW = self.prim.GetChild("rotor_SW")
+        # self.forceSW_atr = primSW.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
+        self.forceSW_atr = primSW.GetAttribute("physxForce:force")
+        self.forceSW_atr.Set(Gf.Vec3f(0,0,0))        
         
+        self.primRotSpinning = self.prim.GetChild("rotors_spinning")
+        self.primRotStatic   = self.prim.GetChild("rotors_static")
+        
+        self.prim_rotor_NE_rot_att = self.primRotStatic.GetChild("rotor_NE").GetAttribute("xformOp:orient")
+        self.prim_rotor_NW_rot_att = self.primRotStatic.GetChild("rotor_NW").GetAttribute("xformOp:orient")
+        self.prim_rotor_SE_rot_att = self.primRotStatic.GetChild("rotor_SE").GetAttribute("xformOp:orient")
+        self.prim_rotor_SW_rot_att = self.primRotStatic.GetChild("rotor_SW").GetAttribute("xformOp:orient")
+        self.prim_rotors_rot_vel = 179
+        self.are_rotors_on = False
+
         # Create the omniverse event associated to this UAV
         self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(self.prim.GetPath()))
         bus = omni.kit.app.get_app().get_message_bus_event_stream()
-        self.eventSub = bus.create_subscription_to_push_by_type(self.UAV_EVENT, self.push_subscripted_event_method)
+        self.uav_event_sub = bus.create_subscription_to_push_by_type(self.UAV_EVENT, self.push_subscripted_event_method)
 
         #--------------------------------------------------------------------------------------------------------------
         # NAVIGATION PARAMETERS
@@ -105,7 +115,7 @@ class UAM_minidrone(BehaviorScript):
 
         mass_attr = self.prim.GetAttribute("physics:mass")
         self.mass = mass_attr.Get()
-        self.mass = 2000
+        self.mass = 0.595
         # print(f"mass: {self.mass}")
 
         inertia_attr = self.prim.GetAttribute("physics:diagonalInertia")
@@ -119,42 +129,52 @@ class UAM_minidrone(BehaviorScript):
         self.linear_vel  = Gf.Vec3f(0, 0, 0)
         self.angular_vel = Gf.Vec3f(0, 0, 0)
 
-        # Rotors speed (rad/s)
+        # Rotor speed (rad/s)
+        # asumimos velocidad máxima de 6000rpm = 628.3185 rad/s
         self.w_rotor_NE = 0.0
         self.w_rotor_NW = 0.0
         self.w_rotor_SE = 0.0
         self.w_rotor_SW = 0.0
     
         # Max and minimum angular velocity of the motors
-        self.w_max = 62.8319       # rad/s = 600rpm
-        self.w_min = 0             # rad/s =   0rpm
+        self.w_max = 628.3185      # rad/s = 15000rpm
+        self.w_min = 0             # rad/s =     0rpm
 
         # Aerodynamic thrust force constant
         # Force generated by the rotors is FT = kFT * w²
-        self.kFT_N =  4.6544       # north side
-        self.kFT_S =  0.9309       # south side
-        self.w_hov = 41.8879       # rad/s = 400rpm
+        self.kFT = 1.7197e-05                                    # assuming that FT_max = 0.692kg
+        self.w_hov = (self.mass * self.g / 4 / self.kFT) ** 0.5  # 291.45 rad/s
 
         # Aerodynamic drag force constant
         # Moment generated by the rotors is MDR = kMDR * w²
-        self.kMDR_N = 5.9683
-        self.kMDR_S = 1.4921
+        self.kMDR = 3.6714e-08
 
         # Aerodynamic drag force constant per axis
         # Drag force generated by the air friction, opposite to the velocity is FD = -kFD * r_dot*|r_dot| (depends on 
         # the shape of the object in each axis).
         # Horizontal axis:
-        self.kFDx = 3.0625
-        self.kFDy = 4.0000
+        self.kFDx = 1.1902e-04
+        self.kFDy = 1.1902e-04
         # Vertical axis:
-        self.kFDz = 7.8400
+        self.kFDz = 36.4437e-4
 
         # Aerodynamic drag moment constant per axis
         # Drag moment generated by the air friction, opposite to the angular velocity is MD = -kMD * rpy_dot*|rpy_dot| 
         # (depends on the shape of the object in each axis).
-        self.kMDx = 37.4010
-        self.kMDy = 25.8580
-        self.kMDz = 20.2514
+
+        # Horizontal axis:
+        # Assuming similar drag in both axes (although the fuselage is not equal), no gravity and the drone is 
+        # propulsed by two rotors of the same side at maximum speed the maximum angular velocity is Vrp_max = 2 * 2*pi;
+        # operating kMDxy =  2 * FT_max * sin(deg2rad(45))^2 / Vrp_max^2 we get that...
+        self.kMDx = 1.1078e-04
+        self.kMDy = 1.1078e-04
+
+        # Vertical axis:
+        # Must be verified at maximum yaw velocity
+        # Assuming that Vyaw_max = 4*pi rad/s (max yaw velocity of 2rev/s) and w_hov2 (rotor speed to maintain the 
+        # hovering) And taking into account that MDR = kMDR * w² and MDz = kMDz * Vyaw² operating MDz  = MDR (the air 
+        # friction compensates the effect of the rotors) and kMDz = kMDR* (2 * w_hov2²) / Vyaw_max² we get that...
+        self.kMDz = 7.8914e-05
 
         #--------------------------------------------------------------------------------------------------------------
         # LOW LEVEL CONTROL
@@ -167,17 +187,18 @@ class UAM_minidrone(BehaviorScript):
         self.E  = np.zeros((4, 1))  # model accumulated error
         
         self.Kx = np.array([        # state control matrix
-            [ -14.6551,  -45.5032,   -4.1872,  -13.0009,    3.8871,   -6.6331,    2.1363,    6.4114 ],
-            [  14.6551,  -45.5032,    4.1872,  -13.0009,   -3.8871,   -6.6331,   -2.1363,    6.4114 ],
-            [ -58.6206,  227.5161,  -16.7487,   65.0046,  -24.4514,   33.1656,    8.5453,    6.4114 ],
-            [  58.6206,  227.5161,   16.7487,   65.0046,   24.4514,   33.1656,   -8.5453,    6.4114 ]
+            [-47.4820, -47.4820, -9.3626, -9.3626,  413.1508, -10.5091,  10.5091,  132.4440],
+            [ 47.4820, -47.4820,  9.3626, -9.3626, -413.1508, -10.5091, -10.5091,  132.4440],
+            [-47.4820,  47.4820, -9.3626,  9.3626, -413.1508,  10.5091,  10.5091,  132.4440],
+            [ 47.4820,  47.4820,  9.3626,  9.3626,  413.1508,  10.5091, -10.5091,  132.4440]
         ])
 
+
         self.Ky = np.array([        # error control matrix
-            [ -3.1839,    1.0254,    4.2743,    2.5914 ],
-            [ -3.1839,   -1.0254,    4.2743,   -2.5914 ],
-            [ 15.9195,    4.1017,    4.2743,  -16.3009 ],
-            [ 15.9195,   -4.1017,    4.2743,   16.3009 ]           
+            [-8.1889,  8.1889,  294.3201,  918.1130],
+            [-8.1889, -8.1889,  294.3201, -918.1130],
+            [ 8.1889,  8.1889,  294.3201, -918.1130],
+            [ 8.1889, -8.1889,  294.3201,  918.1130]
         ])
 
         self.Hs = np.array([        # hovering speed
@@ -187,9 +208,11 @@ class UAM_minidrone(BehaviorScript):
             [self.w_hov]
         ])
         
-        self.E_max = 150            # maximum model accumulated error
-    
+        self.E_max = 15  # previous value 5, maximum model accumulated error
+
     def on_destroy(self):
+        self.timeline_sub = None
+        self.physics_sub = None
         self.uav_event_sub = None
     #------------------------------------------------------------------------------------------------------------------
     # EVENT HANDLERS
@@ -197,6 +220,7 @@ class UAM_minidrone(BehaviorScript):
     def on_play(self):
         # print(f"PLAY    {self.prim_path}")
         # print(f"\t {self.current_time} \t {self.delta_time}")
+        # print(f"PLAY  {self.prim_path} \t {self.current_time:.3f} \t {self.delta_time:.3f}")
 
         # Tracking
         self.show_tracking = False
@@ -206,9 +230,6 @@ class UAM_minidrone(BehaviorScript):
         # Update the drone status
         self.imu()
         self.navigation()
-        self.command.hover()
-        #self.command.rotZ = 1
-        carb.log_info("step,position_x,position_y,position_z,rotation_x,rotation_y,rotation_z,linear_velocity_x,linear_velocity_y,linear_velocity_z,angular_velocity_x,angular_velocity_y,angular_velocity_z")
         self.servo_control()
         self.platform_dynamics()
         self.telemetry()
@@ -216,6 +237,14 @@ class UAM_minidrone(BehaviorScript):
     def on_pause(self):
         # print(f"PAUSE   {self.prim_path}")
         pass
+
+    def on_physics_step(self, step_size):
+        self.current_time += step_size
+        self.delta_time = step_size
+        self.update()
+
+    def reset_current_time(self, event):
+        self.current_time = 0
 
     def on_stop(self):
         # print(f"STOP    {self.prim_path}")
@@ -232,19 +261,28 @@ class UAM_minidrone(BehaviorScript):
         self.forceSE_atr.Set(Gf.Vec3f(0,0,0))
         self.forceSW_atr.Set(Gf.Vec3f(0,0,0))
     
+        # Rotors animation
+        # self.prim_rotor_NE_rot_att.Set(Gf.Quatd(1,0,0,0))
+        # self.prim_rotor_NW_rot_att.Set(Gf.Quatd(1,0,0,0))
+        # self.prim_rotor_SE_rot_att.Set(Gf.Quatd(1,0,0,0))
+        # self.prim_rotor_SW_rot_att.Set(Gf.Quatd(1,0,0,0))
+
         self.fp = None
 
         self.tracking_figure_builded = False
         self.track_info = []
 
-        self.steps = 0
-
-    def on_update(self, current_time: float, delta_time: float):
+    # def on_update(self, current_time: float, delta_time: float):
+    def update(self):
         # print(f"UPDATE  {self.prim_path} \t {current_time:.3f} \t {delta_time:.3f}")
+        # print(f"UPDATE  {self.prim_path} \t {self.current_time:.3f} \t {self.delta_time:.3f}")
+        # self.logger.info(f"UPDATE  {self.prim_path} \t {self.current_time:.3f} \t {self.delta_time:.3f}")
 
         # Get current simulation time
-        self.current_time = current_time
-        self.delta_time = delta_time
+        # self.current_time = current_time
+        # self.delta_time = delta_time
+
+        # self.animate_rotors()
 
         # Update the drone status
         self.imu()
@@ -274,11 +312,29 @@ class UAM_minidrone(BehaviorScript):
         if self.command.duration is not None:
             self.cmd_exp_time = self.current_time + self.command.duration
             print(f"[{self.current_time}] {self.prim_path}: command received")
+
+            # Adapt command to horizont axes
+            # vel_x = np.cos(self.pitch) * self.command.velX
+            # vel_y = np.cos(self.roll) * self.command.velY
+            # vel_z = np.sin(self.pitch) + np.sin(self.roll) + self.command.velZ
+            
+            # self.command.set(self.command.on, vel_x, vel_y, vel_z, self.command.rotZ, self.command.duration)
+            # self.command.velX = vel_x
+            # self.command.velY = vel_y
+            # self.command.velZ = vel_z
         
     def eventFn_FlightPlan(self, fp):
         self.fp :FlightPlan = pickle.loads(base64.b64decode(fp))
         self.currentWP = None
         print(f"[{self.current_time}] {self.prim_path}: flightplan received")
+
+    def eventFn_ResetControl(self):
+        self.x  = np.zeros((8, 1))  # model state
+        self.y  = np.zeros((4, 1))  # model output
+        self.u  = np.zeros((4, 1))  # input (rotors speeds)
+        self.r  = np.zeros((4, 1))  # model reference
+        self.e  = np.zeros((4, 1))  # model error
+        self.E  = np.zeros((4, 1))  # model accumulated error
             
     #------------------------------------------------------------------------------------------------------------------
     # FLYING FUNCTIONS
@@ -289,10 +345,39 @@ class UAM_minidrone(BehaviorScript):
         self.w_rotor_NW = 0
         self.w_rotor_SE = 0
         self.w_rotor_SW = 0
-        self.primRotors.GetAttribute("visibility").Set("inherited")
+        self.primRotStatic.SetActive(True)
+        self.primRotSpinning.SetActive(False)
+        self.are_rotors_on = False
 
         # Reset del control
         self.E = np.zeros((4, 1))
+
+    def animate_rotors(self):
+        if self.are_rotors_on:
+            ori = self.prim_rotor_NW_rot_att.Get()
+
+            W = ori.real
+            X = ori.imaginary[0]
+            Y = ori.imaginary[1]
+            Z = ori.imaginary[2]
+            quaternion = Rotation.from_quat([X,Y,Z,W])
+
+            rotation = Rotation.from_euler("z", self.prim_rotors_rot_vel, degrees=True)
+            q_rot = rotation * quaternion
+            
+            new_quat = q_rot.as_quat()
+            W = new_quat[3]
+            X = new_quat[0]
+            Y = new_quat[1]
+            Z = new_quat[2]
+
+            new_quat_NWSE = Gf.Quatd(W, X, Y, Z)
+            new_quat_NESW = Gf.Quatd(W, X, Y, Z * -1)
+
+            self.prim_rotor_NE_rot_att.Set(new_quat_NESW)
+            self.prim_rotor_NW_rot_att.Set(new_quat_NWSE)
+            self.prim_rotor_SE_rot_att.Set(new_quat_NWSE)
+            self.prim_rotor_SW_rot_att.Set(new_quat_NESW)
 
     def imu(self):
         self.pos  = self.pos_atr.Get()
@@ -318,11 +403,6 @@ class UAM_minidrone(BehaviorScript):
 
         self.angular_vel = self.angVel_atr.Get() * np.pi / 180
         # print(f"angular velocity (local):  {self.angular_vel}")
-
-        # Print imu data
-        carb.log_info(f"{self.steps},{self.pos[0]},{self.pos[1]},{self.pos[2]},{self.roll},{self.pitch},{self.yaw},{self.linear_vel[0]},{self.linear_vel[1]},{self.linear_vel[2]},{self.angular_vel[0]},{self.angular_vel[1]},{self.angular_vel[2]}")
-
-        self.steps = self.steps + 1
 
     def navigation(self):
         # This function converts a flight plan position at certain time
@@ -393,13 +473,15 @@ class UAM_minidrone(BehaviorScript):
             if self.current_time > self.cmd_exp_time:
                 self.command.hover()
 
-        self.primRotors.GetAttribute("visibility").Set("invisible")
+        self.primRotStatic.SetActive(False)
+        self.primRotSpinning.SetActive(True)
+        self.are_rotors_on = True
 
         # Assign the model reference to be followed
-        self.r[0, 0] = self.command.velX       # bXdot
-        self.r[1, 0] = self.command.velY       # bYdot
-        self.r[2, 0] = self.command.velZ       # bZdot
-        self.r[3, 0] = self.command.rotZ       # hZdot
+        self.r[0, 0] = self.command.velX        # bXdot
+        self.r[1, 0] = self.command.velY        # bYdot
+        self.r[2, 0] = self.command.velZ        # bZdot
+        self.r[3, 0] = self.command.rotZ        # hZdot
         # print(f"r: {np.round(self.r.T, 2)}")
 
         # Assign model state
@@ -469,11 +551,17 @@ class UAM_minidrone(BehaviorScript):
         # self.w_rotor_SE = self.w_rotor_NE
         # self.w_rotor_SW = self.w_rotor_NE
 
+        # # Con esto simulamos rotación de giro
+        # w_hov2 = (self.mass * self.g / 2.0 / self.kFT) ** 0.5
+        # self.w_rotor_NE = w_hov2
+        # self.w_rotor_NW = 0
+        # self.w_rotor_SE = 0
+        # self.w_rotor_SW = self.w_rotor_NE
         # Apply thrust force
-        FT_NE = Gf.Vec3f(0, 0, self.kFT_N * self.w_rotor_NE**2)
-        FT_NW = Gf.Vec3f(0, 0, self.kFT_N * self.w_rotor_NW**2)
-        FT_SE = Gf.Vec3f(0, 0, self.kFT_S * self.w_rotor_SE**2)
-        FT_SW = Gf.Vec3f(0, 0, self.kFT_S * self.w_rotor_SW**2)
+        FT_NE = Gf.Vec3f(0, 0, self.kFT * self.w_rotor_NE**2)
+        FT_NW = Gf.Vec3f(0, 0, self.kFT * self.w_rotor_NW**2)
+        FT_SE = Gf.Vec3f(0, 0, self.kFT * self.w_rotor_SE**2)
+        FT_SW = Gf.Vec3f(0, 0, self.kFT * self.w_rotor_SW**2)
         self.forceNE_atr.Set(FT_NE)
         self.forceNW_atr.Set(FT_NW)
         self.forceSE_atr.Set(FT_SE)
@@ -487,10 +575,10 @@ class UAM_minidrone(BehaviorScript):
         self.force_atr.Set(FD)
       
         # Compute the drag moment
-        MDR_NE = self.kMDR_N * self.w_rotor_NE**2
-        MDR_NW = self.kMDR_N * self.w_rotor_NW**2
-        MDR_SE = self.kMDR_S * self.w_rotor_SE**2
-        MDR_SW = self.kMDR_S * self.w_rotor_SW**2
+        MDR_NE = self.kMDR * self.w_rotor_NE**2
+        MDR_NW = self.kMDR * self.w_rotor_NW**2
+        MDR_SE = self.kMDR * self.w_rotor_SE**2
+        MDR_SW = self.kMDR * self.w_rotor_SW**2
         MDR = Gf.Vec3f(0, 0, MDR_NE - MDR_NW - MDR_SE + MDR_SW)
         # print(f"MDR  = {MDR}")
 
