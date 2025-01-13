@@ -83,7 +83,7 @@ takeoff_nodes = gp.get_take_off_nodes((-600, 0), 0)
 landing_nodes = gp.get_landing_nodes((600, 0))
 
 route, e_time, explored_nodes = gp.get_route(takeoff_nodes[0], landing_nodes[1], 
-                                                     cost_only=False, respect_limits=respect_limits)
+                                                     is_cost=False, respect_limits=respect_limits)
 
 print("###################################")
 print(f"COMPUTING R1")
@@ -108,7 +108,7 @@ takeoff_nodes = gp.get_take_off_nodes((-400, 0), 30)
 landing_nodes = gp.get_landing_nodes((-500, 100))
 
 route, e_time, explored_nodes = gp.get_route(takeoff_nodes[0], landing_nodes[1], 
-                                                     cost_only=False, respect_limits=respect_limits)
+                                                     is_cost=False, respect_limits=respect_limits)
 
 print("###################################")
 print(f"COMPUTING R2")
@@ -146,7 +146,7 @@ for alt_route in range(alt_routes_amount):
     print()
 
     route, e_time, explored_nodes = gp.get_route(takeoff_nodes[0], landing_nodes[1], 
-                                                    cost_only=False, respect_limits=respect_limits)
+                                                    is_cost=False, respect_limits=respect_limits)
 
     gp.print_route(route)
 

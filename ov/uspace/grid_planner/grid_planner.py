@@ -20,7 +20,7 @@ class GridPlanner:
         self.y_height = y_height    # Altura del subnivel norte/sur  (m)
         self.level_height_diff = y_height - x_height
         self.grid = {}              # Diccionario de celdas
-        self.is_cost_only = False
+        self.is_cost = False
         self.respect_limits = True
 
     def get_take_off_nodes(self, posXY, time):
@@ -140,13 +140,13 @@ class GridPlanner:
 
                     return GridNode(node.i-1, node.j, 'X', node.s+1, node.cost+2, node)    # giro SUR -> OESTE
 
-    def get_route(self, start_node: GridNode, end_node: GridNode, cost_only=False, respect_limits=True):
+    def get_route(self, start_node: GridNode, end_node: GridNode, is_cost=False, respect_limits=True):
         """
         Dados dos nodos, devuelve una ruta libre del primero al segundo,
         partiendo en el slot especificado.
         """
         start_time = time.time()
-        self.is_cost_only = cost_only
+        self.is_cost = is_cost
         self.respect_limits = respect_limits
         explored_nodes = []
         generation = 0
@@ -178,7 +178,7 @@ class GridPlanner:
                 h_next_node = self.evaluate_node(next_node, end_node)
                 generation += 1
 
-                if not self.is_cost_only:
+                if not self.is_cost:
                     prio_queue.put((h_next_node, generation, next_node))
                 else:
                     prio_queue.put((h_next_node + next_node.cost, generation, next_node))
@@ -187,7 +187,7 @@ class GridPlanner:
                 h_cross_node = self.evaluate_node(cross_node, end_node)
                 generation += 1
 
-                if not self.is_cost_only:
+                if not self.is_cost:
                     prio_queue.put((h_cross_node + 1, generation, cross_node))
                 else:
                     prio_queue.put((h_cross_node + cross_node.cost, generation, cross_node))

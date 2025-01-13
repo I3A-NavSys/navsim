@@ -156,7 +156,7 @@ def only_heuristics(verbose=False, plot_routes=True):
             print(f"Destination: {landing_nodes_list[c][0].i, landing_nodes_list[c][0].j, landing_nodes_list[c][0].L, landing_nodes_list[c][0].s}")
             print()
 
-        route, e_time, explored_nodes = gp.get_route(takeoff_nodes_list[c][0], landing_nodes_list[c][0], cost_only=False, 
+        route, e_time, explored_nodes = gp.get_route(takeoff_nodes_list[c][0], landing_nodes_list[c][0], is_cost=False, 
                                                     respect_limits=respect_limits)
         
         if route is not None:
@@ -209,7 +209,7 @@ def only_cost(verbose=False, plot_routes=True):
             print(f"Destination: {landing_nodes_list[c][0].i, landing_nodes_list[c][0].j, landing_nodes_list[c][0].L, landing_nodes_list[c][0].s}")
             print()
 
-        route, e_time, explored_nodes = gp.get_route(takeoff_nodes_list[c][0], landing_nodes_list[c][0], cost_only=True, 
+        route, e_time, explored_nodes = gp.get_route(takeoff_nodes_list[c][0], landing_nodes_list[c][0], is_cost=True, 
                                                     respect_limits=respect_limits)
         
         if route is not None:
