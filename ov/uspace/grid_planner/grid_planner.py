@@ -2,6 +2,8 @@ import numpy as np
 from queue import PriorityQueue
 import time
 
+from uspace.flight_plan.flight_plan import FlightPlan
+
 class GridNode:
     def __init__(self, i, j, L, s, cost, parent):
         self.i = i
@@ -206,6 +208,36 @@ class GridPlanner:
 
         route.insert(0, node)
         return route
+    
+    def get_flightplan_from_route(self, route):
+        fp = FlightPlan()
+        velocity = self.cell_side / self.slot_time
+
+        for node in route:
+            if node.L == "X":
+                pos = [node.i * self.cell_side + 50, node.j * self.cell_side, self.x_height]
+
+                if node.j % 2 == 0:
+                    vel = [velocity, 0, 0]
+                    fp.set_waypoint(time=node.s * self.slot_time, pos=pos, vel=vel)
+
+                else:
+                    vel = [-velocity, 0, 0]
+                    fp.set_waypoint(time=node.s * self.slot_time, pos=pos, vel=vel)
+            else:
+                pos = [node.i * self.cell_side, node.j * self.cell_side + 50, self.y_height]
+
+                if node.j % 2 == 0:
+                    vel = [0, velocity, 0]
+                    fp.set_waypoint(time=node.s * self.slot_time, pos=pos, vel=vel)
+                    
+                else:
+                    vel = [0, -velocity, 0]
+                    fp.set_waypoint(time=node.s * self.slot_time, pos=pos, vel=vel)
+
+        fp.connect_waypoints()
+
+        return fp
 
     def evaluate_node(self, node: GridNode, end_node: GridNode):
         # Euclidean distance
@@ -299,7 +331,6 @@ class GridPlanner:
         Dada una ruta, devuelve su longitud.
         """
         return len(route) - 1
-
 
     def reserve_nodes(self, route):
         """
