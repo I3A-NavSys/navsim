@@ -356,6 +356,9 @@ class GridPlanner:
         for node in route:
             self.grid.pop((node.i, node.j, node.L, node.s))
 
+    def clear_grid(self):
+        self.grid = {}
+
     def are_there_conflicts(self, route):
         """
         Comprueba si esta ruta presenta conflictos con rutas existentes.
