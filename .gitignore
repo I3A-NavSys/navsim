@@ -120,3 +120,5 @@ CATKIN_IGNORE
 .history
 .ionide
 /ov/.vscode
+
+/ov/tmp/tmpVictor/playground.py
