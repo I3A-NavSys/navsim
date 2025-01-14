@@ -1,6 +1,6 @@
 # Import required modules
 import omni.usd
-from pxr import Usd, UsdGeom, Gf
+from pxr import Usd, UsdGeom, Gf, UsdShade, Sdf
 from pathlib import Path
 from omni.isaac.core.utils.stage import get_current_stage, add_reference_to_stage
 
@@ -39,7 +39,7 @@ root_prim = stage.DefinePrim(root_path, "Xform")
 UsdGeom.XformCommonAPI(root_prim).SetTranslate((0, 0, 0))
 
 # Function to create a sphere at a specific position
-def create_sphere(stage, name, position, parent_path):
+def create_sphere(stage, name, position, parent_path, color):
     # Define the sphere's prim path
     sphere_path = f"{parent_path}/{name}"
     sphere_prim = stage.DefinePrim(sphere_path, "Sphere")
@@ -49,6 +49,13 @@ def create_sphere(stage, name, position, parent_path):
     sphere_xform_api.SetTranslate(position)
     # sphere_xform_api.SetScale((0.5, 0.5, 0.5))
 
+    # sphere_prim.GetRelationship("material:binding").SetTargets([material_path])
+    geom = UsdGeom.Gprim(sphere_prim)
+    geom.GetDisplayColorAttr().Set([color])
+
+
+x_color = Gf.Vec3f(1.0, 0.0, 0.0)
+y_color = Gf.Vec3f(1.0, 0.843, 0.0)
 sphere_counter = 0
 # Generate the spheres in a grid
 for i in range(int(-square_size/2), int(square_size/2 + 2)):
@@ -58,11 +65,12 @@ for i in range(int(-square_size/2), int(square_size/2 + 2)):
         # Calculate the position for the current sphere
         x = i * distance + offset
         y = j * distance
-        z = x_level  # All spheres are on the same plane
         
         # Create the sphere
-        sphere_name = f"Sphere_{sphere_counter}"
-        create_sphere(stage, sphere_name, (x, y, z), root_path)
+        sphere_name = f"Sphere_X_{sphere_counter}"
+        create_sphere(stage, sphere_name, (x, y, x_level), root_path, x_color)
+        sphere_name = f"Sphere_Y_{sphere_counter}"
+        create_sphere(stage, sphere_name, (x-offset, y+offset, y_level), root_path, y_color)
 
 stage.DefinePrim(vertiports_prim_path, "Xform")
 vertiport_takeoff_prim = add_reference_to_stage(usd_path=vertiport_usd_path, prim_path=f"{vertiports_prim_path}/vertiport_takeoff")
