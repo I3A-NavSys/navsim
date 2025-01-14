@@ -16,7 +16,7 @@ if project_root_path not in sys.path:
 
 class ExtensionUtils:
 
-    def init(self):
+    def __init__(self):
          # Color
         self.KIT_GREEN = 0xFF8A8777
 
