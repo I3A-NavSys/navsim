@@ -200,11 +200,16 @@ class FlightPlan:
             wpB = self.waypoints[i + 1]
             wpA.connect_to(wpB)
 
-    def smooth_waypoint_speed(self, label, angVel):
+    def smooth_waypoint_speed(self, wp, angVel):
         # Curva el vertice entre dos rectas
         # manteniendo velocidad y acortando el tiempo de vuelo
         # Para ello descompone dicho waypoint en dos
-        i : int = self.get_index_from_label(label)
+
+        if type(wp) == str:
+            i : int = self.get_index_from_label(wp)
+        elif type(wp) == int:
+            i = wp
+
         if (i== 0) or (i == len(self.waypoints) - 1) or (i is None):
             raise RuntimeError(f"Trying to smooth invalid WP (received label: {label})")
       
@@ -266,11 +271,15 @@ class FlightPlan:
 
         self.postpone_from(wp2B.t + 0.001, wp2B.t - wp2BTinit)
 
-    def smooth_waypoint_duration(self, label, angVel, linAcel):
+    def smooth_waypoint_duration(self, wp, angVel, linAcel):
         # Curva el vertice entre dos rectas
         # reduciendo velocidad y manteniendo el tiempo de vuelo
         # Para ello descompone dicho waypoint en dos
-        i : int = self.get_index_from_label(label)
+        if type(wp) == str:
+            i : int = self.get_index_from_label(wp)
+        elif type(wp) == int:
+            i = wp
+            
         if (i== 0) or (i == len(self.waypoints) - 1) or (i is None):
             return
       
