@@ -1,6 +1,7 @@
 import numpy as np
 from queue import PriorityQueue
 import time
+import math
 
 from uspace.flight_plan.flight_plan import FlightPlan
 
@@ -15,15 +16,15 @@ class GridNode:
 
 class GridPlanner:
 
-    def __init__(self, cell_side=100, slot_time=10, x_height=60, y_height=100):
+    def __init__(self, cell_side=100, slot_time=10, x_height=60, y_height=100, max_route_length=100):
         self.cell_side = cell_side  # Tamaño de las celdas           (m)
         self.slot_time = slot_time  # Duración de cada slot          (s)
         self.x_height = x_height    # Altura del subnivel este/oeste (m)
         self.y_height = y_height    # Altura del subnivel norte/sur  (m)
         self.level_height_diff = y_height - x_height
         self.grid = {}              # Diccionario de celdas
+        self.max_route_length = max_route_length
         self.is_cost = False
-        self.respect_limits = True
 
     def get_take_off_nodes(self, posXY, time):
         """
@@ -58,31 +59,17 @@ class GridPlanner:
         """
         if node.L == 'X':
             if node.j % 2 == 0:
-                # Return None when we get out of the limits of the grid
-                if self.respect_limits and node.i + 1 > self.cell_side / self.slot_time:
-                    return None
-
                 return GridNode(node.i+1, node.j, 'X', node.s+1, node.cost+1, node)        # rumbo ESTE
+            
             else:
-                # Return None when we get out of the limits of the grid
-                if self.respect_limits and node.i - 1 < 0:
-                    return None
-                
                 return GridNode(node.i-1, node.j, 'X', node.s+1, node.cost+1, node)        # rumbo OESTE
         
         # L == 'Y'
         else:
-            if node.i % 2 == 0:           
-                # Return None when we get out of the limits of the grid
-                if self.respect_limits and node.j + 1 > self.cell_side / self.slot_time:
-                    return None
-
+            if node.i % 2 == 0:
                 return GridNode(node.i, node.j+1, 'Y', node.s+1, node.cost+1, node)        # rumbo NORTE
+            
             else:
-                # Return None when we get out of the limits of the grid
-                if self.respect_limits and node.j - 1 < 0:
-                    return None
-
                 return GridNode(node.i, node.j-1, 'Y', node.s+1, node.cost+1, node)        # rumbo SUR
 
     def get_cross_node(self, node: GridNode):
@@ -92,72 +79,57 @@ class GridPlanner:
         if node.L == 'X':
             if node.j % 2 == 0:                  
                 if node.i % 2 == 0:
-                    # Return None when we get out of the limits of the grid
-                    if self.respect_limits and node.i + 1 > self.cell_side / self.slot_time:
-                        return None
-                    if self.respect_limits and node.j - 1 < 0:
-                        return None
-
                     return GridNode(node.i+1, node.j-1, 'Y', node.s+1, node.cost+2, node)    # giro ESTE -> SUR
+                
                 else:
-                    # Return None when we get out of the limits of the grid
-                    if self.respect_limits and node.i + 1 > self.cell_side / self.slot_time:
-                        return None
-
                     return GridNode(node.i+1, node.j, 'Y', node.s+1, node.cost+2, node)    # giro ESTE -> NORTE
+            
             else:                           
                 if node.i % 2 == 0:              
                     return GridNode(node.i, node.j, 'Y', node.s+1, node.cost+2, node)    # giro OESTE -> NORTE
-                else:
-                    # Return None when we get out of the limits of the grid
-                    if self.respect_limits and node.j - 1 < 0:
-                        return None
-                    
+                
+                else:    
                     return GridNode(node.i, node.j-1, 'Y', node.s+1, node.cost+2, node)    # giro OESTE -> SUR
         
         # L == 'Y'
         else:
             if node.i % 2 == 0:                  
                 if node.j % 2 == 0:
-                    # Return None when we get out of the limits of the grid
-                    if self.respect_limits and node.i - 1 < 0:
-                        return None
-                    if self.respect_limits and node.j + 1 > self.cell_side / self.slot_time:
-                        return None
-
                     return GridNode(node.i-1, node.j+1, 'X', node.s+1, node.cost+2, node)    # giro NORTE -> OESTE
+                
                 else:
-                    # Return None when we get out of the limits of the grid
-                    if self.respect_limits and node.j + 1 > self.cell_side / self.slot_time:
-                        return None
-
                     return GridNode(node.i, node.j+1, 'X', node.s+1, node.cost+2, node)    # giro NORTE -> ESTE
+            
             else:                           
                 if node.j % 2 == 0:              
                     return GridNode(node.i, node.j, 'X', node.s+1, node.cost+2, node)    # giro SUR -> ESTE
+                
                 else:
-                    # Return None when we get out of the limits of the grid
-                    if self.respect_limits and node.i - 1 < 0:
-                        return None
-
                     return GridNode(node.i-1, node.j, 'X', node.s+1, node.cost+2, node)    # giro SUR -> OESTE
 
-    def get_route(self, start_node: GridNode, end_node: GridNode, is_cost=False, respect_limits=True):
+    def get_route(self, start_node: GridNode, end_node: GridNode, is_cost=False):
         """
         Dados dos nodos, devuelve una ruta libre del primero al segundo,
         partiendo en el slot especificado.
         """
         start_time = time.time()
         self.is_cost = is_cost
-        self.respect_limits = respect_limits
         explored_nodes = []
         generation = 0
+        route_length = 0
         prio_queue = PriorityQueue()
         h_start_node = self.evaluate_node(start_node, end_node)
         prio_queue.put((h_start_node, generation, start_node))
 
         while not prio_queue.empty():
             node: GridNode = prio_queue.get()[2]
+
+            # Return if route length exceeds maximum
+            if route_length > self.max_route_length:
+                end_time = time.time()
+                elapsed_time = end_time - start_time
+
+                return None, elapsed_time, len(explored_nodes)
 
             if (node.i, node.j, node.L, node.s) in self.grid:
                 continue
@@ -175,6 +147,8 @@ class GridPlanner:
 
             next_node = self.get_next_node(node)
             cross_node = self.get_cross_node(node)
+
+            route_length += 1
 
             if next_node is not None:
                 h_next_node = self.evaluate_node(next_node, end_node)
@@ -199,6 +173,48 @@ class GridPlanner:
 
         return None, elapsed_time, len(explored_nodes)
     
+    def get_best_route(self, option, init_pos, end_pos, init_time, end_time):
+        """
+        Given an init and end time, return the best possible route specified by the option
+
+        :param option: 0 for smaller route (least nodes), 1 for the route that reaches the end first in time
+        """
+
+        # routes = []
+        prio_length_routes = PriorityQueue()
+        prio_time_routes = PriorityQueue()
+        generation = 0
+        init_time_slot = math.ceil(init_time / self.slot_time)  # We round up the init time
+        end_time_slot = math.floor(end_time / self.slot_time)  # We round down the end time
+        time_step = self.cell_side/self.slot_time**2
+        time_slots_to_search = np.arange(init_time_slot, end_time_slot + time_step, time_step)
+
+        # Iterate though all the time slots
+        for time_slot in time_slots_to_search:
+            takeoff_nodes = self.get_take_off_nodes(init_pos, time_slot * self.slot_time)
+            landing_nodes = self.get_landing_nodes(end_pos)
+
+            # Compute the four possible routes for the given takeoff and landing nodes
+            for i in range(2):
+                for j in range(2):
+                    route, _, _ = self.get_route(takeoff_nodes[i], landing_nodes[j], is_cost=True)
+                    if route is not None:
+                        generation += 1
+                        # routes.append((route, self.route_length(route), route[-1].s, route[-1].cost))
+                        if option == 0:
+                            prio_length_routes.put((self.route_length(route), route[-1].cost, generation, route))
+                        
+                        elif option == 1:
+                            prio_time_routes.put((route[-1].s, route[-1].cost, generation, route))
+
+        if option == 0:
+            if prio_length_routes.empty():      return None
+            else:                               return prio_length_routes.get()[3]
+
+        elif option == 1:
+            if prio_time_routes.empty():        return None
+            else:                               return prio_time_routes.get()[3]
+
     def get_route_from_node(self, node: GridNode):
         route = []
 
@@ -330,7 +346,7 @@ class GridPlanner:
         """
         Dada una ruta, devuelve su longitud.
         """
-        return len(route) - 1
+        return len(route)
 
     def reserve_nodes(self, route):
         """

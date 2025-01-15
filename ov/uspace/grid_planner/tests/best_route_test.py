@@ -18,7 +18,6 @@ from uspace.grid_planner.grid_planner import GridPlanner
 gp = GridPlanner()
 
 random.seed(1)
-respect_limits = False
 start_grid = -500
 end_grid = 500
 grid_nodes = 10
@@ -27,12 +26,10 @@ grid_nodes = 10
 x = np.arange(start_grid-150, end_grid+201, 100)
 y = np.arange(start_grid-200, end_grid+201, 100)
 
-# ###########################################################################################
-# A* HEURISTICS PLOT
-def heuristics_plot():
+def build_plot():
     # Create figure and axis
     fig, ax = plt.subplots(figsize=(grid_nodes, grid_nodes))
-    ax.set_title("A* only heuristics")
+    ax.set_title("Best route")
 
     x_sticks = np.arange(start_grid-200, end_grid+200, 100)
     y_sticks = np.arange(start_grid-200, end_grid+200, 100)
@@ -73,78 +70,64 @@ def heuristics_plot():
     ax.set_ylabel('Position Y (m)')
 
     return ax
-ax = heuristics_plot()
+ax = build_plot()
 
 plt.grid(True)
 
-# MAIN routes
-# R1
-takeoff_nodes = gp.get_take_off_nodes((-600, 0), 0)
-landing_nodes = gp.get_landing_nodes((600, 0))
+def set_route_1(ax):
+    takeoff_nodes = gp.get_take_off_nodes((-600, 0), 0)
+    landing_nodes = gp.get_landing_nodes((600, 0))
 
-route, e_time, explored_nodes = gp.get_route(takeoff_nodes[0], landing_nodes[1], is_cost=False)
-
-print("###################################")
-print(f"COMPUTING R1")
-print()
-gp.reserve_nodes(route)
-gp.print_route(route)
-
-X = []
-Y = []
-
-for node in route:
-    X.append(node.i * 100 + 50 if node.L == "X" else node.i * 100)
-    Y.append(node.j * 100 + 50 if node.L == "Y" else node.j * 100)
-
-line = ax.plot(X, Y, zorder=3, color="lightsteelblue",
-               label=f"Route {(takeoff_nodes[0].i, takeoff_nodes[0].j, takeoff_nodes[0].L, takeoff_nodes[0].s)}")
-sc = ax.scatter(X[0], Y[0], color="lightsteelblue")
-ax.scatter(X[-1], Y[-1], color="lightsteelblue")
-
-# R2
-takeoff_nodes = gp.get_take_off_nodes((-400, 0), 30)
-landing_nodes = gp.get_landing_nodes((-500, 100))
-
-route, e_time, explored_nodes = gp.get_route(takeoff_nodes[0], landing_nodes[1], is_cost=False)
-
-print("###################################")
-print(f"COMPUTING R2")
-print()
-gp.reserve_nodes(route)
-gp.print_route(route)
-
-X = []
-Y = []
-
-for node in route:
-    X.append(node.i * 100 + 50 if node.L == "X" else node.i * 100)
-    Y.append(node.j * 100 + 50 if node.L == "Y" else node.j * 100)
-
-line = ax.plot(X, Y, zorder=3, color="lightsteelblue",
-               label=f"Route {(takeoff_nodes[0].i, takeoff_nodes[0].j, takeoff_nodes[0].L, takeoff_nodes[0].s)}")
-sc = ax.scatter(X[0], Y[0], color="lightsteelblue")
-ax.scatter(X[-1], Y[-1], color="lightsteelblue")
-
-# Alternative routes
-t_takeoff = 10
-t_range = 10
-step = 10
-alt_routes_amount = (((t_takeoff + t_range) - (t_takeoff - t_range)) + t_range) // step
-t_takeoff = t_takeoff - step
-i, j = -500, 0
-i2, j2 = -200, 0
-
-for alt_route in range(alt_routes_amount):
-    takeoff_nodes = gp.get_take_off_nodes((i, j), t_takeoff)
-    landing_nodes = gp.get_landing_nodes((i2, j2))
+    route, e_time, explored_nodes = gp.get_route(takeoff_nodes[0], landing_nodes[1], is_cost=True)
 
     print("###################################")
-    print(f"COMPUTING ALTERNATIVE {alt_route}")
+    print(f"COMPUTING R1")
     print()
+    gp.reserve_nodes(route)
+    gp.print_route(route)
+
+    X = []
+    Y = []
+
+    for node in route:
+        X.append(node.i * 100 + 50 if node.L == "X" else node.i * 100)
+        Y.append(node.j * 100 + 50 if node.L == "Y" else node.j * 100)
+
+    line = ax.plot(X, Y, zorder=3, color="lightsteelblue",
+                label=f"Route {(takeoff_nodes[0].i, takeoff_nodes[0].j, takeoff_nodes[0].L, takeoff_nodes[0].s)}")
+    sc = ax.scatter(X[0], Y[0], color="lightsteelblue")
+    ax.scatter(X[-1], Y[-1], color="lightsteelblue")
+
+def set_route_2(ax):
+    takeoff_nodes = gp.get_take_off_nodes((-400, 0), 30)
+    landing_nodes = gp.get_landing_nodes((-500, 100))
 
     route, e_time, explored_nodes = gp.get_route(takeoff_nodes[0], landing_nodes[1], is_cost=False)
 
+    print("###################################")
+    print(f"COMPUTING R2")
+    print()
+    gp.reserve_nodes(route)
+    gp.print_route(route)
+
+    X = []
+    Y = []
+
+    for node in route:
+        X.append(node.i * 100 + 50 if node.L == "X" else node.i * 100)
+        Y.append(node.j * 100 + 50 if node.L == "Y" else node.j * 100)
+
+    line = ax.plot(X, Y, zorder=3, color="lightsteelblue",
+                label=f"Route {(takeoff_nodes[0].i, takeoff_nodes[0].j, takeoff_nodes[0].L, takeoff_nodes[0].s)}")
+    sc = ax.scatter(X[0], Y[0], color="lightsteelblue")
+    ax.scatter(X[-1], Y[-1], color="lightsteelblue")
+
+def get_best_route(ax):
+    print("###################################")
+    print(f"COMPUTING BEST ROUTE")
+    print()
+
+    route = gp.get_best_route(option=0, init_pos=(-500, 0), end_pos=(-200, 0), init_time=-1, end_time=1)
     gp.print_route(route)
 
     if route is not None:
@@ -155,12 +138,13 @@ for alt_route in range(alt_routes_amount):
             X.append(node.i * 100 + 50 if node.L == "X" else node.i * 100)
             Y.append(node.j * 100 + 50 if node.L == "Y" else node.j * 100)
 
-        line = ax.plot(X, Y, zorder=3, 
-                       label=f"Route {(takeoff_nodes[0].i, takeoff_nodes[0].j, takeoff_nodes[0].L, takeoff_nodes[0].s)}")
+        line = ax.plot(X, Y, zorder=3, label="Best route")
         sc = ax.scatter(X[0], Y[0])
         ax.scatter(X[-1], Y[-1], color=sc.get_facecolor()[0])
         ax.legend(loc="upper right", fontsize=8, bbox_to_anchor=(1.25, 1.15), borderaxespad=0.)
 
-    t_takeoff += step
+set_route_1(ax)
+set_route_2(ax)
+get_best_route(ax)
 
 plt.show()
