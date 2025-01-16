@@ -94,7 +94,7 @@ def set_route_1(ax):
         Y.append(node.j * 100 + 50 if node.L == "Y" else node.j * 100)
 
     line = ax.plot(X, Y, zorder=3, color="lightsteelblue",
-                label=f"Route {(takeoff_nodes[0].i, takeoff_nodes[0].j, takeoff_nodes[0].L, takeoff_nodes[0].s)}")
+                label=f"Reserved route {(takeoff_nodes[0].i, takeoff_nodes[0].j, takeoff_nodes[0].L, takeoff_nodes[0].s)}")
     sc = ax.scatter(X[0], Y[0], color="lightsteelblue")
     ax.scatter(X[-1], Y[-1], color="lightsteelblue")
 
@@ -118,19 +118,32 @@ def set_route_2(ax):
         Y.append(node.j * 100 + 50 if node.L == "Y" else node.j * 100)
 
     line = ax.plot(X, Y, zorder=3, color="lightsteelblue",
-                label=f"Route {(takeoff_nodes[0].i, takeoff_nodes[0].j, takeoff_nodes[0].L, takeoff_nodes[0].s)}")
+                label=f"Reserved route {(takeoff_nodes[0].i, takeoff_nodes[0].j, takeoff_nodes[0].L, takeoff_nodes[0].s)}")
     sc = ax.scatter(X[0], Y[0], color="lightsteelblue")
     ax.scatter(X[-1], Y[-1], color="lightsteelblue")
 
-def get_best_route(ax):
+def get_best_route(ax, option, init_pos, end_pos, init_time, end_time):
     print("###################################")
     print(f"COMPUTING BEST ROUTE")
     print()
 
-    route = gp.get_best_route(option=0, init_pos=(-500, 0), end_pos=(-200, 0), init_time=-1, end_time=1)
-    gp.print_route(route)
+    best_route, routes = gp.get_best_route(option=option, init_pos=init_pos, end_pos=end_pos, init_time=init_time, end_time=end_time)
+    gp.print_route(best_route)
 
-    if route is not None:
+    # if route is not None:
+    #     X = []
+    #     Y = []
+
+    #     for node in route:
+    #         X.append(node.i * 100 + 50 if node.L == "X" else node.i * 100)
+    #         Y.append(node.j * 100 + 50 if node.L == "Y" else node.j * 100)
+
+    #     line = ax.plot(X, Y, zorder=3, label="Best route")
+    #     sc = ax.scatter(X[0], Y[0])
+    #     ax.scatter(X[-1], Y[-1], color=sc.get_facecolor()[0])
+    #     ax.legend(loc="upper right", fontsize=8, bbox_to_anchor=(1.25, 1.15), borderaxespad=0.)
+
+    for route in routes:
         X = []
         Y = []
 
@@ -138,13 +151,25 @@ def get_best_route(ax):
             X.append(node.i * 100 + 50 if node.L == "X" else node.i * 100)
             Y.append(node.j * 100 + 50 if node.L == "Y" else node.j * 100)
 
-        line = ax.plot(X, Y, zorder=3, label="Best route")
+        line = ax.plot(X, Y, zorder=3, label=f"Route {(route[0].s, route[-1].s, len(route))}, {(route[0].i, route[0].j)} - {(route[-1].i, route[-1].j)}")
         sc = ax.scatter(X[0], Y[0])
         ax.scatter(X[-1], Y[-1], color=sc.get_facecolor()[0])
         ax.legend(loc="upper right", fontsize=8, bbox_to_anchor=(1.25, 1.15), borderaxespad=0.)
 
+    X = []
+    Y = []
+
+    for node in best_route:
+        X.append(node.i * 100 + 50 if node.L == "X" else node.i * 100)
+        Y.append(node.j * 100 + 50 if node.L == "Y" else node.j * 100)
+
+    line = ax.plot(X, Y, zorder=3, label=f"Best route {(best_route[0].s, best_route[-1].s, len(best_route))}")
+    sc = ax.scatter(X[0], Y[0])
+    ax.scatter(X[-1], Y[-1], color=sc.get_facecolor()[0])
+    ax.legend(loc="upper right", fontsize=8, bbox_to_anchor=(1.25, 1.15), borderaxespad=0.)
+
 set_route_1(ax)
 set_route_2(ax)
-get_best_route(ax)
+get_best_route(ax, option=0, init_pos=(-500, 0), end_pos=(-200, 0), init_time=-10, end_time=10)
 
 plt.show()

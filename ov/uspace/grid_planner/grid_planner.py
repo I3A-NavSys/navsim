@@ -177,10 +177,21 @@ class GridPlanner:
         """
         Given an init and end time, return the best possible route specified by the option
 
-        :param option: 0 for smaller route (least nodes), 1 for the route that reaches the end first in time
+        Params:
+            - option: 
+                - 0 for smaller route (least nodes)
+                - 1 for the route that reaches the end first in time
+            - init_pos:
+                - Tuple of world coordinates for x and y for the initial position
+            - end_pos:
+                - Tuple of world coordinates for x and y for the final position
+            - init_time:
+                - Initial time of the route in seconds, not time slot
+            - end_time: 
+                - Final time of the route in seconds, not time slot
         """
 
-        # routes = []
+        routes = []
         prio_length_routes = PriorityQueue()
         prio_time_routes = PriorityQueue()
         generation = 0
@@ -191,7 +202,7 @@ class GridPlanner:
 
         # Iterate though all the time slots
         for time_slot in time_slots_to_search:
-            takeoff_nodes = self.get_take_off_nodes(init_pos, time_slot * self.slot_time)
+            takeoff_nodes = self.get_take_off_nodes(init_pos, int(time_slot) * self.slot_time)
             landing_nodes = self.get_landing_nodes(end_pos)
 
             # Compute the four possible routes for the given takeoff and landing nodes
@@ -202,18 +213,20 @@ class GridPlanner:
                         generation += 1
                         # routes.append((route, self.route_length(route), route[-1].s, route[-1].cost))
                         if option == 0:
-                            prio_length_routes.put((self.route_length(route), route[-1].cost, generation, route))
+                            prio_length_routes.put((self.route_length(route), route[-1].s, route[-1].cost, generation, route))
                         
                         elif option == 1:
-                            prio_time_routes.put((route[-1].s, route[-1].cost, generation, route))
+                            prio_time_routes.put((route[-1].s, self.route_length(route), route[-1].cost, generation, route))
+
+                        routes.append(route)
 
         if option == 0:
-            if prio_length_routes.empty():      return None
-            else:                               return prio_length_routes.get()[3]
+            if prio_length_routes.empty():      return None, None
+            else:                               return prio_length_routes.get()[4], routes
 
         elif option == 1:
-            if prio_time_routes.empty():        return None
-            else:                               return prio_time_routes.get()[3]
+            if prio_time_routes.empty():        return None, None
+            else:                               return prio_time_routes.get()[4], routes
 
     def get_route_from_node(self, node: GridNode):
         route = []
