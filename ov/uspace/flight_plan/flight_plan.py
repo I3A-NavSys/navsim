@@ -24,7 +24,7 @@ class FlightPlan:
         self.waypoints: List[Waypoint] = []
         self.targetYaw = None
 
-    def set_waypoint(self, wp=None, label="", time=None, pos=None, vel=None):
+    def set_waypoint(self, wp=None, label="", time=None, pos=None, vel=None, orientation=None):
         numWPs = len(self.waypoints)
 
         if wp is None:
@@ -51,7 +51,7 @@ class FlightPlan:
                     else:
                         vel = status.vel
 
-            wp = Waypoint(label=label, t=time, pos=pos, vel=vel)
+            wp = Waypoint(label=label, t=time, pos=pos, vel=vel, orientation=orientation)
         
         index = self.get_target_index_from_time(wp.t)
 
@@ -72,13 +72,19 @@ class FlightPlan:
         return None
     
     def get_running_index_from_time(self, t: float):
-        # It returns the WP the UAV is currently executing
+        """
+        It returns the WP the UAV is currently executing
+        """
+        
         index = self.get_target_index_from_time(t)
         return index - 1
     
     def get_target_index_from_time(self, t: float):
-        # It returns the WP the UAV is flying to
-        # Note: if t == wp.t, that wp is also considered as target, although they are at the same instant
+        """
+        It returns the WP the UAV is flying to
+        Note: if t == wp.t, that wp is also considered as target, although they are at the same instant
+        """
+
         if not self.waypoints:
             return 0
 
@@ -383,7 +389,7 @@ class FlightPlan:
     #------------------------------------------------------------------------------------------------------------------
     # UAV NAVIGATION
 
-    def get_command(self, currentTime, UAVpos, UAVvel, UAVrot : Rotation, tToSolve) -> Command:
+    def get_command(self, currentTime, UAVpos, UAVvel, UAVrot : Rotation, WPorientation, tToSolve) -> Command:
         # UAVvel = current UAV vel in global system
         # This function converts a flight plan position at certain time
         # to a navigation command (desired velocity vector and rotation)        
@@ -417,8 +423,12 @@ class FlightPlan:
         # print("cmdRelVel:", cmdRelVel)
 
         # COMPUTING TARGET ERROR YAW
-        targetDir = expected.vel.copy()
-        targetDir[2] = 0
+        if WPorientation is None:
+            targetDir = expected.vel.copy()
+            targetDir[2] = 0
+
+        else:
+            targetDir = WPorientation
 
         if np.linalg.norm(targetDir) > 0:
             self.targetYaw = np.arctan2(targetDir[1], targetDir[0])

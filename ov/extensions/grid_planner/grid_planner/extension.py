@@ -124,8 +124,7 @@ class GridPlannerExt(omni.ext.IExt):
         takeoff_node = int(self.begin_end_info["Takeoff"]["dropdown"].get_selection())
         landing_node = int(self.begin_end_info["Landing"]["dropdown"].get_selection())
 
-        self.route, _, _ = self.gp.get_route(takeoff_nodes[takeoff_node], landing_nodes[landing_node],
-                                                          is_cost=False, respect_limits=False)
+        self.route, _, _ = self.gp.get_route(takeoff_nodes[takeoff_node], landing_nodes[landing_node], is_cost=False)
         
         if self.route:
             self.gp.reserve_nodes(self.route)
@@ -144,9 +143,11 @@ class GridPlannerExt(omni.ext.IExt):
         fp = self.gp.get_flightplan_from_route(self.route)
 
         # Add waypoints for the vertiports
-        fp.set_waypoint(time=fp.init_time()-15, pos=[-500, 0, 1.75], vel=[0, 0, 0])
+        fp.set_waypoint(time=fp.init_time()-15, pos=[-500, 0, 1.75], vel=[0, 0, 0], orientation=[10, 0])
         # fp.set_waypoint(time=5, pos=[-500, 0, 1.75], vel=[0, 0, 0])
         fp.set_waypoint(time=fp.finish_time() + 15, pos=[0, 0, 1.75], vel=[0, 0, 0])
+
+        fp.waypoints[-2].orientation = [10, 0]
 
         fp.connect_waypoints()
 
