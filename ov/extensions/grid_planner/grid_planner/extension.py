@@ -143,11 +143,13 @@ class GridPlannerExt(omni.ext.IExt):
         fp = self.gp.get_flightplan_from_route(self.route)
 
         # Add waypoints for the vertiports
-        fp.set_waypoint(time=fp.init_time()-15, pos=[-500, 0, 1.75], vel=[0, 0, 0], orientation=[10, 0])
+        fp.set_waypoint(time=fp.init_time()-20, pos=[-250, 0, 1.75], vel=[0, 0, 0], heading=[1, 0])
         # fp.set_waypoint(time=5, pos=[-500, 0, 1.75], vel=[0, 0, 0])
-        fp.set_waypoint(time=fp.finish_time() + 15, pos=[0, 0, 1.75], vel=[0, 0, 0])
+        fp.set_waypoint(time=fp.finish_time() + 20, pos=[50, 0, 20], vel=[0, 0, -3])
+        fp.set_waypoint(time=fp.finish_time() + 10, pos=[50, 0, 3], vel=[0, 0, -0.2])
+        fp.set_waypoint(time=fp.finish_time() + 10, pos=[50, 0, 1.75], vel=[0, 0, 0])
 
-        fp.waypoints[-2].orientation = [10, 0]
+        fp.waypoints[-2].heading = [1, 0]
 
         fp.connect_waypoints()
 

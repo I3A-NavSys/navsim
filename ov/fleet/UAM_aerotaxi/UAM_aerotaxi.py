@@ -378,7 +378,7 @@ class UAM_minidrone(BehaviorScript):
         # Change relative vel to absolute
         linear_vel = self.rot.apply(self.linear_vel)
         self.command = self.fp.get_command(self.current_time, self.pos, linear_vel, self.rot, 
-                                           self.fp.waypoints[WP-1].orientation, 2)
+                                           self.fp.waypoints[WP-1].heading, 2)
         self.cmd_exp_time = self.current_time + self.command.duration
 
     def servo_control(self):

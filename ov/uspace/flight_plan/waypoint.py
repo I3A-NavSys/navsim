@@ -4,7 +4,7 @@ import numpy as np
 
 class Waypoint:
 
-    def __init__(self, label='', t=0, pos=[0,0,0], vel=[0,0,0], fly_over=False, orientation=None):
+    def __init__(self, label='', t=0, pos=[0,0,0], vel=[0,0,0], fly_over=False, heading=None):
         self.label: str = label                         # identifier to refer the waypoint
         self.t: float = np.round(t, 2)                  # time          (s)
         self.pos  = np.round(np.array(pos), 2)          # position      (m)
@@ -14,7 +14,7 @@ class Waypoint:
         self.snap = np.array([0,0,0])                   # snap          (m/s4)
         self.crkl = np.array([0,0,0])                   # ckl           (m/s5)
         self.fly_over = fly_over                        # transito obligado
-        self.orientation = orientation                  # where to look during this waypoint segment (vel vector if None)
+        self.heading = heading                          # orientation vector [x, y]
 
     def stop(self):
         self.vel  = np.zeros(3)

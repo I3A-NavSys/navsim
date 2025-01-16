@@ -24,7 +24,7 @@ class FlightPlan:
         self.waypoints: List[Waypoint] = []
         self.targetYaw = None
 
-    def set_waypoint(self, wp=None, label="", time=None, pos=None, vel=None, orientation=None):
+    def set_waypoint(self, wp=None, label="", time=None, pos=None, vel=None, heading=None):
         numWPs = len(self.waypoints)
 
         if wp is None:
@@ -51,7 +51,7 @@ class FlightPlan:
                     else:
                         vel = status.vel
 
-            wp = Waypoint(label=label, t=time, pos=pos, vel=vel, orientation=orientation)
+            wp = Waypoint(label=label, t=time, pos=pos, vel=vel, heading=heading)
         
         index = self.get_target_index_from_time(wp.t)
 
@@ -389,7 +389,7 @@ class FlightPlan:
     #------------------------------------------------------------------------------------------------------------------
     # UAV NAVIGATION
 
-    def get_command(self, currentTime, UAVpos, UAVvel, UAVrot : Rotation, WPorientation, tToSolve) -> Command:
+    def get_command(self, currentTime, UAVpos, UAVvel, UAVrot : Rotation, WPheading, tToSolve) -> Command:
         # UAVvel = current UAV vel in global system
         # This function converts a flight plan position at certain time
         # to a navigation command (desired velocity vector and rotation)        
@@ -423,12 +423,12 @@ class FlightPlan:
         # print("cmdRelVel:", cmdRelVel)
 
         # COMPUTING TARGET ERROR YAW
-        if WPorientation is None:
+        if WPheading is None:
             targetDir = expected.vel.copy()
             targetDir[2] = 0
 
         else:
-            targetDir = WPorientation
+            targetDir = WPheading
 
         if np.linalg.norm(targetDir) > 0:
             self.targetYaw = np.arctan2(targetDir[1], targetDir[0])
