@@ -61,7 +61,7 @@ class GridPlannerExt(omni.ext.IExt):
 
     def build_ui(self):
         self.begin_end_info = {"Takeoff": {"pos": [], "dropdown": None}, "Landing": {"pos": [], "dropdown": None}}
-        self.prim_locations = {"Init vertiport": [], "End vertiport": []}
+        self.custom_vertiports = {"Init vertiport": [], "End vertiport": []}
         axis = ["X", "Y", "Z"]
         colors = {"X": 0xFF5555AA, "Y": 0xFF76A371, "Z": 0xFFA07D4F}
         options = ["Takeoff", "Landing"]
@@ -97,21 +97,24 @@ class GridPlannerExt(omni.ext.IExt):
                             with ui.HStack():
                                 ui.Label("Offset")
                                 self.sphere_offset_field = ui.IntField()
+                            with ui.HStack():
+                                ui.Label("Amount vertiports")
+                                self.amount_vertiports = ui.IntField()
 
-                            for option in list(self.prim_locations.keys()):
-                                with ui.HStack(spacing=self.navsim_utils.SPACING_S):
-                                    ui.Label(f"{option} loc")
-                                    for axe in axis:
-                                        with ui.HStack():
-                                            with ui.ZStack(width=15):
-                                                ui.Rectangle(width=15, height=20, style={"background_color": colors[axe],
-                                                                                            "border_radius": 3, 
-                                                                                            "corner_flag": ui.CornerFlag.LEFT})
+                            # for option in list(self.custom_vertiports.keys()):
+                            #     with ui.HStack(spacing=self.navsim_utils.SPACING_S):
+                            #         ui.Label(f"{option}")
+                            #         for axe in axis:
+                            #             with ui.HStack():
+                            #                 with ui.ZStack(width=15):
+                            #                     ui.Rectangle(width=15, height=20, style={"background_color": colors[axe],
+                            #                                                                 "border_radius": 3, 
+                            #                                                                 "corner_flag": ui.CornerFlag.LEFT})
 
-                                                # Axis letter label
-                                                ui.Label(axe, style=self.navsim_utils.Label_A, alignment=ui.Alignment.CENTER)
+                            #                     # Axis letter label
+                            #                     ui.Label(axe, style=self.navsim_utils.Label_A, alignment=ui.Alignment.CENTER)
 
-                                            self.prim_locations[option].append(ui.FloatDrag())
+                            #                 self.custom_vertiports[option].append(ui.FloatDrag())
 
                             ui.Button("BUILD GRID", clicked_fn=self.build_grid, height=50)
                             ui.Spacer(height=5)
@@ -177,8 +180,9 @@ class GridPlannerExt(omni.ext.IExt):
         x_level = self.x_level_height_field.model.get_value_as_float()
         y_level = self.y_level_height_field.model.get_value_as_float()
         offset = self.sphere_offset_field.model.get_value_as_float()
+        amount_vertiports = self.amount_vertiports.model.get_value_as_int()
 
-        build_scene(project_root_path, sphere_amount, distance, x_level, y_level, offset, self.prim_locations)
+        build_scene(project_root_path, sphere_amount, distance, x_level, y_level, offset, amount_vertiports)
 
     def clear_grid(self):
         self.gp.clear_grid()
