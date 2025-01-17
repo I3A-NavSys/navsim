@@ -1,3 +1,7 @@
+[core]
+reloadable = true
+order = 10
+
 [package]
 # Semantic Versioning is used: https://semver.org/
 version = "1.0.0"
@@ -38,4 +42,4 @@ icon = "data/icon.png"
 
 # Main python module this extension provides, it will be publicly available as "import grid_planner".
 [[python.module]]
-name = "grid_planner"
+name = "grid_planner_python"

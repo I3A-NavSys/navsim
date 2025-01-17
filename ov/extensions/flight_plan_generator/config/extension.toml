@@ -1,6 +1,6 @@
 [core]
 reloadable = true
-order = 0
+order = 10
 
 [package]
 version = "1.0.0"
