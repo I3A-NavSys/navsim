@@ -83,10 +83,10 @@ class GridPlannerExt(omni.ext.IExt):
                         with ui.VStack(spacing=self.navsim_utils.SPACING_S, style=self.navsim_utils.VStack_A, height=0):
                             ui.Spacer(height=5)
                             with ui.HStack():
-                                ui.Label("Sphere amount")
+                                ui.Label("Nodes per side")
                                 self.spheres_amount_field = ui.IntField()
                             with ui.HStack():
-                                ui.Label("Cell distance")
+                                ui.Label("Cell size")
                                 self.distance_field = ui.IntField()
                             with ui.HStack():
                                 ui.Label("X level height")
@@ -100,76 +100,64 @@ class GridPlannerExt(omni.ext.IExt):
                             with ui.HStack():
                                 ui.Label("Amount vertiports")
                                 self.amount_vertiports = ui.IntField()
-
-                            # for option in list(self.custom_vertiports.keys()):
-                            #     with ui.HStack(spacing=self.navsim_utils.SPACING_S):
-                            #         ui.Label(f"{option}")
-                            #         for axe in axis:
-                            #             with ui.HStack():
-                            #                 with ui.ZStack(width=15):
-                            #                     ui.Rectangle(width=15, height=20, style={"background_color": colors[axe],
-                            #                                                                 "border_radius": 3, 
-                            #                                                                 "corner_flag": ui.CornerFlag.LEFT})
-
-                            #                     # Axis letter label
-                            #                     ui.Label(axe, style=self.navsim_utils.Label_A, alignment=ui.Alignment.CENTER)
-
-                            #                 self.custom_vertiports[option].append(ui.FloatDrag())
+                            with ui.HStack():
+                                ui.Label("Amount UAVs")
+                                self.amount_uavs = ui.IntField()
 
                             ui.Button("BUILD GRID", clicked_fn=self.build_grid, height=50)
                             ui.Spacer(height=5)
 
-                    self.grid_operating_collapsable = ui.CollapsableFrame("Grid Operating", collapsed=False,
-                                                                        style=self.navsim_utils.CollapsableFrame_style)
+                    # self.grid_operating_collapsable = ui.CollapsableFrame("Grid Operating", collapsed=False,
+                    #                                                     style=self.navsim_utils.CollapsableFrame_style)
                     
-                    with self.grid_operating_collapsable:
-                        with ui.VStack(spacing=self.navsim_utils.SPACING_S, style=self.navsim_utils.VStack_A, height=0):
-                            # UAV selector
-                            self.UAV_selector_dropdown = self.navsim_utils.build_uav_selector()
-                            ui.Spacer(height=10)
+                    # with self.grid_operating_collapsable:
+                    #     with ui.VStack(spacing=self.navsim_utils.SPACING_S, style=self.navsim_utils.VStack_A, height=0):
+                    #         # UAV selector
+                    #         self.UAV_selector_dropdown = self.navsim_utils.build_uav_selector()
+                    #         ui.Spacer(height=10)
 
-                            # Takeoff and Landing options
-                            for option in options:
-                                with ui.HStack(spacing=self.navsim_utils.SPACING_S):
-                                    # with ui.HStack():
-                                    #     ui.Label(option)
+                    #         # Takeoff and Landing options
+                    #         for option in options:
+                    #             with ui.HStack(spacing=self.navsim_utils.SPACING_S):
+                    #                 # with ui.HStack():
+                    #                 #     ui.Label(option)
 
-                                    self.begin_end_info[option]["dropdown"] = DropDown(label=option, 
-                                                                                    populate_fn=self.populate_dropdown)
-                                    self.begin_end_info[option]["dropdown"].repopulate()
+                    #                 self.begin_end_info[option]["dropdown"] = DropDown(label=option, 
+                    #                                                                 populate_fn=self.populate_dropdown)
+                    #                 self.begin_end_info[option]["dropdown"].repopulate()
 
-                                    with ui.HStack():
-                                        with ui.ZStack(width=15):
-                                            ui.Rectangle(width=15, height=20, style={"background_color": colors["X"], 
-                                                                                        "border_radius": 3, 
-                                                                                        "corner_flag": ui.CornerFlag.LEFT})
+                    #                 with ui.HStack():
+                    #                     with ui.ZStack(width=15):
+                    #                         ui.Rectangle(width=15, height=20, style={"background_color": colors["X"], 
+                    #                                                                     "border_radius": 3, 
+                    #                                                                     "corner_flag": ui.CornerFlag.LEFT})
 
-                                            # Axis letter label
-                                            ui.Label("i", style=self.navsim_utils.Label_A, alignment=ui.Alignment.CENTER)
+                    #                         # Axis letter label
+                    #                         ui.Label("i", style=self.navsim_utils.Label_A, alignment=ui.Alignment.CENTER)
 
-                                        self.begin_end_info[option]["pos"].append(ui.FloatDrag(min=-1000000, max=1000000, step=0.1))
+                    #                     self.begin_end_info[option]["pos"].append(ui.FloatDrag(min=-1000000, max=1000000, step=0.1))
 
-                                    with ui.HStack():
-                                        with ui.ZStack(width=15):
-                                            ui.Rectangle(width=15, height=20, style={"background_color": colors["Y"], 
-                                                                                        "border_radius": 3, 
-                                                                                        "corner_flag": ui.CornerFlag.LEFT})
+                    #                 with ui.HStack():
+                    #                     with ui.ZStack(width=15):
+                    #                         ui.Rectangle(width=15, height=20, style={"background_color": colors["Y"], 
+                    #                                                                     "border_radius": 3, 
+                    #                                                                     "corner_flag": ui.CornerFlag.LEFT})
 
-                                            # Axis letter label
-                                            ui.Label("j", style=self.navsim_utils.Label_A, alignment=ui.Alignment.CENTER)
+                    #                         # Axis letter label
+                    #                         ui.Label("j", style=self.navsim_utils.Label_A, alignment=ui.Alignment.CENTER)
 
-                                        self.begin_end_info[option]["pos"].append(ui.FloatDrag(min=-1000000, max=1000000, step=0.1))
+                    #                     self.begin_end_info[option]["pos"].append(ui.FloatDrag(min=-1000000, max=1000000, step=0.1))
 
-                            with ui.HStack():
-                                ui.Label("Time to go:")
-                                self.time_to_go = ui.IntDrag(min=0, max=1000000, step=1)
+                    #         with ui.HStack():
+                    #             ui.Label("Time to go:")
+                    #             self.time_to_go = ui.IntDrag(min=0, max=1000000, step=1)
 
-                            ui.Spacer(height=10)
+                    #         ui.Spacer(height=10)
 
-                            # Buttons
-                            ui.Button("CLEAR GRID", clicked_fn=self.clear_grid, height=50)
-                            ui.Button("COMPUTE ROUTE", clicked_fn=self.compute_route, height=50)
-                            ui.Button("SEND FLIGHTPLAN", clicked_fn=self.send_flightplan, height=50)
+                    #         # Buttons
+                    #         ui.Button("CLEAR GRID", clicked_fn=self.clear_grid, height=50)
+                    #         ui.Button("COMPUTE ROUTE", clicked_fn=self.compute_route, height=50)
+                    #         ui.Button("SEND FLIGHTPLAN", clicked_fn=self.send_flightplan, height=50)
 
     def populate_dropdown(self):
         return ["0", "1"]
@@ -181,8 +169,9 @@ class GridPlannerExt(omni.ext.IExt):
         y_level = self.y_level_height_field.model.get_value_as_float()
         offset = self.sphere_offset_field.model.get_value_as_float()
         amount_vertiports = self.amount_vertiports.model.get_value_as_int()
+        amount_uavs = self.amount_uavs.model.get_value_as_int()
 
-        build_scene(project_root_path, sphere_amount, distance, x_level, y_level, offset, amount_vertiports)
+        build_scene(project_root_path, sphere_amount, distance, x_level, y_level, offset, amount_vertiports, amount_uavs)
 
     def clear_grid(self):
         self.gp.clear_grid()

@@ -1,3 +1,6 @@
+import numpy as np
+import random
+
 import omni.kit.window.stage
 import omni.usd
 from pxr import UsdGeom, Gf
@@ -5,15 +8,14 @@ from omni.isaac.core.utils.stage import add_reference_to_stage, get_current_stag
 import omni.kit.window.file.save_stage_ui
 import omni.kit.window.filepicker
 
-def define_scene(project_root_path, sphere_amount, distance, x_level, y_level, offset, amount_vertiports):
+def define_scene(project_root_path, sphere_amount, distance, x_level, y_level, offset, amount_vertiports, amount_uavs):
     vertiports_prim_path = "/World/Vertiports"
+    uavs_prim_path = "/World/UAVs"
     vertiport_usd_path = project_root_path + "/assets/vertiports/vertiport_aerotaxi.usd"
     aerotaxi_usd_path = project_root_path + "/fleet/UAM_aerotaxi/UAM_aerotaxi.usd"
     environment_scope_path = "/World/Environment"
-    light_prim_path = "/World/Environment/Light"
-    physics_scene_prim_path = "/World/Environment/PhysicsScene"
-    time_steps_per_second = 50
-    end_time_code = time_steps_per_second * 50
+    light_prim_path = environment_scope_path + "/Light"
+    physics_scene_prim_path = environment_scope_path + "/PhysicsScene"
 
     stage = omni.usd.get_context().get_stage()
 
@@ -24,42 +26,74 @@ def define_scene(project_root_path, sphere_amount, distance, x_level, y_level, o
 
     # Create a root Xform for organization
     stage.DefinePrim("/World", "Xform")
-    stage.DefinePrim(environment_scope_path, "Scope")
+
+    # Add grid to stage
     sphere_grid_path = "/World/SphereGrid"
     sphere_grid_prim = stage.DefinePrim(sphere_grid_path, "Xform")
     UsdGeom.XformCommonAPI(sphere_grid_prim).SetTranslate((0, 0, 0))
 
     x_color = Gf.Vec3f(1.0, 0.0, 0.0)
     y_color = Gf.Vec3f(1.0, 0.843, 0.0)
+
     sphere_counter = 0
-    # Generate the spheres in a grid
     for i in range(int(-sphere_amount/2), int(sphere_amount/2 + 2)):
         for j in range(int(-sphere_amount/2), int(sphere_amount/2 + 2)):
             sphere_counter += 1
 
-            # Calculate the position for the current sphere
+            # Calculate the position for the current node
             x = i * distance + offset
             y = j * distance
             
-            # Create the sphere
+            # Create the node
             sphere_name = f"Sphere_X_{sphere_counter}"
             create_sphere(stage, sphere_name, (x, y, x_level), sphere_grid_path, x_color)
             sphere_name = f"Sphere_Y_{sphere_counter}"
             create_sphere(stage, sphere_name, (x-offset, y+offset, y_level), sphere_grid_path, y_color)
 
+    # Add vertiports to stage
     stage.DefinePrim(vertiports_prim_path, "Xform")
-    init_vertiport_prim = add_reference_to_stage(usd_path=vertiport_usd_path, prim_path=f"{vertiports_prim_path}/vertiport_takeoff")
-    end_vertiport_prim = add_reference_to_stage(usd_path=vertiport_usd_path, prim_path=f"{vertiports_prim_path}/vertiport_landing")
-    aerotaxi_prim = add_reference_to_stage(usd_path=aerotaxi_usd_path, prim_path="/World/aerotaxi")
+
+    current_amount_vertiports = 0
+    possible_x = np.arange(-sphere_amount/2, sphere_amount/2 + 2) * distance + offset
+    possible_y = np.arange(-sphere_amount/2, sphere_amount/2 + 2) * distance
+    registered_vertiport_locs = {}
+
+    while current_amount_vertiports < amount_vertiports:
+        x = random.choice(possible_x)
+        y = random.choice(possible_y)
+
+        if (x, y) in registered_vertiport_locs:
+            continue
+
+        registered_vertiport_locs[(x, y)] = True
+
+        add_prim_reference(f"Vertiport_{current_amount_vertiports}", (x, y, 0), vertiport_usd_path, vertiports_prim_path)
+        current_amount_vertiports += 1
+
+    # Add uavs to stage
+    stage.DefinePrim(uavs_prim_path, "Xform")
+
+    vertiport_locs = list(registered_vertiport_locs.keys())
+    registered_uav_locs = {}
+    current_amount_uavs = 0
+
+    while current_amount_uavs < amount_uavs:
+        loc = random.choice(vertiport_locs)
+
+        if loc in registered_uav_locs:
+            continue
+
+        registered_uav_locs[loc] = True
+
+        add_prim_reference(f"UAV_{current_amount_uavs}", (loc[0], loc[1], 1.75), aerotaxi_usd_path, uavs_prim_path)
+        current_amount_uavs += 1
+
+    # Add light and physics scene to stage
+    stage.DefinePrim(environment_scope_path, "Scope")
     light_prim = stage.DefinePrim(light_prim_path, "DomeLight")
     physics_scene_prim = stage.DefinePrim(physics_scene_prim_path, "PhysicsScene")
 
-    stage = get_current_stage()
-
     light_prim.GetAttribute("inputs:intensity").Set(1000)
-    # physics_scene_prim.GetAttribute("physxScene:timeStepsPerSecond").Set(time_steps_per_second)
-    stage.GetRootLayer().default_time_codes_per_second = time_steps_per_second
-    stage.GetRootLayer().default_end_time_code = end_time_code
 
 def create_sphere(stage, name, position, parent_path, color):
     # Define the sphere's prim path
@@ -74,7 +108,16 @@ def create_sphere(stage, name, position, parent_path, color):
     geom = UsdGeom.Gprim(sphere_prim)
     geom.GetDisplayColorAttr().Set([color])
 
-def build_scene(project_root_path, sphere_amount, distance, x_level, y_level, offset, amount_vertiports):
+def add_prim_reference(name, position, usd_path, prim_path):
+    # Define the vertiport's prim path
+    prim = add_reference_to_stage(usd_path=usd_path, prim_path=f"{prim_path}/{name}")
+    
+    # Set the vertiport's position
+    pos_atr = prim.GetAttribute("xformOp:translate")
+    pos_atr.Set(position)
+    
+
+def build_scene(project_root_path, sphere_amount, distance, x_level, y_level, offset, amount_vertiports, amount_uavs):
     """Check for changes in the scene, prompt the user to save if necessary, and create a new scene."""
     usd_context = omni.usd.get_context()
     stage = usd_context.get_stage()
@@ -88,14 +131,14 @@ def build_scene(project_root_path, sphere_amount, distance, x_level, y_level, of
         usd_context.save_as_stage(target_dir)
         filepicker.hide()
         usd_context.new_stage()
-        define_scene(project_root_path, sphere_amount, distance, x_level, y_level, offset, amount_vertiports)
+        define_scene(project_root_path, sphere_amount, distance, x_level, y_level, offset, amount_vertiports, amount_uavs)
 
     def save_scene(selected_layers, comment):
         filepicker.show()
 
     def dont_save_scene(arg1):
         usd_context.new_stage()
-        define_scene(project_root_path, sphere_amount, distance, x_level, y_level, offset, amount_vertiports)
+        define_scene(project_root_path, sphere_amount, distance, x_level, y_level, offset, amount_vertiports, amount_uavs)
 
     dialog = omni.kit.window.file.StageSaveDialog(
         on_save_fn=save_scene,
