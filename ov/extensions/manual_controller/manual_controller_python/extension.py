@@ -58,7 +58,7 @@ class ManualController(omni.ext.IExt):
 
         # UI window
         # The ui.RasterPolicy.NEVER is to always update plots line drawing
-        self.window = ui.Window("NavSim - Manual Controller", width=600, height=600, raster_policy=ui.RasterPolicy.NEVER)
+        self.window = ui.Window("MC: NavSim - Manual Controller", width=600, height=600, raster_policy=ui.RasterPolicy.NEVER)
 
         # Plot data
         self.x_lv_plot_data = [0.0, 0.0]

@@ -66,7 +66,7 @@ class GridPlannerExt(omni.ext.IExt):
         colors = {"X": 0xFF5555AA, "Y": 0xFF76A371, "Z": 0xFFA07D4F}
         options = ["Takeoff", "Landing"]
 
-        self.window = ui.Window("NavSim - Grid Planner", width=300, height=300)
+        self.window = ui.Window("GP: NavSim - Grid Planner", width=300, height=300)
         self.window.deferred_dock_in("Layers")
         # self.window.setPosition(25, 25)
         self.window.frame.set_style(self.navsim_utils.Window_dark_style)

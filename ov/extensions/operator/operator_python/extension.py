@@ -218,7 +218,7 @@ class Operator(omni.ext.IExt):
         self.event_stream.push(uav_event, payload={"method": "eventFn_FlightPlan", "fp": serialized_fp})
         
     def build_ui(self):
-        self.window = ui.Window("NavSim - Operator", width=300, height=300)
+        self.window = ui.Window("OP: NavSim - Operator", width=300, height=300)
         self.window.deferred_dock_in("Layers")
         self.window.frame.set_style(self.navsim_utils.Window_dark_style)
 
