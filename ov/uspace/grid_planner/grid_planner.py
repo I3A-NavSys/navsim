@@ -1,7 +1,6 @@
 import numpy as np
 from queue import PriorityQueue
 import time
-import math
 
 from uspace.flight_plan.flight_plan import FlightPlan
 
@@ -53,6 +52,25 @@ class GridPlanner:
         else:
             return [GridNode(i-1, j+1, 'X', None, 0, None), GridNode(i+1, j, 'X', None, 0, None)]
 
+    def get_end_node(self, pos, time=0, is_landing=False):
+        """
+        Given the 2D position of the vertiport using node notation, returns the node to connect to
+        """
+
+        (i,j) = pos
+
+        if is_landing:
+            if j % 2 == 0:      i -= 1
+            else:               i += 1
+            s = 0
+        
+        else:
+            if j % 2 == 0:      i += 1
+            else:               i -= 1
+            s = time
+
+        return GridNode(i, j, 'X', s, 0, None)
+    
     def get_next_node(self, node: GridNode):
         """
         Dado un nodo, devuelve el nodo siguiente en línea recta.
@@ -181,44 +199,63 @@ class GridPlanner:
             - option: 
                 - 0 for smaller route (least nodes)
                 - 1 for the route that reaches the end first in time
+                - 2 for the route with the least cost (amount of turns)
             - init_pos:
-                - Tuple of world coordinates for x and y for the initial position
+                - Tuple of grid coordinates for x and y for the initial position
             - end_pos:
-                - Tuple of world coordinates for x and y for the final position
+                - Tuple of grid coordinates for x and y for the final position
             - init_time:
-                - Initial time of the route in seconds, not time slot
+                - Initial time of the route in time slot
             - end_time: 
-                - Final time of the route in seconds, not time slot
+                - Final time of the route in time slot
         """
 
         routes = []
         prio_length_routes = PriorityQueue()
         prio_time_routes = PriorityQueue()
+        prio_cost_routes = PriorityQueue()
         generation = 0
-        init_time_slot = math.ceil(init_time / self.slot_time)  # We round up the init time
-        end_time_slot = math.floor(end_time / self.slot_time)  # We round down the end time
         time_step = self.cell_side/self.slot_time**2
-        time_slots_to_search = np.arange(init_time_slot, end_time_slot + time_step, time_step)
+        time_slots_to_search = np.arange(init_time, end_time + time_step, time_step)
 
         # Iterate though all the time slots
         for time_slot in time_slots_to_search:
-            takeoff_nodes = self.get_take_off_nodes(init_pos, int(time_slot) * self.slot_time)
-            landing_nodes = self.get_landing_nodes(end_pos)
+            # takeoff_nodes = self.get_take_off_nodes(init_pos, int(time_slot) * self.slot_time)
+            # landing_nodes = self.get_landing_nodes(end_pos)
 
-            # Compute the four possible routes for the given takeoff and landing nodes
-            for i in range(2):
-                for j in range(2):
-                    route, _, _ = self.get_route(takeoff_nodes[i], landing_nodes[j], is_cost=True)
-                    if route is not None:
-                        generation += 1
-                        # routes.append((route, self.route_length(route), route[-1].s, route[-1].cost))
-                        if option == 0:
-                            prio_length_routes.put((self.route_length(route), route[-1].s, route[-1].cost, generation, route))
+            # # Compute the four possible routes for the given takeoff and landing nodes
+            # for i in range(2):
+            #     for j in range(2):
+            #         route, _, _ = self.get_route(takeoff_nodes[i], landing_nodes[j], is_cost=True)
+            #         if route is not None:
+            #             generation += 1
+            #             # routes.append((route, self.route_length(route), route[-1].s, route[-1].cost))
+            #             if option == 0:
+            #                 prio_length_routes.put((self.route_length(route), route[-1].s, route[-1].cost, generation, route))
                         
-                        elif option == 1:
-                            prio_time_routes.put((route[-1].s, self.route_length(route), route[-1].cost, generation, route))
+            #             elif option == 1:
+            #                 prio_time_routes.put((route[-1].s, self.route_length(route), route[-1].cost, generation, route))
 
-                        routes.append(route)
+            #             routes.append(route)
+
+            takeoff_node = self.get_end_node(init_pos, int(time_slot), is_landing=False)
+            landing_node = self.get_end_node(end_pos, is_landing=True)
+
+            route, _, _ = self.get_route(takeoff_node, landing_node, is_cost=True)
+
+            if route is not None:
+                generation += 1
+                if option == 0:
+                    prio_length_routes.put((self.route_length(route), route[-1].s, route[-1].cost, generation, route))
+                
+                elif option == 1:
+                    prio_time_routes.put((route[-1].s, self.route_length(route), route[-1].cost, generation, route))
+
+                elif option == 2:
+                    prio_cost_routes.put((route[-1].cost, self.route_length(route), route[-1].s, generation, route))
+
+                routes.append(route)
+
 
         if option == 0:
             if prio_length_routes.empty():      return None, None
@@ -227,6 +264,10 @@ class GridPlanner:
         elif option == 1:
             if prio_time_routes.empty():        return None, None
             else:                               return prio_time_routes.get()[4], routes
+
+        elif option == 2:
+            if prio_cost_routes.empty():        return None, None
+            else:                               return prio_cost_routes.get()[4], routes
 
     def get_route_from_node(self, node: GridNode):
         route = []

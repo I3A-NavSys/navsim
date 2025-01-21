@@ -40,8 +40,12 @@ from uspace.flight_plan.flight_plan import FlightPlan
 from uspace.flight_plan.waypoint import Waypoint
 from uspace.flight_plan.command import Command
 
+class UAVState:
+    IDLE = "idle"
+    BUSY = "busy"
+    DEAD = "dead"
 
-class UAM_minidrone(BehaviorScript):
+class Aerotaxi(BehaviorScript):
 
     def on_init(self):
         self.current_time = 0
@@ -79,14 +83,17 @@ class UAM_minidrone(BehaviorScript):
         
         # Create the omniverse event associated to this UAV
         self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(self.prim.GetPath()))
-        bus = omni.kit.app.get_app().get_message_bus_event_stream()
-        self.eventSub = bus.create_subscription_to_push_by_type(self.UAV_EVENT, self.push_subscripted_event_method)
+        self.event_stream = omni.kit.app.get_app().get_message_bus_event_stream()
+        self.event_sub = self.event_stream.create_subscription_to_push_by_type(self.UAV_EVENT, self.push_subscripted_event_method)
 
         #--------------------------------------------------------------------------------------------------------------
         # NAVIGATION PARAMETERS
 
-        self.fp = None               
-        self.currentWP = None  
+        self.operator_event = carb.events.type_from_string("NavSim.Operator")
+
+        self.fp = None
+        self.currentWP = None
+        self.state = UAVState.IDLE
 
         # AutoPilot navigation command
         self.command = Command()
@@ -190,7 +197,7 @@ class UAM_minidrone(BehaviorScript):
         self.E_max = 150            # maximum model accumulated error
     
     def on_destroy(self):
-        self.uav_event_sub = None
+        self.event_sub = None
     #------------------------------------------------------------------------------------------------------------------
     # EVENT HANDLERS
 
@@ -206,9 +213,8 @@ class UAM_minidrone(BehaviorScript):
         # Update the drone status
         self.imu()
         self.navigation()
-        self.command.hover()
-        #self.command.rotZ = 1
-        carb.log_info("step,position_x,position_y,position_z,rotation_x,rotation_y,rotation_z,linear_velocity_x,linear_velocity_y,linear_velocity_z,angular_velocity_x,angular_velocity_y,angular_velocity_z")
+        self.inform_operator()
+        # carb.log_info("step,position_x,position_y,position_z,rotation_x,rotation_y,rotation_z,linear_velocity_x,linear_velocity_y,linear_velocity_z,angular_velocity_x,angular_velocity_y,angular_velocity_z")
         self.servo_control()
         self.platform_dynamics()
         self.telemetry()
@@ -238,6 +244,21 @@ class UAM_minidrone(BehaviorScript):
         self.track_info = []
 
         self.steps = 0
+
+    def inform_operator(self):
+        serialized_fp = base64.b64encode(pickle.dumps(self.fp)).decode('utf-8')
+        serialized_pos = base64.b64encode(pickle.dumps(np.array(self.pos))).decode('utf-8')
+
+        payload = {
+            "sender": "uav",
+            "id": str(self.prim.GetPath()),
+            "state": self.state,
+            "time":self.current_time,
+            "pos": serialized_pos,
+            "flightplan": serialized_fp
+        }
+
+        self.event_stream.push(self.operator_event, payload=payload)
 
     def on_update(self, current_time: float, delta_time: float):
         # print(f"UPDATE  {self.prim_path} \t {current_time:.3f} \t {delta_time:.3f}")
@@ -320,7 +341,7 @@ class UAM_minidrone(BehaviorScript):
         # print(f"angular velocity (local):  {self.angular_vel}")
 
         # Print imu data
-        carb.log_info(f"{self.steps},{self.pos[0]},{self.pos[1]},{self.pos[2]},{self.roll},{self.pitch},{self.yaw},{self.linear_vel[0]},{self.linear_vel[1]},{self.linear_vel[2]},{self.angular_vel[0]},{self.angular_vel[1]},{self.angular_vel[2]}")
+        # carb.log_info(f"{self.steps},{self.pos[0]},{self.pos[1]},{self.pos[2]},{self.roll},{self.pitch},{self.yaw},{self.linear_vel[0]},{self.linear_vel[1]},{self.linear_vel[2]},{self.angular_vel[0]},{self.angular_vel[1]},{self.angular_vel[2]}")
 
         self.steps = self.steps + 1
 
@@ -349,6 +370,7 @@ class UAM_minidrone(BehaviorScript):
                 if np.linalg.norm(initPos) < self.fp.radius:
                     # Drone waiting to start the flight
                     print(f"[{self.current_time:3.2f}] {self.prim_path} waiting to start a FP")
+                    self.state = UAVState.BUSY
 
                 else:
                     # Drone in an incorrect starting position
@@ -358,9 +380,12 @@ class UAM_minidrone(BehaviorScript):
 
             elif WP < numWPs:
                 print(f"[{self.current_time:3.2f}] {self.prim_path} flying to {self.fp.waypoints[WP].label}")
+                self.inform_operator()
 
             else:
                 print(f"[{self.current_time:3.2f}] {self.prim_path} has completed its flight plan")
+                self.state = UAVState.IDLE
+                self.inform_operator()
 
                 # Uncomment this to show the corresponding plots
                 plt.close(plt.gcf())
@@ -371,6 +396,7 @@ class UAM_minidrone(BehaviorScript):
                 self.fp.add_UAV_track_vel("FP1: VELOCITY", self.track_info)
 
                 self.fp = None
+                self.command.off()
                 return
 
         self.currentWP = WP
