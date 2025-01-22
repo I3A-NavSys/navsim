@@ -209,6 +209,9 @@ class Aerotaxi(BehaviorScript):
         self.show_tracking = False
         self.refresh_rate = 1
         self.last_time_track = 0
+        
+        self.state = UAVState.IDLE
+        self.fp = None
 
         # Update the drone status
         self.imu()
@@ -237,8 +240,6 @@ class Aerotaxi(BehaviorScript):
         self.forceNW_atr.Set(Gf.Vec3f(0,0,0))
         self.forceSE_atr.Set(Gf.Vec3f(0,0,0))
         self.forceSW_atr.Set(Gf.Vec3f(0,0,0))
-    
-        self.fp = None
 
         self.tracking_figure_builded = False
         self.track_info = []
@@ -371,6 +372,7 @@ class Aerotaxi(BehaviorScript):
                     # Drone waiting to start the flight
                     print(f"[{self.current_time:3.2f}] {self.prim_path} waiting to start a FP")
                     self.state = UAVState.BUSY
+                    self.inform_operator()
 
                 else:
                     # Drone in an incorrect starting position

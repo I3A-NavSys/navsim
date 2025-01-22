@@ -61,6 +61,10 @@ class FlightPlan:
         else:
             self.waypoints.insert(index, wp)
 
+    def remove_negative_time(self):
+        if self.init_time() < 0:
+            self.postpone(-self.init_time())
+
     def remove_waypoint_at_time(self, t: float) -> None:
         """Removes the waypoint at a specific time `t` from the flight plan."""
         self.waypoints = list(filter(lambda wp: wp.t != t, self.waypoints))

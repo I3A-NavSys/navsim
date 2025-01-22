@@ -48,6 +48,9 @@ class Operator(omni.ext.IExt):
         self.gp.clear_grid()
         self.clients_requests = {}
         self.uavs = {}
+        if not self.vertiports:
+            self.vertiports = self.find_vertiports()
+            self.print_vertiports()
 
     def init_vars(self):
         self.physx_interface = omni.physx.get_physx_interface()
@@ -61,7 +64,6 @@ class Operator(omni.ext.IExt):
         
         self.navsim_utils = ExtensionUtils()
         self.gp = GridPlanner()
-        self.fp = FlightPlan()
 
         self.event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
         self.operator_event = carb.events.type_from_string("NavSim.Operator")
@@ -70,6 +72,20 @@ class Operator(omni.ext.IExt):
         self.current_time = 0
         self.clients_requests = {}
         self.uavs = {}
+        self.vertiports = {}
+
+    def find_vertiports(self):
+        vertiports_prims = self.navsim_utils.get_vertiport_prims()
+        vertiports = {}
+        
+        for prim in vertiports_prims:
+            id = prim.GetAttribute("NavSim:id").Get()
+            position = prim.GetAttribute("xformOp:translate").Get()
+            model = prim.GetAttribute("NavSim:model").Get()
+
+            vertiports[id] = {"position": position, "model": model}
+
+        return vertiports
 
     def event_listener(self, event):
         sender = event.payload["sender"]
@@ -90,25 +106,24 @@ class Operator(omni.ext.IExt):
                     "flightplan": uav_flightplan
                 }
 
-                self.ui_uavs.text = self.print_uavs()
+                self.print_uavs()
 
             case "client":
                 client_id = event.payload["id"]
-                client_request_time = event.payload["request_time"]
-                client_request_time_range = event.payload["request_time_range"]
-                client_request_origin = pickle.loads(base64.b64decode(event.payload["request_origin"]))
-                client_request_destination = pickle.loads(base64.b64decode(event.payload["request_destination"]))
+                client_request_time = event.payload["request_init_time"]
+                client_request_time_range = event.payload["request_end_time"]
+                client_request_origin = event.payload["request_origin"]
+                client_request_destination = event.payload["request_destination"]
 
                 self.clients_requests[client_id] = {
                     "id": client_id,
-                    "time": client_request_time,
-                    "time_range": client_request_time_range,
+                    "init_time": client_request_time,
+                    "end_time": client_request_time_range,
                     "origin": client_request_origin,
                     "destination": client_request_destination
                 }
 
-                self.ui_clients.text = self.print_clients()
-
+                self.print_clients()
                 self.process_request(self.clients_requests[client_id])
 
     def print_uavs(self):
@@ -122,42 +137,54 @@ class Operator(omni.ext.IExt):
 
             final_string += string
 
-        return final_string
+        self.ui_uavs_label.text = final_string
     
     def print_clients(self):
         final_string = ""
         for value in self.clients_requests.values():
             string = "ID: " + value["id"] + "\n"
-            string += "Time: " + str(value["time"]) + "\n"
-            string += "Time range: " + str(value["time_range"]) + "\n"
-            string += "Origin: " + str(value["origin"]) + "\n"
-            string += "Destination: " + str(value["destination"]) + "\n"
+            string += "Init time: " + str(value["init_time"]) + "\n"
+            string += "End time: " + str(value["end_time"]) + "\n"
+            string += "Origin: " + str(value["origin"]) + "\n"              # Given by a vertiport id
+            string += "Destination: " + str(value["destination"]) + "\n"    # Given by a vertiport id
             string += "\n"
 
             final_string += string
 
-        return final_string
+        self.ui_clients_label.text = final_string
                     
+    def print_vertiports(self):
+        final_string = ""
+        for key, value in self.vertiports.items():
+            string = "ID: " + key + "\n"
+            string += "Position: " + str(value["position"]) + "\n"
+            string += "Model: " + value["model"] + "\n"
+            string += "\n"
+
+            final_string += string
+
+        self.ui_vertiports_label.text = final_string
 
     def process_request(self, request):
+        request_origin = self.vertiports[request["origin"]]["position"]
+        request_destination = self.vertiports[request["destination"]]["position"]
+
         idle_uavs = [uav for uav in self.uavs.values() if uav["state"] == UAVState.IDLE]
-        uav_distances_to_origin = [np.linalg.norm(abs(uav["pos"] - request["origin"])) for uav in idle_uavs]
-        closest_uav = idle_uavs[np.argmin(uav_distances_to_origin)]
+        uav_distances_to_origin = [np.linalg.norm(abs(uav["pos"] - request_origin)) for uav in idle_uavs]
+        closest_uav_i = np.argmin(uav_distances_to_origin)
+        closest_uav = idle_uavs[closest_uav_i]
 
-        # Check if closest uav is already at the origin
-        pos_difference = request["origin"] - closest_uav["pos"]
-
-        if np.linalg.norm(pos_difference) < 2:
+        if uav_distances_to_origin[closest_uav_i] < 2:
             # Get node pos from closest uav as initial node
-            i = request["origin"][0] // self.gp.cell_side
-            j = request["origin"][1] // self.gp.cell_side
+            i = request_origin[0] // self.gp.cell_side
+            j = request_origin[1] // self.gp.cell_side
             # Get node pos from destination as final node
-            i2 = request["destination"][0] // self.gp.cell_side
-            j2 = request["destination"][1] // self.gp.cell_side
+            i2 = request_destination[0] // self.gp.cell_side
+            j2 = request_destination[1] // self.gp.cell_side
             # Round up the initial time
-            init_time_slot = math.ceil(request["time"] - request["time_range"] / self.gp.slot_time)
+            init_time_slot = math.ceil(request["init_time"] / self.gp.slot_time)
             # Round down the end time
-            end_time_slot = math.floor(request["time"] + request["time_range"] / self.gp.slot_time)
+            end_time_slot = math.floor(request["end_time"] / self.gp.slot_time)
 
             route, _ = self.gp.get_best_route(2, (i, j), (i2, j2), init_time_slot, end_time_slot)
 
@@ -165,7 +192,8 @@ class Operator(omni.ext.IExt):
                 self.gp.reserve_nodes(route)
 
             fp = self.gp.get_flightplan_from_route(route)
-            self.add_takeoff_landing_wps(fp, request["origin"][:2], request["destination"][:2])
+
+            self.add_takeoff_landing_wps(fp, request_origin[:2], request_destination[:2])
 
             self.send_flightplan(closest_uav["id"], fp)
 
@@ -174,8 +202,8 @@ class Operator(omni.ext.IExt):
             i = closest_uav["pos"][0] // self.gp.cell_side
             j = closest_uav["pos"][1] // self.gp.cell_side
 
-            i2 = request["origin"][0] // self.gp.cell_side
-            j2 = request["origin"][1] // self.gp.cell_side
+            i2 = request_origin[0] // self.gp.cell_side
+            j2 = request_origin[1] // self.gp.cell_side
 
             init_time_slot = math.ceil(self.current_time / self.gp.slot_time)
 
@@ -208,7 +236,7 @@ class Operator(omni.ext.IExt):
         fp.set_waypoint(time=end_time_3, pos=end_pos_3, vel=end_vel_3, heading=heading)
 
         fp.connect_waypoints()
-
+        fp.remove_negative_time()
         fp.postpone(self.current_time + 1 * self.gp.slot_time)
         # fp.postpone(self.current_time + 0.1)
 
@@ -226,12 +254,19 @@ class Operator(omni.ext.IExt):
             with ui.ScrollingFrame(horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
                                     vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED):
                 with ui.VStack(spacing=self.navsim_utils.SPACING_S, height=0):
+                    # UAVs collapsable
                     self.ui_uavs_collapsable = ui.CollapsableFrame("UAVs", collapsed=False,
                                                                    style=self.navsim_utils.CollapsableFrame_style)
                     with self.ui_uavs_collapsable:
-                        self.ui_uavs = ui.Label("", padding=self.navsim_utils.LABEL_PADDING)
+                        self.ui_uavs_label = ui.Label("", padding=self.navsim_utils.LABEL_PADDING)
 
+                    # Clients collapsable
                     self.ui_clients_collapsable = ui.CollapsableFrame("Clients", collapsed=False,
                                                                         style=self.navsim_utils.CollapsableFrame_style)
                     with self.ui_clients_collapsable:
-                        self.ui_clients = ui.Label("")
+                        self.ui_clients_label = ui.Label("")
+
+                    self.ui_vertiports_collapsable = ui.CollapsableFrame("Vertiports", collapsed=False,
+                                                                        style=self.navsim_utils.CollapsableFrame_style)
+                    with self.ui_vertiports_collapsable:
+                        self.ui_vertiports_label = ui.Label("")

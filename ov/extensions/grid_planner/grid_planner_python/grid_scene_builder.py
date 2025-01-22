@@ -68,6 +68,8 @@ def define_scene(project_root_path, sphere_amount, distance, x_level, y_level, o
         registered_vertiport_locs[(x, y)] = True
 
         add_prim_reference(f"Vertiport_{current_amount_vertiports}", (x, y, 0), vertiport_usd_path, vertiports_prim_path)
+        prim = stage.GetPrimAtPath(f"{vertiports_prim_path}/Vertiport_{current_amount_vertiports}")
+        prim.GetAttribute("NavSim:id").Set(f"v_{current_amount_vertiports}")
         current_amount_vertiports += 1
 
     # Add uavs to stage

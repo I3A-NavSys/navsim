@@ -152,3 +152,15 @@ class ExtensionUtils:
                     return prim
             
         return None
+    
+    def get_vertiport_prims(self):
+        vertiport_prims = []
+        stage = get_current_stage()
+
+        if stage is not None:
+            for prim in stage.Traverse():
+                att = prim.GetAttribute("NavSim:type")
+                if att.IsValid() and att.Get() == "vertiport":
+                    vertiport_prims.append(prim)
+            
+        return vertiport_prims
