@@ -1,3 +1,7 @@
+[core]
+reloadable = true
+order = 10
+
 [package]
 # Semantic Versioning is used: https://semver.org/
 version = "1.0.0"
@@ -6,7 +10,7 @@ version = "1.0.0"
 authors = ["Víctor Blázquez Milara"]
 
 # The title and description fields are primarily for displaying extension info in UI
-title = "navsim uspace clients"
+title = "navsim - clients"
 description="A extension to simulate USpace clients."
 
 # Path (relative to the root) or content of readme markdown file for UI.

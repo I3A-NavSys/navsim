@@ -109,22 +109,25 @@ class Operator(omni.ext.IExt):
                 self.print_uavs()
 
             case "client":
-                client_id = event.payload["id"]
-                client_request_time = event.payload["request_init_time"]
-                client_request_time_range = event.payload["request_end_time"]
-                client_request_origin = event.payload["request_origin"]
-                client_request_destination = event.payload["request_destination"]
+                client_id = event.payload["client_id"]
+                request_id = event.payload["request_id"]
+                init_time = event.payload["init_time"]
+                end_time = event.payload["end_time"]
+                origin = event.payload["origin"]
+                destination = event.payload["destination"]
 
-                self.clients_requests[client_id] = {
-                    "id": client_id,
-                    "init_time": client_request_time,
-                    "end_time": client_request_time_range,
-                    "origin": client_request_origin,
-                    "destination": client_request_destination
+                if client_id not in self.clients_requests:
+                    self.clients_requests[client_id] = {}
+
+                self.clients_requests[client_id][request_id] = {
+                    "init_time": init_time,
+                    "end_time": end_time,
+                    "origin": origin,
+                    "destination": destination
                 }
 
                 self.print_clients()
-                self.process_request(self.clients_requests[client_id])
+                self.process_request(self.clients_requests[client_id][request_id])
 
     def print_uavs(self):
         final_string = ""
@@ -141,15 +144,18 @@ class Operator(omni.ext.IExt):
     
     def print_clients(self):
         final_string = ""
-        for value in self.clients_requests.values():
-            string = "ID: " + value["id"] + "\n"
-            string += "Init time: " + str(value["init_time"]) + "\n"
-            string += "End time: " + str(value["end_time"]) + "\n"
-            string += "Origin: " + str(value["origin"]) + "\n"              # Given by a vertiport id
-            string += "Destination: " + str(value["destination"]) + "\n"    # Given by a vertiport id
-            string += "\n"
+        for key, values in self.clients_requests.items():
+            client_id = key
+            for key, value in values.items():
+                string = "Client ID: " + client_id + "\n"
+                string += "Request ID: " + key + "\n"
+                string += "Init time: " + str(value["init_time"]) + "\n"
+                string += "End time: " + str(value["end_time"]) + "\n"
+                string += "Origin: " + str(value["origin"]) + "\n"              # Given by a vertiport id
+                string += "Destination: " + str(value["destination"]) + "\n"    # Given by a vertiport id
+                string += "\n"
 
-            final_string += string
+                final_string += string
 
         self.ui_clients_label.text = final_string
                     
