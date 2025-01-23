@@ -26,6 +26,10 @@ class UAVState:
     BUSY = "busy"
     DEAD = "dead"
 
+class RequestState:
+    PENDING = "pending"
+    COMPLETED = "completed"
+
 class Operator(omni.ext.IExt):
     # ext_id is current extension id. It can be used with extension manager to query additional information, like where
     # this extension is located on filesystem.
@@ -48,9 +52,10 @@ class Operator(omni.ext.IExt):
         self.gp.clear_grid()
         self.clients_requests = {}
         self.uavs = {}
-        if not self.vertiports:
-            self.vertiports = self.find_vertiports()
-            self.print_vertiports()
+        self.vertiports_from_id, self.vertiports_from_pos = self.find_vertiports()
+        self.print_vertiports()
+
+        self.print_clients()
 
     def init_vars(self):
         self.physx_interface = omni.physx.get_physx_interface()
@@ -67,25 +72,29 @@ class Operator(omni.ext.IExt):
 
         self.event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
         self.operator_event = carb.events.type_from_string("NavSim.Operator")
+        self.uspace_clients_event = carb.events.type_from_string("NavSim.USpaceClients")
         self.event_sub = self.event_stream.create_subscription_to_push_by_type(self.operator_event, self.event_listener)
 
         self.current_time = 0
         self.clients_requests = {}
         self.uavs = {}
-        self.vertiports = {}
+        self.vertiports_from_id = {}
+        self.vertiports_from_pos = {}
 
     def find_vertiports(self):
         vertiports_prims = self.navsim_utils.get_vertiport_prims()
-        vertiports = {}
+        vertiports_from_id = {}
+        vertiports_from_pos = {}
         
         for prim in vertiports_prims:
             id = prim.GetAttribute("NavSim:id").Get()
             position = prim.GetAttribute("xformOp:translate").Get()
             model = prim.GetAttribute("NavSim:model").Get()
 
-            vertiports[id] = {"position": position, "model": model}
+            vertiports_from_id[id] = {"position": position, "model": model}
+            vertiports_from_pos[position] = id
 
-        return vertiports
+        return vertiports_from_id, vertiports_from_pos
 
     def event_listener(self, event):
         sender = event.payload["sender"]
@@ -98,13 +107,27 @@ class Operator(omni.ext.IExt):
                 uav_pos = pickle.loads(base64.b64decode(event.payload["pos"]))
                 uav_flightplan = pickle.loads(base64.b64decode(event.payload["flightplan"]))
 
-                self.uavs[uav_id] = {
-                    "id": uav_id,
-                    "state": uav_state,
-                    "time": uav_time,
-                    "pos": uav_pos,
-                    "flightplan": uav_flightplan
-                }
+                if uav_id in self.uavs:
+                    if self.uavs[uav_id]["state"] == UAVState.BUSY and uav_state == UAVState.IDLE:
+                        self.inform_client(self.uavs[uav_id]["request"]["client_id"], 
+                                           self.uavs[uav_id]["request"]["request_id"])
+                        self.uavs[uav_id]["request"] = None
+
+                    self.uavs[uav_id]["id"] = uav_id
+                    self.uavs[uav_id]["state"] = uav_state
+                    self.uavs[uav_id]["time"] = uav_time
+                    self.uavs[uav_id]["pos"] = uav_pos
+                    self.uavs[uav_id]["flightplan"] = uav_flightplan
+
+                else:
+                    self.uavs[uav_id] = {
+                        "id": uav_id,
+                        "state": uav_state,
+                        "time": uav_time,
+                        "pos": uav_pos,
+                        "flightplan": uav_flightplan,
+                        "request": None
+                    }
 
                 self.print_uavs()
 
@@ -127,7 +150,7 @@ class Operator(omni.ext.IExt):
                 }
 
                 self.print_clients()
-                self.process_request(self.clients_requests[client_id][request_id])
+                self.process_request(client_id, request_id)
 
     def print_uavs(self):
         final_string = ""
@@ -136,6 +159,11 @@ class Operator(omni.ext.IExt):
             string += "State: " + value["state"] + "\n"
             string += "Time: "+ str(value["time"]) + "\n"
             string += "Position: " + str(value["pos"]) + "\n"
+            if value["request"] is None:
+                string += "Request: None\n"
+            else:
+                string += "Request: " + value["request"]["client_id"] + " - " + value["request"]["request_id"] + "\n"
+
             string += "\n"
 
             final_string += string
@@ -161,7 +189,7 @@ class Operator(omni.ext.IExt):
                     
     def print_vertiports(self):
         final_string = ""
-        for key, value in self.vertiports.items():
+        for key, value in self.vertiports_from_id.items():
             string = "ID: " + key + "\n"
             string += "Position: " + str(value["position"]) + "\n"
             string += "Model: " + value["model"] + "\n"
@@ -171,9 +199,11 @@ class Operator(omni.ext.IExt):
 
         self.ui_vertiports_label.text = final_string
 
-    def process_request(self, request):
-        request_origin = self.vertiports[request["origin"]]["position"]
-        request_destination = self.vertiports[request["destination"]]["position"]
+    def process_request(self, client_id, request_id):
+        request = self.clients_requests[client_id][request_id]
+
+        request_origin = self.vertiports_from_id[request["origin"]]["position"]
+        request_destination = self.vertiports_from_id[request["destination"]]["position"]
 
         idle_uavs = [uav for uav in self.uavs.values() if uav["state"] == UAVState.IDLE]
         uav_distances_to_origin = [np.linalg.norm(abs(uav["pos"] - request_origin)) for uav in idle_uavs]
@@ -202,6 +232,9 @@ class Operator(omni.ext.IExt):
             self.add_takeoff_landing_wps(fp, request_origin[:2], request_destination[:2])
 
             self.send_flightplan(closest_uav["id"], fp)
+
+            self.uavs[closest_uav["id"]]["request"] = {"client_id": client_id, "request_id": request_id}
+            self.print_uavs()
 
         # The closest uav is not at the origin
         else:
@@ -242,8 +275,8 @@ class Operator(omni.ext.IExt):
         fp.set_waypoint(time=end_time_3, pos=end_pos_3, vel=end_vel_3, heading=heading)
 
         fp.connect_waypoints()
-        fp.remove_negative_time()
-        fp.postpone(self.current_time + 1 * self.gp.slot_time)
+        # fp.remove_negative_time()
+        # fp.postpone(self.current_time + 1 * self.gp.slot_time)
         # fp.postpone(self.current_time + 0.1)
 
     def send_flightplan(self, uav_id, fp):
@@ -251,6 +284,10 @@ class Operator(omni.ext.IExt):
         serialized_fp = base64.b64encode(pickle.dumps(fp)).decode('utf-8')
         self.event_stream.push(uav_event, payload={"method": "eventFn_FlightPlan", "fp": serialized_fp})
         
+    def inform_client(self, client_id, request_id):
+        self.event_stream.push(self.uspace_clients_event, payload={"client_id": client_id, "request_id": request_id, 
+                                                                   "state": RequestState.COMPLETED})
+
     def build_ui(self):
         self.window = ui.Window("OP: NavSim - Operator", width=300, height=300)
         self.window.deferred_dock_in("Layers")

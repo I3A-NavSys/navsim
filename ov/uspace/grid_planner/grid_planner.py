@@ -67,7 +67,7 @@ class GridPlanner:
         else:
             if j % 2 == 0:      i += 1
             else:               i -= 1
-            s = time
+            s = time + 2
 
         return GridNode(i, j, 'X', s, 0, None)
     
