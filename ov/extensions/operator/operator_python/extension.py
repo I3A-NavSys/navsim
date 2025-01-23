@@ -206,6 +206,7 @@ class Operator(omni.ext.IExt):
         request_destination = self.vertiports_from_id[request["destination"]]["position"]
 
         idle_uavs = [uav for uav in self.uavs.values() if uav["state"] == UAVState.IDLE]
+        if not idle_uavs:   return
         uav_distances_to_origin = [np.linalg.norm(abs(uav["pos"] - request_origin)) for uav in idle_uavs]
         closest_uav_i = np.argmin(uav_distances_to_origin)
         closest_uav = idle_uavs[closest_uav_i]
@@ -264,7 +265,7 @@ class Operator(omni.ext.IExt):
         end_vel_2 = [0, 0, -0.2]
         end_vel_3 = [0, 0, 0]
 
-        if (init_pos[1] % 2 == 0):      heading = [1, 0]
+        if ((init_pos[1] // self.gp.cell_side) % 2 == 0):      heading = [1, 0]
         else:                           heading = [-1, 0]
 
         # Initial takeoff waypoint

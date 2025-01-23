@@ -25,7 +25,6 @@ class USpaceClients(omni.ext.IExt):
     def on_startup(self, ext_id):
         self.init_vars()
         self.build_ui()
-        random.seed(0)
         
     def on_shutdown(self):
         self.on_physics_step_sub = None
@@ -43,6 +42,8 @@ class USpaceClients(omni.ext.IExt):
         self.ui_amazon_new_req.text = f"New Request: {self.amazon_new_request_timer_base}"
         
     def on_timeline_play(self, event):
+        random.seed(2)
+        # 2 -> R5, R6, R25
         self.clients = {}
         self.amount_amazon_requests = 0
         self.vertiports_from_id, self.vertiports_from_pos = self.find_vertiports()
