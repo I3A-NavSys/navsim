@@ -125,6 +125,21 @@ class GridPlanner:
                 else:
                     return GridNode(node.i-1, node.j, 'X', node.s+1, node.cost+2, node)    # giro SUR -> OESTE
 
+    def get_parallel_nodes(self, node: GridNode):
+        """
+        Dado un nodo, devuelve los nodos paralelos.
+        """
+        if node.L == 'X' and (node.parent is None or node.i != node.parent.i):
+            return [GridNode(node.i, node.j+1, 'X', node.s+1, node.cost+3, node), 
+                    GridNode(node.i, node.j-1, 'X', node.s+1, node.cost+3, node)]
+        
+        # L == 'Y'
+        elif node.L == 'Y' and (node.parent is None or node.j != node.parent.j):
+            return [GridNode(node.i+1, node.j, 'Y', node.s+1, node.cost+3, node), 
+                    GridNode(node.i-1, node.j, 'Y', node.s+1, node.cost+3, node)]
+        
+        return [None, None]
+
     def get_route(self, start_node: GridNode, end_node: GridNode, is_cost=False):
         """
         Dados dos nodos, devuelve una ruta libre del primero al segundo,
@@ -165,26 +180,38 @@ class GridPlanner:
 
             next_node = self.get_next_node(node)
             cross_node = self.get_cross_node(node)
+            parallel_node_1, parallel_node_2 = self.get_parallel_nodes(node)
 
             route_length += 1
 
-            if next_node is not None:
-                h_next_node = self.evaluate_node(next_node, end_node)
-                generation += 1
+            new_nodes = [next_node, cross_node, parallel_node_1, parallel_node_2]
+            for new_node in new_nodes:
+                if new_node is not None:
+                    h_new_node = self.evaluate_node(new_node, end_node)
+                    generation += 1
 
-                if not self.is_cost:
-                    prio_queue.put((h_next_node, generation, next_node))
-                else:
-                    prio_queue.put((h_next_node + next_node.cost, generation, next_node))
+                    if not self.is_cost:
+                        prio_queue.put((h_new_node, generation, new_node))
+                    else:
+                        prio_queue.put((h_new_node + new_node.cost, generation, new_node))
+
+            # if next_node is not None:
+            #     h_next_node = self.evaluate_node(next_node, end_node)
+            #     generation += 1
+
+            #     if not self.is_cost:
+            #         prio_queue.put((h_next_node, generation, next_node))
+            #     else:
+            #         prio_queue.put((h_next_node + next_node.cost, generation, next_node))
             
-            if cross_node is not None:
-                h_cross_node = self.evaluate_node(cross_node, end_node)
-                generation += 1
+            # if cross_node is not None:
+            #     h_cross_node = self.evaluate_node(cross_node, end_node)
+            #     generation += 1
 
-                if not self.is_cost:
-                    prio_queue.put((h_cross_node + 1, generation, cross_node))
-                else:
-                    prio_queue.put((h_cross_node + cross_node.cost, generation, cross_node))
+            #     if not self.is_cost:
+            #         prio_queue.put((h_cross_node + 1, generation, cross_node))
+            #     else:
+            #         prio_queue.put((h_cross_node + cross_node.cost, generation, cross_node))
 
         end_time = time.time()
         elapsed_time = end_time - start_time
@@ -297,7 +324,7 @@ class GridPlanner:
             else:
                 pos = [node.i * self.cell_side, node.j * self.cell_side + 50, self.y_height]
 
-                if node.j % 2 == 0:
+                if node.i % 2 == 0:
                     vel = [0, velocity, 0]
                     fp.set_waypoint(time=node.s * self.slot_time, pos=pos, vel=vel)
                     
