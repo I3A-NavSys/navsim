@@ -390,12 +390,12 @@ class Aerotaxi(BehaviorScript):
                 self.inform_operator()
 
                 # Uncomment this to show the corresponding plots
-                plt.close(plt.gcf())
-                self.fp.position_figure("FP1: POSITION", 0.01)
-                self.fp.velocity_figure("FP1: VELOCITY", 0.01)
+                # plt.close(plt.gcf())
+                self.fp.position_figure(f"{self.prim.GetPath()}: POSITION", 0.01)
+                self.fp.velocity_figure(f"{self.prim.GetPath()}: VELOCITY", 0.01)
                 
-                self.fp.add_UAV_track_pos("FP1: POSITION", self.track_info)
-                self.fp.add_UAV_track_vel("FP1: VELOCITY", self.track_info)
+                self.fp.add_UAV_track_pos(f"{self.prim.GetPath()}: POSITION", self.track_info)
+                self.fp.add_UAV_track_vel(f"{self.prim.GetPath()}: VELOCITY", self.track_info)
 
                 self.fp = None
                 self.command.off()
