@@ -498,9 +498,23 @@ class FlightPlan:
         # Get the trace
         tr = self.trace(timeStep)
 
+        # POSITION ERROR VERSUS TIME
+        # Create plot
+        xyzPosErrorPlot = posFig.add_subplot(6, 5, (26, 28))
+
+        # Indicate axes' name
+        xyzPosErrorPlot.set_xlabel("t [s]")
+        xyzPosErrorPlot.set_ylabel("Error [m]")
+
+        # Set title
+        xyzPosErrorPlot.set_title("Pos Error vs time")
+
+        # Set grid to True
+        xyzPosErrorPlot.grid(True)
+
         # POSITION 3D
         # Create plot
-        xyzPosPlot = posFig.add_subplot(3, 5, (1, 13), projection="3d")
+        xyzPosPlot = posFig.add_subplot(6, 5, (1, 23), projection="3d")
         
         # Indicate axes' name
         xyzPosPlot.set_xlabel("x [m]")
@@ -518,9 +532,9 @@ class FlightPlan:
 
         # POSITIONS VERSUS TIME
         # Create plots
-        xPosTimePlot = posFig.add_subplot(3, 5, (4, 5))
-        yPosTimePlot = posFig.add_subplot(3, 5, (9, 10))
-        zPosTimePlot = posFig.add_subplot(3, 5, (14, 15))
+        xPosTimePlot = posFig.add_subplot(6, 5, (4, 10))
+        yPosTimePlot = posFig.add_subplot(6, 5, (14, 20))
+        zPosTimePlot = posFig.add_subplot(6, 5, (24, 30))
         
         # Indicate axes' names
         xPosTimePlot.set_ylabel("x [m]")
@@ -668,13 +682,28 @@ class FlightPlan:
         # Show the plots
         plt.show(block=False)
 
+    def compute_errors(self, UAVinfo : List[Waypoint]):
+        # Compute errors between UAV and flight plan
+        errors = []
+        times = []
+        for wp in UAVinfo:
+            status = self.status_at_time(wp.t)
+            error = np.linalg.norm(wp.pos - status.pos)
+            errors.append(error)
+            times.append(wp.t)
+
+        return errors, times
+
     def add_UAV_track_pos(self, figName, UAVinfo : List[Waypoint]):
         posFig = plt.figure(figName)
         subplots = posFig.get_axes()
-        xyzPosPlot = subplots[0]
-        xPosTimePlot = subplots[1]
-        yPosTimePlot = subplots[2]
-        zPosTimePlot = subplots[3]
+        xyzPosErrorPlot = subplots[0]
+        xyzPosPlot = subplots[1]
+        xPosTimePlot = subplots[2]
+        yPosTimePlot = subplots[3]
+        zPosTimePlot = subplots[4]
+
+        errors, times = self.compute_errors(UAVinfo)
 
         xPosUAV = []
         yPosUAV = []
@@ -686,6 +715,9 @@ class FlightPlan:
             yPosUAV.append(wp.pos[1])
             zPosUAV.append(wp.pos[2])
             timeUAV.append(wp.t)
+
+        # Plot UAV errors
+        xyzPosErrorPlot.plot(times, errors, linestyle="solid", linewidth=1, color="red")
 
         # Plot UAV route
         xyzPosPlot.plot(xPosUAV, yPosUAV, zPosUAV, linestyle="dashed", linewidth=1, color="black")
