@@ -101,6 +101,7 @@ class Aerotaxi(BehaviorScript):
 
         # Tracking
         self.tracking_figure_builded = False
+        self.is_tracking = False
         self.refresh_rate = 1
         self.last_time_track = 0
         self.track_info = []
@@ -241,6 +242,7 @@ class Aerotaxi(BehaviorScript):
         self.forceSE_atr.Set(Gf.Vec3f(0,0,0))
         self.forceSW_atr.Set(Gf.Vec3f(0,0,0))
 
+        self.is_tracking = False
         self.tracking_figure_builded = False
         self.track_info = []
 
@@ -381,6 +383,7 @@ class Aerotaxi(BehaviorScript):
                     return
 
             elif WP < numWPs:
+                self.is_tracking = True
                 print(f"[{self.current_time:3.2f}] {self.prim_path} flying to {self.fp.waypoints[WP].label}")
                 self.inform_operator()
 
@@ -397,6 +400,8 @@ class Aerotaxi(BehaviorScript):
                 self.fp.add_UAV_track_pos(f"{self.prim.GetPath()}: POSITION", self.track_info)
                 self.fp.add_UAV_track_vel(f"{self.prim.GetPath()}: VELOCITY", self.track_info)
 
+                self.is_tracking = False
+                self.track_info = []
                 self.fp = None
                 self.command.off()
                 return
@@ -539,7 +544,7 @@ class Aerotaxi(BehaviorScript):
 
     def telemetry(self):
         # Update every self.refresh_rate seconds
-        if self.current_time - self.last_time_track >= self.refresh_rate:
+        if self.is_tracking and self.current_time - self.last_time_track >= self.refresh_rate:
             # Update last_time_track
             self.last_time_track = self.current_time
 

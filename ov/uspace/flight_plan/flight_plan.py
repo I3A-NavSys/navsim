@@ -7,6 +7,15 @@ from typing import List, Optional
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation
+try:
+    import mplcursors
+except:
+    raise Exception("ERROR: 'mplcursors' package is not installed. Copy and paste in the Script Editor the " + 
+                    "folllowing code\n\n" + 
+                    "# -- START CODE ------------------------------\n" +
+                    "import omni.kit.pipapi\n" +
+                    "omni.kit.pipapi.install(\"mplcursors\")\n" +
+                    "# -- END CODE --------------------------------\n")
 
 # Local application/library specific imports
 from uspace.flight_plan.waypoint import Waypoint
@@ -478,6 +487,17 @@ class FlightPlan:
         for wp in self.waypoints:
             print(f"{wp.label} \t  {wp.t} pos{wp.pos} vel{wp.vel}")
 
+    def attach_cursor_annotations(self, cursor, waypoints):
+        @cursor.connect("add")
+        def on_add(sel):
+            wp = waypoints[sel.index]
+            text = f"T: {wp.t}\n"
+            text += f"POS: {wp.pos}\n"
+            text += f"VEL: {wp.vel}\n"
+            text += f"ACEL: {wp.acel}"
+
+            sel.annotation.set_text(text)
+
     def __repr__(self):
         return f"FlightPlan(id: {self.id}, waypoints: {len(self.waypoints)})"
 
@@ -497,6 +517,10 @@ class FlightPlan:
 
         # Get the trace
         tr = self.trace(timeStep)
+        tr_t = tr[:, 0]
+        tr_x = tr[:, 1]
+        tr_y = tr[:, 2]
+        tr_z = tr[:, 3]
 
         # POSITION ERROR VERSUS TIME
         # Create plot
@@ -507,7 +531,7 @@ class FlightPlan:
         xyzPosErrorPlot.set_ylabel("Error [m]")
 
         # Set title
-        xyzPosErrorPlot.set_title("Pos Error vs time")
+        xyzPosErrorPlot.set_title("Position error versus time")
 
         # Set grid to True
         xyzPosErrorPlot.grid(True)
@@ -528,7 +552,7 @@ class FlightPlan:
         xyzPosPlot.grid(True)
         
         # Set plot info
-        xyzPosPlot.plot(tr[:,1], tr[:,2], tr[:,3], linewidth=2, color=color)
+        xyzPosPlot.plot(tr_x, tr_y, tr_z, linewidth=2, color=color)
 
         # POSITIONS VERSUS TIME
         # Create plots
@@ -551,9 +575,9 @@ class FlightPlan:
         zPosTimePlot.grid(True)
         
         # Set plots info
-        xPosTimePlot.plot(tr[:,0], tr[:,1], linewidth=2, color=color)
-        yPosTimePlot.plot(tr[:,0], tr[:,2], linewidth=2, color=color)
-        zPosTimePlot.plot(tr[:,0], tr[:,3], linewidth=2, color=color)
+        xPosTimePlot.plot(tr_t, tr_x, linewidth=2, color=color)
+        yPosTimePlot.plot(tr_t, tr_y, linewidth=2, color=color)
+        zPosTimePlot.plot(tr_t, tr_z, linewidth=2, color=color)
 
         # Get waypoints positions to highlight
         xPos = []
@@ -568,10 +592,20 @@ class FlightPlan:
             t.append(wp.t)
 
         # Highlight waypoints positions
-        xyzPosPlot.scatter(xPos, yPos, zPos, marker="o", color="blue", s=20)
-        xPosTimePlot.scatter(t, xPos, marker="o", color="blue", s=20)
-        yPosTimePlot.scatter(t, yPos, marker="o", color="blue", s=20)
-        zPosTimePlot.scatter(t, zPos, marker="o", color="blue", s=20)
+        xyzPosPlot_scatter = xyzPosPlot.scatter(xPos, yPos, zPos, marker="o", color="blue", s=25, pickradius=30)
+        xPosTimePlot_scatter = xPosTimePlot.scatter(t, xPos, marker="o", color="blue", s=25, pickradius=30)
+        yPosTimePlot_scatter = yPosTimePlot.scatter(t, yPos, marker="o", color="blue", s=25, pickradius=30)
+        zPosTimePlot_scatter = zPosTimePlot.scatter(t, zPos, marker="o", color="blue", s=25, pickradius=30)
+
+        xyzPosPlot_cursor = mplcursors.cursor(xyzPosPlot_scatter, highlight=True)
+        xPosTimePlot_cursor = mplcursors.cursor(xPosTimePlot_scatter, highlight=True)
+        yPosTimePlot_cursor = mplcursors.cursor(yPosTimePlot_scatter, highlight=True)
+        zPosTimePlot_cursor = mplcursors.cursor(zPosTimePlot_scatter, highlight=True)
+
+        self.attach_cursor_annotations(xyzPosPlot_cursor, self.waypoints)
+        self.attach_cursor_annotations(xPosTimePlot_cursor, self.waypoints)
+        self.attach_cursor_annotations(yPosTimePlot_cursor, self.waypoints)
+        self.attach_cursor_annotations(zPosTimePlot_cursor, self.waypoints)
 
         # Update limits to maintain scale in all axes
         xLim = max(np.abs(xyzPosPlot.get_xlim3d()))
@@ -583,14 +617,14 @@ class FlightPlan:
         xyzPosPlot.set_ylim3d(-maxLim, maxLim)
         xyzPosPlot.set_zlim3d(-maxLim, maxLim)
 
-        xLim = max(np.abs(xPosTimePlot.get_ylim()))
-        yLim = max(np.abs(yPosTimePlot.get_ylim()))
-        zLim = max(np.abs(zPosTimePlot.get_ylim()))
-        maxLim = max(xLim, yLim, zLim)
+        # xLim = max(np.abs(xPosTimePlot.get_ylim()))
+        # yLim = max(np.abs(yPosTimePlot.get_ylim()))
+        # zLim = max(np.abs(zPosTimePlot.get_ylim()))
+        # maxLim = max(xLim, yLim, zLim)
 
-        xPosTimePlot.set_ylim(-maxLim, maxLim)
-        yPosTimePlot.set_ylim(-maxLim, maxLim)
-        zPosTimePlot.set_ylim(-maxLim, maxLim)
+        # xPosTimePlot.set_ylim(-maxLim, maxLim)
+        # yPosTimePlot.set_ylim(-maxLim, maxLim)
+        # zPosTimePlot.set_ylim(-maxLim, maxLim)
 
         # Show the plots
         plt.show(block=False)
@@ -611,6 +645,10 @@ class FlightPlan:
 
         # Get the trace
         tr = self.trace(timeStep)
+        tr_t = tr[:, 0]
+        tr_x = tr[:, 4]
+        tr_y = tr[:, 5]
+        tr_z = tr[:, 6]
 
         # VELOCITY 3D
         # Create plot
@@ -626,7 +664,7 @@ class FlightPlan:
         velPlot3D.grid(True)
         
         # Set plot info
-        velPlot3D.plot(tr[:,0], np.sqrt(tr[:,4]**2 + tr[:,5]**2 + tr[:,6]**2), linewidth=2, color=color)
+        velPlot3D.plot(tr_t, np.sqrt(tr_x**2 + tr_y**2 + tr_z**2), linewidth=2, color=color)
 
         # VELOCITIES VERSUS TIME
         # Create plots
@@ -646,9 +684,9 @@ class FlightPlan:
         zVelTimePlot.grid(True)
         
         # Set plots info
-        xVelTimePlot.plot(tr[:,0], tr[:,4], linewidth=2, color=color)
-        yVelTimePlot.plot(tr[:,0], tr[:,5], linewidth=2, color=color)
-        zVelTimePlot.plot(tr[:,0], tr[:,6], linewidth=2, color=color)
+        xVelTimePlot.plot(tr_t, tr_x, linewidth=2, color=color)
+        yVelTimePlot.plot(tr_t, tr_y, linewidth=2, color=color)
+        zVelTimePlot.plot(tr_t, tr_z, linewidth=2, color=color)
 
         # Get waypoints velocities to highlight
         xVel = []
@@ -663,9 +701,17 @@ class FlightPlan:
             t.append(wp.t)
 
         # Highlight waypoints positions
-        xVelTimePlot.scatter(t, xVel, marker="o", color="blue", s=20)
-        yVelTimePlot.scatter(t, yVel, marker="o", color="blue", s=20)
-        zVelTimePlot.scatter(t, zVel, marker="o", color="blue", s=20)
+        xVelTimePlot_scatter = xVelTimePlot.scatter(t, xVel, marker="o", color="blue", s=25, pickradius=30)
+        yVelTimePlot_scatter = yVelTimePlot.scatter(t, yVel, marker="o", color="blue", s=25, pickradius=30)
+        zVelTimePlot_scatter = zVelTimePlot.scatter(t, zVel, marker="o", color="blue", s=25, pickradius=30)
+
+        xVelTimePlot_cursor = mplcursors.cursor(xVelTimePlot_scatter, highlight=True)
+        yVelTimePlot_cursor = mplcursors.cursor(yVelTimePlot_scatter, highlight=True)
+        zVelTimePlot_cursor = mplcursors.cursor(zVelTimePlot_scatter, highlight=True)
+
+        self.attach_cursor_annotations(xVelTimePlot_cursor, self.waypoints)
+        self.attach_cursor_annotations(yVelTimePlot_cursor, self.waypoints)
+        self.attach_cursor_annotations(zVelTimePlot_cursor, self.waypoints)
 
         # Update limits to maintain scale in all axes
         lim3D = max(np.abs(velPlot3D.get_ylim()))
@@ -682,18 +728,6 @@ class FlightPlan:
         # Show the plots
         plt.show(block=False)
 
-    def compute_errors(self, UAVinfo : List[Waypoint]):
-        # Compute errors between UAV and flight plan
-        errors = []
-        times = []
-        for wp in UAVinfo:
-            status = self.status_at_time(wp.t)
-            error = np.linalg.norm(wp.pos - status.pos)
-            errors.append(error)
-            times.append(wp.t)
-
-        return errors, times
-
     def add_UAV_track_pos(self, figName, UAVinfo : List[Waypoint]):
         posFig = plt.figure(figName)
         subplots = posFig.get_axes()
@@ -703,12 +737,11 @@ class FlightPlan:
         yPosTimePlot = subplots[3]
         zPosTimePlot = subplots[4]
 
-        errors, times = self.compute_errors(UAVinfo)
-
         xPosUAV = []
         yPosUAV = []
         zPosUAV = []
         timeUAV = []
+        errors = []
 
         for wp in UAVinfo:
             xPosUAV.append(wp.pos[0])
@@ -716,8 +749,13 @@ class FlightPlan:
             zPosUAV.append(wp.pos[2])
             timeUAV.append(wp.t)
 
+            # Compute errors between UAV and flight plan
+            status = self.status_at_time(wp.t)
+            error = np.linalg.norm(wp.pos - status.pos)
+            errors.append(error)
+
         # Plot UAV errors
-        xyzPosErrorPlot.plot(times, errors, linestyle="solid", linewidth=1, color="red")
+        xyzPosErrorPlot.plot(timeUAV, errors, linestyle="solid", linewidth=1, color="red")
 
         # Plot UAV route
         xyzPosPlot.plot(xPosUAV, yPosUAV, zPosUAV, linestyle="dashed", linewidth=1, color="black")
