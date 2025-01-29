@@ -1,6 +1,5 @@
 # Standard library imports
 import copy
-from re import T
 from typing import List, Optional
 
 # Related third party imports
