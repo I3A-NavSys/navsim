@@ -12,10 +12,6 @@ import matplotlib.pyplot as plt
 from omni.kit.scripting import BehaviorScript
 from pxr import Sdf, Gf
 from scipy.spatial.transform import Rotation
-import omni.physx
-import omni.timeline
-# DEBUG
-import logging
 
 
 project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
@@ -29,20 +25,14 @@ from uspace.flight_plan.flight_plan import FlightPlan
 from uspace.flight_plan.waypoint import Waypoint
 from uspace.flight_plan.command import Command
 
+class UAVState:
+    IDLE = "idle"
+    BUSY = "busy"
+    DEAD = "dead"
 
 class UAM_minidrone(BehaviorScript):
 
     def on_init(self):
-        # DEBUG
-        self.logger = logging.getLogger("A_my_logger")
-        self.logger.info(f"INIT  {self.prim_path}")
-
-        self.timeline_sub = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
-            int(omni.timeline.TimelineEventType.STOP), self.reset_current_time)
-
-        self.physx_interface = omni.physx.get_physx_interface()
-        self.physics_sub = self.physx_interface.subscribe_physics_step_events(self.on_physics_step)
-
         self.current_time = 0
         self.delta_time = 0
 
@@ -89,14 +79,17 @@ class UAM_minidrone(BehaviorScript):
 
         # Create the omniverse event associated to this UAV
         self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(self.prim.GetPath()))
-        bus = omni.kit.app.get_app().get_message_bus_event_stream()
-        self.uav_event_sub = bus.create_subscription_to_push_by_type(self.UAV_EVENT, self.push_subscripted_event_method)
+        self.event_stream = omni.kit.app.get_app().get_message_bus_event_stream()
+        self.event_sub = self.event_stream.create_subscription_to_push_by_type(self.UAV_EVENT, self.push_subscripted_event_method)
 
         #--------------------------------------------------------------------------------------------------------------
         # NAVIGATION PARAMETERS
 
-        self.fp = None               
-        self.currentWP = None  
+        self.operator_event = carb.events.type_from_string("NavSim.Operator")
+
+        self.fp = None
+        self.currentWP = None
+        self.state = UAVState.IDLE
 
         # AutoPilot navigation command
         self.command = Command()
@@ -104,6 +97,7 @@ class UAM_minidrone(BehaviorScript):
 
         # Tracking
         self.tracking_figure_builded = False
+        self.is_tracking = False
         self.refresh_rate = 1
         self.last_time_track = 0
         self.track_info = []
@@ -211,9 +205,7 @@ class UAM_minidrone(BehaviorScript):
         self.E_max = 15  # previous value 5, maximum model accumulated error
 
     def on_destroy(self):
-        self.timeline_sub = None
-        self.physics_sub = None
-        self.uav_event_sub = None
+        self.event_sub = None
     #------------------------------------------------------------------------------------------------------------------
     # EVENT HANDLERS
 
@@ -227,9 +219,13 @@ class UAM_minidrone(BehaviorScript):
         self.refresh_rate = 1
         self.last_time_track = 0
 
+        self.state = UAVState.IDLE
+        self.fp = None
+
         # Update the drone status
         self.imu()
         self.navigation()
+        self.inform_operator()
         self.servo_control()
         self.platform_dynamics()
         self.telemetry()
@@ -237,14 +233,6 @@ class UAM_minidrone(BehaviorScript):
     def on_pause(self):
         # print(f"PAUSE   {self.prim_path}")
         pass
-
-    def on_physics_step(self, step_size):
-        self.current_time += step_size
-        self.delta_time = step_size
-        self.update()
-
-    def reset_current_time(self, event):
-        self.current_time = 0
 
     def on_stop(self):
         # print(f"STOP    {self.prim_path}")
@@ -269,18 +257,33 @@ class UAM_minidrone(BehaviorScript):
 
         self.fp = None
 
+        self.is_tracking = False
         self.tracking_figure_builded = False
         self.track_info = []
 
-    # def on_update(self, current_time: float, delta_time: float):
-    def update(self):
+    def inform_operator(self):
+        serialized_fp = base64.b64encode(pickle.dumps(self.fp)).decode('utf-8')
+        serialized_pos = base64.b64encode(pickle.dumps(np.array(self.pos))).decode('utf-8')
+
+        payload = {
+            "sender": "uav",
+            "id": str(self.prim.GetPath()),
+            "state": self.state,
+            "time":self.current_time,
+            "pos": serialized_pos,
+            "flightplan": serialized_fp
+        }
+
+        self.event_stream.push(self.operator_event, payload=payload)
+
+    def on_update(self, current_time: float, delta_time: float):
         # print(f"UPDATE  {self.prim_path} \t {current_time:.3f} \t {delta_time:.3f}")
         # print(f"UPDATE  {self.prim_path} \t {self.current_time:.3f} \t {self.delta_time:.3f}")
         # self.logger.info(f"UPDATE  {self.prim_path} \t {self.current_time:.3f} \t {self.delta_time:.3f}")
 
         # Get current simulation time
-        # self.current_time = current_time
-        # self.delta_time = delta_time
+        self.current_time = current_time
+        self.delta_time = delta_time
 
         # self.animate_rotors()
 
@@ -429,6 +432,8 @@ class UAM_minidrone(BehaviorScript):
                 if np.linalg.norm(initPos) < self.fp.radius:
                     # Drone waiting to start the flight
                     print(f"[{self.current_time:3.2f}] {self.prim_path} waiting to start a FP")
+                    self.state = UAVState.BUSY
+                    self.inform_operator()
 
                 else:
                     # Drone in an incorrect starting position
@@ -437,27 +442,35 @@ class UAM_minidrone(BehaviorScript):
                     return
 
             elif WP < numWPs:
+                self.is_tracking = True
                 print(f"[{self.current_time:3.2f}] {self.prim_path} flying to {self.fp.waypoints[WP].label}")
+                self.inform_operator()
 
             else:
                 print(f"[{self.current_time:3.2f}] {self.prim_path} has completed its flight plan")
+                self.state = UAVState.IDLE
+                self.inform_operator()
 
                 # Uncomment this to show the corresponding plots
-                plt.close(plt.gcf())
-                self.fp.position_figure("FP1: POSITION", 0.01)
-                self.fp.velocity_figure("FP1: VELOCITY", 0.01)
+                # plt.close(plt.gcf())
+                self.fp.position_figure(f"{self.prim.GetPath()}: POSITION", 0.01)
+                self.fp.velocity_figure(f"{self.prim.GetPath()}: VELOCITY", 0.01)
                 
-                self.fp.add_UAV_track_pos("FP1: POSITION", self.track_info)
-                self.fp.add_UAV_track_vel("FP1: VELOCITY", self.track_info)
+                self.fp.add_UAV_track_pos(f"{self.prim.GetPath()}: POSITION", self.track_info)
+                self.fp.add_UAV_track_vel(f"{self.prim.GetPath()}: VELOCITY", self.track_info)
 
+                self.is_tracking = False
+                self.track_info = []
                 self.fp = None
+                self.command.off()
                 return
 
         self.currentWP = WP
         
         # Change relative vel to absolute
         linear_vel = self.rot.apply(self.linear_vel)
-        self.command = self.fp.get_command(self.current_time, self.pos, linear_vel, self.rot, 2)
+        self.command = self.fp.get_command(self.current_time, self.pos, linear_vel, self.rot, 
+                                           self.fp.waypoints[WP-1].heading, 2)
         self.cmd_exp_time = self.current_time + self.command.duration
 
     def servo_control(self):
@@ -598,7 +611,7 @@ class UAM_minidrone(BehaviorScript):
 
     def telemetry(self):
         # Update every self.refresh_rate seconds
-        if self.current_time - self.last_time_track >= self.refresh_rate:
+        if self.is_tracking and  self.current_time - self.last_time_track >= self.refresh_rate:
             # Update last_time_track
             self.last_time_track = self.current_time
 
