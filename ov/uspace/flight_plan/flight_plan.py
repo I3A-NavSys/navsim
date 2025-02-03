@@ -616,14 +616,19 @@ class FlightPlan:
         xyzPosPlot.set_ylim3d(-maxLim, maxLim)
         xyzPosPlot.set_zlim3d(-maxLim, maxLim)
 
-        # xLim = max(np.abs(xPosTimePlot.get_ylim()))
-        # yLim = max(np.abs(yPosTimePlot.get_ylim()))
-        # zLim = max(np.abs(zPosTimePlot.get_ylim()))
-        # maxLim = max(xLim, yLim, zLim)
+        xLim = xPosTimePlot.get_ylim()
+        yLim = yPosTimePlot.get_ylim()
+        xRange = xLim[1] - xLim[0]
+        yRange = yLim[1] - yLim[0]
+        
+        maxRange = max(xRange, yRange)
+        addition = maxRange / 2
 
-        # xPosTimePlot.set_ylim(-maxLim, maxLim)
-        # yPosTimePlot.set_ylim(-maxLim, maxLim)
-        # zPosTimePlot.set_ylim(-maxLim, maxLim)
+        xMidValue = (xLim[1] + xLim[0]) / 2
+        yMidValue = (yLim[1] + yLim[0]) / 2
+
+        xPosTimePlot.set_ylim(xMidValue - addition, xMidValue + addition)
+        yPosTimePlot.set_ylim(yMidValue - addition, yMidValue + addition)
 
         # Show the plots
         plt.show(block=False)
