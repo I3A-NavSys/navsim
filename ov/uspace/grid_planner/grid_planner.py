@@ -125,21 +125,6 @@ class GridPlanner:
                 else:
                     return GridNode(node.i-1, node.j, 'X', node.s+1, node.cost+2, node)    # giro SUR -> OESTE
 
-    def get_parallel_nodes(self, node: GridNode):
-        """
-        Dado un nodo, devuelve los nodos paralelos.
-        """
-        if node.L == 'X' and (node.parent is None or node.i != node.parent.i):
-            return [GridNode(node.i, node.j+1, 'X', node.s+1, node.cost+3, node), 
-                    GridNode(node.i, node.j-1, 'X', node.s+1, node.cost+3, node)]
-        
-        # L == 'Y'
-        elif node.L == 'Y' and (node.parent is None or node.j != node.parent.j):
-            return [GridNode(node.i+1, node.j, 'Y', node.s+1, node.cost+3, node), 
-                    GridNode(node.i-1, node.j, 'Y', node.s+1, node.cost+3, node)]
-        
-        return [None, None]
-
     def get_route(self, start_node: GridNode, end_node: GridNode, is_cost=False):
         """
         Dados dos nodos, devuelve una ruta libre del primero al segundo,
@@ -180,11 +165,10 @@ class GridPlanner:
 
             next_node = self.get_next_node(node)
             cross_node = self.get_cross_node(node)
-            parallel_node_1, parallel_node_2 = self.get_parallel_nodes(node)
 
             route_length += 1
 
-            new_nodes = [next_node, cross_node, parallel_node_1, parallel_node_2]
+            new_nodes = [next_node, cross_node]
             for new_node in new_nodes:
                 if new_node is not None:
                     h_new_node = self.evaluate_node(new_node, end_node)
@@ -310,27 +294,40 @@ class GridPlanner:
         fp = FlightPlan()
         velocity = self.cell_side / self.slot_time
 
-        for node in route:
+        route_length = len(route)
+        node_index = 0
+        route_ending_index = route_length - 2
+        is_route_ending = False
+        
+        while node_index < route_length:
+            node = route[node_index]
+
+            if node_index >= route_ending_index:    is_route_ending = True
+
             if node.L == "X":
                 pos = [node.i * self.cell_side + 50, node.j * self.cell_side, self.x_height]
 
-                if node.j % 2 == 0:
-                    vel = [velocity, 0, 0]
-                    fp.set_waypoint(time=node.s * self.slot_time, pos=pos, vel=vel)
+                if node.j % 2 == 0:     vel = [velocity, 0, 0]
+                else:                   vel = [-velocity, 0, 0]
 
-                else:
-                    vel = [-velocity, 0, 0]
-                    fp.set_waypoint(time=node.s * self.slot_time, pos=pos, vel=vel)
+                if not is_route_ending and route[node_index + 2].i == node.i and abs(route[node_index + 2].j - node.j) == 1:
+                    # Do not add next node as it is not necessary
+                    node_index += 1
+
             else:
                 pos = [node.i * self.cell_side, node.j * self.cell_side + 50, self.y_height]
 
-                if node.i % 2 == 0:
-                    vel = [0, velocity, 0]
-                    fp.set_waypoint(time=node.s * self.slot_time, pos=pos, vel=vel)
-                    
-                else:
-                    vel = [0, -velocity, 0]
-                    fp.set_waypoint(time=node.s * self.slot_time, pos=pos, vel=vel)
+                if node.i % 2 == 0:     vel = [0, velocity, 0]
+                else:                   vel = [0, -velocity, 0]
+
+                if not is_route_ending and route[node_index + 2].j == node.j and abs(route[node_index + 2].i - node.i) == 1:
+                    # Do not add next node as it is not necessary
+                    node_index += 1
+
+            fp.set_waypoint(time=node.s * self.slot_time, pos=pos, vel=vel)
+
+            node_index += 1
+            
 
         fp.connect_waypoints()
 
