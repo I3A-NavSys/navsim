@@ -78,6 +78,7 @@ class Operator(omni.ext.IExt):
         self.current_time = 0
         self.clients_requests = {}
         self.uavs = {}
+        self.uav_plots = {}     # {uav_id: {"amazon_request_1": {"fp": fp, "track_info": track_info}, "amazon_request_2": {"fp": fp, "track_info": track_info}} }
         self.vertiports_from_id = {}
         self.vertiports_from_pos = {}
 
@@ -108,10 +109,7 @@ class Operator(omni.ext.IExt):
                 uav_flightplan = pickle.loads(base64.b64decode(event.payload["flightplan"]))
 
                 if uav_id in self.uavs:
-                    if self.uavs[uav_id]["state"] == UAVState.BUSY and uav_state == UAVState.IDLE:
-                        self.inform_client(self.uavs[uav_id]["request"]["client_id"], 
-                                           self.uavs[uav_id]["request"]["request_id"])
-                        self.uavs[uav_id]["request"] = None
+                    self.check_request_completed(uav_id, uav_state, uav_flightplan, event)
 
                     self.uavs[uav_id]["id"] = uav_id
                     self.uavs[uav_id]["state"] = uav_state
@@ -152,6 +150,34 @@ class Operator(omni.ext.IExt):
                 self.print_clients()
                 self.process_request(client_id, request_id)
 
+    def check_request_completed(self, uav_id, uav_state, uav_flightplan, event):
+        # Check if uav has completed the request
+        if self.uavs[uav_id]["state"] == UAVState.BUSY and uav_state == UAVState.IDLE:
+            # Inform the client that the request was completed
+            self.inform_client(self.uavs[uav_id]["request"]["client_id"], 
+                                self.uavs[uav_id]["request"]["request_id"])
+            
+            # Store uav tracked info
+            tracked_info = pickle.loads(base64.b64decode(event.payload["tracked_info"]))
+            client_id = self.uavs[uav_id]["request"]["client_id"]
+            request_id = self.uavs[uav_id]["request"]["request_id"]
+
+            if uav_id in self.uav_plots:
+                self.uav_plots[uav_id][f"{client_id}_{request_id}"] = {
+                    "fp": uav_flightplan, 
+                    "tracked_info": tracked_info
+                }
+
+            else:
+                self.uav_plots[uav_id] = {}
+                self.uav_plots[uav_id][f"{client_id}_{request_id}"] = {
+                    "fp": uav_flightplan, 
+                    "tracked_info": tracked_info
+                }
+
+            # Reset uav request
+            self.uavs[uav_id]["request"] = None
+
     def print_uavs(self):
         final_string = ""
         for value in self.uavs.values():
@@ -170,6 +196,10 @@ class Operator(omni.ext.IExt):
 
         self.ui_uavs_label.text = final_string
     
+    def print_uav_plots(self):
+        final_string = ""
+
+
     def print_clients(self):
         final_string = ""
         for key, values in self.clients_requests.items():
@@ -314,3 +344,17 @@ class Operator(omni.ext.IExt):
                                                                         style=self.navsim_utils.CollapsableFrame_style)
                     with self.ui_vertiports_collapsable:
                         self.ui_vertiports_label = ui.Label("")
+
+                    self.ui_uav_plots_collapsable = ui.CollapsableFrame("UAV plots", collapsed=False,
+                                                                        style=self.navsim_utils.CollapsableFrame_style)
+                    with self.ui_uav_plots_collapsable:
+                        with ui.ZStack(style={"margin":20}):
+                            ui.Rectangle(height=150, style={"background_color": 0xFF5b5b5b, 
+                                        "border_radius": 10, 
+                                        "corner_flag": ui.CornerFlag.ALL,})
+                            
+                            with ui.ScrollingFrame(horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
+                                        vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
+                                        style={"background_color": 0xFF5b5b5b, "margin":7}, height=150):
+                                self.ui_amazon_requests = ui.Label("", alignment=ui.Alignment.LEFT)
+                            self.ui_uav_plots_label = ui.Label("")

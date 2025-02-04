@@ -385,7 +385,7 @@ class FlightPlan:
     def trace(self, timeStep):
         # This method expands the flight plan behavior over time
         instants = np.arange(self.init_time(), self.finish_time() + timeStep, timeStep)
-        tr = np.zeros((len(instants), 7))
+        tr = np.zeros((len(instants), 10))
         tr[:, 0] = instants
         
         # Get position at each time instant
@@ -393,6 +393,7 @@ class FlightPlan:
             wp = self.status_at_time(tr[i, 0])
             tr[i, 1:4] = wp.pos
             tr[i, 4:7] = wp.vel
+            tr[i, 7:10] = wp.acel
         
         tr[-1, 4:7] = [0, 0, 0]  # Set velocity to zero at the last time instant
         
@@ -728,6 +729,105 @@ class FlightPlan:
         xVelTimePlot.set_ylim(-maxLim, maxLim)
         yVelTimePlot.set_ylim(-maxLim, maxLim)
         zVelTimePlot.set_ylim(-maxLim, maxLim)
+
+        # Show the plots
+        plt.show(block=False)
+
+    def acceleration_figure(self, figName, timeStep):
+        # Display the flight plan instant velocity
+
+        # Check if the flight plan is empty
+        if not self.waypoints:
+            print('The flight plan is empty')
+            return
+        
+        # Create matplolib figure (window)
+        velFig = plt.figure(figName)
+
+        # Figure settings
+        color = [0, 0.7, 1]
+
+        # Get the trace
+        tr = self.trace(timeStep)
+        tr_t = tr[:, 0]
+        tr_x = tr[:, 7]
+        tr_y = tr[:, 8]
+        tr_z = tr[:, 9]
+
+        # ACCELERATION 3D
+        # Create plot
+        accPlot3D = velFig.add_subplot(4, 2, (1, 2))
+        
+        # Indicate axes' name
+        accPlot3D.set_ylabel("3D [m/s2]")
+        
+        # Set title
+        accPlot3D.set_title("Acceleration versus time")
+        
+        # Set grid to True
+        accPlot3D.grid(True)
+        
+        # Set plot info
+        accPlot3D.plot(tr_t, np.sqrt(tr_x**2 + tr_y**2 + tr_z**2), linewidth=2, color=color)
+
+        # ACCELERATIONS VERSUS TIME
+        # Create plots
+        xAccTimePlot = velFig.add_subplot(4, 2, (3, 4))
+        yAccTimePlot = velFig.add_subplot(4, 2, (5, 6))
+        zAccTimePlot = velFig.add_subplot(4, 2, (7, 8))
+        
+        # Indicate axes' names
+        xAccTimePlot.set_ylabel("ax [m/s2]")
+        yAccTimePlot.set_ylabel("ay [m/s2]")
+        zAccTimePlot.set_ylabel("az [m/s2]")
+        zAccTimePlot.set_xlabel("t [s]")
+        
+        # Set grid to True
+        xAccTimePlot.grid(True)
+        yAccTimePlot.grid(True)
+        zAccTimePlot.grid(True)
+        
+        # Set plots info
+        xAccTimePlot.plot(tr_t, tr_x, linewidth=2, color=color)
+        yAccTimePlot.plot(tr_t, tr_y, linewidth=2, color=color)
+        zAccTimePlot.plot(tr_t, tr_z, linewidth=2, color=color)
+
+        # Get waypoints velocities to highlight
+        xAcc = []
+        yAcc = []
+        zAcc = []
+        t = []
+
+        for wp in self.waypoints:
+            xAcc.append(wp.acel[0])
+            yAcc.append(wp.acel[1])
+            zAcc.append(wp.acel[2])
+            t.append(wp.t)
+
+        # Highlight waypoints positions
+        xVelTimePlot_scatter = xAccTimePlot.scatter(t, xAcc, marker="o", color="blue", s=25, pickradius=30)
+        yVelTimePlot_scatter = yAccTimePlot.scatter(t, yAcc, marker="o", color="blue", s=25, pickradius=30)
+        zVelTimePlot_scatter = zAccTimePlot.scatter(t, zAcc, marker="o", color="blue", s=25, pickradius=30)
+
+        xVelTimePlot_cursor = mplcursors.cursor(xVelTimePlot_scatter, highlight=True)
+        yVelTimePlot_cursor = mplcursors.cursor(yVelTimePlot_scatter, highlight=True)
+        zVelTimePlot_cursor = mplcursors.cursor(zVelTimePlot_scatter, highlight=True)
+
+        self.attach_cursor_annotations(xVelTimePlot_cursor, self.waypoints)
+        self.attach_cursor_annotations(yVelTimePlot_cursor, self.waypoints)
+        self.attach_cursor_annotations(zVelTimePlot_cursor, self.waypoints)
+
+        # Update limits to maintain scale in all axes
+        lim3D = max(np.abs(accPlot3D.get_ylim()))
+        xLim = max(np.abs(xAccTimePlot.get_ylim()))
+        yLim = max(np.abs(yAccTimePlot.get_ylim()))
+        zLim = max(np.abs(zAccTimePlot.get_ylim()))
+        maxLim = max(lim3D, xLim, yLim, zLim)
+
+        accPlot3D.set_ylim(-maxLim, maxLim)
+        xAccTimePlot.set_ylim(-maxLim, maxLim)
+        yAccTimePlot.set_ylim(-maxLim, maxLim)
+        zAccTimePlot.set_ylim(-maxLim, maxLim)
 
         # Show the plots
         plt.show(block=False)

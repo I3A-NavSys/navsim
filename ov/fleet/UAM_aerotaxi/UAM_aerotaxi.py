@@ -248,9 +248,13 @@ class Aerotaxi(BehaviorScript):
 
         self.steps = 0
 
-    def inform_operator(self):
+    def inform_operator(self, is_request_completed=False):
         serialized_fp = base64.b64encode(pickle.dumps(self.fp)).decode('utf-8')
         serialized_pos = base64.b64encode(pickle.dumps(np.array(self.pos))).decode('utf-8')
+        if is_request_completed:
+            tracked_info = base64.b64encode(pickle.dumps(np.array(self.track_info))).decode('utf-8')
+        else:
+            tracked_info = ""
 
         payload = {
             "sender": "uav",
@@ -258,7 +262,8 @@ class Aerotaxi(BehaviorScript):
             "state": self.state,
             "time":self.current_time,
             "pos": serialized_pos,
-            "flightplan": serialized_fp
+            "flightplan": serialized_fp,
+            "tracked_info": tracked_info
         }
 
         self.event_stream.push(self.operator_event, payload=payload)
@@ -390,7 +395,7 @@ class Aerotaxi(BehaviorScript):
             else:
                 print(f"[{self.current_time:3.2f}] {self.prim_path} has completed its flight plan")
                 self.state = UAVState.IDLE
-                self.inform_operator()
+                self.inform_operator(is_request_completed=True)
 
                 # Uncomment this to show the corresponding plots
                 # plt.close(plt.gcf())
