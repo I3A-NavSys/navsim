@@ -52,6 +52,7 @@ class Operator(omni.ext.IExt):
         self.gp.clear_grid()
         self.clients_requests = {}
         self.uavs = {}
+        self.uav_plots = {}
         self.vertiports_from_id, self.vertiports_from_pos = self.find_vertiports()
         self.print_vertiports()
 
@@ -127,6 +128,8 @@ class Operator(omni.ext.IExt):
                         "request": None
                     }
 
+                    self.ui_select_uav_to_plot.repopulate()
+
                 self.print_uavs()
 
             case "client":
@@ -178,6 +181,10 @@ class Operator(omni.ext.IExt):
             # Reset uav request
             self.uavs[uav_id]["request"] = None
 
+            # If the current selected uav to see its plots is the one which finished the request, we update the list
+            if self.ui_select_uav_to_plot.get_selection() == uav_id:
+                self.update_uav_plots_frame(uav_id)
+
     def print_uavs(self):
         final_string = ""
         for value in self.uavs.values():
@@ -195,10 +202,6 @@ class Operator(omni.ext.IExt):
             final_string += string
 
         self.ui_uavs_label.text = final_string
-    
-    def print_uav_plots(self):
-        final_string = ""
-
 
     def print_clients(self):
         final_string = ""
@@ -228,6 +231,27 @@ class Operator(omni.ext.IExt):
             final_string += string
 
         self.ui_vertiports_label.text = final_string
+
+    def plot_uav_pos(self, uav_id, key):
+        fp: FlightPlan = self.uav_plots[uav_id][key]["fp"]
+        tracked_info = self.uav_plots[uav_id][key]["tracked_info"]
+
+        fp.position_figure(f"{uav_id}: POSITION", 0.01)
+        fp.add_UAV_track_pos(f"{uav_id}: POSITION", tracked_info)
+
+    def plot_uav_vel(self, uav_id, key):
+        fp: FlightPlan = self.uav_plots[uav_id][key]["fp"]
+        tracked_info = self.uav_plots[uav_id][key]["tracked_info"]
+
+        fp.velocity_figure(f"{uav_id}: VELOCITY", 0.01)
+        fp.add_UAV_track_vel(f"{uav_id}: VELOCITY", tracked_info)
+
+    def plot_uav_acc(self, uav_id, key):
+        fp: FlightPlan = self.uav_plots[uav_id][key]["fp"]
+        tracked_info = self.uav_plots[uav_id][key]["tracked_info"]
+
+        fp.acceleration_figure(f"{uav_id}: ACCELERATION", 0.01)
+        # fp.add_UAV_track_pos(f"{uav_id}: ACCELERATION", tracked_info)
 
     def process_request(self, client_id, request_id):
         request = self.clients_requests[client_id][request_id]
@@ -348,13 +372,43 @@ class Operator(omni.ext.IExt):
                     self.ui_uav_plots_collapsable = ui.CollapsableFrame("UAV plots", collapsed=False,
                                                                         style=self.navsim_utils.CollapsableFrame_style)
                     with self.ui_uav_plots_collapsable:
-                        with ui.ZStack(style={"margin":20}):
-                            ui.Rectangle(height=150, style={"background_color": 0xFF5b5b5b, 
-                                        "border_radius": 10, 
-                                        "corner_flag": ui.CornerFlag.ALL,})
-                            
-                            with ui.ScrollingFrame(horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
-                                        vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
-                                        style={"background_color": 0xFF5b5b5b, "margin":7}, height=150):
-                                self.ui_amazon_requests = ui.Label("", alignment=ui.Alignment.LEFT)
-                            self.ui_uav_plots_label = ui.Label("")
+                        with ui.VStack(height=0):
+                            self.ui_select_uav_to_plot = DropDown("Select UAV", 
+                                                                  populate_fn=self.populate_select_usv_to_plot,
+                                                                  on_selection_fn=self.update_uav_plots_frame)
+                            self.ui_select_uav_to_plot.repopulate()
+
+                            with ui.ZStack(style={"margin":20}):
+                                ui.Rectangle(height=150, style={"background_color": 0xFF5b5b5b, 
+                                            "border_radius": 10, 
+                                            "corner_flag": ui.CornerFlag.ALL,})
+                                
+                                self.ui_uav_plots_frame = ui.ScrollingFrame(
+                                            horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
+                                            vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
+                                            style={"background_color": 0xFF5b5b5b, "margin":5}, height=150)
+                                
+
+    def populate_select_usv_to_plot(self):
+        return list(self.uavs.keys())
+
+    def update_uav_plots_frame(self, uav_id):
+        self.ui_uav_plots_frame.clear()
+
+        if uav_id in self.uav_plots:
+            uav_plots = self.uav_plots[uav_id]
+        
+            with self.ui_uav_plots_frame:
+                with ui.VStack(heigth=0):
+                    for key in uav_plots.keys():
+                        ui.Label(key, alignment=ui.Alignment.CENTER)
+                        with ui.HStack(spacing=self.navsim_utils.SPACING_S):
+                            ui.Button(text="PLOT POS", 
+                                    clicked_fn=lambda uav_id=uav_id, key=key: self.plot_uav_pos(uav_id, key),
+                                    style={"background_color": 0xFF5b5b5b})
+                            ui.Button(text="PLOT VEL", 
+                                    clicked_fn=lambda uav_id=uav_id, key=key: self.plot_uav_vel(uav_id, key))
+                            ui.Button(text="PLOT ACC", 
+                                    clicked_fn=lambda uav_id=uav_id, key=key: self.plot_uav_acc(uav_id, key))
+                        
+                        ui.Separator()

@@ -399,11 +399,11 @@ class Aerotaxi(BehaviorScript):
 
                 # Uncomment this to show the corresponding plots
                 # plt.close(plt.gcf())
-                self.fp.position_figure(f"{self.prim.GetPath()}: POSITION", 0.01)
-                self.fp.velocity_figure(f"{self.prim.GetPath()}: VELOCITY", 0.01)
+                # self.fp.position_figure(f"{self.prim.GetPath()}: POSITION", 0.01)
+                # self.fp.velocity_figure(f"{self.prim.GetPath()}: VELOCITY", 0.01)
                 
-                self.fp.add_UAV_track_pos(f"{self.prim.GetPath()}: POSITION", self.track_info)
-                self.fp.add_UAV_track_vel(f"{self.prim.GetPath()}: VELOCITY", self.track_info)
+                # self.fp.add_UAV_track_pos(f"{self.prim.GetPath()}: POSITION", self.track_info)
+                # self.fp.add_UAV_track_vel(f"{self.prim.GetPath()}: VELOCITY", self.track_info)
 
                 self.is_tracking = False
                 self.track_info = []
