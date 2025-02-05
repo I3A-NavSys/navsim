@@ -62,8 +62,9 @@ def define_scene(project_root_path, sphere_amount, distance, x_level, y_level, o
         x = random.choice(possible_x)
         y = random.choice(possible_y)
 
-        if (x, y) in registered_vertiport_locs:
-            continue
+        while (x, y) in registered_vertiport_locs:
+            x = random.choice(possible_x)
+            y = random.choice(possible_y)
 
         registered_vertiport_locs[(x, y)] = True
 
