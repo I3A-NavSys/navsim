@@ -94,9 +94,9 @@ class GridPlannerExt(omni.ext.IExt):
                             with ui.HStack():
                                 ui.Label("Y level height")
                                 self.y_level_height_field = ui.IntField()
-                            with ui.HStack():
-                                ui.Label("Offset")
-                                self.sphere_offset_field = ui.IntField()
+                            # with ui.HStack():
+                            #     ui.Label("Offset")
+                            #     self.sphere_offset_field = ui.IntField()
                             with ui.HStack():
                                 ui.Label("Amount vertiports")
                                 self.amount_vertiports = ui.IntField()
@@ -167,7 +167,8 @@ class GridPlannerExt(omni.ext.IExt):
         distance = self.distance_field.model.get_value_as_int()
         x_level = self.x_level_height_field.model.get_value_as_float()
         y_level = self.y_level_height_field.model.get_value_as_float()
-        offset = self.sphere_offset_field.model.get_value_as_float()
+        # offset = self.sphere_offset_field.model.get_value_as_float()
+        offset = distance / 2
         amount_vertiports = self.amount_vertiports.model.get_value_as_int()
         amount_uavs = self.amount_uavs.model.get_value_as_int()
 

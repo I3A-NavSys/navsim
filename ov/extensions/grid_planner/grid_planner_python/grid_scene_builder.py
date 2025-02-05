@@ -36,8 +36,8 @@ def define_scene(project_root_path, sphere_amount, distance, x_level, y_level, o
     y_color = Gf.Vec3f(1.0, 0.843, 0.0)
 
     sphere_counter = 0
-    for i in range(int(-sphere_amount/2), int(sphere_amount/2 + 2)):
-        for j in range(int(-sphere_amount/2), int(sphere_amount/2 + 2)):
+    for i in range(int(-sphere_amount/2), int(-sphere_amount/2) + sphere_amount):
+        for j in range(int(-sphere_amount/2), int(-sphere_amount/2) + sphere_amount):
             sphere_counter += 1
 
             # Calculate the position for the current node
@@ -54,17 +54,16 @@ def define_scene(project_root_path, sphere_amount, distance, x_level, y_level, o
     stage.DefinePrim(vertiports_prim_path, "Xform")
 
     current_amount_vertiports = 0
-    possible_x = np.arange(-sphere_amount/2, sphere_amount/2 + 2) * distance + offset
-    possible_y = np.arange(-sphere_amount/2, sphere_amount/2 + 2) * distance
+    possible_x = np.arange(-sphere_amount/2, -sphere_amount/2 + sphere_amount) * distance + offset
+    possible_y = np.arange(-sphere_amount/2, -sphere_amount/2 + sphere_amount) * distance
     registered_vertiport_locs = {}
 
     while current_amount_vertiports < amount_vertiports:
         x = random.choice(possible_x)
         y = random.choice(possible_y)
 
-        while (x, y) in registered_vertiport_locs:
-            x = random.choice(possible_x)
-            y = random.choice(possible_y)
+        if (x, y) in registered_vertiport_locs:
+            continue
 
         registered_vertiport_locs[(x, y)] = True
 
