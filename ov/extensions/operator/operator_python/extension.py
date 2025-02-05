@@ -352,6 +352,30 @@ class Operator(omni.ext.IExt):
             with ui.ScrollingFrame(horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
                                     vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED):
                 with ui.VStack(spacing=self.navsim_utils.SPACING_S, height=0):
+                    # GridPlanner parameters
+                    ui.Label("GRID PARAMETERS", alignment=ui.Alignment.CENTER)
+                    
+                    with ui.HStack():
+                        ui.Label("Cell size")
+                        self.ui_grid_cell_size = ui.IntField()
+                        self.ui_grid_cell_size.model.set_value(100)
+                    with ui.HStack():
+                        ui.Label("Slot time")
+                        self.ui_grid_slot_time = ui.IntField()
+                        self.ui_grid_slot_time.model.set_value(10)
+                    with ui.HStack():
+                        ui.Label("X level height")
+                        self.ui_grid_x_level_height = ui.IntField()
+                        self.ui_grid_x_level_height.model.set_value(60)
+                    with ui.HStack():
+                        ui.Label("Y level height")
+                        self.ui_grid_y_level_height = ui.IntField()
+                        self.ui_grid_y_level_height.model.set_value(100)
+
+                    self.ui_grid_set_params = ui.Button("SET PARAMETERS", height=50, clicked_fn=self.set_grid_parameters)
+
+                    ui.Separator()
+
                     # UAVs collapsable
                     self.ui_uavs_collapsable = ui.CollapsableFrame("UAVs", collapsed=False,
                                                                    style=self.navsim_utils.CollapsableFrame_style)
@@ -387,7 +411,6 @@ class Operator(omni.ext.IExt):
                                             horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
                                             vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
                                             style={"background_color": 0xFF5b5b5b, "margin":5}, height=150)
-                                
 
     def populate_select_usv_to_plot(self):
         return list(self.uavs.keys())
@@ -412,3 +435,9 @@ class Operator(omni.ext.IExt):
                                     clicked_fn=lambda uav_id=uav_id, key=key: self.plot_uav_acc(uav_id, key))
                         
                         ui.Separator()
+
+    def set_grid_parameters(self):
+        self.gp.cell_side = self.ui_grid_cell_size.model.get_value_as_int()
+        self.gp.slot_time = self.ui_grid_slot_time.model.get_value_as_int()
+        self.gp.x_height = self.ui_grid_x_level_height.model.get_value_as_int()
+        self.gp.y_height = self.ui_grid_y_level_height.model.get_value_as_int()
