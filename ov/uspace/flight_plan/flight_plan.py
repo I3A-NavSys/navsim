@@ -479,6 +479,14 @@ class FlightPlan:
     #------------------------------------------------------------------------------------------------------------------
     # CONFLICT DETECTION
 
+    def compare_to(self, fp2, time_step):
+        trace_1 = self.trace(time_step)
+        trace_2 = fp2.trace(time_step)
+
+        distance_separation = abs(trace_1[:, 1:4] - trace_2[:, 1:4])
+
+        return distance_separation
+
     #------------------------------------------------------------------------------------------------------------------
     # INFORMATION AND FIGURES
 
