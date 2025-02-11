@@ -293,6 +293,7 @@ class GridPlanner:
     def get_flightplan_from_route(self, route):
         fp = FlightPlan()
         velocity = self.cell_side / self.slot_time
+        offset = self.cell_side / 2
 
         route_length = len(route)
         node_index = 0
@@ -305,7 +306,7 @@ class GridPlanner:
             if node_index >= route_ending_index:    is_route_ending = True
 
             if node.L == "X":
-                pos = [node.i * self.cell_side + 50, node.j * self.cell_side, self.x_height]
+                pos = [node.i * self.cell_side + offset, node.j * self.cell_side, self.x_height]
 
                 if node.j % 2 == 0:     vel = [velocity, 0, 0]
                 else:                   vel = [-velocity, 0, 0]
@@ -315,7 +316,7 @@ class GridPlanner:
                     node_index += 1
 
             else:
-                pos = [node.i * self.cell_side, node.j * self.cell_side + 50, self.y_height]
+                pos = [node.i * self.cell_side, node.j * self.cell_side + offset, self.y_height]
 
                 if node.i % 2 == 0:     vel = [0, velocity, 0]
                 else:                   vel = [0, -velocity, 0]
