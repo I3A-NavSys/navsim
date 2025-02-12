@@ -9,25 +9,27 @@ import numpy as np
 import mplcursors
 from uspace.flight_plan.flight_plan import FlightPlan
 
+time_step = 0.01
+
 def build_plot():
     # Build the plot
-    posFig = plt.figure("CURVE_STRAIGHT")
-    xyzPosPlot = posFig.add_subplot(2, 2, (1, 3), projection="3d")
-    dist_sep_plot = posFig.add_subplot(2, 2, (2, 4))
+    pos_fig = plt.figure("CURVE_STRAIGHT")
+    xyz_pos_plot = pos_fig.add_subplot(2, 2, (1, 3), projection="3d")
+    dist_sep_plot = pos_fig.add_subplot(2, 2, (2, 4))
 
     # Indicate axes' name
-    xyzPosPlot.set_xlabel("x [m]")
-    xyzPosPlot.set_ylabel("y [m]")
-    xyzPosPlot.set_zlabel("z [m]")
+    xyz_pos_plot.set_xlabel("x [m]")
+    xyz_pos_plot.set_ylabel("y [m]")
+    xyz_pos_plot.set_zlabel("z [m]")
     dist_sep_plot.set_xlabel("Time [cs]")
     dist_sep_plot.set_ylabel("Distance [m]")
 
     # Set title
-    xyzPosPlot.set_title("Position 3D")
+    xyz_pos_plot.set_title("Position 3D")
     dist_sep_plot.set_title("Distance Separation")
 
     # Set grid to True
-    xyzPosPlot.grid(True)
+    xyz_pos_plot.grid(True)
     dist_sep_plot.grid(True)
 
 def add_trace(fp):
@@ -35,29 +37,29 @@ def add_trace(fp):
     color = [0, 0.7, 1]
 
     # Get the trace
-    tr = fp.trace(0.01)
+    tr = fp.trace(time_step)
     tr_x = tr[:, 1]
     tr_y = tr[:, 2]
     tr_z = tr[:, 3]
 
     # POSITION 3D
     # Get plot
-    posFig = plt.figure("CURVE_STRAIGHT")
-    subplots = posFig.get_axes()
-    xyzPosPlot = subplots[0]
+    pos_fig = plt.figure("CURVE_STRAIGHT")
+    subplots = pos_fig.get_axes()
+    xyz_pos_plot = subplots[0]
 
     # Set plot info
-    xyzPosPlot.plot(tr_x, tr_y, tr_z, linewidth=2)
+    xyz_pos_plot.plot(tr_x, tr_y, tr_z, linewidth=2)
 
     # Get waypoints positions to highlight
-    xPos = []
-    yPos = []
-    zPos = []
+    x_pos = []
+    y_pos = []
+    z_pos = []
 
     for wp in fp.waypoints:
-        xPos.append(wp.pos[0])
-        yPos.append(wp.pos[1])
-        zPos.append(wp.pos[2])
+        x_pos.append(wp.pos[0])
+        y_pos.append(wp.pos[1])
+        z_pos.append(wp.pos[2])
 
         if wp.pos[2] == 60:
             dy = 0
@@ -72,23 +74,24 @@ def add_trace(fp):
             else:                           dy = -100
 
         # Highlight waypoints positions
-        xyzPosPlot.scatter(wp.pos[0], wp.pos[1], wp.pos[2], marker="o", color="blue", s=25)
-        # xyzPosPlot.arrow(wp.pos[0], wp.pos[1], dx, dy, head_width=10, head_length=15, linewidth=0.5, linestyle=(0, (5, 10)),
+        xyz_pos_plot.scatter(wp.pos[0], wp.pos[1], wp.pos[2], marker="o", color="blue", s=25)
+        # xyz_pos_plot.arrow(wp.pos[0], wp.pos[1], dx, dy, head_width=10, head_length=15, linewidth=0.5, linestyle=(0, (5, 10)),
         #                         length_includes_head=True, zorder=2)
 
     # Update limits to maintain scale in all axes
-    xLim = max(np.abs(xyzPosPlot.get_xlim3d()))
-    yLim = max(np.abs(xyzPosPlot.get_ylim3d()))
-    zLim = max(np.abs(xyzPosPlot.get_zlim3d()))
-    maxLim = max(xLim, yLim, zLim)
+    x_lim = max(np.abs(xyz_pos_plot.get_xlim3d()))
+    y_lim = max(np.abs(xyz_pos_plot.get_ylim3d()))
+    z_lim = max(np.abs(xyz_pos_plot.get_zlim3d()))
+    max_lim = max(x_lim, y_lim, z_lim)
 
-    xyzPosPlot.set_xlim3d(-maxLim, maxLim)
-    xyzPosPlot.set_ylim3d(-maxLim, maxLim)
-    xyzPosPlot.set_zlim3d(-maxLim, maxLim)
+    xyz_pos_plot.set_xlim3d(-max_lim, max_lim)
+    xyz_pos_plot.set_ylim3d(-max_lim, max_lim)
+    xyz_pos_plot.set_zlim3d(-max_lim, max_lim)
 
-def add_distance_separation(dist_sep):
-    posFig = plt.figure("CURVE_STRAIGHT")
-    subplots = posFig.get_axes()
+def add_distance_separation(dist_sep, fp1, fp2):
+    pos_fig = plt.figure("CURVE_STRAIGHT")
+    subplots = pos_fig.get_axes()
+    xyz_pos_plot = subplots[0]
     dist_sep_plot = subplots[1]
 
     dist_sep_plot.plot(dist_sep, linewidth=2)
@@ -100,6 +103,20 @@ def add_distance_separation(dist_sep):
     dist_sep_plot.scatter(min_dist_x, min_dist_y, marker="o", color="blue", s=25)
 
     plt.annotate(round(min_dist_y, 2), (min_dist_x, min_dist_y), textcoords="offset points", xytext=(0,10), ha='center')
+
+    tr1 = fp1.trace(time_step)
+    tr2 = fp2.trace(time_step)
+
+    tr1_x = tr1[min_dist_x, 1]
+    tr1_y = tr1[min_dist_x, 2]
+    tr1_z = tr1[min_dist_x, 3]
+    tr2_x = tr2[min_dist_x, 1]
+    tr2_y = tr2[min_dist_x, 2]
+    tr2_z = tr2[min_dist_x, 3]
+
+    xyz_pos_plot.scatter(tr1_x, tr1_y, tr1_z, marker="o", color="black", s=25)
+    xyz_pos_plot.scatter(tr2_x, tr2_y, tr2_z, marker="o", color="black", s=25)
+    xyz_pos_plot.plot([tr1_x, tr2_x], [tr1_y, tr2_y], [tr1_z, tr2_z], color="black", linestyle="--")
 
 if __name__ == "__main__":
     # Flightplan 1
@@ -126,6 +143,6 @@ if __name__ == "__main__":
     build_plot()
     add_trace(fp1)
     add_trace(fp2)
-    add_distance_separation(fp1.compare_to(fp2, 0.01))
+    add_distance_separation(fp1.compare_to(fp2, time_step), fp1, fp2)
 
     plt.show()

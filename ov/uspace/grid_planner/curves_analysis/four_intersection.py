@@ -9,77 +9,138 @@ import numpy as np
 import mplcursors
 from uspace.flight_plan.flight_plan import FlightPlan
 
-def build_plot():
-    # Build the plot
-    posFig = plt.figure("FOUR_INTERSECTION")
-    xyzPosPlot = posFig.add_subplot(projection="3d")
+time_step = 0.01
 
+def build_plot():
+    # Build figures
+    pos_fig = plt.figure("FOUR_INTERSECTION")
+    dist_sepraration_fig = plt.figure("DISTANCE_SEPARATION")
+
+    # Build plots
+    xyz_pos_plot = pos_fig.add_subplot(projection="3d")
+    
+    fp1_fp2_plot = dist_sepraration_fig.add_subplot(3, 2, (1, 1))
+    fp1_fp3_plot = dist_sepraration_fig.add_subplot(3, 2, (2, 2))
+    fp1_fp4_plot = dist_sepraration_fig.add_subplot(3, 2, (3, 3))
+    fp2_fp3_plot = dist_sepraration_fig.add_subplot(3, 2, (4, 4))
+    fp2_fp4_plot = dist_sepraration_fig.add_subplot(3, 2, (5, 5))
+    fp3_fp4_plot = dist_sepraration_fig.add_subplot(3, 2, (6, 6))
+    dist_sepraration_plots = [fp1_fp2_plot, fp1_fp3_plot, fp1_fp4_plot, fp2_fp3_plot, fp2_fp4_plot, fp3_fp4_plot]
+    
     # Indicate axes' name
-    xyzPosPlot.set_xlabel("x [m]")
-    xyzPosPlot.set_ylabel("y [m]")
-    xyzPosPlot.set_zlabel("z [m]")
+    xyz_pos_plot.set_xlabel("x [m]")
+    xyz_pos_plot.set_ylabel("y [m]")
+    xyz_pos_plot.set_zlabel("z [m]")
+
+    fp2_fp4_plot.set_xlabel("Time [cs]")
+    fp3_fp4_plot.set_xlabel("Time [cs]")
+    
 
     # Set title
-    xyzPosPlot.set_title("Position 3D")
+    xyz_pos_plot.set_title("Position 3D")
+    
+    fp1_fp2_plot.set_title("FP1 VS FP2")
+    fp1_fp3_plot.set_title("FP1 VS FP3")
+    fp1_fp4_plot.set_title("FP1 VS FP4")
+    fp2_fp3_plot.set_title("FP2 VS FP3")
+    fp2_fp4_plot.set_title("FP2 VS FP4")
+    fp3_fp4_plot.set_title("FP3 VS FP4")
 
     # Set grid to True
-    xyzPosPlot.grid(True)
+    xyz_pos_plot.grid(True)
+    
+    for i, plot in enumerate(dist_sepraration_plots):
+        plot.set_ylabel("Distance [m]")
+        plot.grid(True)
 
-def add_trace(fp):
+def add_trace(fp, label):
     # Figure settings
     color = [0, 0.7, 1]
 
     # Get the trace
-    tr = fp.trace(0.01)
+    tr = fp.trace(time_step)
     tr_x = tr[:, 1]
     tr_y = tr[:, 2]
     tr_z = tr[:, 3]
 
     # POSITION 3D
     # Get plot
-    posFig = plt.figure("FOUR_INTERSECTION")
-    subplots = posFig.get_axes()
-    xyzPosPlot = subplots[0]
+    pos_fig = plt.figure("FOUR_INTERSECTION")
+    subplots = pos_fig.get_axes()
+    xyz_pos_plot = subplots[0]
 
     # Set plot info
-    xyzPosPlot.plot(tr_x, tr_y, tr_z, linewidth=2)
+    line = xyz_pos_plot.plot(tr_x, tr_y, tr_z, linewidth=2, label=label)
+    xyz_pos_plot.legend(loc="upper right", fontsize=8, bbox_to_anchor=(1.25, 1.15), borderaxespad=0.)
 
     # Get waypoints positions to highlight
-    xPos = []
-    yPos = []
-    zPos = []
+    x_pos = []
+    y_pos = []
+    z_pos = []
 
     for wp in fp.waypoints:
-        xPos.append(wp.pos[0])
-        yPos.append(wp.pos[1])
-        zPos.append(wp.pos[2])
+        x_pos.append(wp.pos[0])
+        y_pos.append(wp.pos[1])
+        z_pos.append(wp.pos[2])
 
-        if wp.pos[2] == 60:
-            dy = 0
+        # if wp.pos[2] == 60:
+        #     dy = 0
 
-            if (wp.pos[1] // 100) % 2 == 0: dx = 100
-            else:                           dx = -100
+        #     if (wp.pos[1] // 100) % 2 == 0: dx = 100
+        #     else:                           dx = -100
 
-        else:
-            dx = 0
+        # else:
+        #     dx = 0
 
-            if (wp.pos[0] // 100) % 2 == 0: dy = 100
-            else:                           dy = -100
+        #     if (wp.pos[0] // 100) % 2 == 0: dy = 100
+        #     else:                           dy = -100
 
         # Highlight waypoints positions
-        xyzPosPlot.scatter(wp.pos[0], wp.pos[1], wp.pos[2], marker="o", color="blue", s=25)
-        # xyzPosPlot.arrow(wp.pos[0], wp.pos[1], dx, dy, head_width=10, head_length=15, linewidth=0.5, linestyle=(0, (5, 10)),
+        xyz_pos_plot.scatter(wp.pos[0], wp.pos[1], wp.pos[2], marker="o", color="blue", s=25)
+        # xyz_pos_plot.arrow(wp.pos[0], wp.pos[1], dx, dy, head_width=10, head_length=15, linewidth=0.5, linestyle=(0, (5, 10)),
         #                         length_includes_head=True, zorder=2)
 
     # Update limits to maintain scale in all axes
-    xLim = max(np.abs(xyzPosPlot.get_xlim3d()))
-    yLim = max(np.abs(xyzPosPlot.get_ylim3d()))
-    zLim = max(np.abs(xyzPosPlot.get_zlim3d()))
-    maxLim = max(xLim, yLim, zLim)
+    x_lim = max(np.abs(xyz_pos_plot.get_xlim3d()))
+    y_Lim = max(np.abs(xyz_pos_plot.get_ylim3d()))
+    z_lim = max(np.abs(xyz_pos_plot.get_zlim3d()))
+    max_lim = max(x_lim, y_Lim, z_lim)
 
-    xyzPosPlot.set_xlim3d(-maxLim, maxLim)
-    xyzPosPlot.set_ylim3d(-maxLim, maxLim)
-    xyzPosPlot.set_zlim3d(-maxLim, maxLim)
+    xyz_pos_plot.set_xlim3d(-max_lim, max_lim)
+    xyz_pos_plot.set_ylim3d(-max_lim, max_lim)
+    xyz_pos_plot.set_zlim3d(-max_lim, max_lim)
+
+def add_distance_separation(i, dist_sep, fp1, fp2):
+    pos_fig = plt.figure("FOUR_INTERSECTION")
+    subplots = pos_fig.get_axes()
+    xyz_pos_plot = subplots[0]
+    pos_fig = plt.figure("DISTANCE_SEPARATION")
+    subplots = pos_fig.get_axes()
+    plot = subplots[i]
+
+    plot.plot(dist_sep, linewidth=2)
+
+    # Highlight minimum distance
+    min_dist_x = np.argmin(dist_sep)
+    min_dist_y = np.min(dist_sep)
+
+    plot.scatter(min_dist_x, min_dist_y, marker="o", color="blue", s=25)
+
+    plot.annotate(round(min_dist_y, 2), (min_dist_x, min_dist_y), textcoords="offset points", xytext=(0,10), ha='center')
+
+    tr1 = fp1.trace(time_step)
+    tr2 = fp2.trace(time_step)
+
+    tr1_x = tr1[min_dist_x, 1]
+    tr1_y = tr1[min_dist_x, 2]
+    tr1_z = tr1[min_dist_x, 3]
+    tr2_x = tr2[min_dist_x, 1]
+    tr2_y = tr2[min_dist_x, 2]
+    tr2_z = tr2[min_dist_x, 3]
+
+    xyz_pos_plot.scatter(tr1_x, tr1_y, tr1_z, marker="o", color="black", s=25)
+    xyz_pos_plot.scatter(tr2_x, tr2_y, tr2_z, marker="o", color="black", s=25)
+    xyz_pos_plot.plot([tr1_x, tr2_x], [tr1_y, tr2_y], [tr1_z, tr2_z], color="black", linestyle="--")
 
 if __name__ == "__main__":
     # Flightplan 1
@@ -125,9 +186,22 @@ if __name__ == "__main__":
 
     # Plot
     build_plot()
-    add_trace(fp1)
-    add_trace(fp2)
-    add_trace(fp3)
-    add_trace(fp4)
+
+    add_trace(fp1, label="FP1")
+    add_trace(fp2, label="FP2")
+    add_trace(fp3, label="FP3")
+    add_trace(fp4, label="FP4")
+
+    fp1_fp2_dist = fp1.compare_to(fp2, time_step)
+    fp1_fp3_dist = fp1.compare_to(fp3, time_step)
+    fp1_fp4_dist = fp1.compare_to(fp4, time_step)
+    fp2_fp3_dist = fp2.compare_to(fp3, time_step)
+    fp2_fp4_dist = fp2.compare_to(fp4, time_step)
+    fp3_fp4_dist = fp3.compare_to(fp4, time_step)
+    distances = [(0, fp1_fp2_dist, fp1, fp2), (1, fp1_fp3_dist, fp1, fp3), (2, fp1_fp4_dist, fp1, fp4), 
+                (3, fp2_fp3_dist, fp2, fp3), (4, fp2_fp4_dist, fp2, fp4), (5, fp3_fp4_dist, fp3, fp4)]
+    
+    for dist in distances:
+        add_distance_separation(dist[0], dist[1], dist[2], dist[3])
 
     plt.show()
