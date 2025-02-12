@@ -483,7 +483,22 @@ class FlightPlan:
         trace_1 = self.trace(time_step)
         trace_2 = fp2.trace(time_step)
 
-        distance_separation = abs(trace_1[:, 1:4] - trace_2[:, 1:4])
+        trace_1_times = list(trace_1[:, 0])
+        trace_2_times = list(trace_2[:, 0])
+
+        init_trace_1 = 0
+        init_trace_2 = 0
+        end_trace_1 = len(trace_1_times) - 1
+        end_trace_2 = len(trace_2_times) - 1
+
+        if trace_1_times[0] < trace_2_times[0]:     init_trace_1 = trace_1_times.index(trace_2_times[0])
+        else:                                       init_trace_2 = trace_2_times.index(trace_1_times[0])
+
+        if trace_1_times[-1] < trace_2_times[-1]:   end_trace_2 = trace_2_times.index(trace_1_times[-1])
+        else:                                       end_trace_1 = trace_1_times.index(trace_2_times[-1])
+
+        distance_separation = abs(trace_1[init_trace_1:end_trace_1, 1:4] - trace_2[init_trace_2:end_trace_2, 1:4])
+        distance_separation = np.linalg.norm(distance_separation, axis=1)
 
         return distance_separation
 

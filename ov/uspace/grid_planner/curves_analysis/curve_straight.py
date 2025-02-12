@@ -11,19 +11,24 @@ from uspace.flight_plan.flight_plan import FlightPlan
 
 def build_plot():
     # Build the plot
-    posFig = plt.figure("TEST")
-    xyzPosPlot = posFig.add_subplot(projection="3d")
+    posFig = plt.figure("CURVE_STRAIGHT")
+    xyzPosPlot = posFig.add_subplot(2, 2, (1, 3), projection="3d")
+    dist_sep_plot = posFig.add_subplot(2, 2, (2, 4))
 
     # Indicate axes' name
     xyzPosPlot.set_xlabel("x [m]")
     xyzPosPlot.set_ylabel("y [m]")
     xyzPosPlot.set_zlabel("z [m]")
+    dist_sep_plot.set_xlabel("Time [cs]")
+    dist_sep_plot.set_ylabel("Distance [m]")
 
     # Set title
     xyzPosPlot.set_title("Position 3D")
+    dist_sep_plot.set_title("Distance Separation")
 
     # Set grid to True
     xyzPosPlot.grid(True)
+    dist_sep_plot.grid(True)
 
 def add_trace(fp):
     # Figure settings
@@ -37,7 +42,7 @@ def add_trace(fp):
 
     # POSITION 3D
     # Get plot
-    posFig = plt.figure("TEST")
+    posFig = plt.figure("CURVE_STRAIGHT")
     subplots = posFig.get_axes()
     xyzPosPlot = subplots[0]
 
@@ -81,6 +86,21 @@ def add_trace(fp):
     xyzPosPlot.set_ylim3d(-maxLim, maxLim)
     xyzPosPlot.set_zlim3d(-maxLim, maxLim)
 
+def add_distance_separation(dist_sep):
+    posFig = plt.figure("CURVE_STRAIGHT")
+    subplots = posFig.get_axes()
+    dist_sep_plot = subplots[1]
+
+    dist_sep_plot.plot(dist_sep, linewidth=2)
+
+    # Highlight minimum distance
+    min_dist_x = np.argmin(dist_sep)
+    min_dist_y = np.min(dist_sep)
+
+    dist_sep_plot.scatter(min_dist_x, min_dist_y, marker="o", color="blue", s=25)
+
+    plt.annotate(round(min_dist_y, 2), (min_dist_x, min_dist_y), textcoords="offset points", xytext=(0,10), ha='center')
+
 if __name__ == "__main__":
     # Flightplan 1
     fp1 = FlightPlan()
@@ -95,39 +115,17 @@ if __name__ == "__main__":
     fp2 = FlightPlan()
     fp2.set_waypoint(label="wp0", time=0, pos=[400, 100, 60], vel=[-10, 0, 0])
     fp2.set_waypoint(label="wp1", time=10, pos=[300, 100, 60], vel=[-10, 0, 0])
-    # fp2.set_waypoint(label="wp2", time=20, pos=[200, 100, 60], vel=[-10, 0, 0])
-    # fp2.set_waypoint(label="wp3", time=30, pos=[150, 50, 100], vel=[0, -10, 0])
-    fp2.set_waypoint(label="wp4", time=40, pos=[150, -50, 100], vel=[0, -10, 0])
-    fp2.set_waypoint(label="wp5", time=50, pos=[150, -150, 100], vel=[0, -10, 0])
-
-    # Flightplan 3
-    fp3 = FlightPlan()
-    fp3.set_waypoint(label="wp0", time=0, pos=[150, 250, 100], vel=[0, -10, 0])
-    fp3.set_waypoint(label="wp1", time=10, pos=[150, 150, 100], vel=[0, -10, 0])
-    # fp3.set_waypoint(label="wp2", time=20, pos=[150, 50, 100], vel=[0, -10, 0])
-    # fp3.set_waypoint(label="wp3", time=30, pos=[200, 0, 60], vel=[10, 0, 0])
-    fp3.set_waypoint(label="wp4", time=40, pos=[300, 0, 60], vel=[10, 0, 0])
-    fp3.set_waypoint(label="wp5", time=50, pos=[400, 0, 60], vel=[10, 0, 0])
-
-    # Flightplan 4
-    fp4 = FlightPlan()
-    fp4.set_waypoint(label="wp0", time=0, pos=[250, -150, 100], vel=[0, 10, 0])
-    fp4.set_waypoint(label="wp1", time=10, pos=[250, -50, 100], vel=[0, 10, 0])
-    # fp4.set_waypoint(label="wp2", time=20, pos=[250, 50, 100], vel=[0, 10, 0])
-    # fp4.set_waypoint(label="wp3", time=30, pos=[200, 100, 60], vel=[-10, 0, 0])
-    fp4.set_waypoint(label="wp4", time=40, pos=[100, 100, 60], vel=[-10, 0, 0])
-    fp4.set_waypoint(label="wp5", time=50, pos=[0, 100, 60], vel=[-10, 0, 0])
+    fp2.set_waypoint(label="wp2", time=20, pos=[200, 100, 60], vel=[-10, 0, 0])
+    fp2.set_waypoint(label="wp3", time=30, pos=[100, 100, 60], vel=[-10, 0, 0])
+    fp2.set_waypoint(label="wp4", time=40, pos=[0, 100, 60], vel=[-10, 0, 0])
 
     fp1.connect_waypoints()
     fp2.connect_waypoints()
-    fp3.connect_waypoints()
-    fp4.connect_waypoints()
 
     # Plot
     build_plot()
     add_trace(fp1)
     add_trace(fp2)
-    add_trace(fp3)
-    add_trace(fp4)
+    add_distance_separation(fp1.compare_to(fp2, 0.01))
 
     plt.show()
