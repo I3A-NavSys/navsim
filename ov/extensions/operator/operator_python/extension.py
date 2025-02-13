@@ -53,6 +53,7 @@ class Operator(omni.ext.IExt):
         self.clients_requests = {}
         self.uavs = {}
         self.uav_plots = {}
+        self.ui_uav_plots_frame.clear()
         self.vertiports_from_id, self.vertiports_from_pos = self.find_vertiports()
         self.print_vertiports()
 
@@ -236,8 +237,8 @@ class Operator(omni.ext.IExt):
         fp: FlightPlan = self.uav_plots[uav_id][key]["fp"]
         tracked_info = self.uav_plots[uav_id][key]["tracked_info"]
 
-        fp.position_figure(f"{uav_id}: POSITION", 0.01)
-        fp.add_UAV_track_pos(f"{uav_id}: POSITION", tracked_info)
+        fp.position_figure(f"{key}: POSITION", 0.01)
+        fp.add_UAV_track_pos(f"{key}: POSITION", tracked_info)
 
     def plot_uav_vel(self, uav_id, key):
         fp: FlightPlan = self.uav_plots[uav_id][key]["fp"]
@@ -424,13 +425,15 @@ class Operator(omni.ext.IExt):
             with self.ui_uav_plots_frame:
                 with ui.VStack(heigth=0):
                     for key in uav_plots.keys():
-                        ui.Label(key, alignment=ui.Alignment.CENTER)
                         with ui.HStack(spacing=self.navsim_utils.SPACING_S):
+                            ui.Label(key)
+
                             ui.Button(text="PLOT POS", 
-                                    clicked_fn=lambda uav_id=uav_id, key=key: self.plot_uav_pos(uav_id, key),
-                                    style={"background_color": 0xFF5b5b5b})
+                                    clicked_fn=lambda uav_id=uav_id, key=key: self.plot_uav_pos(uav_id, key))
+                            
                             ui.Button(text="PLOT VEL", 
                                     clicked_fn=lambda uav_id=uav_id, key=key: self.plot_uav_vel(uav_id, key))
+                            
                             ui.Button(text="PLOT ACC", 
                                     clicked_fn=lambda uav_id=uav_id, key=key: self.plot_uav_acc(uav_id, key))
                         
