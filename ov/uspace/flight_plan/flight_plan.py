@@ -480,27 +480,31 @@ class FlightPlan:
     # CONFLICT DETECTION
 
     def compare_to(self, fp2, time_step):
+        decimals = len(str(time_step).split(".")[1])
+
         trace_1 = self.trace(time_step)
         trace_2 = fp2.trace(time_step)
 
-        trace_1_times = list(trace_1[:, 0])
-        trace_2_times = list(trace_2[:, 0])
+        trace_1_times = np.round(np.array(trace_1[:, 0]), decimals)
+        trace_2_times = np.round(np.array(trace_2[:, 0]), decimals)
 
-        init_trace_1 = 0
-        init_trace_2 = 0
-        end_trace_1 = len(trace_1_times) - 1
-        end_trace_2 = len(trace_2_times) - 1
+        init_trace_1 = [[0]]
+        init_trace_2 = [[0]]
+        end_trace_1 = [[len(trace_1_times) - 1]]
+        end_trace_2 = [[len(trace_2_times) - 1]]
 
-        if trace_1_times[0] < trace_2_times[0]:     init_trace_1 = trace_1_times.index(trace_2_times[0])
-        else:                                       init_trace_2 = trace_2_times.index(trace_1_times[0])
+        if trace_1_times[0] < trace_2_times[0]:     init_trace_1 = np.where(trace_1_times == trace_2_times[0])
+        else:                                       init_trace_2 = np.where(trace_2_times == trace_1_times[0])
 
-        if trace_1_times[-1] < trace_2_times[-1]:   end_trace_2 = trace_2_times.index(trace_1_times[-1])
-        else:                                       end_trace_1 = trace_1_times.index(trace_2_times[-1])
+        if trace_1_times[-1] < trace_2_times[-1]:   end_trace_2 = np.where(trace_2_times == trace_1_times[-1])
+        else:                                       end_trace_1 = np.where(trace_1_times == trace_2_times[-1])
 
-        distance_separation = abs(trace_1[init_trace_1:end_trace_1, 1:4] - trace_2[init_trace_2:end_trace_2, 1:4])
-        distance_separation = np.linalg.norm(distance_separation, axis=1)
+        distance_separation = np.abs(trace_1[init_trace_1[0][0]:end_trace_1[0][0], 1:4] - 
+                                     trace_2[init_trace_2[0][0]:end_trace_2[0][0], 1:4])
+        
+        distances = [np.linalg.norm(dist) for dist in distance_separation]
 
-        return distance_separation
+        return distances, init_trace_1, init_trace_2
 
     #------------------------------------------------------------------------------------------------------------------
     # INFORMATION AND FIGURES
