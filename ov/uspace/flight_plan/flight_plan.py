@@ -5,6 +5,8 @@ from typing import List, Optional
 # Related third party imports
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.backend_tools import ToolToggleBase
+from matplotlib.collections import PathCollection
 from scipy.spatial.transform import Rotation
 try:
     import mplcursors
@@ -20,6 +22,7 @@ except:
 from uspace.flight_plan.waypoint import Waypoint
 from uspace.flight_plan.command import Command
 
+plt.rcParams["toolbar"] = "toolmanager"
 
 class FlightPlan:
 
@@ -538,6 +541,8 @@ class FlightPlan:
         
         # Create matplolib figure (window)
         posFig = plt.figure(figName)
+        posFig.canvas.manager.toolmanager.add_tool("ToogleUAV", ToggleUAVtracking, gid="UAVtracking")
+        posFig.canvas.manager.toolbar.add_tool('ToogleUAV', 'navigation', 1)
 
         # Figure settings
         color = [0, 0.7, 1]
@@ -579,7 +584,7 @@ class FlightPlan:
         xyzPosPlot.grid(True)
         
         # Set plot info
-        xyzPosPlot.plot(tr_x, tr_y, tr_z, linewidth=2, color=color)
+        xyzPosPlot.plot(tr_x, tr_y, tr_z, linewidth=2, color=color, zorder=1)
 
         # POSITIONS VERSUS TIME
         # Create plots
@@ -602,9 +607,9 @@ class FlightPlan:
         zPosTimePlot.grid(True)
         
         # Set plots info
-        xPosTimePlot.plot(tr_t, tr_x, linewidth=2, color=color)
-        yPosTimePlot.plot(tr_t, tr_y, linewidth=2, color=color)
-        zPosTimePlot.plot(tr_t, tr_z, linewidth=2, color=color)
+        xPosTimePlot.plot(tr_t, tr_x, linewidth=2, color=color, zorder=1)
+        yPosTimePlot.plot(tr_t, tr_y, linewidth=2, color=color, zorder=1)
+        zPosTimePlot.plot(tr_t, tr_z, linewidth=2, color=color, zorder=1)
 
         # Get waypoints positions to highlight
         xPos = []
@@ -619,10 +624,10 @@ class FlightPlan:
             t.append(wp.t)
 
         # Highlight waypoints positions
-        xyzPosPlot_scatter = xyzPosPlot.scatter(xPos, yPos, zPos, marker="o", color="blue", s=25, pickradius=30)
-        xPosTimePlot_scatter = xPosTimePlot.scatter(t, xPos, marker="o", color="blue", s=25, pickradius=30)
-        yPosTimePlot_scatter = yPosTimePlot.scatter(t, yPos, marker="o", color="blue", s=25, pickradius=30)
-        zPosTimePlot_scatter = zPosTimePlot.scatter(t, zPos, marker="o", color="blue", s=25, pickradius=30)
+        xyzPosPlot_scatter = xyzPosPlot.scatter(xPos, yPos, zPos, marker="o", color="blue", s=25, pickradius=30, zorder=3)
+        xPosTimePlot_scatter = xPosTimePlot.scatter(t, xPos, marker="o", color="blue", s=25, pickradius=30, zorder=3)
+        yPosTimePlot_scatter = yPosTimePlot.scatter(t, yPos, marker="o", color="blue", s=25, pickradius=30, zorder=3)
+        zPosTimePlot_scatter = zPosTimePlot.scatter(t, zPos, marker="o", color="blue", s=25, pickradius=30, zorder=3)
 
         xyzPosPlot_cursor = mplcursors.cursor(xyzPosPlot_scatter, highlight=True)
         xPosTimePlot_cursor = mplcursors.cursor(xPosTimePlot_scatter, highlight=True)
@@ -671,6 +676,8 @@ class FlightPlan:
         
         # Create matplolib figure (window)
         velFig = plt.figure(figName)
+        velFig.canvas.manager.toolmanager.add_tool("ToogleUAV", ToggleUAVtracking, gid="UAVtracking")
+        velFig.canvas.manager.toolbar.add_tool('ToogleUAV', 'navigation', 1)
 
         # Figure settings
         color = [0, 0.7, 1]
@@ -696,7 +703,7 @@ class FlightPlan:
         velPlot3D.grid(True)
         
         # Set plot info
-        velPlot3D.plot(tr_t, np.sqrt(tr_x**2 + tr_y**2 + tr_z**2), linewidth=2, color=color)
+        velPlot3D.plot(tr_t, np.sqrt(tr_x**2 + tr_y**2 + tr_z**2), linewidth=2, color=color, zorder=1)
 
         # VELOCITIES VERSUS TIME
         # Create plots
@@ -716,9 +723,9 @@ class FlightPlan:
         zVelTimePlot.grid(True)
         
         # Set plots info
-        xVelTimePlot.plot(tr_t, tr_x, linewidth=2, color=color)
-        yVelTimePlot.plot(tr_t, tr_y, linewidth=2, color=color)
-        zVelTimePlot.plot(tr_t, tr_z, linewidth=2, color=color)
+        xVelTimePlot.plot(tr_t, tr_x, linewidth=2, color=color, zorder=1)
+        yVelTimePlot.plot(tr_t, tr_y, linewidth=2, color=color, zorder=1)
+        zVelTimePlot.plot(tr_t, tr_z, linewidth=2, color=color, zorder=1)
 
         # Get waypoints velocities to highlight
         xVel = []
@@ -733,9 +740,9 @@ class FlightPlan:
             t.append(wp.t)
 
         # Highlight waypoints positions
-        xVelTimePlot_scatter = xVelTimePlot.scatter(t, xVel, marker="o", color="blue", s=25, pickradius=30)
-        yVelTimePlot_scatter = yVelTimePlot.scatter(t, yVel, marker="o", color="blue", s=25, pickradius=30)
-        zVelTimePlot_scatter = zVelTimePlot.scatter(t, zVel, marker="o", color="blue", s=25, pickradius=30)
+        xVelTimePlot_scatter = xVelTimePlot.scatter(t, xVel, marker="o", color="blue", s=25, pickradius=30, zorder=3)
+        yVelTimePlot_scatter = yVelTimePlot.scatter(t, yVel, marker="o", color="blue", s=25, pickradius=30, zorder=3)
+        zVelTimePlot_scatter = zVelTimePlot.scatter(t, zVel, marker="o", color="blue", s=25, pickradius=30, zorder=3)
 
         xVelTimePlot_cursor = mplcursors.cursor(xVelTimePlot_scatter, highlight=True)
         yVelTimePlot_cursor = mplcursors.cursor(yVelTimePlot_scatter, highlight=True)
@@ -795,7 +802,7 @@ class FlightPlan:
         accPlot3D.grid(True)
         
         # Set plot info
-        accPlot3D.plot(tr_t, np.sqrt(tr_x**2 + tr_y**2 + tr_z**2), linewidth=2, color=color)
+        accPlot3D.plot(tr_t, np.sqrt(tr_x**2 + tr_y**2 + tr_z**2), linewidth=2, color=color, zorder=1)
 
         # ACCELERATIONS VERSUS TIME
         # Create plots
@@ -815,9 +822,9 @@ class FlightPlan:
         zAccTimePlot.grid(True)
         
         # Set plots info
-        xAccTimePlot.plot(tr_t, tr_x, linewidth=2, color=color)
-        yAccTimePlot.plot(tr_t, tr_y, linewidth=2, color=color)
-        zAccTimePlot.plot(tr_t, tr_z, linewidth=2, color=color)
+        xAccTimePlot.plot(tr_t, tr_x, linewidth=2, color=color, zorder=1)
+        yAccTimePlot.plot(tr_t, tr_y, linewidth=2, color=color, zorder=1)
+        zAccTimePlot.plot(tr_t, tr_z, linewidth=2, color=color, zorder=1)
 
         # Get waypoints velocities to highlight
         xAcc = []
@@ -832,9 +839,9 @@ class FlightPlan:
             t.append(wp.t)
 
         # Highlight waypoints positions
-        xVelTimePlot_scatter = xAccTimePlot.scatter(t, xAcc, marker="o", color="blue", s=25, pickradius=30)
-        yVelTimePlot_scatter = yAccTimePlot.scatter(t, yAcc, marker="o", color="blue", s=25, pickradius=30)
-        zVelTimePlot_scatter = zAccTimePlot.scatter(t, zAcc, marker="o", color="blue", s=25, pickradius=30)
+        xVelTimePlot_scatter = xAccTimePlot.scatter(t, xAcc, marker="o", color="blue", s=25, pickradius=30, zorder=2)
+        yVelTimePlot_scatter = yAccTimePlot.scatter(t, yAcc, marker="o", color="blue", s=25, pickradius=30, zorder=2)
+        zVelTimePlot_scatter = zAccTimePlot.scatter(t, zAcc, marker="o", color="blue", s=25, pickradius=30, zorder=2)
 
         xVelTimePlot_cursor = mplcursors.cursor(xVelTimePlot_scatter, highlight=True)
         yVelTimePlot_cursor = mplcursors.cursor(yVelTimePlot_scatter, highlight=True)
@@ -889,16 +896,20 @@ class FlightPlan:
         xyzPosErrorPlot.plot(timeUAV, errors, linestyle="solid", linewidth=1, color="red")
 
         # Plot UAV route
-        xyzPosPlot.plot(xPosUAV, yPosUAV, zPosUAV, linestyle="dashed", linewidth=1, color="black")
-        xPosTimePlot.plot(timeUAV, xPosUAV, linestyle="dashed", linewidth=1, color="black")
-        yPosTimePlot.plot(timeUAV, yPosUAV, linestyle="dashed", linewidth=1, color="black")
-        zPosTimePlot.plot(timeUAV, zPosUAV, linestyle="dashed", linewidth=1, color="black")
+        xyzPosPlot.plot(xPosUAV, yPosUAV, zPosUAV, linestyle="dashed", linewidth=1, color="black", 
+                                     gid="UAVtracking", zorder=2)
+        xPosTimePlot.plot(timeUAV, xPosUAV, linestyle="dashed", linewidth=1, color="black", 
+                                         gid="UAVtracking", zorder=2)
+        yPosTimePlot.plot(timeUAV, yPosUAV, linestyle="dashed", linewidth=1, color="black", 
+                                         gid="UAVtracking", zorder=2)
+        zPosTimePlot.plot(timeUAV, zPosUAV, linestyle="dashed", linewidth=1, color="black", 
+                                         gid="UAVtracking", zorder=2)
 
         # Highlight UAV route positions
-        xyzPosPlot.scatter(xPosUAV, yPosUAV, zPosUAV, color="black", s=10)
-        xPosTimePlot.scatter(timeUAV, xPosUAV, color="black", s=10)
-        yPosTimePlot.scatter(timeUAV, yPosUAV, color="black", s=10)
-        zPosTimePlot.scatter(timeUAV, zPosUAV, color="black", s=10)
+        xyzPosPlot.scatter(xPosUAV, yPosUAV, zPosUAV, color="black", s=10, gid="UAVtracking", zorder=2)
+        xPosTimePlot.scatter(timeUAV, xPosUAV, color="black", s=10, gid="UAVtracking", zorder=2)
+        yPosTimePlot.scatter(timeUAV, yPosUAV, color="black", s=10, gid="UAVtracking", zorder=2)
+        zPosTimePlot.scatter(timeUAV, zPosUAV, color="black", s=10, gid="UAVtracking", zorder=2)
 
     def add_UAV_track_vel(self, figName, UAVinfo : List[Waypoint]):
         posFig = plt.figure(figName)
@@ -924,13 +935,42 @@ class FlightPlan:
         zVelUAV = np.array(zVelUAV)
         
         # Plot UAV route
-        velPlot3D.plot(timeUAV, np.sqrt(xVelUAV**2 + yVelUAV**2 + zVelUAV**2), linestyle="dashed", linewidth=1, color="black")
-        xVelTimePlot.plot(timeUAV, xVelUAV, linestyle="dashed", linewidth=1, color="black")
-        yVelTimePlot.plot(timeUAV, yVelUAV, linestyle="dashed", linewidth=1, color="black")
-        zVelTimePlot.plot(timeUAV, zVelUAV, linestyle="dashed", linewidth=1, color="black")
+        velPlot3D.plot(timeUAV, np.sqrt(xVelUAV**2 + yVelUAV**2 + zVelUAV**2), linestyle="dashed", linewidth=1, 
+                       color="black", gid="UAVtracking", zorder=2)
+        xVelTimePlot.plot(timeUAV, xVelUAV, linestyle="dashed", linewidth=1, color="black", gid="UAVtracking", zorder=2)
+        yVelTimePlot.plot(timeUAV, yVelUAV, linestyle="dashed", linewidth=1, color="black", gid="UAVtracking", zorder=2)
+        zVelTimePlot.plot(timeUAV, zVelUAV, linestyle="dashed", linewidth=1, color="black", gid="UAVtracking", zorder=2)
 
         # Highlight UAV route positions
-        velPlot3D.scatter(timeUAV, np.sqrt(xVelUAV**2 + yVelUAV**2 + zVelUAV**2), color="black", s=10)
-        xVelTimePlot.scatter(timeUAV, xVelUAV, color="black", s=10)
-        yVelTimePlot.scatter(timeUAV, yVelUAV, color="black", s=10)
-        zVelTimePlot.scatter(timeUAV, zVelUAV, color="black", s=10)
+        velPlot3D.scatter(timeUAV, np.sqrt(xVelUAV**2 + yVelUAV**2 + zVelUAV**2), color="black", s=10, gid="UAVtracking", 
+                          zorder=2)
+        xVelTimePlot.scatter(timeUAV, xVelUAV, color="black", s=10, gid="UAVtracking", zorder=2)
+        yVelTimePlot.scatter(timeUAV, yVelUAV, color="black", s=10, gid="UAVtracking", zorder=2)
+        zVelTimePlot.scatter(timeUAV, zVelUAV, color="black", s=10, gid="UAVtracking", zorder=2)
+
+class ToggleUAVtracking(ToolToggleBase):
+    default_keymap = 'S'
+    description = 'Show by gid'
+    default_toggled = True
+
+    def __init__(self, *args, gid, **kwargs):
+        self.gid = gid
+        super().__init__(*args, **kwargs)
+
+    def enable(self, *args):
+        self.set_lines_visibility(True)
+
+    def disable(self, *args):
+        self.set_lines_visibility(False)
+
+    def set_lines_visibility(self, state):
+        for ax in self.figure.get_axes():
+            for line in ax.get_lines():
+                if line.get_gid() == self.gid:
+                    line.set_visible(state)
+
+            scatter_plots = [coll for coll in ax.collections if isinstance(coll, PathCollection)]
+            for scatter in scatter_plots:
+                if scatter.get_gid() == self.gid:
+                    scatter.set_visible(state)
+        self.figure.canvas.draw()
