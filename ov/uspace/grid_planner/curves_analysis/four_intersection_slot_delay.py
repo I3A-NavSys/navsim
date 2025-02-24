@@ -10,14 +10,22 @@ import mplcursors
 from uspace.flight_plan.flight_plan import FlightPlan
 
 time_step = 0.01
+is_3d = False
 
 def build_plot():
+    global is_3d
+    
     # Build figures
     pos_fig = plt.figure("FOUR_INTERSECTION")
     dist_sepraration_fig = plt.figure("DISTANCE_SEPARATION")
 
     # Build plots
-    xyz_pos_plot = pos_fig.add_subplot(projection="3d")
+    # xyz_pos_plot = pos_fig.add_subplot(projection="3d")
+    if is_3d:       xyz_pos_plot = pos_fig.add_subplot(6, 5, (1, 23), projection="3d")
+    else:           xyz_pos_plot = pos_fig.add_subplot(6, 5, (1, 23))
+    x_pos_time_plot = pos_fig.add_subplot(6, 5, (4, 10))
+    y_pos_time_plot = pos_fig.add_subplot(6, 5, (14, 20))
+    z_pos_time_plot = pos_fig.add_subplot(6, 5, (24, 30))
     
     fp1_fp2_plot = dist_sepraration_fig.add_subplot(3, 2, (1, 1))
     fp1_fp3_plot = dist_sepraration_fig.add_subplot(3, 2, (2, 2))
@@ -30,7 +38,11 @@ def build_plot():
     # Indicate axes' name
     xyz_pos_plot.set_xlabel("x [m]")
     xyz_pos_plot.set_ylabel("y [m]")
-    xyz_pos_plot.set_zlabel("z [m]")
+    if is_3d:       xyz_pos_plot.set_zlabel("z [m]")
+    x_pos_time_plot.set_ylabel("x [m]")
+    y_pos_time_plot.set_ylabel("y [m]")
+    z_pos_time_plot.set_ylabel("z [m]")
+    z_pos_time_plot.set_xlabel("time [s]")
 
     fp2_fp4_plot.set_xlabel("Time [cs]")
     fp3_fp4_plot.set_xlabel("Time [cs]")
@@ -38,6 +50,7 @@ def build_plot():
 
     # Set title
     xyz_pos_plot.set_title("Position 3D")
+    x_pos_time_plot.set_title("Pos vs Time")
     
     fp1_fp2_plot.set_title("FP1 VS FP2")
     fp1_fp3_plot.set_title("FP1 VS FP3")
@@ -48,17 +61,23 @@ def build_plot():
 
     # Set grid to True
     xyz_pos_plot.grid(True)
+    x_pos_time_plot.grid(True)
+    y_pos_time_plot.grid(True)
+    z_pos_time_plot.grid(True)
     
     for i, plot in enumerate(dist_sepraration_plots):
         plot.set_ylabel("Distance [m]")
         plot.grid(True)
 
 def add_trace(fp, label):
+    global is_3d
+    
     # Figure settings
     color = [0, 0.7, 1]
 
     # Get the trace
     tr = fp.trace(time_step)
+    tr_t = tr[:, 0]
     tr_x = tr[:, 1]
     tr_y = tr[:, 2]
     tr_z = tr[:, 3]
@@ -68,10 +87,18 @@ def add_trace(fp, label):
     pos_fig = plt.figure("FOUR_INTERSECTION")
     subplots = pos_fig.get_axes()
     xyz_pos_plot = subplots[0]
+    x_pos_time_plot = subplots[1]
+    y_pos_time_plot = subplots[2]
+    z_pos_time_plot = subplots[3]
 
     # Set plot info
-    line = xyz_pos_plot.plot(tr_x, tr_y, tr_z, linewidth=2, label=label)
-    xyz_pos_plot.legend(loc="upper right", fontsize=8, bbox_to_anchor=(1.25, 1.15), borderaxespad=0.)
+    if is_3d:       xyz_pos_plot.plot(tr_x, tr_y, tr_z, linewidth=2, label=label)
+    else:       xyz_pos_plot.plot(tr_x, tr_y, linewidth=2, label=label)
+    x_pos_time_plot.plot(tr_t, tr_x, linewidth=2)
+    y_pos_time_plot.plot(tr_t, tr_y, linewidth=2)
+    z_pos_time_plot.plot(tr_t, tr_z, linewidth=2)
+    # xyz_pos_plot.legend(loc="upper right", fontsize=8, bbox_to_anchor=(1.25, 1.15), borderaxespad=0.)
+    xyz_pos_plot.legend(fontsize=8, bbox_to_anchor=(1.25, 1.15), borderaxespad=0.)
 
     # Get waypoints positions to highlight
     x_pos = []
@@ -96,24 +123,63 @@ def add_trace(fp, label):
         #     else:                           dy = -100
 
         # Highlight waypoints positions
-        xyz_pos_plot.scatter(wp.pos[0], wp.pos[1], wp.pos[2], marker="o", color="blue", s=25)
+        if is_3d:       xyz_pos_plot.scatter(wp.pos[0], wp.pos[1], wp.pos[2], marker="o", color="blue", s=25)
+        else:           xyz_pos_plot.scatter(wp.pos[0], wp.pos[1], marker="o", color="blue", s=25)
+        x_pos_time_plot.scatter(wp.t, wp.pos[0], marker="o", color="blue", s=25)
+        y_pos_time_plot.scatter(wp.t, wp.pos[1], marker="o", color="blue", s=25)
+        z_pos_time_plot.scatter(wp.t, wp.pos[2], marker="o", color="blue", s=25)
         # xyz_pos_plot.arrow(wp.pos[0], wp.pos[1], dx, dy, head_width=10, head_length=15, linewidth=0.5, linestyle=(0, (5, 10)),
         #                         length_includes_head=True, zorder=2)
 
-    # Update limits to maintain scale in all axes
-    x_lim = max(np.abs(xyz_pos_plot.get_xlim3d()))
-    y_Lim = max(np.abs(xyz_pos_plot.get_ylim3d()))
-    z_lim = max(np.abs(xyz_pos_plot.get_zlim3d()))
-    max_lim = max(x_lim, y_Lim, z_lim)
+def adjust_limits():
+    global is_3d
 
-    xyz_pos_plot.set_xlim3d(-max_lim, max_lim)
-    xyz_pos_plot.set_ylim3d(-max_lim, max_lim)
-    xyz_pos_plot.set_zlim3d(-max_lim, max_lim)
+    pos_fig = plt.figure("FOUR_INTERSECTION")
+    subplots = pos_fig.get_axes()
+    xyz_pos_plot = subplots[0]
+    x_pos_time_plot = subplots[1]
+    y_pos_time_plot = subplots[2]
+
+    # Update limits to maintain scale in all axes
+    if is_3d:
+        x_lim = max(np.abs(xyz_pos_plot.get_xlim3d()))
+        y_Lim = max(np.abs(xyz_pos_plot.get_ylim3d()))
+        z_lim = max(np.abs(xyz_pos_plot.get_zlim3d()))
+        max_lim = max(x_lim, y_Lim, z_lim)
+
+        xyz_pos_plot.set_xlim3d(-max_lim, max_lim)
+        xyz_pos_plot.set_ylim3d(-max_lim, max_lim)
+        xyz_pos_plot.set_zlim3d(-max_lim, max_lim)
+
+    else:
+        x_lim = max(np.abs(xyz_pos_plot.get_xlim()))
+        y_Lim = max(np.abs(xyz_pos_plot.get_ylim()))
+        max_lim = max(x_lim, y_Lim)
+
+        xyz_pos_plot.set_xlim(-max_lim, max_lim)
+        xyz_pos_plot.set_ylim(-max_lim, max_lim)
+
+    xLim = x_pos_time_plot.get_ylim()
+    yLim = y_pos_time_plot.get_ylim()
+    xRange = xLim[1] - xLim[0]
+    yRange = yLim[1] - yLim[0]
+    
+    maxRange = max(xRange, yRange)
+    addition = maxRange / 2
+
+    xMidValue = (xLim[1] + xLim[0]) / 2
+    yMidValue = (yLim[1] + yLim[0]) / 2
+
+    x_pos_time_plot.set_ylim(xMidValue - addition, xMidValue + addition)
+    y_pos_time_plot.set_ylim(yMidValue - addition, yMidValue + addition)
 
 def add_distance_separation(i, dist_sep, fp1, fp2, fp1_ref, fp2_ref):
     pos_fig = plt.figure("FOUR_INTERSECTION")
     subplots = pos_fig.get_axes()
     xyz_pos_plot = subplots[0]
+    x_pos_time_plot = subplots[1]
+    y_pos_time_plot = subplots[2]
+    z_pos_time_plot = subplots[3]
     pos_fig = plt.figure("DISTANCE_SEPARATION")
     subplots = pos_fig.get_axes()
     plot = subplots[i]
@@ -131,16 +197,40 @@ def add_distance_separation(i, dist_sep, fp1, fp2, fp1_ref, fp2_ref):
     tr1 = fp1.trace(time_step)
     tr2 = fp2.trace(time_step)
 
-    tr1_x = tr1[min_dist_x + fp1_ref, 1]
-    tr1_y = tr1[min_dist_x + fp1_ref, 2]
-    tr1_z = tr1[min_dist_x + fp1_ref, 3]
-    tr2_x = tr2[min_dist_x + fp2_ref, 1]
-    tr2_y = tr2[min_dist_x + fp2_ref, 2]
-    tr2_z = tr2[min_dist_x + fp2_ref, 3]
+    tr1_instant = int(min_dist_x + fp1_ref)
+    tr2_instant = int(min_dist_x + fp2_ref)
 
-    xyz_pos_plot.scatter(tr1_x, tr1_y, tr1_z, marker="o", color="black", s=25)
-    xyz_pos_plot.scatter(tr2_x, tr2_y, tr2_z, marker="o", color="black", s=25)
-    xyz_pos_plot.plot([tr1_x, tr2_x], [tr1_y, tr2_y], [tr1_z, tr2_z], color="black", linestyle="--")
+    tr1_x = float(tr1[tr1_instant, 1])
+    tr1_y = float(tr1[tr1_instant, 2])
+    tr1_z = float(tr1[tr1_instant, 3])
+    tr2_x = float(tr2[tr2_instant, 1])
+    tr2_y = float(tr2[tr2_instant, 2])
+    tr2_z = float(tr2[tr2_instant, 3])
+
+    tr1_instant = float(min_dist_x + fp1_ref)
+    tr2_instant = float(min_dist_x + fp2_ref)
+
+    if is_3d:
+        xyz_pos_plot.scatter(tr1_x, tr1_y, tr1_z, marker="o", color="black", s=25)
+        xyz_pos_plot.scatter(tr2_x, tr2_y, tr2_z, marker="o", color="black", s=25)
+        xyz_pos_plot.plot([tr1_x, tr2_x], [tr1_y, tr2_y], [tr1_z, tr2_z], color="black", linestyle="--")
+    
+    else:
+        xyz_pos_plot.scatter(tr1_x, tr1_y, marker="o", color="black", s=25)
+        xyz_pos_plot.scatter(tr2_x, tr2_y, marker="o", color="black", s=25)
+        xyz_pos_plot.plot([tr1_x, tr2_x], [tr1_y, tr2_y], color="black", linestyle="--")
+
+    # x_pos_time_plot.scatter(tr1_instant/100, tr1_x, marker="o", color="black", s=25)
+    # y_pos_time_plot.scatter(tr1_instant/100, tr1_y, marker="o", color="black", s=25)
+    # z_pos_time_plot.scatter(tr1_instant/100, tr1_z, marker="o", color="black", s=25)
+    # x_pos_time_plot.scatter(tr2_instant/100, tr2_x, marker="o", color="black", s=25)
+    # y_pos_time_plot.scatter(tr2_instant/100, tr2_y, marker="o", color="black", s=25)
+    # z_pos_time_plot.scatter(tr2_instant/100, tr2_z, marker="o", color="black", s=25)
+
+    # x_pos_time_plot.plot([tr1_instant/100, tr1_x], [tr2_instant/100, tr2_x], color="black", linestyle="--")
+    # y_pos_time_plot.plot([tr1_instant/100, tr1_y], [tr2_instant/100, tr2_y], color="black", linestyle="--")
+    # z_pos_time_plot.plot([tr1_instant/100, tr1_z], [tr2_instant/100, tr2_z], color="black", linestyle="--")
+    
 
 if __name__ == "__main__":
     # Flightplan 1
@@ -191,6 +281,7 @@ if __name__ == "__main__":
     add_trace(fp2, label="FP2")
     add_trace(fp3, label="FP3")
     add_trace(fp4, label="FP4")
+    adjust_limits()
 
     dist_12, fp1_ref_12, fp2_ref = fp1.compare_to(fp2, time_step)
     dist_13, fp1_ref_13, fp3_ref = fp1.compare_to(fp3, time_step)
