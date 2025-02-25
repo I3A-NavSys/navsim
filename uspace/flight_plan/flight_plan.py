@@ -488,8 +488,8 @@ class FlightPlan:
         trace_1 = self.trace(time_step)
         trace_2 = fp2.trace(time_step)
 
-        trace_1_times = np.round(np.array(trace_1[:, 0]), decimals)
-        trace_2_times = np.round(np.array(trace_2[:, 0]), decimals)
+        trace_1_times = np.round(trace_1[:, 0], decimals)
+        trace_2_times = np.round(trace_2[:, 0], decimals)
 
         init_trace_1 = [[0]]
         init_trace_2 = [[0]]
@@ -507,7 +507,7 @@ class FlightPlan:
         
         distances = [np.linalg.norm(dist) for dist in distance_separation]
 
-        return distances, init_trace_1, init_trace_2
+        return distances, trace_1_times[init_trace_1[0][0]:end_trace_1[0][0]]
 
     #------------------------------------------------------------------------------------------------------------------
     # INFORMATION AND FIGURES
