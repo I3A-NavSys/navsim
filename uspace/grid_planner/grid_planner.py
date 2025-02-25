@@ -23,7 +23,6 @@ class GridPlanner:
         self.level_height_diff = y_height - x_height
         self.grid = {}              # Diccionario de celdas
         self.max_route_length = max_route_length
-        self.is_cost = False
 
     def get_take_off_nodes(self, posXY, time):
         """
@@ -125,13 +124,12 @@ class GridPlanner:
                 else:
                     return GridNode(node.i-1, node.j, 'X', node.s+1, node.cost+2, node)    # giro SUR -> OESTE
 
-    def get_route(self, start_node: GridNode, end_node: GridNode, is_cost=False):
+    def get_route(self, start_node: GridNode, end_node: GridNode):
         """
         Dados dos nodos, devuelve una ruta libre del primero al segundo,
         partiendo en el slot especificado.
         """
         start_time = time.time()
-        self.is_cost = is_cost
         explored_nodes = []
         generation = 0
         route_length = 0
@@ -174,28 +172,7 @@ class GridPlanner:
                     h_new_node = self.evaluate_node(new_node, end_node)
                     generation += 1
 
-                    if not self.is_cost:
-                        prio_queue.put((h_new_node, generation, new_node))
-                    else:
-                        prio_queue.put((h_new_node + new_node.cost, generation, new_node))
-
-            # if next_node is not None:
-            #     h_next_node = self.evaluate_node(next_node, end_node)
-            #     generation += 1
-
-            #     if not self.is_cost:
-            #         prio_queue.put((h_next_node, generation, next_node))
-            #     else:
-            #         prio_queue.put((h_next_node + next_node.cost, generation, next_node))
-            
-            # if cross_node is not None:
-            #     h_cross_node = self.evaluate_node(cross_node, end_node)
-            #     generation += 1
-
-            #     if not self.is_cost:
-            #         prio_queue.put((h_cross_node + 1, generation, cross_node))
-            #     else:
-            #         prio_queue.put((h_cross_node + cross_node.cost, generation, cross_node))
+                    prio_queue.put((h_new_node + new_node.cost, generation, new_node))
 
         end_time = time.time()
         elapsed_time = end_time - start_time
@@ -231,28 +208,11 @@ class GridPlanner:
 
         # Iterate though all the time slots
         for time_slot in time_slots_to_search:
-            # takeoff_nodes = self.get_take_off_nodes(init_pos, int(time_slot) * self.slot_time)
-            # landing_nodes = self.get_landing_nodes(end_pos)
-
-            # # Compute the four possible routes for the given takeoff and landing nodes
-            # for i in range(2):
-            #     for j in range(2):
-            #         route, _, _ = self.get_route(takeoff_nodes[i], landing_nodes[j], is_cost=True)
-            #         if route is not None:
-            #             generation += 1
-            #             # routes.append((route, self.route_length(route), route[-1].s, route[-1].cost))
-            #             if option == 0:
-            #                 prio_length_routes.put((self.route_length(route), route[-1].s, route[-1].cost, generation, route))
-                        
-            #             elif option == 1:
-            #                 prio_time_routes.put((route[-1].s, self.route_length(route), route[-1].cost, generation, route))
-
-            #             routes.append(route)
 
             takeoff_node = self.get_end_node(init_pos, int(time_slot), is_landing=False)
             landing_node = self.get_end_node(end_pos, is_landing=True)
 
-            route, _, _ = self.get_route(takeoff_node, landing_node, is_cost=True)
+            route, _, _ = self.get_route(takeoff_node, landing_node)
 
             if route is not None:
                 generation += 1

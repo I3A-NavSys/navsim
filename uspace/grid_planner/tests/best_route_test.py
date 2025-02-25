@@ -78,7 +78,7 @@ def set_route_1(ax):
     takeoff_nodes = gp.get_take_off_nodes((-600, 0), 0)
     landing_nodes = gp.get_landing_nodes((600, 0))
 
-    route, e_time, explored_nodes = gp.get_route(takeoff_nodes[0], landing_nodes[1], is_cost=True)
+    route, e_time, explored_nodes = gp.get_route(takeoff_nodes[0], landing_nodes[1])
 
     print("###################################")
     print(f"COMPUTING R1")
@@ -102,7 +102,7 @@ def set_route_2(ax):
     takeoff_nodes = gp.get_take_off_nodes((-400, 0), 30)
     landing_nodes = gp.get_landing_nodes((-500, 100))
 
-    route, e_time, explored_nodes = gp.get_route(takeoff_nodes[0], landing_nodes[1], is_cost=False)
+    route, e_time, explored_nodes = gp.get_route(takeoff_nodes[0], landing_nodes[1])
 
     print("###################################")
     print(f"COMPUTING R2")

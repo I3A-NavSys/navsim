@@ -82,7 +82,7 @@ plt.grid(True)
 takeoff_nodes = gp.get_take_off_nodes((-600, 0), 0)
 landing_nodes = gp.get_landing_nodes((600, 0))
 
-route, e_time, explored_nodes = gp.get_route(takeoff_nodes[0], landing_nodes[1], is_cost=False)
+route, e_time, explored_nodes = gp.get_route(takeoff_nodes[0], landing_nodes[1])
 
 print("###################################")
 print(f"COMPUTING R1")
@@ -106,7 +106,7 @@ ax.scatter(X[-1], Y[-1], color="lightsteelblue")
 takeoff_nodes = gp.get_take_off_nodes((-400, 0), 30)
 landing_nodes = gp.get_landing_nodes((-500, 100))
 
-route, e_time, explored_nodes = gp.get_route(takeoff_nodes[0], landing_nodes[1], is_cost=False)
+route, e_time, explored_nodes = gp.get_route(takeoff_nodes[0], landing_nodes[1])
 
 print("###################################")
 print(f"COMPUTING R2")
@@ -143,7 +143,7 @@ for alt_route in range(alt_routes_amount):
     print(f"COMPUTING ALTERNATIVE {alt_route}")
     print()
 
-    route, e_time, explored_nodes = gp.get_route(takeoff_nodes[0], landing_nodes[1], is_cost=False)
+    route, e_time, explored_nodes = gp.get_route(takeoff_nodes[0], landing_nodes[1])
 
     gp.print_route(route)
 
