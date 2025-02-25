@@ -1,6 +1,7 @@
 import numpy as np
 from queue import PriorityQueue
 import time
+import matplotlib.pyplot as plt
 
 from uspace.flight_plan.flight_plan import FlightPlan
 
@@ -23,6 +24,8 @@ class GridPlanner:
         self.level_height_diff = y_height - x_height
         self.grid = {}              # Diccionario de celdas
         self.max_route_length = max_route_length
+        self.debug = False
+        self.debug_figure = None
 
     def get_take_off_nodes(self, posXY, time):
         """
@@ -124,6 +127,49 @@ class GridPlanner:
                 else:
                     return GridNode(node.i-1, node.j, 'X', node.s+1, node.cost+2, node)    # giro SUR -> OESTE
 
+    def get_length_from_node(self, node: GridNode):
+        if node.parent is None:
+            return 1
+        return 1 + self.get_length_from_node(node.parent)
+
+    def debug_get_line_from_node(self, node: GridNode):
+        x = []
+        y = []
+
+        while node.parent is not None:
+            if node.L == "X":
+                x.append(node.i * 100 + 50)
+                y.append(node.j * 100)
+
+            else:
+                x.append(node.i * 100)
+                y.append(node.j * 100 + 50)
+
+            node = node.parent
+
+        if node.L == "X":
+            x.append(node.i * 100 + 50)
+            y.append(node.j * 100)
+
+        else:
+            x.append(node.i * 100)
+            y.append(node.j * 100 + 50)
+
+        return x, y
+
+    def debug_matplotlib(self, node):
+        x, y = self.debug_get_line_from_node(node)
+
+        if node.parent is None:
+            self.line, = self.debug_figure.plot(x, y, linestyle="dashed", linewidth=1, color="black", zorder=5)
+            self.debug_figure.scatter(x, y, color="black", s=10, zorder=5)
+
+        self.line.set_data(x, y)
+        self.debug_figure.scatter(x, y, color="black", s=10, zorder=5)
+
+        # plt.draw()
+        plt.pause(0.1)
+
     def get_route(self, start_node: GridNode, end_node: GridNode):
         """
         Dados dos nodos, devuelve una ruta libre del primero al segundo,
@@ -132,7 +178,6 @@ class GridPlanner:
         start_time = time.time()
         explored_nodes = []
         generation = 0
-        route_length = 0
         prio_queue = PriorityQueue()
         h_start_node = self.evaluate_node(start_node, end_node)
         prio_queue.put((h_start_node, generation, start_node))
@@ -140,12 +185,15 @@ class GridPlanner:
         while not prio_queue.empty():
             node: GridNode = prio_queue.get()[2]
 
-            # Return if route length exceeds maximum
-            if route_length > self.max_route_length:
-                end_time = time.time()
-                elapsed_time = end_time - start_time
+            if self.debug: self.debug_matplotlib(node)
 
-                return None, elapsed_time, len(explored_nodes)
+            # Return if route length exceeds maximum
+            if self.get_length_from_node(node) > self.max_route_length:
+                continue
+                # end_time = time.time()
+                # elapsed_time = end_time - start_time
+
+                # return None, elapsed_time, len(explored_nodes)
 
             if (node.i, node.j, node.L, node.s) in self.grid:
                 continue
@@ -163,8 +211,6 @@ class GridPlanner:
 
             next_node = self.get_next_node(node)
             cross_node = self.get_cross_node(node)
-
-            route_length += 1
 
             new_nodes = [next_node, cross_node]
             for new_node in new_nodes:
