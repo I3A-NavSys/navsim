@@ -88,34 +88,42 @@ def add_trace(fp):
     xyz_pos_plot.set_ylim3d(-max_lim, max_lim)
     xyz_pos_plot.set_zlim3d(-max_lim, max_lim)
 
-def add_distance_separation(dist_sep, fp1, fp2, fp1_ref, fp2_ref):
+def add_distance_separation(dist_sep, fp1, fp2, times):
     pos_fig = plt.figure("CURVE_STRAIGHT")
     subplots = pos_fig.get_axes()
     xyz_pos_plot = subplots[0]
     dist_sep_plot = subplots[1]
 
-    dist_sep_plot.plot(dist_sep, linewidth=2)
+    dist_sep_plot.plot(times, dist_sep, linewidth=2)
 
     # Highlight minimum distance
-    min_dist_x = np.argmin(dist_sep)
-    min_dist_y = dist_sep[min_dist_x]
+    min_dist = np.argmin(dist_sep)
+    min_dist_x = times[min_dist]
+    min_dist_y = dist_sep[min_dist]
 
-    dist_sep_plot.scatter(min_dist_x, min_dist_y, marker="o", color="blue", s=25)
+    dist_sep_plot.scatter(min_dist_x, min_dist_y, marker="o", color="blue", s=20, zorder=3)
 
-    plt.annotate(round(min_dist_y, 2), (min_dist_x, min_dist_y), textcoords="offset points", xytext=(0,10), ha='center')
+    dist_sep_plot.annotate(round(min_dist_y, 2), (min_dist_x, min_dist_y), textcoords="offset points", xytext=(0,10), ha='center')
 
     tr1 = fp1.trace(time_step)
     tr2 = fp2.trace(time_step)
 
-    tr1_x = tr1[min_dist_x + fp1_ref, 1]
-    tr1_y = tr1[min_dist_x + fp1_ref, 2]
-    tr1_z = tr1[min_dist_x + fp1_ref, 3]
-    tr2_x = tr2[min_dist_x + fp2_ref, 1]
-    tr2_y = tr2[min_dist_x + fp2_ref, 2]
-    tr2_z = tr2[min_dist_x + fp2_ref, 3]
+    decimals = len(str(time_step).split(".")[1])
 
-    xyz_pos_plot.scatter(tr1_x, tr1_y, tr1_z, marker="o", color="black", s=25)
-    xyz_pos_plot.scatter(tr2_x, tr2_y, tr2_z, marker="o", color="black", s=25)
+    tr1_times = np.round(tr1[:, 0], decimals)
+    tr2_times = np.round(tr2[:, 0], decimals)
+    tr1_min_dist_i = np.where(tr1_times == min_dist_x)
+    tr2_min_dist_i = np.where(tr2_times == min_dist_x)
+
+    tr1_x = tr1[tr1_min_dist_i, 1][0][0]
+    tr1_y = tr1[tr1_min_dist_i, 2][0][0]
+    tr1_z = tr1[tr1_min_dist_i, 3][0][0]
+    tr2_x = tr2[tr2_min_dist_i, 1][0][0]
+    tr2_y = tr2[tr2_min_dist_i, 2][0][0]
+    tr2_z = tr2[tr2_min_dist_i, 3][0][0]
+
+    xyz_pos_plot.scatter(tr1_x, tr1_y, tr1_z, marker="o", color="black", s=20, zorder=3)
+    xyz_pos_plot.scatter(tr2_x, tr2_y, tr2_z, marker="o", color="black", s=20, zorder=3)
     xyz_pos_plot.plot([tr1_x, tr2_x], [tr1_y, tr2_y], [tr1_z, tr2_z], color="black", linestyle="--")
 
 if __name__ == "__main__":
@@ -143,7 +151,7 @@ if __name__ == "__main__":
     build_plot()
     add_trace(fp1)
     add_trace(fp2)
-    dist_12, fp1_ref_12, fp2_ref_12 = fp1.compare_to(fp2, time_step)
-    add_distance_separation(dist_12, fp1, fp2, fp1_ref_12, fp2_ref_12)
+    dist_12, times = fp1.compare_to(fp2, time_step)
+    add_distance_separation(dist_12, fp1, fp2, times)
 
     plt.show()
