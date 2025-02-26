@@ -16,21 +16,23 @@ from scipy.spatial.transform import Rotation
 
 
 ##############################################################################
-# Adding root 'ov' folder to sys.path
+# Adding root folder to sys.path
 
-current_path = os.path.abspath(os.path.dirname(__file__))
-while True:
-    if os.path.basename(current_path) == 'ov':
-        project_root_path = current_path
-        break
-    parent_path = os.path.dirname(current_path)
-    if parent_path == current_path:
-        raise RuntimeError("No se encontró el directorio 'ov' en la ruta.")
-    current_path = parent_path
-# print(f"Directorio raíz del proyecto: {project_root_path}")
+# current_path = os.path.abspath(os.path.dirname(__file__))
+# while True:
+#     if os.path.basename(current_path) == 'NAVSIM':
+#         project_root_path = current_path
+#         break
+#     parent_path = os.path.dirname(current_path)
+#     if parent_path == current_path:
+#         raise RuntimeError("No se encontró el directorio 'ov' en la ruta.")
+#     current_path = parent_path
+# # print(f"Directorio raíz del proyecto: {project_root_path}")
 
-if project_root_path not in sys.path:
-    sys.path.append(project_root_path)
+# if project_root_path not in sys.path:
+#     sys.path.append(project_root_path)
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 
 
