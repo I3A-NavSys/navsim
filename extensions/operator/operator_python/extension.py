@@ -10,6 +10,7 @@ import base64
 import sys, os
 import numpy as np
 import math
+import matplotlib.pyplot as plt
 
 from navsim_utils.extensions_utils import ExtensionUtils
 from uspace.grid_planner.grid_planner import GridPlanner
@@ -20,6 +21,8 @@ file_path = os.path.dirname(__file__)
 project_root_path = os.path.abspath(os.path.join(file_path, '../../..'))
 if project_root_path not in sys.path:
     sys.path.append(project_root_path)
+
+project_root_path = project_root_path.replace("\\", "/")
 
 class UAVState:
     IDLE = "idle"
@@ -244,15 +247,27 @@ class Operator(omni.ext.IExt):
         fp: FlightPlan = self.uav_plots[uav_id][key]["fp"]
         tracked_info = self.uav_plots[uav_id][key]["tracked_info"]
 
-        fp.velocity_figure(f"{uav_id}: VELOCITY", 0.01)
-        fp.add_UAV_track_vel(f"{uav_id}: VELOCITY", tracked_info)
+        fp.velocity_figure(f"{key}: VELOCITY", 0.01)
+        fp.add_UAV_track_vel(f"{key}: VELOCITY", tracked_info)
 
     def plot_uav_acc(self, uav_id, key):
         fp: FlightPlan = self.uav_plots[uav_id][key]["fp"]
         tracked_info = self.uav_plots[uav_id][key]["tracked_info"]
 
-        fp.acceleration_figure(f"{uav_id}: ACCELERATION", 0.01)
+        fp.acceleration_figure(f"{key}: ACCELERATION", 0.01)
         # fp.add_UAV_track_pos(f"{uav_id}: ACCELERATION", tracked_info)
+
+    def save_figures(self, uav_id, key):
+        pos_fig_name = f"{key}: POSITION"
+        vel_fig_name = f"{key}: VELOCITY"
+        acc_fig_name = f"{key}: ACCELERATION"
+        
+        id = uav_id.replace("/", "_")
+        path = project_root_path + "/sims/figures" + f"/{id}_{key}"
+        
+        if plt.fignum_exists(pos_fig_name):     plt.figure(pos_fig_name).savefig(fname=path + "_pos.svg")
+        if plt.fignum_exists(vel_fig_name):     plt.figure(vel_fig_name).savefig(fname=path + "_vel.svg")
+        if plt.fignum_exists(acc_fig_name):     plt.figure(acc_fig_name).savefig(fname=path + "_acc.svg")
 
     def process_request(self, client_id, request_id):
         request = self.clients_requests[client_id][request_id]
@@ -320,15 +335,18 @@ class Operator(omni.ext.IExt):
         end_vel_2 = [0, 0, -0.2]
         end_vel_3 = [0, 0, 0]
 
-        if ((init_pos[1] // self.gp.cell_side) % 2 == 0):      heading = [1, 0]
-        else:                           heading = [-1, 0]
+        if ((init_pos[1] // self.gp.cell_side) % 2 == 0):       init_heading = [1, 0]
+        else:                                                   init_heading = [-1, 0]
+
+        if ((end_pos_1[1] // self.gp.cell_side) % 2 == 0):      end_heading = [1, 0]
+        else:                                                   end_heading = [-1, 0]
 
         # Initial takeoff waypoint
-        fp.set_waypoint(time=init_time, pos=init_pos, vel=init_vel, heading=heading)
+        fp.set_waypoint(time=init_time, pos=init_pos, vel=init_vel, heading=init_heading)
         # Final landing waypoints
-        fp.set_waypoint(time=end_time_1, pos=end_pos_1, vel=end_vel_1, heading=heading)
-        fp.set_waypoint(time=end_time_2, pos=end_pos_2, vel=end_vel_2, heading=heading)
-        fp.set_waypoint(time=end_time_3, pos=end_pos_3, vel=end_vel_3, heading=heading)
+        fp.set_waypoint(time=end_time_1, pos=end_pos_1, vel=end_vel_1, heading=end_heading)
+        fp.set_waypoint(time=end_time_2, pos=end_pos_2, vel=end_vel_2, heading=end_heading)
+        fp.set_waypoint(time=end_time_3, pos=end_pos_3, vel=end_vel_3, heading=end_heading)
 
         fp.connect_waypoints()
         # fp.remove_negative_time()
@@ -437,6 +455,8 @@ class Operator(omni.ext.IExt):
                             ui.Button(text="PLOT ACC", 
                                     clicked_fn=lambda uav_id=uav_id, key=key: self.plot_uav_acc(uav_id, key))
                         
+                        ui.Button(text="SAVE ACTIVE FIGURES", clicked_fn=lambda uav_id=uav_id, key=key: self.save_figures(uav_id, key))
+
                         ui.Separator()
 
     def set_grid_parameters(self):
