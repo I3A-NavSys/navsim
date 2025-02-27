@@ -337,7 +337,8 @@ class GridPlanner:
 
                 # Change of direction
                 if (last_node_index - node_index >= 2) and (route[node_index + 2].j == node.j) and (abs(route[node_index + 2].i - node.i) == 1):
-                    node_index += 1
+                    include = False
+                    node_index += 2
 
                 # Smooth level change
                 elif (last_node_index - node_index >= 1) and (route[node_index + 1].L == "X"):
