@@ -303,13 +303,11 @@ class GridPlanner:
 
         route_length = len(route)
         node_index = 0
-        route_ending_index = route_length - 2
-        is_route_ending = False
+        last_node_index = route_length - 1
         
         while node_index < route_length:
+            include = True
             node = route[node_index]
-
-            if node_index >= route_ending_index:    is_route_ending = True
 
             if node.L == "X":
                 pos = [node.i * self.cell_side + offset, node.j * self.cell_side, self.x_height]
@@ -317,9 +315,19 @@ class GridPlanner:
                 if node.j % 2 == 0:     vel = [velocity, 0, 0]
                 else:                   vel = [-velocity, 0, 0]
 
-                if not is_route_ending and route[node_index + 2].i == node.i and abs(route[node_index + 2].j - node.j) == 1:
-                    # Do not add next node as it is not necessary
-                    node_index += 1
+                # Change of direction
+                if (last_node_index - node_index >= 2) and (route[node_index + 2].i == node.i) and (abs(route[node_index + 2].j - node.j) == 1):
+                    include = False
+                    node_index += 2
+
+                # Smooth level change
+                elif (last_node_index - node_index >= 1) and (route[node_index + 1].L == "Y"):
+                    # Check wether we are taking off or not
+                    if node_index == 0:     
+                        node_index += 1
+                    else:
+                        include = False
+                        node_index += 1
 
             else:
                 pos = [node.i * self.cell_side, node.j * self.cell_side + offset, self.y_height]
@@ -327,11 +335,20 @@ class GridPlanner:
                 if node.i % 2 == 0:     vel = [0, velocity, 0]
                 else:                   vel = [0, -velocity, 0]
 
-                if not is_route_ending and route[node_index + 2].j == node.j and abs(route[node_index + 2].i - node.i) == 1:
-                    # Do not add next node as it is not necessary
+                # Change of direction
+                if (last_node_index - node_index >= 2) and (route[node_index + 2].j == node.j) and (abs(route[node_index + 2].i - node.i) == 1):
                     node_index += 1
 
-            fp.set_waypoint(time=node.s * self.slot_time, pos=pos, vel=vel)
+                # Smooth level change
+                elif (last_node_index - node_index >= 1) and (route[node_index + 1].L == "X"):
+                    # Check wether we are landing or not
+                    if node_index + 1 == last_node_index:
+                        include = False
+                    else:
+                        include = False
+                        node_index += 1
+
+            if include:     fp.set_waypoint(time=node.s * self.slot_time, pos=pos, vel=vel)
 
             node_index += 1
             
