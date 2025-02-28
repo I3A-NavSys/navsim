@@ -315,19 +315,25 @@ class GridPlanner:
                 if node.j % 2 == 0:     vel = [velocity, 0, 0]
                 else:                   vel = [-velocity, 0, 0]
 
-                # Change of direction
-                if (last_node_index - node_index >= 2) and (route[node_index + 2].i == node.i) and (abs(route[node_index + 2].j - node.j) == 1):
-                    include = False
+                # is_change_direction = (last_node_index - node_index >= 2) and (route[node_index + 2].i == node.i) and (abs(route[node_index + 2].j - node.j) == 1)
+                is_180_turn = (last_node_index - node_index >= 2) and (route[node_index + 2].i == node.i) and (route[node_index + 2].L == "X")
+                is_90_turn = (last_node_index - node_index >= 1) and (route[node_index + 1].L == "Y")
+                
+                if is_180_turn:
+                    if node_index != 0:
+                        include = False
+                    
                     node_index += 2
 
-                # Smooth level change
-                elif (last_node_index - node_index >= 1) and (route[node_index + 1].L == "Y"):
+                    if node_index == last_node_index:
+                        node_index -= 1
+
+                elif is_90_turn:
                     # Check wether we are taking off or not
-                    if node_index == 0:     
-                        node_index += 1
-                    else:
+                    if node_index != 0:     
                         include = False
-                        node_index += 1
+
+                    node_index += 1
 
             else:
                 pos = [node.i * self.cell_side, node.j * self.cell_side + offset, self.y_height]
@@ -335,27 +341,25 @@ class GridPlanner:
                 if node.i % 2 == 0:     vel = [0, velocity, 0]
                 else:                   vel = [0, -velocity, 0]
 
-                # Change of direction
-                if (last_node_index - node_index >= 2) and (route[node_index + 2].j == node.j) and (abs(route[node_index + 2].i - node.i) == 1):
+                is_180_turn = (last_node_index - node_index >= 2) and (route[node_index + 2].j == node.j) and (route[node_index + 2].L == "Y")
+                is_90_turn = (last_node_index - node_index >= 1) and (route[node_index + 1].L == "X")
+
+                if is_180_turn:
                     include = False
                     node_index += 2
 
-                # Smooth level change
-                elif (last_node_index - node_index >= 1) and (route[node_index + 1].L == "X"):
+                elif is_90_turn:
                     # Check wether we are landing or not
-                    if node_index + 1 == last_node_index:
-                        include = False
-                    else:
-                        include = False
+                    if node_index + 1 != last_node_index:
                         node_index += 1
+
+                    include = False
 
             if include:     fp.set_waypoint(time=node.s * self.slot_time, pos=pos, vel=vel)
 
             node_index += 1
             
-
         fp.connect_waypoints()
-
         return fp
 
     def evaluate_node(self, node: GridNode, end_node: GridNode):
