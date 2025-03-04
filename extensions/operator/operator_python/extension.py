@@ -74,6 +74,7 @@ class Operator(omni.ext.IExt):
         
         self.navsim_utils = ExtensionUtils()
         self.gp = GridPlanner()
+        self.plot_time_steps = 0.01
 
         self.event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
         self.operator_event = carb.events.type_from_string("NavSim.Operator")
@@ -240,21 +241,21 @@ class Operator(omni.ext.IExt):
         fp: FlightPlan = self.uav_plots[uav_id][key]["fp"]
         tracked_info = self.uav_plots[uav_id][key]["tracked_info"]
 
-        fp.position_figure(f"{key}: POSITION", 0.01)
+        fp.position_figure(f"{key}: POSITION", self.plot_time_steps)
         fp.add_UAV_track_pos(f"{key}: POSITION", tracked_info)
 
     def plot_uav_vel(self, uav_id, key):
         fp: FlightPlan = self.uav_plots[uav_id][key]["fp"]
         tracked_info = self.uav_plots[uav_id][key]["tracked_info"]
 
-        fp.velocity_figure(f"{key}: VELOCITY", 0.01)
+        fp.velocity_figure(f"{key}: VELOCITY", self.plot_time_steps)
         fp.add_UAV_track_vel(f"{key}: VELOCITY", tracked_info)
 
     def plot_uav_acc(self, uav_id, key):
         fp: FlightPlan = self.uav_plots[uav_id][key]["fp"]
         tracked_info = self.uav_plots[uav_id][key]["tracked_info"]
 
-        fp.acceleration_figure(f"{key}: ACCELERATION", 0.01)
+        fp.acceleration_figure(f"{key}: ACCELERATION", self.plot_time_steps)
         # fp.add_UAV_track_pos(f"{uav_id}: ACCELERATION", tracked_info)
 
     def save_figures(self, uav_id, key):
@@ -268,6 +269,33 @@ class Operator(omni.ext.IExt):
         if plt.fignum_exists(pos_fig_name):     plt.figure(pos_fig_name).savefig(fname=path + "_pos.svg")
         if plt.fignum_exists(vel_fig_name):     plt.figure(vel_fig_name).savefig(fname=path + "_vel.svg")
         if plt.fignum_exists(acc_fig_name):     plt.figure(acc_fig_name).savefig(fname=path + "_acc.svg")
+
+    def export_request_tracking_data(self, uav_id, key):
+        fp: FlightPlan = self.uav_plots[uav_id][key]["fp"]
+        tracked_info = self.uav_plots[uav_id][key]["tracked_info"]
+        tracked_info_trace_rows = len(tracked_info)
+        tracked_info_trace_cols = 7
+
+        fp_trace = fp.trace(self.plot_time_steps)
+        tracked_info_trace = np.zeros((tracked_info_trace_rows, tracked_info_trace_cols))
+        for i in range(tracked_info_trace_rows):
+            wp = tracked_info[i]
+
+            tracked_info_trace[i, 0] = wp.t
+            tracked_info_trace[i, 1] = wp.pos[0]
+            tracked_info_trace[i, 2] = wp.pos[1]
+            tracked_info_trace[i, 3] = wp.pos[2]
+            tracked_info_trace[i, 4] = wp.vel[0]
+            tracked_info_trace[i, 5] = wp.vel[1]
+            tracked_info_trace[i, 6] = wp.vel[2]
+
+        id = uav_id.replace("/", "_")
+        fp_path = project_root_path + "/sims/exported_data" + f"/{id}_{key}_flightplan.csv"
+        tracked_info_path = project_root_path + "/sims/exported_data" + f"/{id}_{key}_tracked_info.csv"
+
+        np.savetxt(fp_path, fp_trace, delimiter=", ", fmt="%s")
+        np.savetxt(tracked_info_path, tracked_info_trace, delimiter=", ", fmt="%s")
+
 
     def process_request(self, client_id, request_id):
         request = self.clients_requests[client_id][request_id]
@@ -455,7 +483,9 @@ class Operator(omni.ext.IExt):
                             ui.Button(text="PLOT ACC", 
                                     clicked_fn=lambda uav_id=uav_id, key=key: self.plot_uav_acc(uav_id, key))
                         
-                        ui.Button(text="SAVE ACTIVE FIGURES", clicked_fn=lambda uav_id=uav_id, key=key: self.save_figures(uav_id, key))
+                        with ui.HStack(spacing=self.navsim_utils.SPACING_S):
+                            ui.Button(text="SAVE ACTIVE FIGURES", clicked_fn=lambda uav_id=uav_id, key=key: self.save_figures(uav_id, key))
+                            ui.Button(text="EXPORT DATA", clicked_fn=lambda uav_id=uav_id, key=key: self.export_request_tracking_data(uav_id, key))
 
                         ui.Separator()
 
