@@ -1,13 +1,11 @@
 import sys
 import os
 import matplotlib.pyplot as plt
-from matplotlib.text import Annotation
 import numpy as np
-import mplcursors
 # from uspace.flight_plan.flight_plan import FlightPlan
 
 file_path = os.path.dirname(__file__)
-project_root_path = os.path.abspath(os.path.join(file_path, '../..'))
+project_root_path = os.path.abspath(os.path.join(file_path, '../../../..'))
 if project_root_path not in sys.path:
     sys.path.append(project_root_path)
 

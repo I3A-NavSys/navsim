@@ -1,13 +1,11 @@
 import sys
 import os
 import matplotlib.pyplot as plt
-from matplotlib.text import Annotation
 import numpy as np
-import mplcursors
 # from uspace.flight_plan.flight_plan import FlightPlan
 
 file_path = os.path.dirname(__file__)
-project_root_path = os.path.abspath(os.path.join(file_path, '../..'))
+project_root_path = os.path.abspath(os.path.join(file_path, '../../../..'))
 if project_root_path not in sys.path:
     sys.path.append(project_root_path)
 
@@ -15,7 +13,7 @@ project_root_path = project_root_path.replace("\\", "/")
 
 time_step = 0.01
 is_3d = False
-colors = ["cornflowerblue", "darkorange", "mediumseagreen", "lightcoral", "violet"]
+colors = ["cornflowerblue", "darkorange", "mediumseagreen", "red", "violet"]
 amount_uavs = 5
 
 def get_exported_data():
@@ -103,10 +101,10 @@ def add_trace(tr, label, pos_fig_name, color):
     x_pos_time_plot.plot(tr_t, tr_x, linewidth=2, color=color)
     y_pos_time_plot.plot(tr_t, tr_y, linewidth=2, color=color)
     z_pos_time_plot.plot(tr_t, tr_z, linewidth=2, color=color)
-    # xyz_pos_plot.legend(loc="upper right", fontsize=8, bbox_to_anchor=(1.25, 1.15), borderaxespad=0.)
     xyz_pos_plot.legend()          
 
 def hightlight_wps(tr, pos_fig_name):
+    dot_size = 10
     tr_t = tr[:, 0]
     tr_x = tr[:, 1]
     tr_y = tr[:, 2]
@@ -131,29 +129,29 @@ def hightlight_wps(tr, pos_fig_name):
             last_wp_time = truncated_time
 
             # Highlight waypoints positions
-            if is_3d:       xyz_pos_plot.scatter(tr_x[i], tr_y[i], tr_z[i], marker="o", color="blue", s=25)
-            else:           xyz_pos_plot.scatter(tr_x[i], tr_y[i], marker="o", color="blue", s=25)
-            x_pos_time_plot.scatter(truncated_time, tr_x[i], marker="o", color="blue", s=25)
-            y_pos_time_plot.scatter(truncated_time, tr_y[i], marker="o", color="blue", s=25)
-            z_pos_time_plot.scatter(truncated_time, tr_z[i], marker="o", color="blue", s=25)
+            if is_3d:       xyz_pos_plot.scatter(tr_x[i], tr_y[i], tr_z[i], marker="o", color="blue", s=dot_size, zorder=3)
+            else:           xyz_pos_plot.scatter(tr_x[i], tr_y[i], marker="o", color="blue", s=dot_size, zorder=3)
+            x_pos_time_plot.scatter(truncated_time, tr_x[i], marker="o", color="blue", s=dot_size, zorder=3)
+            y_pos_time_plot.scatter(truncated_time, tr_y[i], marker="o", color="blue", s=dot_size, zorder=3)
+            z_pos_time_plot.scatter(truncated_time, tr_z[i], marker="o", color="blue", s=dot_size, zorder=3)
 
         elif i == 0:
             # Highlight waypoints positions
-            if is_3d:       xyz_pos_plot.scatter(tr_x[i], tr_y[i], tr_z[i], marker="o", color="blue", s=25)
-            else:           xyz_pos_plot.scatter(tr_x[i], tr_y[i], marker="o", color="blue", s=25)
-            x_pos_time_plot.scatter(tr_t[0], tr_x[i], marker="o", color="blue", s=25)
-            y_pos_time_plot.scatter(tr_t[0], tr_y[i], marker="o", color="blue", s=25)
-            z_pos_time_plot.scatter(tr_t[0], tr_z[i], marker="o", color="blue", s=25)
+            if is_3d:       xyz_pos_plot.scatter(tr_x[i], tr_y[i], tr_z[i], marker="o", color="blue", s=dot_size, zorder=3)
+            else:           xyz_pos_plot.scatter(tr_x[i], tr_y[i], marker="o", color="blue", s=dot_size, zorder=3)
+            x_pos_time_plot.scatter(tr_t[0], tr_x[i], marker="o", color="blue", s=dot_size, zorder=3)
+            y_pos_time_plot.scatter(tr_t[0], tr_y[i], marker="o", color="blue", s=dot_size, zorder=3)
+            z_pos_time_plot.scatter(tr_t[0], tr_z[i], marker="o", color="blue", s=dot_size, zorder=3)
 
         elif (truncated_time >= first_wp_time_grid and truncated_time <= last_wp_time_grid) and truncated_time - last_wp_time == 10:
             last_wp_time = truncated_time
 
             # Highlight waypoints positions
-            if is_3d:       xyz_pos_plot.scatter(tr_x[i], tr_y[i], tr_z[i], marker="o", color="blue", s=25)
-            else:           xyz_pos_plot.scatter(tr_x[i], tr_y[i], marker="o", color="blue", s=25)
-            x_pos_time_plot.scatter(last_wp_time, tr_x[i], marker="o", color="blue", s=25)
-            y_pos_time_plot.scatter(last_wp_time, tr_y[i], marker="o", color="blue", s=25)
-            z_pos_time_plot.scatter(last_wp_time, tr_z[i], marker="o", color="blue", s=25)
+            if is_3d:       xyz_pos_plot.scatter(tr_x[i], tr_y[i], tr_z[i], marker="o", color="blue", s=dot_size, zorder=3)
+            else:           xyz_pos_plot.scatter(tr_x[i], tr_y[i], marker="o", color="blue", s=dot_size, zorder=3)
+            x_pos_time_plot.scatter(last_wp_time, tr_x[i], marker="o", color="blue", s=dot_size, zorder=3)
+            y_pos_time_plot.scatter(last_wp_time, tr_y[i], marker="o", color="blue", s=dot_size, zorder=3)
+            z_pos_time_plot.scatter(last_wp_time, tr_z[i], marker="o", color="blue", s=dot_size, zorder=3)
 
         elif truncated_time > last_wp_time_grid and truncated_time - last_wp_time == 10:
             are_last_wps = True
@@ -242,25 +240,25 @@ def add_distance_separation(dist_sep, tr1, tr2, times, label, pos_fig_name, sep_
     tr2_z = tr2[tr2_min_dist_i, 3][0][0]
 
     if is_3d:
-        xyz_pos_plot.scatter(tr1_x, tr1_y, tr1_z, marker="o", color="black", s=20, zorder=3)
-        xyz_pos_plot.scatter(tr2_x, tr2_y, tr2_z, marker="o", color="black", s=20, zorder=3)
-        xyz_pos_plot.plot([tr1_x, tr2_x], [tr1_y, tr2_y], [tr1_z, tr2_z], color="black", linestyle="--", zorder=3)
+        xyz_pos_plot.scatter(tr1_x, tr1_y, tr1_z, marker="o", color="black", s=20, zorder=4)
+        xyz_pos_plot.scatter(tr2_x, tr2_y, tr2_z, marker="o", color="black", s=20, zorder=4)
+        xyz_pos_plot.plot([tr1_x, tr2_x], [tr1_y, tr2_y], [tr1_z, tr2_z], color="black", linestyle="--", zorder=4)
     
     else:
-        xyz_pos_plot.scatter(tr1_x, tr1_z, marker="o", color="black", s=20, zorder=3)
-        xyz_pos_plot.scatter(tr2_x, tr2_z, marker="o", color="black", s=20, zorder=3)
-        xyz_pos_plot.plot([tr1_x, tr2_x], [tr1_y, tr2_y], color="black", linestyle="--", zorder=3)
+        xyz_pos_plot.scatter(tr1_x, tr1_y, marker="o", color="black", s=20, zorder=4)
+        xyz_pos_plot.scatter(tr2_x, tr2_y, marker="o", color="black", s=20, zorder=4)
+        xyz_pos_plot.plot([tr1_x, tr2_x], [tr1_y, tr2_y], color="black", linestyle="--", zorder=4)
 
-    x_pos_time_plot.scatter(min_dist_x, tr1_x, marker="o", color="black", s=20, zorder=3)
-    y_pos_time_plot.scatter(min_dist_x, tr1_y, marker="o", color="black", s=20, zorder=3)
-    z_pos_time_plot.scatter(min_dist_x, tr1_z, marker="o", color="black", s=20, zorder=3)
-    x_pos_time_plot.scatter(min_dist_x, tr2_x, marker="o", color="black", s=20, zorder=3)
-    y_pos_time_plot.scatter(min_dist_x, tr2_y, marker="o", color="black", s=20, zorder=3)
-    z_pos_time_plot.scatter(min_dist_x, tr2_z, marker="o", color="black", s=20, zorder=3)
+    x_pos_time_plot.scatter(min_dist_x, tr1_x, marker="o", color="black", s=20, zorder=4)
+    y_pos_time_plot.scatter(min_dist_x, tr1_y, marker="o", color="black", s=20, zorder=4)
+    z_pos_time_plot.scatter(min_dist_x, tr1_z, marker="o", color="black", s=20, zorder=4)
+    x_pos_time_plot.scatter(min_dist_x, tr2_x, marker="o", color="black", s=20, zorder=4)
+    y_pos_time_plot.scatter(min_dist_x, tr2_y, marker="o", color="black", s=20, zorder=4)
+    z_pos_time_plot.scatter(min_dist_x, tr2_z, marker="o", color="black", s=20, zorder=4)
 
-    x_pos_time_plot.plot([min_dist_x, min_dist_x], [tr1_x, tr2_x], color="black", linestyle="--", zorder=3)
-    y_pos_time_plot.plot([min_dist_x, min_dist_x], [tr1_y, tr2_y], color="black", linestyle="--", zorder=3)
-    z_pos_time_plot.plot([min_dist_x, min_dist_x], [tr1_z, tr2_z], color="black", linestyle="--", zorder=3)
+    x_pos_time_plot.plot([min_dist_x, min_dist_x], [tr1_x, tr2_x], color="black", linestyle="--", zorder=4)
+    y_pos_time_plot.plot([min_dist_x, min_dist_x], [tr1_y, tr2_y], color="black", linestyle="--", zorder=4)
+    z_pos_time_plot.plot([min_dist_x, min_dist_x], [tr1_z, tr2_z], color="black", linestyle="--", zorder=4)
 
 def compare_traces(tr1, tr2):
     global time_step
