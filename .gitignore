@@ -121,4 +121,4 @@ CATKIN_IGNORE
 .ionide
 /ov/.vscode
 
-/tmp/tmpVictor/playground.py
+/tmp/tmpVictor/playground/*
