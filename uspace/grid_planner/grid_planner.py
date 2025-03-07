@@ -6,13 +6,14 @@ import matplotlib.pyplot as plt
 from uspace.flight_plan.flight_plan import FlightPlan
 
 class GridNode:
-    def __init__(self, i, j, L, s, cost, parent):
+    def __init__(self, i, j, L, s, cost, parent, state):
         self.i = i
         self.j = j
         self.L = L
         self.s = s
         self.cost = cost
         self.parent = parent
+        self.state = state
 
 class GridPlanner:
 
@@ -37,9 +38,9 @@ class GridPlanner:
         j = int(j)
         s = time // self.slot_time
         if j % 2 == 0:
-            return [GridNode(i+1, j, 'X', s+2, 0, None), GridNode(i-1, j+1, 'X', s+2, 0, None)]
+            return [GridNode(i+1, j, 'X', s+2, 0, None, 0), GridNode(i-1, j+1, 'X', s+2, 0, None, 0)]
         else:
-            return [GridNode(i+1, j+1, 'X', s+2, 0, None), GridNode(i-1, j, 'X', s+2, 0, None)]
+            return [GridNode(i+1, j+1, 'X', s+2, 0, None, 0), GridNode(i-1, j, 'X', s+2, 0, None, 0)]
         
     def get_landing_nodes(self, posXY):
         """
@@ -50,9 +51,9 @@ class GridPlanner:
         i = int(i)
         j = int(j)
         if j % 2 == 0:
-            return [GridNode(i+1, j+1, 'X', None, 0, None), GridNode(i-1, j, 'X', None, 0, None)]
+            return [GridNode(i+1, j+1, 'X', None, 0, None, 0), GridNode(i-1, j, 'X', None, 0, None, 0)]
         else:
-            return [GridNode(i-1, j+1, 'X', None, 0, None), GridNode(i+1, j, 'X', None, 0, None)]
+            return [GridNode(i-1, j+1, 'X', None, 0, None, 0), GridNode(i+1, j, 'X', None, 0, None, 0)]
 
     def get_end_node(self, pos, time=0, is_landing=False):
         """
@@ -71,26 +72,29 @@ class GridPlanner:
             else:               i -= 1
             s = time + 2
 
-        return GridNode(i, j, 'X', s, 0, None)
+        return GridNode(i, j, 'X', s, 0, None, 0)
     
     def get_next_node(self, node: GridNode):
         """
         Dado un nodo, devuelve el nodo siguiente en línea recta.
         """
+        if node.state > 0:      new_state = node.state - 90
+        else:                   new_state = 0
+
         if node.L == 'X':
             if node.j % 2 == 0:
-                return GridNode(node.i+1, node.j, 'X', node.s+1, node.cost+1, node)        # rumbo ESTE
+                return GridNode(node.i+1, node.j, 'X', node.s+1, node.cost+1, node, new_state)        # rumbo ESTE
             
             else:
-                return GridNode(node.i-1, node.j, 'X', node.s+1, node.cost+1, node)        # rumbo OESTE
+                return GridNode(node.i-1, node.j, 'X', node.s+1, node.cost+1, node, new_state)        # rumbo OESTE
         
         # L == 'Y'
         else:
             if node.i % 2 == 0:
-                return GridNode(node.i, node.j+1, 'Y', node.s+1, node.cost+1, node)        # rumbo NORTE
+                return GridNode(node.i, node.j+1, 'Y', node.s+1, node.cost+1, node, new_state)        # rumbo NORTE
             
             else:
-                return GridNode(node.i, node.j-1, 'Y', node.s+1, node.cost+1, node)        # rumbo SUR
+                return GridNode(node.i, node.j-1, 'Y', node.s+1, node.cost+1, node, new_state)        # rumbo SUR
 
     def get_cross_node(self, node: GridNode):
         """
@@ -99,33 +103,33 @@ class GridPlanner:
         if node.L == 'X':
             if node.j % 2 == 0:                  
                 if node.i % 2 == 0:
-                    return GridNode(node.i+1, node.j-1, 'Y', node.s+1, node.cost+2, node)    # giro ESTE -> SUR
+                    return GridNode(node.i+1, node.j-1, 'Y', node.s+1, node.cost+2, node, node.state + 90)    # giro ESTE -> SUR
                 
                 else:
-                    return GridNode(node.i+1, node.j, 'Y', node.s+1, node.cost+2, node)    # giro ESTE -> NORTE
+                    return GridNode(node.i+1, node.j, 'Y', node.s+1, node.cost+2, node, node.state + 90)    # giro ESTE -> NORTE
             
             else:                           
                 if node.i % 2 == 0:              
-                    return GridNode(node.i, node.j, 'Y', node.s+1, node.cost+2, node)    # giro OESTE -> NORTE
+                    return GridNode(node.i, node.j, 'Y', node.s+1, node.cost+2, node, node.state + 90)    # giro OESTE -> NORTE
                 
                 else:    
-                    return GridNode(node.i, node.j-1, 'Y', node.s+1, node.cost+2, node)    # giro OESTE -> SUR
+                    return GridNode(node.i, node.j-1, 'Y', node.s+1, node.cost+2, node, node.state + 90)    # giro OESTE -> SUR
         
         # L == 'Y'
         else:
             if node.i % 2 == 0:                  
                 if node.j % 2 == 0:
-                    return GridNode(node.i-1, node.j+1, 'X', node.s+1, node.cost+2, node)    # giro NORTE -> OESTE
+                    return GridNode(node.i-1, node.j+1, 'X', node.s+1, node.cost+2, node, node.state + 90)    # giro NORTE -> OESTE
                 
                 else:
-                    return GridNode(node.i, node.j+1, 'X', node.s+1, node.cost+2, node)    # giro NORTE -> ESTE
+                    return GridNode(node.i, node.j+1, 'X', node.s+1, node.cost+2, node, node.state + 90)    # giro NORTE -> ESTE
             
             else:                           
                 if node.j % 2 == 0:              
-                    return GridNode(node.i, node.j, 'X', node.s+1, node.cost+2, node)    # giro SUR -> ESTE
+                    return GridNode(node.i, node.j, 'X', node.s+1, node.cost+2, node, node.state + 90)    # giro SUR -> ESTE
                 
                 else:
-                    return GridNode(node.i-1, node.j, 'X', node.s+1, node.cost+2, node)    # giro SUR -> OESTE
+                    return GridNode(node.i-1, node.j, 'X', node.s+1, node.cost+2, node, node.state + 90)    # giro SUR -> OESTE
 
     def get_length_from_node(self, node: GridNode):
         if node.parent is None:
@@ -158,6 +162,7 @@ class GridPlanner:
         return x, y
 
     def debug_matplotlib(self, node):
+        print((node.i, node.j, node.L, node.s, node.state))
         x, y = self.debug_get_line_from_node(node)
 
         if node.parent is None:
@@ -168,7 +173,7 @@ class GridPlanner:
         self.debug_figure.scatter(x, y, color="black", s=10, zorder=5)
 
         # plt.draw()
-        plt.pause(0.1)
+        plt.pause(0.01)
 
     def get_route(self, start_node: GridNode, end_node: GridNode):
         """
@@ -199,20 +204,30 @@ class GridPlanner:
                 continue
 
             if (node.i, node.j, node.L) == (end_node.i, end_node.j, end_node.L):
-                end_time = time.time()
-                elapsed_time = end_time - start_time
+                is_node_state_valid = node.state == 0
+                is_combined_nodes_state_valid = (node.state == 90) and (node.parent.state == 180)
 
-                return self.get_route_from_node(node), elapsed_time, len(explored_nodes)
+                if is_node_state_valid or is_combined_nodes_state_valid:
+                    end_time = time.time()
+                    elapsed_time = end_time - start_time
+
+                    return self.get_route_from_node(node), elapsed_time, len(explored_nodes)
+                
+                continue
 
             if (node.i, node.j, node.L) in explored_nodes:
                 continue
             
             explored_nodes.append((node.i, node.j, node.L))
 
-            next_node = self.get_next_node(node)
-            cross_node = self.get_cross_node(node)
+            new_nodes = []
+            if node.parent is not None:
+                is_node_state_valid = node.state <= 90
+                is_parent_state_valid = node.parent.state <= 90
 
-            new_nodes = [next_node, cross_node]
+                if is_node_state_valid and is_parent_state_valid:   new_nodes.append(self.get_cross_node(node))
+            new_nodes.append(self.get_next_node(node))
+
             for new_node in new_nodes:
                 if new_node is not None:
                     h_new_node = self.evaluate_node(new_node, end_node)
