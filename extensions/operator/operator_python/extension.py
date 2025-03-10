@@ -276,6 +276,8 @@ class Operator(omni.ext.IExt):
         tracked_info_trace_rows = len(tracked_info)
         tracked_info_trace_cols = 7
 
+        waypoints = [[wp.t, wp.pos[0], wp.pos[1], wp.pos[2]] for wp in fp.waypoints]
+
         fp_trace = fp.trace(self.plot_time_steps)
         tracked_info_trace = np.zeros((tracked_info_trace_rows, tracked_info_trace_cols))
         for i in range(tracked_info_trace_rows):
@@ -290,9 +292,11 @@ class Operator(omni.ext.IExt):
             tracked_info_trace[i, 6] = wp.vel[2]
 
         id = uav_id.replace("/", "_")
+        waypoints_path = project_root_path + "/sims/exported_data" + f"/{id}_{key}_waypoints.csv"
         fp_path = project_root_path + "/sims/exported_data" + f"/{id}_{key}_flightplan.csv"
         tracked_info_path = project_root_path + "/sims/exported_data" + f"/{id}_{key}_tracked_info.csv"
 
+        np.savetxt(waypoints_path, waypoints, delimiter=", ", fmt="%s")
         np.savetxt(fp_path, fp_trace, delimiter=", ", fmt="%s")
         np.savetxt(tracked_info_path, tracked_info_trace, delimiter=", ", fmt="%s")
 
