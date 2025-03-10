@@ -175,7 +175,7 @@ class GridPlanner:
         # plt.draw()
         plt.pause(0.01)
 
-    def get_route(self, start_node: GridNode, end_node: GridNode):
+    def get_route(self, start_node: GridNode, end_node: GridNode, are_new_restrictions=True):
         """
         Dados dos nodos, devuelve una ruta libre del primero al segundo,
         partiendo en el slot especificado.
@@ -195,39 +195,51 @@ class GridPlanner:
             # Return if route length exceeds maximum
             if self.get_length_from_node(node) > self.max_route_length:
                 continue
-                # end_time = time.time()
-                # elapsed_time = end_time - start_time
-
-                # return None, elapsed_time, len(explored_nodes)
-
+            # Continue when node is already reserved
             if (node.i, node.j, node.L, node.s) in self.grid:
                 continue
 
+            # Check if current node is end node
             if (node.i, node.j, node.L) == (end_node.i, end_node.j, end_node.L):
-                is_node_state_valid = node.state == 0
-                is_combined_nodes_state_valid = (node.state == 90) and (node.parent.state == 180)
+                if are_new_restrictions:
+                    is_node_state_valid = node.state == 0
+                    is_combined_nodes_state_valid = (node.state == 90) and (node.parent.state == 180)
 
-                if is_node_state_valid or is_combined_nodes_state_valid:
+                    if is_node_state_valid or is_combined_nodes_state_valid:
+                        end_time = time.time()
+                        elapsed_time = end_time - start_time
+
+                        return self.get_route_from_node(node), elapsed_time, len(explored_nodes)
+                    
+                    continue
+                
+                else:
                     end_time = time.time()
                     elapsed_time = end_time - start_time
 
                     return self.get_route_from_node(node), elapsed_time, len(explored_nodes)
-                
-                continue
 
+            # Avoid using same node (no time considered) once again
             if (node.i, node.j, node.L) in explored_nodes:
                 continue
             
             explored_nodes.append((node.i, node.j, node.L))
 
+            # Expand new nodes according to restrictions
             new_nodes = []
-            if node.parent is not None:
-                is_node_state_valid = node.state <= 90
-                is_parent_state_valid = node.parent.state <= 90
+            if are_new_restrictions:
+                if node.parent is not None:
+                    is_node_state_valid = node.state <= 90
+                    is_parent_state_valid = node.parent.state <= 90
 
-                if is_node_state_valid and is_parent_state_valid:   new_nodes.append(self.get_cross_node(node))
-            new_nodes.append(self.get_next_node(node))
+                    if is_node_state_valid and is_parent_state_valid:   new_nodes.append(self.get_cross_node(node))
+                new_nodes.append(self.get_next_node(node))
+            
+            else:
+                new_nodes.append(self.get_next_node(node))
+                new_nodes.append(self.get_cross_node(node))
 
+            # Evaluate new nodes
             for new_node in new_nodes:
                 if new_node is not None:
                     h_new_node = self.evaluate_node(new_node, end_node)
@@ -240,7 +252,7 @@ class GridPlanner:
 
         return None, elapsed_time, len(explored_nodes)
     
-    def get_best_route(self, option, init_pos, end_pos, init_time, end_time):
+    def get_best_route(self, option, init_pos, end_pos, init_time, end_time, are_new_restrictions=True):
         """
         Given an init and end time, return the best possible route specified by the option
 
@@ -259,6 +271,7 @@ class GridPlanner:
                 - Final time of the route in time slot
         """
 
+        start_time = time.time()
         routes = []
         prio_length_routes = PriorityQueue()
         prio_time_routes = PriorityQueue()
@@ -273,33 +286,38 @@ class GridPlanner:
             takeoff_node = self.get_end_node(init_pos, int(time_slot), is_landing=False)
             landing_node = self.get_end_node(end_pos, is_landing=True)
 
-            route, _, _ = self.get_route(takeoff_node, landing_node)
+            route, elapsed_time, explored_nodes = self.get_route(takeoff_node, landing_node, are_new_restrictions)
 
             if route is not None:
                 generation += 1
                 if option == 0:
-                    prio_length_routes.put((self.route_length(route), route[-1].s, route[-1].cost, generation, route))
+                    prio_length_routes.put((self.route_length(route), route[-1].s, route[-1].cost, generation, route,
+                                            elapsed_time, explored_nodes))
                 
                 elif option == 1:
-                    prio_time_routes.put((route[-1].s, self.route_length(route), route[-1].cost, generation, route))
+                    prio_time_routes.put((route[-1].s, self.route_length(route), route[-1].cost, generation, route,
+                                          elapsed_time, explored_nodes))
 
                 elif option == 2:
-                    prio_cost_routes.put((route[-1].cost, self.route_length(route), route[-1].s, generation, route))
+                    prio_cost_routes.put((route[-1].cost, self.route_length(route), route[-1].s, generation, route,
+                                          elapsed_time, explored_nodes))
 
                 routes.append(route)
 
+        final_time = time.time()
+        if option == 0 and not prio_length_routes.empty():
+            route = prio_length_routes.get()
+            return route[4], (route[5], route[6], final_time - start_time)
 
-        if option == 0:
-            if prio_length_routes.empty():      return None, None
-            else:                               return prio_length_routes.get()[4], routes
+        elif option == 1 and not prio_time_routes.empty():
+            route = prio_time_routes.get()
+            return route[4], (route[5], route[6], final_time - start_time)
 
-        elif option == 1:
-            if prio_time_routes.empty():        return None, None
-            else:                               return prio_time_routes.get()[4], routes
+        elif option == 2 and not prio_cost_routes.empty():
+            route = prio_cost_routes.get()
+            return route[4], (route[5], route[6], final_time - start_time)
 
-        elif option == 2:
-            if prio_cost_routes.empty():        return None, None
-            else:                               return prio_cost_routes.get()[4], routes
+        return None, (None, None, final_time - start_time)
 
     def get_route_from_node(self, node: GridNode):
         route = []
