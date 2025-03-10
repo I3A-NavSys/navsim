@@ -17,14 +17,17 @@ colors = ["cornflowerblue", "darkorange", "mediumseagreen", "red", "violet"]
 amount_uavs = 5
 
 def get_exported_data():
+    waypoints_traces = []
     fp_traces = []
     tracked_info_traces = []
     filename = "giro90_descenso_"
 
     for i in range(amount_uavs):
+        waypoints_path = project_root_path + "/sims/exported_data" + f"/{filename}UAV{i}_waypoints.csv"
         fp_path = project_root_path + "/sims/exported_data" + f"/{filename}UAV{i}_flightplan.csv"
         tracked_info_path = project_root_path + "/sims/exported_data" + f"/{filename}UAV{i}_tracked_info.csv"
 
+        waypoints_traces.append(np.loadtxt(waypoints_path, delimiter=",", dtype=float))
         fp_traces.append(np.loadtxt(fp_path, delimiter=",", dtype=float))
         tracked_info_traces.append(np.loadtxt(tracked_info_path, delimiter=",", dtype=float))
 
@@ -33,7 +36,7 @@ def get_exported_data():
         for i in range(len(trace)):
             trace[i, 0] = round(trace[i, 0], 0)        
 
-    return fp_traces, tracked_info_traces
+    return waypoints_traces, fp_traces, tracked_info_traces
 
 def build_plot(pos_fig_name, sep_fig_name):
     global is_3d
@@ -55,7 +58,7 @@ def build_plot(pos_fig_name, sep_fig_name):
     xyz_pos_plot.set_xlabel("x [m]")
     xyz_pos_plot.set_ylabel("y [m]")
     if is_3d:       xyz_pos_plot.set_zlabel("z [m]")
-    else:           xyz_pos_plot.set_ylabel("z [m]")
+    else:           xyz_pos_plot.set_ylabel("y [m]")
     x_pos_time_plot.set_ylabel("x [m]")
     y_pos_time_plot.set_ylabel("y [m]")
     z_pos_time_plot.set_ylabel("z [m]")
@@ -117,45 +120,12 @@ def hightlight_wps(tr, pos_fig_name):
     y_pos_time_plot = subplots[2]
     z_pos_time_plot = subplots[3]
 
-    first_wp_time_grid = tr_t[0] + 20
-    last_wp_time_grid = round(tr_t[-1] - 40, 0)
-    last_wp_time = first_wp_time_grid - 10
-    are_last_wps = False
-
-    for i, time in enumerate(tr_t):
-        truncated_time = float("%.2f"%time)
-
-        if are_last_wps and truncated_time - last_wp_time == 10:
-            last_wp_time = truncated_time
-
-            # Highlight waypoints positions
-            if is_3d:       xyz_pos_plot.scatter(tr_x[i], tr_y[i], tr_z[i], marker="o", color="blue", s=dot_size, zorder=3)
-            else:           xyz_pos_plot.scatter(tr_x[i], tr_y[i], marker="o", color="blue", s=dot_size, zorder=3)
-            x_pos_time_plot.scatter(truncated_time, tr_x[i], marker="o", color="blue", s=dot_size, zorder=3)
-            y_pos_time_plot.scatter(truncated_time, tr_y[i], marker="o", color="blue", s=dot_size, zorder=3)
-            z_pos_time_plot.scatter(truncated_time, tr_z[i], marker="o", color="blue", s=dot_size, zorder=3)
-
-        elif i == 0:
-            # Highlight waypoints positions
-            if is_3d:       xyz_pos_plot.scatter(tr_x[i], tr_y[i], tr_z[i], marker="o", color="blue", s=dot_size, zorder=3)
-            else:           xyz_pos_plot.scatter(tr_x[i], tr_y[i], marker="o", color="blue", s=dot_size, zorder=3)
-            x_pos_time_plot.scatter(tr_t[0], tr_x[i], marker="o", color="blue", s=dot_size, zorder=3)
-            y_pos_time_plot.scatter(tr_t[0], tr_y[i], marker="o", color="blue", s=dot_size, zorder=3)
-            z_pos_time_plot.scatter(tr_t[0], tr_z[i], marker="o", color="blue", s=dot_size, zorder=3)
-
-        elif (truncated_time >= first_wp_time_grid and truncated_time <= last_wp_time_grid) and truncated_time - last_wp_time == 10:
-            last_wp_time = truncated_time
-
-            # Highlight waypoints positions
-            if is_3d:       xyz_pos_plot.scatter(tr_x[i], tr_y[i], tr_z[i], marker="o", color="blue", s=dot_size, zorder=3)
-            else:           xyz_pos_plot.scatter(tr_x[i], tr_y[i], marker="o", color="blue", s=dot_size, zorder=3)
-            x_pos_time_plot.scatter(last_wp_time, tr_x[i], marker="o", color="blue", s=dot_size, zorder=3)
-            y_pos_time_plot.scatter(last_wp_time, tr_y[i], marker="o", color="blue", s=dot_size, zorder=3)
-            z_pos_time_plot.scatter(last_wp_time, tr_z[i], marker="o", color="blue", s=dot_size, zorder=3)
-
-        elif truncated_time > last_wp_time_grid and truncated_time - last_wp_time == 10:
-            are_last_wps = True
-            last_wp_time = truncated_time
+    # Highlight waypoints positions
+    if is_3d:       xyz_pos_plot.scatter(tr_x[i], tr_y[i], tr_z[i], marker="o", color="blue", s=dot_size, zorder=3)
+    else:           xyz_pos_plot.scatter(tr_x[i], tr_y[i], marker="o", color="blue", s=dot_size, zorder=3)
+    x_pos_time_plot.scatter(tr_t[0], tr_x[i], marker="o", color="blue", s=dot_size, zorder=3)
+    y_pos_time_plot.scatter(tr_t[0], tr_y[i], marker="o", color="blue", s=dot_size, zorder=3)
+    z_pos_time_plot.scatter(tr_t[0], tr_z[i], marker="o", color="blue", s=dot_size, zorder=3)
 
 def adjust_limits(pos_fig_name):
     global is_3d
@@ -287,15 +257,15 @@ def compare_traces(tr1, tr2):
     return distances, trace_1_times[init_trace_1[0][0]:end_trace_1[0][0]]
 
 if __name__ == "__main__":
-    fp_traces, tracked_info_traces = get_exported_data()
+    waypoints_traces, fp_traces, tracked_info_traces = get_exported_data()
 
     build_plot(pos_fig_name="POSICIÓN TEÓRICA", sep_fig_name="SEPARACIÓN TEÓRICA")
     build_plot(pos_fig_name="POSICIÓN REAL", sep_fig_name="SEPARACIÓN REAL")
 
     for i in range(len(fp_traces)):
         add_trace(fp_traces[i], f"UAV{i}", pos_fig_name="POSICIÓN TEÓRICA", color=colors[i])
-        hightlight_wps(fp_traces[i], "POSICIÓN TEÓRICA")
-        hightlight_wps(fp_traces[i], "POSICIÓN REAL")
+        hightlight_wps(waypoints_traces[i], "POSICIÓN TEÓRICA")
+        hightlight_wps(waypoints_traces[i], "POSICIÓN REAL")
         add_trace(tracked_info_traces[i], f"UAV{i}", pos_fig_name="POSICIÓN REAL", color=colors[i])
 
     adjust_limits(pos_fig_name="POSICIÓN TEÓRICA")
