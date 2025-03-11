@@ -422,7 +422,12 @@ class GridPlanner:
         heuristic = 0
 
         # Penalize sharp turns and unnecessary deviations
-        if abs(i_diff) > 0.5 and abs(j_diff) > 0.5:
+        if abs(i_diff) > 0 and abs(j_diff) > 0:
+            if node.parent is not None and node.L != node.parent.L:
+                heuristic += 3.5  # Slight penalty for non-optimal alignments
+
+        # if abs(i_diff) <= 1 or abs(j_diff) <= 1:
+        if abs(i_diff) <= 1:
             if node.parent is not None and node.L != node.parent.L:
                 heuristic += 3.5  # Slight penalty for non-optimal alignments
 
