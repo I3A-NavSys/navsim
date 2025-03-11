@@ -17,6 +17,7 @@ from uspace.grid_planner.grid_planner import GridPlanner
 
 
 gp = GridPlanner()
+debug = False
 
 random.seed(1)
 routes_amount = 1000
@@ -42,7 +43,7 @@ for r in range(routes_amount):
     end_pos.append((i2, j2))
 
     init_times.append(r)
-    end_times.append(r+60)
+    end_times.append(r+12)
 
 # Define grid parameters
 x = np.arange(start_grid-150, end_grid+201, 100)
@@ -51,7 +52,7 @@ y = np.arange(start_grid-200, end_grid+201, 100)
 
 def plot():
     # Create figure and axis
-    fig = plt.figure("Computation time test")
+    fig = plt.figure("Computation_time_test")
     ax = fig.add_subplot()
     ax.set_title("Routes")
 
@@ -95,14 +96,16 @@ def plot():
 
     return ax
 
-def get_routes(ax):
+def get_routes(plot_routes=True, are_new_restrictions=False):
     best_route_times = []
     complete_window_times = []
+    routes_explored_nodes = []
     start_time = time.time()
     total_time_computing = 0
+    discarded_routes = 0
     for r in range(routes_amount):
         route, comp_params = gp.get_best_route(0, init_pos[r], end_pos[r], init_times[r], end_times[r], 
-                                               are_new_restrictions=False)
+                                               are_new_restrictions=are_new_restrictions)
         time_computing = round(comp_params[2], 5)
         total_time_computing += time_computing
         complete_window_times.append(time_computing)
@@ -111,44 +114,53 @@ def get_routes(ax):
             elapsed_time = round(comp_params[0], 5)
             explored_nodes = comp_params[1]
             best_route_times.append(elapsed_time)
+            routes_explored_nodes.append(explored_nodes)
 
             gp.reserve_nodes(route)
 
-            # X = []
-            # Y = []
+            if not debug and plot_routes:
+                ax = plt.figure("Computation_time_test").get_axes()[0]
 
-            # for node in route:
-            #     X.append(node.i * 100 + 50 if node.L == "X" else node.i * 100)
-            #     Y.append(node.j * 100 + 50 if node.L == "Y" else node.j * 100)
+                X = []
+                Y = []
 
-            # line = ax.plot(X, Y, zorder=3, label=f"R{r}: TC-{time_computing}, RT-{elapsed_time}, EN-{explored_nodes}")
-            # sc = ax.scatter(X[0], Y[0], color="springgreen")
-            # ax.scatter(X[-1], Y[-1], color="lightcoral")
-            # ax.legend(loc="upper right", fontsize=8, bbox_to_anchor=(1.25, 1.15), borderaxespad=0.)
+                for node in route:
+                    X.append(node.i * 100 + 50 if node.L == "X" else node.i * 100)
+                    Y.append(node.j * 100 + 50 if node.L == "Y" else node.j * 100)
+
+                line = ax.plot(X, Y, zorder=3, label=f"R{r}: TC-{time_computing}, RT-{elapsed_time}, EN-{explored_nodes}")
+                sc = ax.scatter(X[0], Y[0], color="springgreen")
+                ax.scatter(X[-1], Y[-1], color="lightcoral")
+                ax.legend(loc="upper right", fontsize=8, bbox_to_anchor=(1.25, 1.15), borderaxespad=0.)
 
         else:
-            print(f"Route {r} could not be computed")
-            print(f"Time computing: {round(time_computing, 5)}")
+            # print(f"Route {r} could not be computed")
+            # print(f"Time computing: {round(time_computing, 5)}")
+            routes_explored_nodes.append(explored_nodes)
+            discarded_routes += 1
 
     final_time = time.time()
     print(f"Sum of route computing times: {total_time_computing}")
     print(f"Function time: {final_time - start_time}")
-
-    print("BRT:")
-    print(best_route_times)
-    print(f"Mean: {np.mean(best_route_times)}")
+    print(f"Mean explored nodes: {np.mean(routes_explored_nodes)}")
+    print(f"Discarded routes: {discarded_routes}")
     print()
-    print("CWT:")
-    print(complete_window_times)
-    print(f"Mean: {np.mean(complete_window_times)}")
+
+    # print("BRT:")
+    # print(best_route_times)
+    # print(f"Mean: {np.mean(best_route_times)}")
+    # print()
+    # print("CWT:")
+    # print(complete_window_times)
+    # print(f"Mean: {np.mean(complete_window_times)}")
 
     gp.clear_grid()
 
-    return best_route_times, complete_window_times
+    return best_route_times, complete_window_times, routes_explored_nodes
 
 def plot_times(best_route_times, complete_window_times):
     fig = plt.figure("TIMES")
-    best_route_time_plot = fig.add_subplot(2, 2, (1, 3))
+    best_route_time_plot = fig.add_subplot()
 
     best_route_time_plot.set_xlabel("Route")
     best_route_time_plot.set_ylabel("Time [s]")
@@ -156,10 +168,29 @@ def plot_times(best_route_times, complete_window_times):
     best_route_time_plot.plot(best_route_times, color="lightcoral")
     best_route_time_plot.plot(complete_window_times, color="cornflowerblue")
 
+def compare_explored_nodes(new_routes_explored_nodes, old_routes_explored_nodes):
+    fig = plt.figure("COMPARISON")
+    ax = fig.add_subplot()
+
+    ax.set_title("Explored nodes comparison")
+
+    ax.set_xlabel("Route")
+    ax.set_ylabel("Explored nodes (new / old)")
+
+    new = np.array(new_routes_explored_nodes)
+    old = np.array(old_routes_explored_nodes)
+    proportion = new / old
+
+    ax.plot(proportion)
+
 if __name__ == "__main__":
     ax = plot()
+    # gp.debug = debug
+    # gp.debug_figure = ax
+    new_best_route_times, new_complete_window_times, new_routes_explored_nodes = get_routes(plot_routes=False, are_new_restrictions=True)
+    old_best_route_times, old_complete_window_times, old_routes_explored_nodes = get_routes(plot_routes=False, are_new_restrictions=False)
+    # plot_times(best_route_times, complete_window_times)
 
+    compare_explored_nodes(new_routes_explored_nodes, old_routes_explored_nodes)
     plt.grid(True)
-    best_route_times, complete_window_times = get_routes(ax)
-    plot_times(best_route_times, complete_window_times)
     plt.show()
