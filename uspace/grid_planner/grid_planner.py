@@ -424,54 +424,34 @@ class GridPlanner:
         # Penalize sharp turns and unnecessary deviations
         if abs(i_diff) > 0 and abs(j_diff) > 0:
             if node.parent is not None and node.L != node.parent.L:
-                heuristic += 3.5  # Slight penalty for non-optimal alignments
+                heuristic += 4.5  # Slight penalty for non-optimal alignments
 
         # if abs(i_diff) <= 1 or abs(j_diff) <= 1:
-        if abs(i_diff) <= 1:
-            if node.parent is not None and node.L != node.parent.L:
-                heuristic += 3.5  # Slight penalty for non-optimal alignments
+        if abs(i_diff) <= 1 and node.parent is not None and node.L != node.parent.L:
+                heuristic += 5  # Slight penalty for non-optimal alignments
 
         # Evaluate which direction we should follow and the one we actually are following due to the aeroline we are in
         # Going right
-        if node.j % 2 == 0:
-            if i_diff < 0:     heuristic += 3  # Incorrect direction
-        
+        if node.j % 2 == 0 and i_diff < 0:     heuristic += 3.6  # Incorrect direction
         # Going left
-        else:
-            if i_diff > 0:     heuristic += 3  # Incorrect direction
-
-        # Going up
-        if node.i % 2 == 0:
-            if j_diff < 0:     heuristic += 3  # Incorrect direction
+        elif node.j % 2 != 0 and i_diff > 0:   heuristic += 3.6  # Incorrect direction
         
+        # Going up
+        if node.i % 2 == 0 and j_diff < 0:     heuristic += 3.6  # Incorrect direction
         # Going down
-        else:
-            if j_diff > 0:     heuristic += 3  # Incorrect direction
-
+        elif node.i % 2 != 0 and j_diff > 0:   heuristic += 3.6  # Incorrect direction
+        
+        
         # Penalize if we are not arriving to end node from correct direction
-        # Arrive from left
-        if end_node.j % 2 == 0:
-            # Arriving from right
-            if i_diff < 0:
-                heuristic += 7
+        # Arrive from left, but Arriving from right
+        if end_node.j % 2 == 0 and i_diff < 0:  heuristic += 9.05
+        # Arrive from right, but Arriving from left
+        elif end_node.j % 2 != 0 and i_diff > 0:  heuristic += 9.05
 
-        # Arrive from right
-        else:
-            # Arriving from left
-            if i_diff > 0:
-                heuristic += 7
-
-        # Arrive from bot
-        if end_node.i % 2 == 0:
-            # Arriving from top
-            if j_diff < 0:
-                heuristic += 7
-
-        # Arrive from top
-        else:
-            # Arriving from bot
-            if j_diff > 0:
-                heuristic += 7
+        # Arrive from bot, but Arriving from top
+        if end_node.i % 2 == 0 and j_diff < 0:  heuristic += 9.05
+        # Arrive from top, but Arriving from bot
+        elif end_node.i % 2 != 0 and j_diff > 0:    heuristic += 9.05
 
         return heuristic
 
