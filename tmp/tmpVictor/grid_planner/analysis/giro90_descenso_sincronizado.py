@@ -13,7 +13,7 @@ project_root_path = project_root_path.replace("\\", "/")
 
 time_step = 0.01
 is_3d = False
-colors = ["cornflowerblue", "darkorange", "mediumseagreen", "red", "violet"]
+colors = ["cornflowerblue", "darkorange", "mediumseagreen", "red", "violet", "palevioletred", "slateblue", "peru", "tan"]
 amount_uavs = 5
 
 def get_exported_data():
@@ -121,11 +121,11 @@ def hightlight_wps(tr, pos_fig_name):
     z_pos_time_plot = subplots[3]
 
     # Highlight waypoints positions
-    if is_3d:       xyz_pos_plot.scatter(tr_x[i], tr_y[i], tr_z[i], marker="o", color="blue", s=dot_size, zorder=3)
-    else:           xyz_pos_plot.scatter(tr_x[i], tr_y[i], marker="o", color="blue", s=dot_size, zorder=3)
-    x_pos_time_plot.scatter(tr_t[0], tr_x[i], marker="o", color="blue", s=dot_size, zorder=3)
-    y_pos_time_plot.scatter(tr_t[0], tr_y[i], marker="o", color="blue", s=dot_size, zorder=3)
-    z_pos_time_plot.scatter(tr_t[0], tr_z[i], marker="o", color="blue", s=dot_size, zorder=3)
+    if is_3d:       xyz_pos_plot.scatter(tr_x, tr_y, tr_z, marker="o", color="blue", s=dot_size, zorder=3)
+    else:           xyz_pos_plot.scatter(tr_x, tr_y, marker="o", color="blue", s=dot_size, zorder=3)
+    x_pos_time_plot.scatter(tr_t, tr_x, marker="o", color="blue", s=dot_size, zorder=3)
+    y_pos_time_plot.scatter(tr_t, tr_y, marker="o", color="blue", s=dot_size, zorder=3)
+    z_pos_time_plot.scatter(tr_t, tr_z, marker="o", color="blue", s=dot_size, zorder=3)
 
 def adjust_limits(pos_fig_name):
     global is_3d
@@ -276,11 +276,19 @@ if __name__ == "__main__":
     dist_21, times_21 = compare_traces(fp_traces[2], fp_traces[1])
     dist_31, times_31 = compare_traces(fp_traces[3], fp_traces[1])
     dist_41, times_41 = compare_traces(fp_traces[4], fp_traces[1])
+    dist_30, times_30 = compare_traces(fp_traces[3], fp_traces[0])
+    dist_40, times_40 = compare_traces(fp_traces[4], fp_traces[0])
+    dist_32, times_32 = compare_traces(fp_traces[3], fp_traces[2])
+    dist_42, times_42 = compare_traces(fp_traces[4], fp_traces[2])
 
     distances = [(dist_01, fp_traces[0], fp_traces[1], times_01, "UAV1 vs UAV0", colors[0]),
                  (dist_21, fp_traces[2], fp_traces[1], times_21, "UAV1 vs UAV2", colors[2]),
                  (dist_31, fp_traces[3], fp_traces[1], times_31, "UAV1 vs UAV3", colors[3]),
-                 (dist_41, fp_traces[4], fp_traces[1], times_41, "UAV1 vs UAV4", colors[4])]
+                 (dist_41, fp_traces[4], fp_traces[1], times_41, "UAV1 vs UAV4", colors[4]),
+                 (dist_30, fp_traces[3], fp_traces[0], times_30, "UAV0 vs UAV3", colors[5]),
+                 (dist_40, fp_traces[4], fp_traces[0], times_40, "UAV0 vs UAV4", colors[6]),
+                 (dist_32, fp_traces[3], fp_traces[2], times_32, "UAV2 vs UAV3", colors[7]),
+                 (dist_42, fp_traces[4], fp_traces[2], times_42, "UAV2 vs UAV4", colors[8])]
     
     for dist in distances:
         add_distance_separation(dist[0], dist[1], dist[2], dist[3], dist[4], 
@@ -291,11 +299,19 @@ if __name__ == "__main__":
     dist_21, times_21 = compare_traces(tracked_info_traces[2], tracked_info_traces[1])
     dist_31, times_31 = compare_traces(tracked_info_traces[3], tracked_info_traces[1])
     dist_41, times_41 = compare_traces(tracked_info_traces[4], tracked_info_traces[1])
+    dist_30, times_30 = compare_traces(tracked_info_traces[3], tracked_info_traces[0])
+    dist_40, times_40 = compare_traces(tracked_info_traces[4], tracked_info_traces[0])
+    dist_32, times_32 = compare_traces(tracked_info_traces[3], tracked_info_traces[2])
+    dist_42, times_42 = compare_traces(tracked_info_traces[4], tracked_info_traces[2])
 
     distances = [(dist_01, tracked_info_traces[0], tracked_info_traces[1], times_01, "UAV1 vs UAV0", colors[0]),
                  (dist_21, tracked_info_traces[2], tracked_info_traces[1], times_21, "UAV1 vs UAV2", colors[2]),
                  (dist_31, tracked_info_traces[3], tracked_info_traces[1], times_31, "UAV1 vs UAV3", colors[3]),
-                 (dist_41, tracked_info_traces[4], tracked_info_traces[1], times_41, "UAV1 vs UAV4", colors[4])]
+                 (dist_41, tracked_info_traces[4], tracked_info_traces[1], times_41, "UAV1 vs UAV4", colors[4]),
+                 (dist_30, tracked_info_traces[3], tracked_info_traces[0], times_30, "UAV0 vs UAV3", colors[5]),
+                 (dist_40, tracked_info_traces[4], tracked_info_traces[0], times_40, "UAV0 vs UAV4", colors[6]),
+                 (dist_32, tracked_info_traces[3], tracked_info_traces[2], times_32, "UAV2 vs UAV3", colors[7]),
+                 (dist_42, tracked_info_traces[4], tracked_info_traces[2], times_42, "UAV2 vs UAV4", colors[8])]
     
     for dist in distances:
         add_distance_separation(dist[0], dist[1], dist[2], dist[3], dist[4], 
