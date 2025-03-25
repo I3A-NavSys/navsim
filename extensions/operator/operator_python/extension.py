@@ -1,6 +1,6 @@
 import omni.ext
-import omni.ui as ui
-from omni.isaac.ui.element_wrappers import DropDown
+from isaacsim.gui.components import ui
+from isaacsim.gui.components.element_wrappers import DropDown
 import carb.events
 import omni.timeline
 import omni.physx

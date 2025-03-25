@@ -8,8 +8,7 @@ if project_root_path not in sys.path:
     sys.path.append(project_root_path)
 
 import omni.ext
-import omni.ui as ui
-from omni.ui import color as cl
+from isaacsim.gui.components.ui_utils import ui
 import omni.kit.app
 import carb.events
 from omni.isaac.ui.element_wrappers import DropDown
@@ -104,8 +103,8 @@ class ManualController(omni.ext.IExt):
                             with ui.HStack(alignment=ui.Alignment.RIGHT):
                                 ui.Label("Linear velocity Max")
                                 self.linear_vel_power = ui.FloatSlider(min=0.5, max=10, step=0.5, precision=1, 
-                                                                       style={"background_color": cl(0.13), 
-                                                                              "secondary_color": cl(0.3), 
+                                                                       style={"background_color": ui.color(0.13), 
+                                                                              "secondary_color": ui.color(0.3), 
                                                                               "draw_mode": ui.SliderDrawMode.FILLED})
                                 self.linear_vel_power.model.set_value(1)
                                 self.linear_vel_power.model.add_value_changed_fn(self.on_linear_vel_power_change)
@@ -114,8 +113,8 @@ class ManualController(omni.ext.IExt):
                             with ui.HStack(alignment=ui.Alignment.RIGHT):
                                 ui.Label("Angular velocity Max")
                                 self.angular_vel_power = ui.FloatSlider(min=0.5, max=6, step=0.5, precision=1, 
-                                                                        style={"background_color": cl(0.13), 
-                                                                               "secondary_color": cl(0.3), 
+                                                                        style={"background_color": ui.color(0.13), 
+                                                                               "secondary_color": ui.color(0.3), 
                                                                                "draw_mode": ui.SliderDrawMode.FILLED})
                                 self.angular_vel_power.model.set_value(1)
                                 self.angular_vel_power.model.add_value_changed_fn(self.on_angular_vel_power_change)
@@ -137,7 +136,7 @@ class ManualController(omni.ext.IExt):
                             # Start/Stop manual control
                             self.start_stop_tool_button = ui.ToolButton(text="START", height=30, 
                                                                         clicked_fn=self.start_stop_update, 
-                                                                        style={"background_color": cl("#6f9523")})
+                                                                        style={"background_color": ui.color("#6f9523")})
 
 
                     # Controls ploting
@@ -218,7 +217,7 @@ class ManualController(omni.ext.IExt):
             ui.Spacer(height=10)
 
             self.reset_plots_button = ui.Button("RESET PLOTS", clicked_fn=self.reset_plot, height=35, 
-                                                style={"Button":{"background_color": cl("#952323")}})
+                                                style={"Button":{"background_color": ui.color("#952323")}})
 
             # Make UI beauty
             ui.Spacer(height=30)
@@ -240,14 +239,14 @@ class ManualController(omni.ext.IExt):
         if model.get_value_as_bool():            
             self.start_update()
 
-            style={"background_color": cl("#952323")}
+            style={"background_color": ui.color("#952323")}
             self.start_stop_tool_button.set_style(style)
             self.start_stop_tool_button.text = "STOP"
 
         else:
             self.stop_update()
             
-            style={"background_color": cl("#6f9523")}
+            style={"background_color": ui.color("#6f9523")}
             self.start_stop_tool_button.set_style(style)
             self.start_stop_tool_button.text = "START"
 
@@ -374,7 +373,7 @@ class ManualController(omni.ext.IExt):
         ui.Spacer(height=5)
         self.x_max_lvl = ui.Label("1.0")
         self.x_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.x_lv_plot_data, height=50, alignment=ui.Alignment.CENTER, 
-                                 style={"color": cl("#B13333")})
+                                 style={"color": ui.color("#B13333")})
         self.x_min_lvl = ui.Label("-1.0")
 
         ui.Spacer(height=10)
@@ -384,7 +383,7 @@ class ManualController(omni.ext.IExt):
         ui.Spacer(height=5)
         self.y_max_lvl = ui.Label("1.0")
         self.y_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.y_lv_plot_data, height=50, alignment=ui.Alignment.CENTER, 
-                                 style={"color": cl("#54B133")})
+                                 style={"color": ui.color("#54B133")})
         self.y_min_lvl = ui.Label("-1.0")
 
         ui.Spacer(height=10)
@@ -394,7 +393,7 @@ class ManualController(omni.ext.IExt):
         ui.Spacer(height=5)
         self.z_max_lvl = ui.Label("1.0")
         self.z_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_lv_plot_data, height=50, alignment=ui.Alignment.CENTER, 
-                                 style={"color": cl("#4C73E2")})
+                                 style={"color": ui.color("#4C73E2")})
         self.z_min_lvl = ui.Label("-1.0")
             
         ui.Spacer(height=10)
@@ -404,7 +403,7 @@ class ManualController(omni.ext.IExt):
         ui.Spacer(height=5)
         self.z_max_avl = ui.Label("1.0")
         self.z_av_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_av_plot_data, height=50, alignment=ui.Alignment.CENTER, 
-                                 style={"color": cl.orange})
+                                 style={"color": ui.color.orange})
         self.z_min_avl = ui.Label("-1.0")
 
     def second_way(self):
@@ -417,7 +416,7 @@ class ManualController(omni.ext.IExt):
                 ui.Spacer(height=5)
                 self.x_max_lvl = ui.Label("1.0")
                 self.x_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.x_lv_plot_data, height=50, 
-                                         alignment=ui.Alignment.CENTER, style={"color": cl("#B13333")})
+                                         alignment=ui.Alignment.CENTER, style={"color": ui.color("#B13333")})
                 self.x_min_lvl = ui.Label("-1.0")
 
             with ui.VStack():
@@ -426,7 +425,7 @@ class ManualController(omni.ext.IExt):
                 ui.Spacer(height=5)
                 self.y_max_lvl = ui.Label("1.0")
                 self.y_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.y_lv_plot_data, height=50, 
-                                         alignment=ui.Alignment.CENTER, style={"color": cl("#54B133")})
+                                         alignment=ui.Alignment.CENTER, style={"color": ui.color("#54B133")})
                 self.y_min_lvl = ui.Label("-1.0")
 
             with ui.VStack():
@@ -435,7 +434,7 @@ class ManualController(omni.ext.IExt):
                 ui.Spacer(height=5)
                 self.z_max_lvl = ui.Label("1.0")
                 self.z_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_lv_plot_data, height=50, 
-                                         alignment=ui.Alignment.CENTER, style={"color": cl("#4C73E2")})
+                                         alignment=ui.Alignment.CENTER, style={"color": ui.color("#4C73E2")})
                 self.z_min_lvl = ui.Label("-1.0")
             
         ui.Spacer(height=20)
@@ -445,7 +444,7 @@ class ManualController(omni.ext.IExt):
         ui.Spacer(height=5)
         self.z_max_avl = ui.Label("1.0")
         self.z_av_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_av_plot_data, height=50, 
-                                 alignment=ui.Alignment.CENTER, style={"color": cl.orange})
+                                 alignment=ui.Alignment.CENTER, style={"color": ui.color.orange})
         self.z_min_avl = ui.Label("-1.0")
 
     def third_way(self):
@@ -463,15 +462,15 @@ class ManualController(omni.ext.IExt):
                 with ui.ZStack():
                     # X linear vel
                     self.x_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.x_lv_plot_data, width=ui.Percent(100), 
-                                             height=50, style={"color": cl("#B13333"), "background_color": 0x00000000})
+                                             height=50, style={"color": ui.color("#B13333"), "background_color": 0x00000000})
 
                     # Y linear vel
                     self.y_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.y_lv_plot_data, width=ui.Percent(100), 
-                                             height=50, style={"color": cl("#54B133"), "background_color": 0x00000000})
+                                             height=50, style={"color": ui.color("#54B133"), "background_color": 0x00000000})
 
                     # Z linear vel
                     self.z_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_lv_plot_data, width=ui.Percent(100), 
-                                             height=50, style={"color": cl("#4C73E2"), "background_color": 0x00000000})
+                                             height=50, style={"color": ui.color("#4C73E2"), "background_color": 0x00000000})
             
         self.x_min_lvl = ui.Label("-1.0")
 
@@ -480,5 +479,5 @@ class ManualController(omni.ext.IExt):
         ui.Spacer(height=5)
         self.z_max_avl = ui.Label("1.0")
         self.z_av_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_av_plot_data, height=50, alignment=ui.Alignment.CENTER, 
-                                 style={"color": cl.orange})
+                                 style={"color": ui.color.orange})
         self.z_min_avl = ui.Label("-1.0")
