@@ -1,12 +1,12 @@
 import omni.ext
 import omni.kit.window.stage
-import omni.ui as ui
-from omni.isaac.ui.element_wrappers import DropDown
+from isaacsim.gui.components.ui_utils import ui
+from isaacsim.gui.components.element_wrappers import DropDown
 import carb.events
 import omni.timeline
 import omni.physx
 import omni.usd
-from pxr import UsdGeom, Gf
+from pxr import Gf
 from omni.isaac.core.utils.stage import add_reference_to_stage
 import omni.kit.window.file.save_stage_ui
 import omni.kit.window.filepicker

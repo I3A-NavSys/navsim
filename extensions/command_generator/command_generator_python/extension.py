@@ -3,11 +3,8 @@ import base64   # Parsing to string
 
 
 import omni.ext
-import omni.ui as ui
-from omni.ui import color as cl
-from omni.isaac.ui.ui_utils import dropdown_builder
-from omni.isaac.core.utils.stage import get_current_stage
-from omni.isaac.ui.element_wrappers import *
+from isaacsim.gui.components.ui_utils import ui
+from isaacsim.gui.components.element_wrappers import *
 import carb.events
 import omni.timeline
 import omni.physx
@@ -63,8 +60,8 @@ class CommandGenerator(omni.ext.IExt):
                             "ON", enable=False,
                             width=30,
                             style={
-                                "background_color":cl.grey, 
-                                "color":cl.white, 
+                                "background_color":ui.color.grey, 
+                                "color":ui.color.white, 
                                 "margin": 0})
                         self.rotors_CB = ui.CheckBox(tooltip="Rotors activation")
                         self.rotors_CB.model.set_value(True)
@@ -74,8 +71,8 @@ class CommandGenerator(omni.ext.IExt):
                             "duration", enable=False,
                             width=50,
                             style={
-                                "background_color":cl.grey, 
-                                "color":cl.white, 
+                                "background_color":ui.color.grey, 
+                                "color":ui.color.white, 
                                 "margin": 0})
                         self.duration_FF = ui.FloatField(tooltip="time executing this command")
                         self.duration_FF.model.set_value(1.0)
@@ -88,8 +85,8 @@ class CommandGenerator(omni.ext.IExt):
                             "velX", enable=False,
                             width=30,
                             style={
-                                "background_color":cl.red, 
-                                "color":cl.white, 
+                                "background_color":ui.color.red, 
+                                "color":ui.color.white, 
                                 "margin": 0})
                         self.velX_FF = ui.FloatField(tooltip="velX parameter")
                         self.velX_FF.precision = 2
@@ -100,8 +97,8 @@ class CommandGenerator(omni.ext.IExt):
                             "velY", enable=False,
                             width=30,
                             style={
-                                "background_color":cl.green, 
-                                "color":cl.white, 
+                                "background_color":ui.color.green, 
+                                "color":ui.color.white, 
                                 "margin": 0})
                         self.velY_FF = ui.FloatField(tooltip="velY parameter")
                         self.velY_FF.precision = 2
@@ -111,8 +108,8 @@ class CommandGenerator(omni.ext.IExt):
                             "velZ", enable=False,
                             width=30,
                             style={
-                                "background_color":cl.blue, 
-                                "color":cl.white, 
+                                "background_color":ui.color.blue, 
+                                "color":ui.color.white, 
                                 "margin": 0})
                         self.velZ_FF = ui.FloatField(tooltip="velZ parameter")
                         self.velZ_FF.precision = 2
@@ -122,8 +119,8 @@ class CommandGenerator(omni.ext.IExt):
                             "rotZ", enable=False,
                             width=20,
                             style={
-                                "background_color":cl.orange, 
-                                "color":cl.white, 
+                                "background_color":ui.color.orange, 
+                                "color":ui.color.white, 
                                 "margin": 0})
                         self.rotZ_FF = ui.FloatField(tooltip="rotZ parameter")
                         self.rotZ_FF.precision = 2

@@ -3,11 +3,11 @@ import sys, os
 
 # Related third party imports
 import omni.ext
-import omni.ui as ui
+from isaacsim.gui.components.ui_utils import ui
 import carb.events
 import pickle
 import base64
-from omni.isaac.ui.element_wrappers import *
+from isaacsim.gui.components.element_wrappers import *
 import omni.timeline
 import omni.physx
 

@@ -3,8 +3,8 @@ import sys
 import os
 
 # Related third party imports
-import omni.ui as ui
-from omni.isaac.ui.element_wrappers import DropDown
+from isaacsim.gui.components import ui
+from isaacsim.gui.components.element_wrappers import DropDown
 from omni.isaac.core.utils.stage import get_current_stage
 
 

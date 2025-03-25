@@ -1,5 +1,5 @@
 import omni.ext
-import omni.ui as ui
+from isaacsim.gui.components.ui_utils import ui
 import carb.events
 import omni.timeline
 import omni.physx
