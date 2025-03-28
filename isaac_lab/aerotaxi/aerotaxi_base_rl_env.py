@@ -1,29 +1,30 @@
 from __future__ import annotations
 
-import os
-import sys
+# import os
+# import sys
 
 
-project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if project_root_path not in sys.path:
-    sys.path.append(project_root_path)
+# project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+# if project_root_path not in sys.path:
+#     sys.path.append(project_root_path)
 
-import argparse
+# import argparse
 
-from isaaclab.app import AppLauncher
+# from isaaclab.app import AppLauncher
 
-# add argparse arguments
-parser = argparse.ArgumentParser(description="Tutorial on creating a cartpole base environment.")
-parser.add_argument("--num_envs", type=int, default=16, help="Number of environments to spawn.")
+# # add argparse arguments
+# parser = argparse.ArgumentParser(description="Tutorial on creating a cartpole base environment.")
+# parser.add_argument("--num_envs", type=int, default=16, help="Number of environments to spawn.")
+# parser.add_argument("--task", type=str, default=None, help="Name of the task.")
 
-# append AppLauncher cli args
-AppLauncher.add_app_launcher_args(parser)
-# parse the arguments
-args_cli = parser.parse_args()
+# # append AppLauncher cli args
+# AppLauncher.add_app_launcher_args(parser)
+# # parse the arguments
+# args_cli = parser.parse_args()
 
-# launch omniverse app
-app_launcher = AppLauncher(args_cli)
-simulation_app = app_launcher.app
+# # launch omniverse app
+# app_launcher = AppLauncher(args_cli)
+# simulation_app = app_launcher.app
 
 """Rest everything follows."""
 
@@ -32,7 +33,7 @@ import torch
 import numpy as np
 
 # import isaaclab.envs.mdp as mdp
-import isaac_lab.mdp as mdp
+from . import mdp
 import isaaclab.sim as sim_utils
 from isaaclab.assets import AssetBaseCfg, Articulation, ArticulationCfg
 from isaaclab.envs import ManagerBasedRLEnv, ManagerBasedRLEnvCfg
@@ -345,7 +346,7 @@ class UAVEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the UAV environment."""
 
     # Scene settings
-    scene: MySceneCfg = MySceneCfg(num_envs=args_cli.num_envs, env_spacing=10, replicate_physics=False)
+    scene: MySceneCfg = MySceneCfg(num_envs=32, env_spacing=10, replicate_physics=False)
     
     # Basic settings
     observations: ObervervationCfg = ObervervationCfg()
@@ -367,47 +368,47 @@ class UAVEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.dt = 0.005  # sim step every 5ms: 200Hz
         self.sim.render_interval = self.decimation
 
-def main():
-    """Main function."""
+# def main():
+#     """Main function."""
     
-    # Setup base environment
-    env = ManagerBasedRLEnv(cfg=UAVEnvCfg())
+#     # Setup base environment
+#     env = ManagerBasedRLEnv(cfg=UAVEnvCfg())
 
-    # Setup target velocity command
-    target_rotor_vel = torch.zeros(env.num_envs, 4, device=env.device)
-    target_rotor_vel[:, 0] = 41.8879
-    target_rotor_vel[:, 1] = 41.8879
-    target_rotor_vel[:, 2] = 41.8879
-    target_rotor_vel[:, 3] = 41.8879
+#     # Setup target velocity command
+#     target_rotor_vel = torch.zeros(env.num_envs, 4, device=env.device)
+#     target_rotor_vel[:, 0] = 41.8879
+#     target_rotor_vel[:, 1] = 41.8879
+#     target_rotor_vel[:, 2] = 41.8879
+#     target_rotor_vel[:, 3] = 41.8879
 
-    # Simulate physics
-    count = 0
-    env.reset()   # Extra info is a dictionary with more information
+#     # Simulate physics
+#     count = 0
+#     env.reset()   # Extra info is a dictionary with more information
 
-    while simulation_app.is_running():
-        with torch.inference_mode():
-            # Reset
-            if count % 200 == 0:
-                count = 0
-                env.reset()
-                print("-" * 80)
-                print("[INFO]: Resetting the environment...")
+#     while simulation_app.is_running():
+#         with torch.inference_mode():
+#             # Reset
+#             if count % 200 == 0:
+#                 count = 0
+#                 env.reset()
+#                 print("-" * 80)
+#                 print("[INFO]: Resetting the environment...")
 
-            # Step env
-            obs, rew, terminated, truncated, info = env.step(target_rotor_vel)
+#             # Step env
+#             obs, rew, terminated, truncated, info = env.step(target_rotor_vel)
 
-            print(rew)
+#             print(rew)
 
-            # print(f"[Step: {count:04d}]: Linear velocity[0]: {obs['policy'][0, 3:6]}")
-            # print(f"[Step: {count:04d}]: Angular velocity[0]: {obs['policy'][0, 6:9]}")
+#             # print(f"[Step: {count:04d}]: Linear velocity[0]: {obs['policy'][0, 3:6]}")
+#             # print(f"[Step: {count:04d}]: Angular velocity[0]: {obs['policy'][0, 6:9]}")
 
-            # Update counter
-            count += 1
+#             # Update counter
+#             count += 1
 
-    # Close the environment
-    env.close()
+#     # Close the environment
+#     env.close()
 
 
-if __name__ == "__main__":
-    main()
-    simulation_app.close()
+# if __name__ == "__main__":
+#     main()
+#     simulation_app.close()
