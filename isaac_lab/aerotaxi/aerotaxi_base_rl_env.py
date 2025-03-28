@@ -74,6 +74,7 @@ class UAVactionTerm(ActionTerm):
         return self._processed_actions
 
     def process_actions(self, actions: torch.Tensor):
+        print(f"[DEBUG]: actions: {actions}")
         kFT_N = 4.6544
         kFT_S = 0.9309
         kFDx = 3.0625
@@ -134,8 +135,8 @@ class UAVactionTerm(ActionTerm):
             # print(f"[DEBUG]: Forces - {self._processed_actions[0][:5]}")
 
     def apply_actions(self):
-        print(f"[DEBUG]: Forces - {self._processed_actions[:, :5, :]}")
-        print(f"[DEBUG]: Torques - {self._processed_actions[:, 5:, :]}")
+        # print(f"[DEBUG]: Forces - {self._processed_actions[:, :5, :]}")
+        # print(f"[DEBUG]: Torques - {self._processed_actions[:, 5:, :]}")
 
         positions = torch.tensor([[0,0,0], [0.5, 1.95, 0.5], [0.5, -1.95, 0.5], [-2.5, 1.55, 0.5], [-2.5, -1.55, 0.5]], 
                                  device=self.device)
@@ -246,7 +247,6 @@ class RewardsCfg:
         },
     )
 
-
 @configclass
 class TerminationsCfg:
     """Termination terms for the MDP."""
@@ -289,7 +289,7 @@ class MySceneCfg(InteractiveSceneCfg):
             ),
         ),
         init_state=ArticulationCfg.InitialStateCfg(
-            pos=(0, 0, 10),
+            pos=(0, 0, 20),
             joint_pos={
                 "NW_joint": 0.0,
                 "NE_joint": 0.0,
