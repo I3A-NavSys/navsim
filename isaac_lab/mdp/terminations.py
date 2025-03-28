@@ -25,4 +25,4 @@ def lin_vel_z_termination(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> 
     asset: Articulation = env.scene[asset_cfg.name]
     lin_vel = asset.data.root_lin_vel_w
     
-    return lin_vel[:, 2] <= -5.0
+    return lin_vel[:, 2] <= -10.0

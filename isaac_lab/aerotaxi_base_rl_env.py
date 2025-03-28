@@ -133,6 +133,8 @@ class UAVactionTerm(ActionTerm):
             # print(f"[DEBUG]: Forces - {self._processed_actions[0][:5]}")
 
     def apply_actions(self):
+        print(f"[DEBUG]: Forces - {self._processed_actions[:, :5, :]}")
+        print(f"[DEBUG]: Torques - {self._processed_actions[:, 5:, :]}")
 
         positions = torch.tensor([[0,0,0], [0.5, 1.95, 0.5], [0.5, -1.95, 0.5], [-2.5, 1.55, 0.5], [-2.5, -1.55, 0.5]], 
                                  device=self.device)
@@ -239,7 +241,7 @@ class RewardsCfg:
         weight=-1.0,
         params={
             "asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]), 
-            "target": np.array([0.0, 0.0, 0.0])
+            "target": [0.0, 0.0, 0.0]
         },
     )
 
@@ -250,11 +252,11 @@ class TerminationsCfg:
 
     # (1) Time out
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
-    # (2) Cart out of bounds
-    # cart_out_of_bounds = DoneTerm(
-    #     func=mdp.roll_pitch_termination,
-    #     params={"asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]), },
-    # )
+    # (2) Linear velocity in z direction exceeds a negative threshold
+    len_vel_z_out_bounds = DoneTerm(
+        func=mdp.lin_vel_z_termination,
+        params={"asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]), },
+    )
 
 @configclass
 class MySceneCfg(InteractiveSceneCfg):
