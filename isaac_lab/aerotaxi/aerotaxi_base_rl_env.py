@@ -30,7 +30,6 @@ from __future__ import annotations
 
 import math
 import torch
-import numpy as np
 
 # import isaaclab.envs.mdp as mdp
 from . import mdp
@@ -47,6 +46,7 @@ from isaaclab.managers import SceneEntityCfg
 from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.utils import configclass
 from isaaclab.actuators import DCMotorCfg
+import isaaclab.utils.math as math_utils
 
 
 class UAVactionTerm(ActionTerm):
@@ -59,6 +59,20 @@ class UAVactionTerm(ActionTerm):
         super().__init__(cfg, env)
         self._raw_actions = torch.zeros(env.num_envs, 4, device=self.device)
         self._processed_actions = torch.zeros(env.num_envs, 10, 3, device=self.device)
+        self.action_scale = 10
+        self.max_prim_links = 5 # 4 rotors + 1 body
+
+        self.positions = torch.zeros(self._processed_actions.size(0), self.max_prim_links, 3, device=self.device)
+        self.indexes = torch.zeros(self._processed_actions.size(0), 1, device=self.device)
+        
+        for i in range(self._processed_actions.size(0)):
+            self.positions[i, 0, :] = torch.tensor([0, 0, 0], device=self.device)
+            self.positions[i, 1, :] = torch.tensor([0.5, 1.95, 0.5], device=self.device)
+            self.positions[i, 2, :] = torch.tensor([0.5, -1.95, 0.5], device=self.device)
+            self.positions[i, 3, :] = torch.tensor([-2.5, 1.55, 0.5], device=self.device)
+            self.positions[i, 4, :] = torch.tensor([-2.5, -1.55, 0.5], device=self.device)
+            
+            self.indexes[i, 0] = i
 
 
     @property
@@ -74,7 +88,6 @@ class UAVactionTerm(ActionTerm):
         return self._processed_actions
 
     def process_actions(self, actions: torch.Tensor):
-        print(f"[DEBUG]: actions: {actions}")
         kFT_N = 4.6544
         kFT_S = 0.9309
         kFDx = 3.0625
@@ -86,7 +99,10 @@ class UAVactionTerm(ActionTerm):
         kMDy = 25.8580
         kMDz = 20.2514
 
-        self._raw_actions[:] = actions
+        self._raw_actions[:] = actions.abs() * self.action_scale
+        # self._raw_actions[:] = actions.abs()
+
+        print(f"[DEBUG]: actions: {self._raw_actions[0]}")
 
         lin_vels = self._asset.data.root_com_lin_vel_b
         ang_vels = self._asset.data.root_com_ang_vel_b
@@ -121,36 +137,28 @@ class UAVactionTerm(ActionTerm):
             torque = [MDR[0] + MD[0], MDR[1] + MD[1], MDR[2] + MD[2]]
             zero_torque = [0, 0, 0]
 
-            self._processed_actions[i][0][:] = torch.tensor(FD, device=self.device)
-            self._processed_actions[i][1][:] = torch.tensor(FT_NW, device=self.device)
-            self._processed_actions[i][2][:] = torch.tensor(FT_NE, device=self.device)
-            self._processed_actions[i][3][:] = torch.tensor(FT_SW, device=self.device)
-            self._processed_actions[i][4][:] = torch.tensor(FT_SE, device=self.device)
-            self._processed_actions[i][5][:] = torch.tensor(torque, device=self.device)
-            self._processed_actions[i][6][:] = torch.tensor(zero_torque, device=self.device)
-            self._processed_actions[i][7][:] = torch.tensor(zero_torque, device=self.device)
-            self._processed_actions[i][8][:] = torch.tensor(zero_torque, device=self.device)
-            self._processed_actions[i][9][:] = torch.tensor(zero_torque, device=self.device)
-
-            # print(f"[DEBUG]: Forces - {self._processed_actions[0][:5]}")
+            self._processed_actions[i, 0, :] = torch.tensor(FD, device=self.device)
+            self._processed_actions[i, 1, :] = torch.tensor(FT_NW, device=self.device)
+            self._processed_actions[i, 2, :] = torch.tensor(FT_NE, device=self.device)
+            self._processed_actions[i, 3, :] = torch.tensor(FT_SW, device=self.device)
+            self._processed_actions[i, 4, :] = torch.tensor(FT_SE, device=self.device)
+            self._processed_actions[i, 5, :] = torch.tensor(torque, device=self.device)
+            self._processed_actions[i, 6, :] = torch.tensor(zero_torque, device=self.device)
+            self._processed_actions[i, 7, :] = torch.tensor(zero_torque, device=self.device)
+            self._processed_actions[i, 8, :] = torch.tensor(zero_torque, device=self.device)
+            self._processed_actions[i, 9, :] = torch.tensor(zero_torque, device=self.device)
 
     def apply_actions(self):
-        # print(f"[DEBUG]: Forces - {self._processed_actions[:, :5, :]}")
-        # print(f"[DEBUG]: Torques - {self._processed_actions[:, 5:, :]}")
-
-        positions = torch.tensor([[0,0,0], [0.5, 1.95, 0.5], [0.5, -1.95, 0.5], [-2.5, 1.55, 0.5], [-2.5, -1.55, 0.5]], 
-                                 device=self.device)
-        indices = torch.tensor(range(self._processed_actions.size(0)), device=self.device)
-
-        self._asset.root_physx_view.apply_forces_and_torques_at_position(force_data=self._processed_actions[:, :5, :], 
-                                                                         torque_data=self._processed_actions[:, 5:, :],
-                                                                         position_data=positions,
-                                                                         indices=indices,
-                                                                         is_global=False)
+        self._asset.root_physx_view.apply_forces_and_torques_at_position(
+            force_data=self._processed_actions[:, :self.max_prim_links, :], 
+            torque_data=self._processed_actions[:, self.max_prim_links:, :],
+            position_data=self.positions,
+            indices=self.indexes,
+            is_global=False
+        )
 
         # This can be used to simulate wind forces it seems
         # mdp.apply_external_force_torque()
-
 
 @configclass
 class UAVactionTermCfg(ActionTermCfg):
@@ -168,22 +176,36 @@ class ActionsCfg:
 
 
 def my_obs_pos(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
-    # asset: RigidObject = env.scene[asset_cfg.name]
     asset: Articulation = env.scene[asset_cfg.name]
     pos = asset.data.root_pos_w
     return pos
 
 def my_obs_lin_vel(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
-    # asset: RigidObject = env.scene[asset_cfg.name]
     asset: Articulation = env.scene[asset_cfg.name]
     lin_vel = asset.data.root_com_lin_vel_b
     return lin_vel
 
 def my_obs_ang_vel(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
-    # asset: RigidObject = env.scene[asset_cfg.name]
     asset: Articulation = env.scene[asset_cfg.name]
     ang_vel = asset.data.root_com_ang_vel_b
     return ang_vel
+
+def my_obs_ori(env:ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
+    asset: Articulation = env.scene[asset_cfg.name]
+    ori = torch.zeros(env.num_envs, 3, device=env.device)
+
+    roll, pitch, yaw = math_utils.euler_xyz_from_quat(asset.data.root_quat_w)
+    
+    # # normalize angle to [-pi, pi]
+    roll = torch.atan2(torch.sin(roll), torch.cos(roll))
+    pitch = torch.atan2(torch.sin(pitch), torch.cos(pitch))
+    yaw = torch.atan2(torch.sin(yaw), torch.cos(yaw))
+
+    ori[:, 0] = roll
+    ori[:, 1] = pitch
+    ori[:, 2] = yaw
+
+    return ori
 
 @configclass
 class ObervervationCfg:
@@ -195,6 +217,7 @@ class ObervervationCfg:
         pos = ObsTerm(func=my_obs_pos, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         lin_vel = ObsTerm(func=my_obs_lin_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         ang_vel = ObsTerm(func=my_obs_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        ori = ObsTerm(func=my_obs_ori, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
 
         def __pos_init__(self):
             self.enable_corruption = True
@@ -216,8 +239,8 @@ class EventCfg:
                 "y": (-1, 1), 
                 # "roll": (0, 0),
                 # "pitch": (0, 0),
-                "roll": (-1.57, 1.57),
-                "pitch": (-1.57, 1.57),
+                "roll": (-0.5, 0.5),
+                "pitch": (-0.5, 0.5),
                 "yaw": (-3.14, 3.14)
             },
             "velocity_range": {
@@ -234,18 +257,63 @@ class RewardsCfg:
     """Reward terms for the MDP."""
 
     # (1) Constant running reward
-    alive = RewTerm(func=mdp.is_alive, weight=1.0)
+    alive = RewTerm(func=mdp.is_alive, weight=0.1)
     # (2) Failure penalty
-    terminating = RewTerm(func=mdp.is_terminated, weight=-2.0)
-    # (3) Primary task: hover
-    pole_pos = RewTerm(
+    terminating = RewTerm(func=mdp.is_terminated, weight=-5.0)
+    # (3) Primary task: modern control
+    modern_control = RewTerm(
+        func=mdp.modern_control_diff,
+        weight=1.0,
+        params={
+            "asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]),
+            "target": [0.0, 0.0, 0.0, 0.0]
+        },
+    )
+
+    hover = RewTerm(
         func=mdp.lin_vel_diff,
-        weight=-1.0,
+        weight=1.0,
         params={
             "asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]), 
             "target": [0.0, 0.0, 0.0]
         },
     )
+
+    falling = RewTerm(
+        func=mdp.lin_vel_z_diff,
+        weight=-5.0,
+        params={
+            "asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]), 
+            "target": 0.0
+        },
+    )
+
+    rotation = RewTerm(
+        func=mdp.ang_vel_diff,
+        weight=-10.0,
+        params={
+            "asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]), 
+            "target": [0.0, 0.0, 0.0]
+        },
+    )
+
+    # roll = RewTerm(
+    #     func=mdp.roll_diff,
+    #     weight=-5.0,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]), 
+    #         "target": 0.0
+    #     },
+    # )
+
+    # pitch = RewTerm(
+    #     func=mdp.pitch_diff,
+    #     weight=-5.0,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]), 
+    #         "target": 0.0
+    #     },
+    # )
 
 @configclass
 class TerminationsCfg:
@@ -256,7 +324,15 @@ class TerminationsCfg:
     # (2) Linear velocity in z direction exceeds a negative threshold
     len_vel_z_out_bounds = DoneTerm(
         func=mdp.lin_vel_z_termination,
-        params={"asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]), },
+        params={"asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]), 
+        }
+    )
+    # (3) Z position out of bounds
+    below_min_altitude = DoneTerm(
+        func=mdp.below_min_altitude,
+        params={"asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]), 
+                "min_altitude": 10.0,
+        }
     )
 
 @configclass
@@ -289,7 +365,7 @@ class MySceneCfg(InteractiveSceneCfg):
             ),
         ),
         init_state=ArticulationCfg.InitialStateCfg(
-            pos=(0, 0, 20),
+            pos=(0, 0, 50),
             joint_pos={
                 "NW_joint": 0.0,
                 "NE_joint": 0.0,
@@ -300,35 +376,35 @@ class MySceneCfg(InteractiveSceneCfg):
         actuators={
             "NW_rotor": DCMotorCfg(
                 joint_names_expr=["NW_joint"],
-                effort_limit=400.0,
-                velocity_limit=100.0,
+                effort_limit=100000.0,
+                velocity_limit=100000.0,
                 stiffness=0.0,
-                damping=10.0,
-                saturation_effort=1000.0,
+                damping=0.0,
+                saturation_effort=100000.0,
             ),
             "NE_rotor": DCMotorCfg(
                 joint_names_expr=["NE_joint"],
-                effort_limit=400.0,
-                velocity_limit=100.0,
+                effort_limit=100000.0,
+                velocity_limit=100000.0,
                 stiffness=0.0,
-                damping=10.0,
-                saturation_effort=1000.0,
+                damping=0.0,
+                saturation_effort=100000.0,
             ),
             "SW_rotor": DCMotorCfg(
                 joint_names_expr=["SW_joint"],
-                effort_limit=400.0,
-                velocity_limit=100.0,
+                effort_limit=100000.0,
+                velocity_limit=100000.0,
                 stiffness=0.0,
-                damping=10.0,
-                saturation_effort=1000.0,
+                damping=0.0,
+                saturation_effort=100000.0,
             ),
             "SE_rotor": DCMotorCfg(
                 joint_names_expr=["SE_joint"],
-                effort_limit=400.0,
-                velocity_limit=100.0,
+                effort_limit=100000.0,
+                velocity_limit=100000.0,
                 stiffness=0.0,
-                damping=10.0,
-                saturation_effort=1000.0,
+                damping=0.0,
+                saturation_effort=100000.0,
             ),
         }
     )
@@ -367,48 +443,3 @@ class UAVEnvCfg(ManagerBasedRLEnvCfg):
         # simulation settings
         self.sim.dt = 0.005  # sim step every 5ms: 200Hz
         self.sim.render_interval = self.decimation
-
-# def main():
-#     """Main function."""
-    
-#     # Setup base environment
-#     env = ManagerBasedRLEnv(cfg=UAVEnvCfg())
-
-#     # Setup target velocity command
-#     target_rotor_vel = torch.zeros(env.num_envs, 4, device=env.device)
-#     target_rotor_vel[:, 0] = 41.8879
-#     target_rotor_vel[:, 1] = 41.8879
-#     target_rotor_vel[:, 2] = 41.8879
-#     target_rotor_vel[:, 3] = 41.8879
-
-#     # Simulate physics
-#     count = 0
-#     env.reset()   # Extra info is a dictionary with more information
-
-#     while simulation_app.is_running():
-#         with torch.inference_mode():
-#             # Reset
-#             if count % 200 == 0:
-#                 count = 0
-#                 env.reset()
-#                 print("-" * 80)
-#                 print("[INFO]: Resetting the environment...")
-
-#             # Step env
-#             obs, rew, terminated, truncated, info = env.step(target_rotor_vel)
-
-#             print(rew)
-
-#             # print(f"[Step: {count:04d}]: Linear velocity[0]: {obs['policy'][0, 3:6]}")
-#             # print(f"[Step: {count:04d}]: Angular velocity[0]: {obs['policy'][0, 6:9]}")
-
-#             # Update counter
-#             count += 1
-
-#     # Close the environment
-#     env.close()
-
-
-# if __name__ == "__main__":
-#     main()
-#     simulation_app.close()

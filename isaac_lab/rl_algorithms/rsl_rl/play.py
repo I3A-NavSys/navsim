@@ -8,6 +8,10 @@
 """Launch Isaac Sim Simulator first."""
 
 import argparse
+import sys
+import os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
 
 from isaaclab.app import AppLauncher
 
@@ -58,7 +62,7 @@ from isaaclab.utils.pretrained_checkpoint import get_published_pretrained_checkp
 
 from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlVecEnvWrapper, export_policy_as_jit, export_policy_as_onnx
 
-import aerotaxi  # noqa: F401
+import isaac_lab.aerotaxi  # noqa: F401
 from isaaclab_tasks.utils import get_checkpoint_path, parse_env_cfg
 
 # PLACEHOLDER: Extension template (do not remove this comment)
