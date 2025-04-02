@@ -1,30 +1,7 @@
 from __future__ import annotations
 
-# import os
-# import sys
-
-
-# project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-# if project_root_path not in sys.path:
-#     sys.path.append(project_root_path)
-
-# import argparse
-
-# from isaaclab.app import AppLauncher
-
-# # add argparse arguments
-# parser = argparse.ArgumentParser(description="Tutorial on creating a cartpole base environment.")
-# parser.add_argument("--num_envs", type=int, default=16, help="Number of environments to spawn.")
-# parser.add_argument("--task", type=str, default=None, help="Name of the task.")
-
-# # append AppLauncher cli args
-# AppLauncher.add_app_launcher_args(parser)
-# # parse the arguments
-# args_cli = parser.parse_args()
-
-# # launch omniverse app
-# app_launcher = AppLauncher(args_cli)
-# simulation_app = app_launcher.app
+import os
+root_navsim_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
 
 """Rest everything follows."""
 
@@ -257,7 +234,7 @@ class RewardsCfg:
     """Reward terms for the MDP."""
 
     # (1) Constant running reward
-    alive = RewTerm(func=mdp.is_alive, weight=0.1)
+    alive = RewTerm(func=mdp.is_alive, weight=1)
     # (2) Failure penalty
     terminating = RewTerm(func=mdp.is_terminated, weight=-5.0)
     # (3) Primary task: modern control
@@ -347,7 +324,7 @@ class MySceneCfg(InteractiveSceneCfg):
     aerotaxi: ArticulationCfg = ArticulationCfg(
         prim_path="{ENV_REGEX_NS}/aerotaxi",
         spawn=sim_utils.UsdFileCfg(
-            usd_path="C:/Users/Victor/Desktop/NAVSIM_GROUP/NAVSIM/isaac_lab/UAM_aerotaxi_lab.usd",
+            usd_path=os.path.abspath(os.path.join(root_navsim_path, "isaac_lab", "aerotaxi", "UAM_aerotaxi_lab.usd")),
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=False,
                 rigid_body_enabled=True,
