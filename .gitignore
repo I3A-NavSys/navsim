@@ -122,3 +122,5 @@ CATKIN_IGNORE
 /ov/.vscode
 
 /tmp/tmpVictor/playground/*
+*logs
+*isaac_lab/exported*
