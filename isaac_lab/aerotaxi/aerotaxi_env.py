@@ -79,7 +79,7 @@ class UAVactionTerm(ActionTerm):
         self._raw_actions[:] = actions.abs() * self.action_scale
         # self._raw_actions[:] = actions.abs()
 
-        print(f"[DEBUG]: actions: {self._raw_actions[0]}")
+        # print(f"[DEBUG]: actions: {self._raw_actions[0]}")
 
         lin_vels = self._asset.data.root_com_lin_vel_b
         ang_vels = self._asset.data.root_com_ang_vel_b
@@ -234,13 +234,13 @@ class RewardsCfg:
     """Reward terms for the MDP."""
 
     # (1) Constant running reward
-    alive = RewTerm(func=mdp.is_alive, weight=1)
+    alive = RewTerm(func=mdp.is_alive, weight=2.0)
     # (2) Failure penalty
-    terminating = RewTerm(func=mdp.is_terminated, weight=-5.0)
+    terminating = RewTerm(func=mdp.is_terminated, weight=-400.0)
     # (3) Primary task: modern control
     modern_control = RewTerm(
         func=mdp.modern_control_diff,
-        weight=1.0,
+        weight=2.0,
         params={
             "asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]),
             "target": [0.0, 0.0, 0.0, 0.0]
@@ -274,23 +274,23 @@ class RewardsCfg:
         },
     )
 
-    # roll = RewTerm(
-    #     func=mdp.roll_diff,
-    #     weight=-5.0,
-    #     params={
-    #         "asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]), 
-    #         "target": 0.0
-    #     },
-    # )
+    roll = RewTerm(
+        func=mdp.roll_diff,
+        weight=-10.0,
+        params={
+            "asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]), 
+            "target": 0.0
+        },
+    )
 
-    # pitch = RewTerm(
-    #     func=mdp.pitch_diff,
-    #     weight=-5.0,
-    #     params={
-    #         "asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]), 
-    #         "target": 0.0
-    #     },
-    # )
+    pitch = RewTerm(
+        func=mdp.pitch_diff,
+        weight=-10.0,
+        params={
+            "asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]), 
+            "target": 0.0
+        },
+    )
 
 @configclass
 class TerminationsCfg:

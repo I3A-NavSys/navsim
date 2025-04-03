@@ -139,8 +139,8 @@ def modern_control_diff(env: ManagerBasedRLEnv, target: list, asset_cfg: SceneEn
         # scaled_action = action.abs()
 
         sum = (w_rotors - scaled_action).abs().sum()
-        if sum == 1:    sum = 1.1
-        if sum < 1:     sum = 1.1
+        if sum.item() == 1:    sum = torch.tensor(1.1, device=env.device)
+        if sum.item() < 1:     sum = torch.tensor(1.1, device=env.device)
         diff[i, 0] = 3 / torch.log(sum)
 
     return diff.flatten()
@@ -158,7 +158,7 @@ def ang_vel_diff(env: ManagerBasedRLEnv, target: list, asset_cfg: SceneEntityCfg
 
 def roll_diff(env: ManagerBasedRLEnv, target: float, asset_cfg: SceneEntityCfg) -> torch.Tensor:
     """Penalize roll and pitch deviation from a target value."""
-    roll, _, _ = env.obs_buf["policy"][:, 9:12]
+    roll = env.obs_buf["policy"][:, 9]
     target = torch.tensor(target, device=env.device)
 
     diff = roll[:].abs() - target
@@ -167,7 +167,7 @@ def roll_diff(env: ManagerBasedRLEnv, target: float, asset_cfg: SceneEntityCfg) 
 
 def pitch_diff(env: ManagerBasedRLEnv, target: float, asset_cfg: SceneEntityCfg) -> torch.Tensor:
     """Penalize roll and pitch deviation from a target value."""
-    _, pitch, _ = env.obs_buf["policy"][:, 9:12]
+    pitch = env.obs_buf["policy"][:, 10]
     target = torch.tensor(target, device=env.device)
 
     diff = pitch[:].abs() - target
