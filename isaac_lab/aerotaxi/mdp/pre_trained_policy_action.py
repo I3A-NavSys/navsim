@@ -34,7 +34,7 @@ class PreTrainedPolicyAction(ActionTerm):
         # initialize the action term
         super().__init__(cfg, env)
 
-        self.robot: Articulation = env.scene[cfg.asset_name]
+        self._asset: Articulation = env.scene[cfg.asset_name]
 
         # load policy
         if not check_file_path(cfg.policy_path):
@@ -42,23 +42,27 @@ class PreTrainedPolicyAction(ActionTerm):
         file_bytes = read_file(cfg.policy_path)
         self.policy = torch.jit.load(file_bytes).to(env.device).eval()
 
-        self._raw_actions = torch.zeros(self.num_envs, self.action_dim, device=self.device)
+        # prepare needed information
+        self._raw_actions = torch.zeros(self.num_envs, 4, device=self.device)
+        self._processed_actions = torch.zeros(env.num_envs, 10, 3, device=self.device)
+        self.action_scale = 10
+        self.max_prim_links = 5 # 4 rotors + 1 body
+
+        self.positions = torch.zeros(self._processed_actions.size(0), self.max_prim_links, 3, device=self.device)
+        self.indexes = torch.zeros(self._processed_actions.size(0), 1, device=self.device)
+        
+        for i in range(self._processed_actions.size(0)):
+            self.positions[i, 0, :] = torch.tensor([0, 0, 0], device=self.device)
+            self.positions[i, 1, :] = torch.tensor([0.5, 1.95, 0.5], device=self.device)
+            self.positions[i, 2, :] = torch.tensor([0.5, -1.95, 0.5], device=self.device)
+            self.positions[i, 3, :] = torch.tensor([-2.5, 1.55, 0.5], device=self.device)
+            self.positions[i, 4, :] = torch.tensor([-2.5, -1.55, 0.5], device=self.device)
+            
+            self.indexes[i, 0] = i
 
         # prepare low level actions
         self._low_level_action_term: ActionTerm = cfg.low_level_actions.class_type(cfg.low_level_actions, env)
         self.low_level_actions = torch.zeros(self.num_envs, self._low_level_action_term.action_dim, device=self.device)
-
-        def last_action():
-            # reset the low level actions if the episode was reset
-            if hasattr(env, "episode_length_buf"):
-                self.low_level_actions[env.episode_length_buf == 0, :] = 0
-            return self.low_level_actions
-
-        # remap some of the low level observations to internal observations
-        cfg.low_level_observations.actions.func = lambda dummy_env: last_action()
-        cfg.low_level_observations.actions.params = dict()
-        cfg.low_level_observations.velocity_commands.func = lambda dummy_env: self._raw_actions
-        cfg.low_level_observations.velocity_commands.params = dict()
 
         # add the low level observations to the observation manager
         self._low_level_obs_manager = ObservationManager({"ll_policy": cfg.low_level_observations}, env)
@@ -71,7 +75,7 @@ class PreTrainedPolicyAction(ActionTerm):
 
     @property
     def action_dim(self) -> int:
-        return 3
+        return 4
 
     @property
     def raw_actions(self) -> torch.Tensor:
@@ -79,7 +83,7 @@ class PreTrainedPolicyAction(ActionTerm):
 
     @property
     def processed_actions(self) -> torch.Tensor:
-        return self.raw_actions
+        return self._processed_actions
 
     """
     Operations.
@@ -117,5 +121,3 @@ class PreTrainedPolicyActionCfg(ActionTermCfg):
     """Low level action configuration."""
     low_level_observations: ObservationGroupCfg = MISSING
     """Low level observation configuration."""
-    debug_vis: bool = True
-    """Whether to visualize debug information. Defaults to False."""
