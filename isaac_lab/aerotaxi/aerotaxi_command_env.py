@@ -438,6 +438,7 @@ class UAVEnvCfg(ManagerBasedRLEnvCfg):
 
     # Scene settings
     scene: MySceneCfg = MySceneCfg(num_envs=32, env_spacing=10, replicate_physics=False)
+    seed: int = 0
     
     # Basic settings
     actions: ActionsCfg = ActionsCfg()
