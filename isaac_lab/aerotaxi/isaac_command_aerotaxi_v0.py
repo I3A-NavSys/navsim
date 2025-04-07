@@ -222,7 +222,7 @@ class UAVcommandTerm(CommandTerm):
 
     def _resample_command(self, env_ids):
         """Resample the command for the given environment IDs."""
-        self._command[env_ids, :] = torch.rand(4, device=self.device)
+        self._command[env_ids, :] = torch.rand(4, device=self.device) * torch.tensor(10, device=self.device)
 
     def _update_command(self):
         # self._command[:] = torch.zeros(4, device=self.device)
@@ -280,7 +280,7 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    alive = RewTerm(func=mdp.is_alive, weight=2.0)
+    alive = RewTerm(func=mdp.is_alive, weight=1.0)
 
     terminating = RewTerm(func=mdp.is_terminated, weight=-400.0)
 
@@ -289,32 +289,32 @@ class RewardsCfg:
         weight=2.0,
     )
 
-    hover = RewTerm(
+    lin_vel_diff = RewTerm(
         func=mdp.lin_vel_diff,
         weight=1.0,
     )
 
-    falling = RewTerm(
-        func=mdp.lin_vel_z_diff,
-        weight=-5.0,
-    )
-
-    rotation = RewTerm(
+    yaw = RewTerm(
         func=mdp.ang_vel_diff,
-        weight=-5.0,
+        weight=1.0,
     )
 
-    roll = RewTerm(
-        func=mdp.roll_diff,
-        weight=-10.0,
-        params={"target": 0.0},
+    static = RewTerm(
+        func=mdp.lin_vel_0,
+        weight=-1.0,
     )
 
-    pitch = RewTerm(
-        func=mdp.pitch_diff,
-        weight=-10.0,
-        params={"target": 0.0},
-    )
+    # roll = RewTerm(
+    #     func=mdp.roll_diff,
+    #     weight=-10.0,
+    #     params={"target": torch.pi / 4},
+    # )
+
+    # pitch = RewTerm(
+    #     func=mdp.pitch_diff,
+    #     weight=-10.0,
+    #     params={"target": torch.pi / 4},
+    # )
 
 
 # |---------------------------------------------------------|
@@ -325,20 +325,21 @@ class RewardsCfg:
 class TerminationsCfg:
     """Termination terms for the MDP."""
 
-    # (1) Time out
-    # time_out = DoneTerm(func=mdp.time_out, time_out=True)
-    # (2) Linear velocity in z direction exceeds a negative threshold
+    time_out = DoneTerm(func=mdp.time_out, time_out=True)
+    
     len_vel_z_out_bounds = DoneTerm(
         func=mdp.lin_vel_z_termination,
-        params={"asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]), 
-        }
     )
-    # (3) Z position out of bounds
+    
     below_min_altitude = DoneTerm(
         func=mdp.below_min_altitude,
         params={"asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]), 
                 "min_altitude": 10.0,
         }
+    )
+
+    roll_pitch_out_bounds = DoneTerm(
+        func=mdp.roll_pitch_termination,
     )
 
 
@@ -458,7 +459,7 @@ class UAVEnvCfg(ManagerBasedRLEnvCfg):
         self.viewer.lookat = [0.0, 0.0, 2.0]
         # step settings
         self.decimation = 1  # env step every 4 sim steps: 200Hz / 4 = 50Hz
-        self.episode_length_s = 120.0  # 10s
+        self.episode_length_s = 10.0  # 10s
         # simulation settings
         self.sim.dt = 0.02  # sim step every 5ms: 200Hz
         self.sim.render_interval = self.decimation

@@ -258,8 +258,8 @@ class EventCfg:
                 "y": (-1, 1), 
                 # "roll": (0, 0),
                 # "pitch": (0, 0),
-                "roll": (-0.5, 0.5),
-                "pitch": (-0.5, 0.5),
+                "roll": (-0.2, 0.2),
+                "pitch": (-0.2, 0.2),
                 "yaw": (-3.14, 3.14)
             },
             "velocity_range": {
@@ -329,8 +329,6 @@ class TerminationsCfg:
     # (2) Linear velocity in z direction exceeds a negative threshold
     len_vel_z_out_bounds = DoneTerm(
         func=mdp.lin_vel_z_termination,
-        params={"asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]), 
-        }
     )
     # (3) Z position out of bounds
     below_min_altitude = DoneTerm(

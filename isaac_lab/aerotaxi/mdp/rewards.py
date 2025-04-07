@@ -24,6 +24,19 @@ def lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
 
     return rewards
 
+def lin_vel_0(env: ManagerBasedRLEnv) -> torch.Tensor:
+    obs = env.obs_buf
+    lin_vel = obs["policy"][:, :3]
+    vel_command = env.command_manager.get_command("vel_command")
+    rewards = torch.zeros(env.num_envs, device=env.device)
+
+    diff = lin_vel.abs().norm(dim=1, keepdim=True).flatten()
+    flatten_vel = vel_command[:, :3].abs().norm(dim=1, keepdim=True).flatten()
+
+    rewards[:] = (10 / (1 + torch.exp(torch.log(diff)))) * flatten_vel
+
+    return rewards
+
 def lin_vel_z_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Penalize linear velocity in the z direction deviation from a target value."""
     obs = env.obs_buf
@@ -125,10 +138,12 @@ def ang_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     obs = env.obs_buf
     ang_vel_z = obs["policy"][:, 5]
     vel_command = env.command_manager.get_command("vel_command")
+    rewards = torch.zeros(env.num_envs, device=env.device)
 
     diff = (ang_vel_z[:] - vel_command[:, 3]).abs()
+    rewards[:] = 10 / (1 + torch.exp(torch.log(diff)))
 
-    return diff.flatten()
+    return rewards
 
 def roll_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
     """Penalize roll and pitch deviation from a target value."""
