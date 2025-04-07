@@ -18,22 +18,34 @@ def lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     vel_command = env.command_manager.get_command("vel_command")
     rewards = torch.zeros(env.num_envs, device=env.device)
 
-    diff = (lin_vel[:] - vel_command[:, :3]).abs()
+    diff = (lin_vel[:] - vel_command[:, :3])
     diff = diff.norm(dim=1, keepdim=True).flatten()
     rewards[:] = 10 / (1 + torch.exp(torch.log(diff)))
 
     return rewards
 
-def lin_vel_0(env: ManagerBasedRLEnv) -> torch.Tensor:
+def lin_vel_static(env: ManagerBasedRLEnv) -> torch.Tensor:
     obs = env.obs_buf
     lin_vel = obs["policy"][:, :3]
     vel_command = env.command_manager.get_command("vel_command")
     rewards = torch.zeros(env.num_envs, device=env.device)
 
-    diff = lin_vel.abs().norm(dim=1, keepdim=True).flatten()
-    flatten_vel = vel_command[:, :3].abs().norm(dim=1, keepdim=True).flatten()
+    norm_lin_vel = lin_vel.norm(dim=1, keepdim=True).flatten()
+    norm_vel_command = vel_command.norm(dim=1, keepdim=True).flatten()
 
-    rewards[:] = (10 / (1 + torch.exp(torch.log(diff)))) * flatten_vel
+    rewards[:] = (10 / (1 + torch.exp(torch.log(norm_lin_vel)))) * norm_vel_command
+
+    return rewards
+
+def ang_vel_static(env: ManagerBasedRLEnv) -> torch.Tensor:
+    obs = env.obs_buf
+    ang_vel_z = obs["policy"][:, 5]
+    vel_command = env.command_manager.get_command("vel_command")
+    rewards = torch.zeros(env.num_envs, device=env.device)
+
+    vel_command_z = vel_command[:, 3].abs()
+
+    rewards[:] = (10 / (1 + torch.exp(torch.log(ang_vel_z.abs())))) * vel_command_z
 
     return rewards
 

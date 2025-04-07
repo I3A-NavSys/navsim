@@ -10,8 +10,8 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class AerotaxiPPORunnerCfg(RslRlOnPolicyRunnerCfg):
-    num_steps_per_env = 64
-    max_iterations = 1000
+    num_steps_per_env = 128
+    max_iterations = 2500
     save_interval = 100
     experiment_name = "aerotaxi"
     empirical_normalization = False
