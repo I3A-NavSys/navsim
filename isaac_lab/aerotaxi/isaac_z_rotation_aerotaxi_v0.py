@@ -226,7 +226,7 @@ class UAVcommandTerm(CommandTerm):
         self._command[env_ids, 0] = 0
         self._command[env_ids, 1] = 0
         self._command[env_ids, 2] = 0
-        self._command[env_ids, 3] = torch.empty(4, device=self.device).uniform_(-1, 1)
+        self._command[env_ids, 3] = torch.empty(1, device=self.device).uniform_(-1, 1)
 
     def _update_command(self):
         # self._command[:] = torch.zeros(4, device=self.device)
