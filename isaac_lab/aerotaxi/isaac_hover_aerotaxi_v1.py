@@ -9,7 +9,7 @@ import math
 import torch
 
 # import isaaclab.envs.mdp as mdp
-from . import mdp
+from . import mdp_hover
 import isaaclab.sim as sim_utils
 from isaaclab.assets import AssetBaseCfg, Articulation, ArticulationCfg
 from isaaclab.envs import ManagerBasedRLEnv, ManagerBasedRLEnvCfg
@@ -250,7 +250,7 @@ class EventCfg:
     """Event specifications for the environment."""
 
     reset_pos = EventTerm(
-        func=mdp.reset_root_state_uniform, 
+        func=mdp_hover.reset_root_state_uniform, 
         mode="reset",
         params={
             "pose_range": {
@@ -279,38 +279,38 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    alive = RewTerm(func=mdp.is_alive, weight=2.0)
+    alive = RewTerm(func=mdp_hover.is_alive, weight=2.0)
 
-    terminating = RewTerm(func=mdp.is_terminated, weight=-400.0)
+    terminating = RewTerm(func=mdp_hover.is_terminated, weight=-400.0)
 
     modern_control = RewTerm(
-        func=mdp.modern_control_diff,
+        func=mdp_hover.modern_control_diff,
         weight=2.0,
     )
 
     hover = RewTerm(
-        func=mdp.lin_vel_diff,
+        func=mdp_hover.lin_vel_diff,
         weight=1.0,
     )
 
     falling = RewTerm(
-        func=mdp.lin_vel_z_diff,
+        func=mdp_hover.lin_vel_z_diff,
         weight=-5.0,
     )
 
     rotation = RewTerm(
-        func=mdp.ang_vel_diff,
+        func=mdp_hover.ang_vel_diff,
         weight=-5.0,
     )
 
     roll = RewTerm(
-        func=mdp.roll_diff,
+        func=mdp_hover.roll_diff,
         weight=-10.0,
         params={"target": 0.0},
     )
 
     pitch = RewTerm(
-        func=mdp.pitch_diff,
+        func=mdp_hover.pitch_diff,
         weight=-10.0,
         params={"target": 0.0},
     )
@@ -325,14 +325,14 @@ class TerminationsCfg:
     """Termination terms for the MDP."""
 
     # (1) Time out
-    time_out = DoneTerm(func=mdp.time_out, time_out=True)
+    time_out = DoneTerm(func=mdp_hover.time_out, time_out=True)
     # (2) Linear velocity in z direction exceeds a negative threshold
     len_vel_z_out_bounds = DoneTerm(
-        func=mdp.lin_vel_z_termination,
+        func=mdp_hover.lin_vel_z_termination,
     )
     # (3) Z position out of bounds
     below_min_altitude = DoneTerm(
-        func=mdp.below_min_altitude,
+        func=mdp_hover.below_min_altitude,
         params={"asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]), 
                 "min_altitude": 10.0,
         }
