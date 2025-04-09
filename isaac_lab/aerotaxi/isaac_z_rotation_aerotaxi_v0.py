@@ -226,7 +226,7 @@ class UAVcommandTerm(CommandTerm):
         self._command[env_ids, 0] = 0
         self._command[env_ids, 1] = 0
         self._command[env_ids, 2] = 0
-        self._command[env_ids, 3] = torch.empty(4, device=self.device).uniform_(-1, 1)
+        self._command[env_ids, 3] = torch.empty(1, device=self.device).uniform_(-1, 1)
 
     def _update_command(self):
         # self._command[:] = torch.zeros(4, device=self.device)
@@ -290,12 +290,12 @@ class RewardsCfg:
 
     modern_control = RewTerm(
         func=mdp.modern_control_diff,
-        weight=0.3,
+        weight=1.0,
     )
 
     lin_vel_diff = RewTerm(
         func=mdp.lin_vel_diff,
-        weight=0.3,
+        weight=1.0,
     )
 
     ang_vel_diff = RewTerm(
@@ -303,22 +303,27 @@ class RewardsCfg:
         weight=1.0,
     )
 
+    lin_static = RewTerm(
+        func=mdp.lin_vel_static,
+        weight=-5.0,
+    )
+
     ang_static = RewTerm(
         func=mdp.ang_vel_static,
         weight=-5.0,
     )
 
-    # roll = RewTerm(
-    #     func=mdp.roll_diff,
-    #     weight=-10.0,
-    #     params={"target": torch.pi / 4},
-    # )
+    roll = RewTerm(
+        func=mdp.roll_diff,
+        weight=-10.0,
+        params={"target": 0},
+    )
 
-    # pitch = RewTerm(
-    #     func=mdp.pitch_diff,
-    #     weight=-10.0,
-    #     params={"target": torch.pi / 4},
-    # )
+    pitch = RewTerm(
+        func=mdp.pitch_diff,
+        weight=-10.0,
+        params={"target": 0},
+    )
 
 
 # |---------------------------------------------------------|
@@ -344,6 +349,10 @@ class TerminationsCfg:
 
     roll_pitch_out_bounds = DoneTerm(
         func=mdp.roll_pitch_termination,
+    )
+
+    nan_values = DoneTerm(
+        func=mdp.are_nan_values
     )
 
 

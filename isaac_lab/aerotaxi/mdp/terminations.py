@@ -33,3 +33,7 @@ def below_min_altitude(env: ManagerBasedRLEnv, min_altitude: float, asset_cfg: S
     pos = asset.data.root_pos_w
 
     return pos[:, 2] <= min_altitude
+
+def are_nan_values(env: ManagerBasedRLEnv) -> torch.Tensor:
+    """Terminate when obs buffer has any nan value """
+    return torch.isnan(env.obs_buf["policy"][:]).any(dim=1)
