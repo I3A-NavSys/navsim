@@ -18,8 +18,8 @@ def lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     vel_command = env.command_manager.get_command("vel_command")
     rewards = torch.zeros(env.num_envs, device=env.device)
 
-    diff = lin_vel[:] - vel_command[:, :3]
-    diff = diff.norm(dim=1)
+    diff = (lin_vel[:] - vel_command[:, :3]).abs().sum(dim=1)
+    # diff = diff.norm(dim=1)
     rewards[:] = 10 / (1 + torch.exp(torch.log(diff)))
 
     return rewards
@@ -30,7 +30,7 @@ def lin_vel_static(env: ManagerBasedRLEnv) -> torch.Tensor:
     # vel_command = env.command_manager.get_command("vel_command")
     # rewards = torch.zeros(env.num_envs, device=env.device)
 
-    norm_lin_vel = lin_vel.norm(dim=1)
+    norm_lin_vel = lin_vel.abs().sum(dim=1)
     # norm_vel_command = vel_command.norm(dim=1)
 
     # rewards[:] = (10 / (1 + torch.exp(torch.log(norm_lin_vel)))) * norm_vel_command
