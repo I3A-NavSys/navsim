@@ -43,9 +43,15 @@ def ang_vel_static(env: ManagerBasedRLEnv) -> torch.Tensor:
     vel_command = env.command_manager.get_command("vel_command")
     rewards = torch.zeros(env.num_envs, device=env.device)
 
+    y_axis_cut = torch.tensor(1, device=env.device)
+    x_axis_cut = torch.tensor(2, device=env.device)
+    exponential_factor = torch.tensor(0.1, device=env.device)
+
     vel_command_z = vel_command[:, 3].abs()
 
-    rewards[:] = (10 / (1 + torch.exp(torch.log(ang_vel_z.abs())))) * vel_command_z
+    # rewards[:] = (10 / (1 + torch.exp(torch.log(ang_vel_z.abs())))) * vel_command_z
+    exponent = (torch.log(exponential_factor) / x_axis_cut) * ang_vel_z.abs()[:]
+    rewards[:] = y_axis_cut * torch.exp(exponent) * vel_command_z
 
     return rewards
 
@@ -152,8 +158,14 @@ def ang_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     vel_command = env.command_manager.get_command("vel_command")
     rewards = torch.zeros(env.num_envs, device=env.device)
 
+    y_axis_cut = torch.tensor(1, device=env.device)
+    x_axis_cut = torch.tensor(2, device=env.device)
+    exponential_factor = torch.tensor(0.1, device=env.device)
+
     diff = (ang_vel_z[:] - vel_command[:, 3]).abs()
-    rewards[:] = 10 / (1 + torch.exp(torch.log(diff)))
+    # rewards[:] = 10 / (1 + torch.exp(torch.log(diff)))
+    exponent = (torch.log(exponential_factor) / x_axis_cut) * diff[:]
+    rewards[:] = y_axis_cut * torch.exp(exponent)
 
     return rewards
 

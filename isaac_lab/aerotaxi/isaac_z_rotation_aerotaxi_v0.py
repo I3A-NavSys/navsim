@@ -243,7 +243,7 @@ class UAVcommandTermCfg(CommandTermCfg):
 class CommandCfg:
     """Command specifications for the environment."""
 
-    vel_command = UAVcommandTermCfg(resampling_time_range=(1, 10))
+    vel_command = UAVcommandTermCfg(resampling_time_range=(10, 10))
 
 
 # |---------------------------------------------------------|
@@ -290,13 +290,13 @@ class RewardsCfg:
 
     modern_control = RewTerm(
         func=mdp_z_rotation.modern_control_diff,
-        weight=1.0,
+        weight=0.3,
     )
 
-    lin_vel_diff = RewTerm(
-        func=mdp_z_rotation.lin_vel_diff,
-        weight=1.0,
-    )
+    # lin_vel_diff = RewTerm(
+    #     func=mdp_z_rotation.lin_vel_diff,
+    #     weight=1.0,
+    # )
 
     ang_vel_diff = RewTerm(
         func=mdp_z_rotation.ang_vel_diff,
@@ -310,7 +310,7 @@ class RewardsCfg:
 
     ang_static = RewTerm(
         func=mdp_z_rotation.ang_vel_static,
-        weight=-5.0,
+        weight=-1.0,
     )
 
     roll = RewTerm(
@@ -351,9 +351,9 @@ class TerminationsCfg:
         func=mdp_z_rotation.roll_pitch_termination,
     )
 
-    nan_values = DoneTerm(
-        func=mdp_z_rotation.are_nan_values
-    )
+    # nan_values = DoneTerm(
+    #     func=mdp_z_rotation.are_nan_values
+    # )
 
 
 # |---------------------------------------------------------|
@@ -472,7 +472,7 @@ class UAVEnvCfg(ManagerBasedRLEnvCfg):
         self.viewer.lookat = [0.0, 0.0, 2.0]
         # step settings
         self.decimation = 1  # env step every 4 sim steps: 200Hz / 4 = 50Hz
-        self.episode_length_s = 10.0  # 10s
+        self.episode_length_s = 20.0  # 10s
         # simulation settings
         self.sim.dt = 0.02  # sim step every 5ms: 200Hz
         self.sim.render_interval = self.decimation
