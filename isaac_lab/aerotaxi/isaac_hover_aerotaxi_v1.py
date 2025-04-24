@@ -180,6 +180,25 @@ def my_obs_pitch(env:ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
 
     return pitch
 
+def my_obs_command(env: ManagerBasedRLEnv) -> torch.Tensor:
+    """Get current velocity commands."""
+    return env.command_manager.get_command("vel_command")
+
+def my_obs_command_error(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.Tensor:
+    """Calculate error between current state and commanded values."""
+    asset: Articulation = env.scene[asset_cfg.name]
+    
+    # Get current state
+    lin_vel = asset.data.root_com_lin_vel_b
+    ang_vel = asset.data.root_com_ang_vel_b
+    command = env.command_manager.get_command("vel_command")
+    
+    # Calculate errors
+    lin_vel_error = lin_vel - command[:, :3]
+    ang_vel_error = ang_vel[:, 2] - command[:, 3]  # Only yaw for UAV
+    
+    return torch.cat([lin_vel_error, ang_vel_error.unsqueeze(1)], dim=1)
+
 @configclass
 class ObervervationCfg:
     """Observation specifications for the environment."""
@@ -191,10 +210,12 @@ class ObervervationCfg:
         ang_vel = ObsTerm(func=my_obs_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         roll = ObsTerm(func=my_obs_roll, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         pitch = ObsTerm(func=my_obs_pitch, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
-
-        def __pos_init__(self):
-            self.enable_corruption = True
-            self.concatenate_terms = False
+        current_command = ObsTerm(func=my_obs_command)
+        command_error = ObsTerm(func=my_obs_command_error, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        
+        def __post_init__(self):
+            self.enable_corruption = False  # Commands should never be corrupted
+            self.concatenate_terms = True
 
     policy: PolicyCfg = PolicyCfg()
 
@@ -225,7 +246,8 @@ class UAVcommandTerm(CommandTerm):
         self._command[env_ids, :] = torch.zeros(4, device=self.device)
 
     def _update_command(self):
-        self._command[:] = torch.zeros(4, device=self.device)
+        # self._command[:] = torch.zeros(4, device=self.device)
+        pass
 
 @configclass
 class UAVcommandTermCfg(CommandTermCfg):
@@ -238,7 +260,7 @@ class UAVcommandTermCfg(CommandTermCfg):
 class CommandCfg:
     """Command specifications for the environment."""
 
-    vel_command = UAVcommandTermCfg(resampling_time_range=(1, 10))
+    vel_command = UAVcommandTermCfg(resampling_time_range=(10, 10))
 
 
 # |---------------------------------------------------------|
@@ -254,18 +276,18 @@ class EventCfg:
         mode="reset",
         params={
             "pose_range": {
-                "x": (-1, 1), 
-                "y": (-1, 1), 
+                "x": (0, 0), 
+                "y": (0, 0), 
                 # "roll": (0, 0),
                 # "pitch": (0, 0),
-                "roll": (-0.2, 0.2),
-                "pitch": (-0.2, 0.2),
+                "roll": (-0.5, 0.5),
+                "pitch": (-0.5, 0.5),
                 "yaw": (-3.14, 3.14)
             },
             "velocity_range": {
-                "x": (0, 0),
-                "y": (0, 0),
-                "z": (0, 0)
+                "x": (-2, 2),
+                "y": (2, 2),
+                "z": (2, 2)
             },
             "asset_cfg": SceneEntityCfg(name="aerotaxi")
         }
@@ -283,23 +305,23 @@ class RewardsCfg:
 
     terminating = RewTerm(func=mdp_hover.is_terminated, weight=-400.0)
 
-    modern_control = RewTerm(
-        func=mdp_hover.modern_control_diff,
-        weight=2.0,
-    )
+    # modern_control = RewTerm(
+    #     func=mdp_hover.modern_control_diff,
+    #     weight=2.0,
+    # )
 
     hover = RewTerm(
         func=mdp_hover.lin_vel_diff,
         weight=1.0,
     )
 
-    falling = RewTerm(
-        func=mdp_hover.lin_vel_z_diff,
-        weight=-5.0,
-    )
-
     rotation = RewTerm(
         func=mdp_hover.ang_vel_diff,
+        weight=1.0,
+    )
+
+    falling = RewTerm(
+        func=mdp_hover.lin_vel_z_diff,
         weight=-5.0,
     )
 
@@ -327,7 +349,7 @@ class TerminationsCfg:
     # (1) Time out
     time_out = DoneTerm(func=mdp_hover.time_out, time_out=True)
     # (2) Linear velocity in z direction exceeds a negative threshold
-    len_vel_z_out_bounds = DoneTerm(
+    lin_vel_z_out_bounds = DoneTerm(
         func=mdp_hover.lin_vel_z_termination,
     )
     # (3) Z position out of bounds
