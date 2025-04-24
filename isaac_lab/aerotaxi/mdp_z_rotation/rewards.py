@@ -10,43 +10,6 @@ import isaaclab.utils.math as math_utils
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
 
-
-def lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
-    """Penalize linear velocity deviation from a target value."""
-    obs = env.obs_buf
-    lin_vel = obs["policy"][:, :3]
-    vel_command = env.command_manager.get_command("vel_command")
-    rewards = torch.zeros(env.num_envs, device=env.device)
-
-    diff = (lin_vel[:] - vel_command[:, :3]).abs().sum(dim=1)
-    # diff = diff.norm(dim=1)
-    rewards[:] = 10 / (1 + torch.exp(torch.log(diff)))
-
-    return rewards
-
-def lin_vel_static(env: ManagerBasedRLEnv) -> torch.Tensor:
-    obs = env.obs_buf
-    lin_vel = obs["policy"][:, :3]
-    # vel_command = env.command_manager.get_command("vel_command")
-    # rewards = torch.zeros(env.num_envs, device=env.device)
-
-    norm_lin_vel = lin_vel.abs().sum(dim=1)
-    # norm_vel_command = vel_command.norm(dim=1)
-
-    # rewards[:] = (10 / (1 + torch.exp(torch.log(norm_lin_vel)))) * norm_vel_command
-
-    return norm_lin_vel
-
-def ang_vel_static(env: ManagerBasedRLEnv) -> torch.Tensor:
-    obs = env.obs_buf
-    ang_vel_z = obs["policy"][:, 5]
-    # vel_command = env.command_manager.get_command("vel_command")
-    # rewards = torch.zeros(env.num_envs, device=env.device)
-    factor = torch.tensor(1, device=env.device)
-    avoid_0_div = torch.tensor(0.1, device=env.device)
-
-    return factor / (ang_vel_z.abs().flatten() + avoid_0_div)
-
 def modern_control_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Penalize actions deviation from the modern control (vectorized version)."""
     
@@ -79,8 +42,10 @@ def modern_control_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     ang_vel = obs[:, 3:6]  # shape: (num_envs, 3)
     roll = env.obs_buf["policy"][:, 6] # shape: (num_envs, 1)
     pitch = env.obs_buf["policy"][:, 7] # shape: (num_envs, 1)
-    vel_command = env.command_manager.get_command("vel_command")
+    vel_command = obs["policy"][:, 8:12]
     rewards = torch.zeros(env.num_envs, device=env.device)
+    torch_10 = torch.tensor(10, device=env.device)
+    torch_1 = torch.tensor(1, device=env.device)
 
     # Create reference tensor
     r = torch.zeros(env.num_envs, 4, 1, device=env.device)
@@ -129,25 +94,46 @@ def modern_control_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     diff = (w_rotors - scaled_actions).abs().sum(dim=1)
     
     # Apply special cases
-    rewards[:] = 10 / (1 + torch.exp(torch.log(diff)))
+    rewards[:] = torch_10 / (torch_1 + torch.exp(torch.log(diff)))
     
     return rewards
+
+def lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
+    """Penalize linear velocity deviation from a target value."""
+    obs = env.obs_buf
+    lin_vel = obs["policy"][:, :3]
+    vel_command = obs["policy"][:, 8:12]
+    rewards = torch.zeros(env.num_envs, device=env.device)
+    torch_10 = torch.tensor(10, device=env.device)
+    torch_1 = torch.tensor(1, device=env.device)
+
+    diff = lin_vel[:] - vel_command[:, :3]
+    diff_norm = torch.sqrt(torch.clamp(torch.sum(diff * diff, dim=1), min=1e-8))
+    rewards[:] = torch_10 / (torch_1 + torch.exp(torch.log(diff_norm)))
+
+    return rewards
+
+def lin_vel_z_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
+    """Penalize linear velocity in the z direction deviation from a target value."""
+    obs = env.obs_buf
+    lin_vel_z = obs["policy"][:, 2]
+    vel_command = obs["policy"][:, 8:12]
+
+    diff = (lin_vel_z[:] - vel_command[:, 2]).abs()
+
+    return diff
 
 def ang_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Penalize angular velocity deviation from a target value."""
     obs = env.obs_buf
     ang_vel_z = obs["policy"][:, 5]
-    vel_command = env.command_manager.get_command("vel_command")
+    vel_command = obs["policy"][:, 8:12]
     rewards = torch.zeros(env.num_envs, device=env.device)
-
-    # y_axis_cut = torch.tensor(1, device=env.device)
-    # x_axis_cut = torch.tensor(2, device=env.device)
-    # exponential_factor = torch.tensor(0.1, device=env.device)
+    torch_10 = torch.tensor(10, device=env.device)
+    torch_1 = torch.tensor(1, device=env.device)
 
     diff = (ang_vel_z[:] - vel_command[:, 3]).abs()
-    rewards[:] = 10 / (1 + torch.exp(torch.log(diff)))
-    # exponent = (torch.log(exponential_factor) / x_axis_cut) * diff[:]
-    # rewards[:] = y_axis_cut * torch.exp(exponent)
+    rewards[:] = torch_10 / (torch_1 + torch.exp(torch.log(diff)))
 
     return rewards
 
