@@ -35,6 +35,7 @@ class UAVactionTerm(ActionTerm):
     """Action term for the UAV."""
 
     _asset: Articulation
+    _env: ManagerBasedRLEnv
 
     def __init__(self, cfg: UAVactionTermCfg, env: ManagerBasedRLEnv):
         super().__init__(cfg, env)
@@ -83,6 +84,7 @@ class UAVactionTerm(ActionTerm):
         kMDx = torch.tensor(37.4010, device=self.device)
         kMDy = torch.tensor(25.8580, device=self.device)
         kMDz = torch.tensor(20.2514, device=self.device)
+        torch_2 = torch.tensor(2, device=self.device)
         
         # Process raw actions (vectorized)
         self._raw_actions = actions.abs() * self.action_scale
@@ -90,12 +92,14 @@ class UAVactionTerm(ActionTerm):
         # print(f"[DEBUG]: raw_actions: {self._raw_actions[0]}")
         
         # Get velocities (assuming these are already tensors)
-        lin_vels = self._asset.data.root_com_lin_vel_b  # shape: (num_envs, 3)
-        ang_vels = self._asset.data.root_com_ang_vel_b  # shape: (num_envs, 3)
+        # lin_vels = self._asset.data.root_com_lin_vel_b  # shape: (num_envs, 3)
+        # ang_vels = self._asset.data.root_com_ang_vel_b  # shape: (num_envs, 3)
+        lin_vels = self._env.observation_manager._obs_buffer["policy"][:, :3]  # shape: (num_envs, 3)
+        ang_vels = self._env.observation_manager._obs_buffer["policy"][:, 3:6]  # shape: (num_envs, 3)
         
         # Compute thrust forces (vectorized)
         thrust_coeffs = torch.tensor([kFT_N, kFT_N, kFT_S, kFT_S], device=self.device)
-        thrust_z = thrust_coeffs * self._raw_actions**2
+        thrust_z = thrust_coeffs * self._raw_actions**torch_2
         FT_all = torch.zeros(self._env.num_envs, 4, 3, device=self.device)
         FT_all[:, :, 2] = thrust_z  # Only z-component is non-zero
         
@@ -104,7 +108,7 @@ class UAVactionTerm(ActionTerm):
         
         # Compute drag moments (vectorized)
         MDR_coeffs = torch.tensor([kMDR_N, kMDR_N, kMDR_S, kMDR_S], device=self.device)
-        MDR_z = MDR_coeffs * self._raw_actions**2
+        MDR_z = MDR_coeffs * self._raw_actions**torch_2
         MDR = torch.zeros(self._env.num_envs, 3, device=self.device)
         MDR[:, 2] = MDR_z[:, 1] - MDR_z[:, 0] - MDR_z[:, 3] + MDR_z[:, 2]  # NE-NW-SE+SW
         
@@ -180,6 +184,25 @@ def my_obs_pitch(env:ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
 
     return pitch
 
+def my_obs_command(env: ManagerBasedRLEnv) -> torch.Tensor:
+    """Get current velocity commands."""
+    return env.command_manager.get_command("vel_command")
+
+def my_obs_command_error(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.Tensor:
+    """Calculate error between current state and commanded values."""
+    asset: Articulation = env.scene[asset_cfg.name]
+    
+    # Get current state
+    lin_vel = asset.data.root_com_lin_vel_b
+    ang_vel = asset.data.root_com_ang_vel_b
+    command = env.command_manager.get_command("vel_command")
+    
+    # Calculate errors
+    lin_vel_error = lin_vel - command[:, :3]
+    ang_vel_error = ang_vel[:, 2] - command[:, 3]  # Only yaw for UAV
+    
+    return torch.cat([lin_vel_error, ang_vel_error.unsqueeze(1)], dim=1)
+
 @configclass
 class ObervervationCfg:
     """Observation specifications for the environment."""
@@ -191,10 +214,12 @@ class ObervervationCfg:
         ang_vel = ObsTerm(func=my_obs_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         roll = ObsTerm(func=my_obs_roll, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         pitch = ObsTerm(func=my_obs_pitch, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        current_command = ObsTerm(func=my_obs_command)
+        command_error = ObsTerm(func=my_obs_command_error, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
 
         def __pos_init__(self):
-            self.enable_corruption = True
-            self.concatenate_terms = False
+            self.enable_corruption = False
+            self.concatenate_terms = True
 
     policy: PolicyCfg = PolicyCfg()
 
@@ -204,28 +229,74 @@ class ObervervationCfg:
 # |---------------------------------------------------------|
 
 class UAVcommandTerm(CommandTerm):
-    """Command term for the UAV."""
-
+    """Command term for the UAV that generates meaningful velocity and yaw rate commands."""
+    
     _asset: Articulation
-
+    
     def __init__(self, cfg: UAVcommandTermCfg, env: ManagerBasedRLEnv):
         super().__init__(cfg, env)
+        # Command format: [lin_vel_x, lin_vel_y, lin_vel_z, ang_vel_z]
         self._command = torch.zeros(env.num_envs, 4, device=self.device)
+        # self._last_resample_time = torch.zeros(env.num_envs, device=self.device)
+        
+        # Command parameters
+        self.max_lin_vel_xy = 10.0  # m/s
+        self.max_lin_vel_z = 10.0   # m/s
+        self.max_ang_vel_z = 5.0   # rad/s
+        self.hover_prob = 0.3      # Probability of commanding hover
+        self.xy_move_prob = 0.5    # Probability of XY movement
+        self.z_move_prob = 0.3     # Probability of Z movement
+        self.yaw_move_prob = 0.4   # Probability of yaw rotation
 
     @property
     def command(self) -> torch.Tensor:
-        """The command tensor. Shape is (num_envs, command_dim)."""
         return self._command
     
     def _update_metrics(self):
+        # You can track command statistics here if needed
         pass
 
     def _resample_command(self, env_ids):
-        """Resample the command for the given environment IDs."""
-        self._command[env_ids, :] = torch.rand(4, device=self.device) * torch.tensor(10, device=self.device)
+        """Resample commands for specified environments."""
+        num_resets = len(env_ids)
+        
+        # Initialize all commands to hover
+        new_commands = torch.zeros(num_resets, 4, device=self.device)
+        
+        # Generate random commands based on probabilities
+        rand_vals = torch.rand(num_resets, 4, device=self.device)
+        
+        # XY velocity commands
+        xy_move_mask = rand_vals[:, 0] < self.xy_move_prob
+        if xy_move_mask.any():
+            angles = 2 * math.pi * torch.rand(xy_move_mask.sum(), device=self.device)
+            speeds = self.max_lin_vel_xy * torch.rand(xy_move_mask.sum(), device=self.device)
+            new_commands[xy_move_mask, 0] = speeds * torch.cos(angles)  # vx
+            new_commands[xy_move_mask, 1] = speeds * torch.sin(angles)  # vy
+        
+        # Z velocity commands
+        z_move_mask = rand_vals[:, 2] < self.z_move_prob
+        if z_move_mask.any():
+            directions = torch.where(rand_vals[z_move_mask, 2] < 0.5, -1.0, 1.0)
+            new_commands[z_move_mask, 2] = directions * self.max_lin_vel_z * torch.rand(z_move_mask.sum(), device=self.device)
+        
+        # Yaw rate commands
+        yaw_move_mask = rand_vals[:, 3] < self.yaw_move_prob
+        if yaw_move_mask.any():
+            directions = torch.where(rand_vals[yaw_move_mask, 3] < 0.5, -1.0, 1.0)
+            new_commands[yaw_move_mask, 3] = directions * self.max_ang_vel_z * torch.rand(yaw_move_mask.sum(), device=self.device)
+        
+        # Apply hover probability - override all commands with zeros
+        hover_mask = torch.rand(num_resets, device=self.device) < self.hover_prob
+        new_commands[hover_mask, :] = 0.0
+        
+        # Update commands for the specified environments
+        self._command[env_ids, :] = new_commands
+        # self._last_resample_time[env_ids] = self._env.episode_length_buf[env_ids]
 
     def _update_command(self):
-        # self._command[:] = torch.zeros(4, device=self.device)
+        """Optionally update commands during the episode (e.g., smooth transitions)."""
+        # For now, we'll keep commands constant until resampled
         pass
 
 @configclass
@@ -239,7 +310,7 @@ class UAVcommandTermCfg(CommandTermCfg):
 class CommandCfg:
     """Command specifications for the environment."""
 
-    vel_command = UAVcommandTermCfg(resampling_time_range=(1, 10))
+    vel_command = UAVcommandTermCfg(resampling_time_range=(10, 10))
 
 
 # |---------------------------------------------------------|
@@ -255,18 +326,16 @@ class EventCfg:
         mode="reset",
         params={
             "pose_range": {
-                "x": (-1, 1), 
-                "y": (-1, 1), 
-                # "roll": (0, 0),
-                # "pitch": (0, 0),
+                "x": (0, 0), 
+                "y": (0, 0), 
                 "roll": (-0.5, 0.5),
                 "pitch": (-0.5, 0.5),
                 "yaw": (-3.14, 3.14)
             },
             "velocity_range": {
-                "x": (0, 0),
-                "y": (0, 0),
-                "z": (0, 0)
+                "x": (-2, 2),
+                "y": (-2, 2),
+                "z": (-2, 2)
             },
             "asset_cfg": SceneEntityCfg(name="aerotaxi")
         }
@@ -282,40 +351,22 @@ class RewardsCfg:
     """Reward terms for the MDP."""
     alive = RewTerm(func=mdp_command.is_alive, weight=1.0)
 
-    terminating = RewTerm(func=mdp_command.is_terminated, weight=-400.0)
+    terminating = RewTerm(func=mdp_command.is_terminated, weight=-100.0)
 
-    modern_control = RewTerm(
-        func=mdp_command.modern_control_diff,
-        weight=2.0,
-    )
-
-    lin_vel_diff = RewTerm(
-        func=mdp_command.lin_vel_diff,
-        weight=1.0,
-    )
-
-    yaw = RewTerm(
+    rew_ang_vel_diff = RewTerm(
         func=mdp_command.ang_vel_diff,
         weight=1.0,
     )
 
-    static = RewTerm(
-        func=mdp_command.lin_vel_0,
-        weight=-1.0,
+    rew_lin_vel_diff = RewTerm(
+        func=mdp_command.lin_vel_diff,
+        weight=1.0,
     )
 
-    # roll = RewTerm(
-    #     func=mdp.roll_diff,
-    #     weight=-10.0,
-    #     params={"target": torch.pi / 4},
-    # )
-
-    # pitch = RewTerm(
-    #     func=mdp.pitch_diff,
-    #     weight=-10.0,
-    #     params={"target": torch.pi / 4},
-    # )
-
+    pen_jerky_mov = RewTerm(
+        func=mdp_command.jerky_mov,
+        weight=-1.0,
+    )
 
 # |---------------------------------------------------------|
 # |--------------------- TERMINATIONS ----------------------|
@@ -326,10 +377,6 @@ class TerminationsCfg:
     """Termination terms for the MDP."""
 
     time_out = DoneTerm(func=mdp_command.time_out, time_out=True)
-    
-    len_vel_z_out_bounds = DoneTerm(
-        func=mdp_command.lin_vel_z_termination,
-    )
     
     below_min_altitude = DoneTerm(
         func=mdp_command.below_min_altitude,
@@ -377,7 +424,7 @@ class MySceneCfg(InteractiveSceneCfg):
             ),
         ),
         init_state=ArticulationCfg.InitialStateCfg(
-            pos=(0, 0, 50),
+            pos=(0, 0, 150),
             joint_pos={
                 "NW_joint": 0.0,
                 "NE_joint": 0.0,

@@ -15,6 +15,7 @@ class AerotaxiPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     save_interval = 100
     experiment_name = "aerotaxi"
     empirical_normalization = False
+    clip_actions=10
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,
         actor_hidden_dims=[128, 128],
