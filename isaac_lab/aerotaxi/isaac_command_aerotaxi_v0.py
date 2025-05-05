@@ -351,7 +351,7 @@ class RewardsCfg:
     """Reward terms for the MDP."""
     alive = RewTerm(func=mdp_command.is_alive, weight=1.0)
 
-    terminating = RewTerm(func=mdp_command.is_terminated, weight=-100.0)
+    terminating = RewTerm(func=mdp_command.is_terminated, weight=-1000.0)
 
     rew_ang_vel_diff = RewTerm(
         func=mdp_command.ang_vel_diff,
@@ -365,8 +365,26 @@ class RewardsCfg:
 
     pen_jerky_mov = RewTerm(
         func=mdp_command.jerky_mov,
-        weight=-1.0,
+        weight=-0.5,
     )
+
+    pen_hover_lin_vel = RewTerm(
+        func=mdp_command.pen_lin_vel_diff,
+        weight=-10.0,
+    )
+
+    pen_hover_roll = RewTerm(
+        func=mdp_command.roll_diff,
+        weight=-100.0,
+        params={"target": 0.0},
+    )
+
+    pen_hover_pitch = RewTerm(
+        func=mdp_command.pitch_diff,
+        weight=-100.0,
+        params={"target": 0.0},
+    )
+
 
 # |---------------------------------------------------------|
 # |--------------------- TERMINATIONS ----------------------|
@@ -424,7 +442,7 @@ class MySceneCfg(InteractiveSceneCfg):
             ),
         ),
         init_state=ArticulationCfg.InitialStateCfg(
-            pos=(0, 0, 150),
+            pos=(0, 0, 200),
             joint_pos={
                 "NW_joint": 0.0,
                 "NE_joint": 0.0,
