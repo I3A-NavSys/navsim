@@ -369,7 +369,7 @@ class RewardsCfg:
     # )
 
     pen_hover_lin_vel = RewTerm(
-        func=mdp_command.pen_lin_vel_diff,
+        func=mdp_command.pen_xy_lin_vel,
         weight=-1.0,
     )
 

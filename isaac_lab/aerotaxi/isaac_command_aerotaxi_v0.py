@@ -363,25 +363,55 @@ class RewardsCfg:
         weight=1.0,
     )
 
-    pen_jerky_mov = RewTerm(
-        func=mdp_command.jerky_mov,
-        weight=-0.5,
+    # pen_jerky_mov = RewTerm(
+    #     func=mdp_command.jerky_mov,
+    #     weight=-0.5,
+    # )
+
+    pen_x_lin_vel = RewTerm(
+        func=mdp_command.pen_x_lin_vel,
+        weight=-1.0,
     )
 
-    pen_hover_lin_vel = RewTerm(
-        func=mdp_command.pen_lin_vel_diff,
-        weight=-10.0,
+    pen_y_lin_vel = RewTerm(
+        func=mdp_command.pen_y_lin_vel,
+        weight=-1.0,
     )
 
-    pen_hover_roll = RewTerm(
+    pen_z_lin_vel = RewTerm(
+        func=mdp_command.pen_z_lin_vel,
+        weight=-1.0,
+    )
+
+    pen_xy_lin_vel = RewTerm(
+        func=mdp_command.pen_xy_lin_vel,
+        weight=-1.0,
+    )
+
+    pen_xz_lin_vel = RewTerm(
+        func=mdp_command.pen_xz_lin_vel,
+        weight=-1.0,
+    )
+
+    pen_yz_lin_vel = RewTerm(
+        func=mdp_command.pen_yz_lin_vel,
+        weight=-1.0,
+    )
+
+    pen_xyz_lin_vel = RewTerm(
+        func=mdp_command.pen_xyz_lin_vel,
+        weight=-1.0,
+    )
+
+    pen_xy_roll = RewTerm(
         func=mdp_command.roll_diff,
-        weight=-100.0,
+        weight=-10.0,
         params={"target": 0.0},
     )
 
-    pen_hover_pitch = RewTerm(
+    pen_xy_pitch = RewTerm(
         func=mdp_command.pitch_diff,
-        weight=-100.0,
+        weight=-10.0,
         params={"target": 0.0},
     )
 
