@@ -353,7 +353,7 @@ class RewardsCfg:
 class TerminationsCfg:
     """Termination terms for the MDP."""
 
-    time_out = DoneTerm(func=mdp_hover.time_out, time_out=True)
+    time_out = DoneTerm(func=mdp.time_out, time_out=True)
     
     below_min_altitude = DoneTerm(
         func=my_terminations.below_min_altitude,
