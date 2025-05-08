@@ -54,7 +54,8 @@ class Aerotaxi(BehaviorScript):
     def on_init(self):
         # load policy
         
-        policy_path = "C:/Users/aurelio/code/navsim/isaac_lab/logs/rsl_rl/Isaac-Command-Aerotaxi-v0/2025-04-30_09-09-30/exported/policy.pt"
+        # policy_path = "C:/Users/aurelio/code/navsim/isaac_lab/logs/rsl_rl/Isaac-Command-Aerotaxi-v1/2025-05-05_10-49-59/exported/policy.pt"
+        policy_path = "C:/Users/aurelio/code/navsim/isaac_lab/logs/rsl_rl/Isaac-Command-Aerotaxi-v2/2025-05-06_14-29-00/exported/policy.pt"
         with open(policy_path, "rb") as f:
             file_bytes = io.BytesIO(f.read())
         self.policy = torch.jit.load(file_bytes).eval()
@@ -445,15 +446,15 @@ class Aerotaxi(BehaviorScript):
 
         self.primRotors.GetAttribute("visibility").Set("invisible")
 
-        model_command = [float(self.command.velX), float(self.command.velY), float(self.command.velZ), float(self.command.rotZ)]
+        command = [float(self.command.velX), float(self.command.velY), float(self.command.velZ), float(self.command.rotZ)]
         
-        torch_command = torch.tensor(model_command)
+        torch_command = torch.tensor(command)
         torch_lin_vel = torch.tensor(self.linear_vel)
         torch_ang_vel = torch.tensor(self.angular_vel)
         lin_vel_error = (torch_lin_vel - torch_command[:3]).tolist()
         ang_vel_error = [(torch_ang_vel[2] - torch_command[3]).item()]
         
-        observations = [*self.linear_vel, *self.angular_vel, float(self.roll), float(self.pitch), *model_command, *lin_vel_error, *ang_vel_error]
+        observations = [*self.linear_vel, *self.angular_vel, float(self.roll), float(self.pitch), *command, *lin_vel_error, *ang_vel_error]
         observations = torch.tensor(observations)
         
         actions = self.policy(observations) * 10

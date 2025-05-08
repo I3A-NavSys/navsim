@@ -52,7 +52,7 @@ def pen_x_lin_vel(env: ManagerBasedRLEnv) -> torch.Tensor:
 
     x_zero_mask = x_vel_command[:] == torch_0
     # diff = (x_lin_vel[:] - x_vel_command[:]).abs()
-    rewards[x_zero_mask] = x_lin_vel[:, x_zero_mask].abs()
+    rewards[x_zero_mask] = x_lin_vel[x_zero_mask].abs()
 
     return rewards
 
@@ -136,8 +136,8 @@ def pen_xyz_lin_vel(env: ManagerBasedRLEnv) -> torch.Tensor:
 
     return rewards
 
-def roll_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
-    """Penalize roll and pitch deviation from a target value."""
+def pen_roll_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
+    """Penalize roll deviation from a target value."""
     obs = env.obs_buf
     roll = obs["policy"][:, 6]
     vel_command = obs["policy"][:, 8:10]    # Angular velocity and Z-linear velocity excluded
@@ -151,8 +151,8 @@ def roll_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
 
     return rewards
 
-def pitch_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
-    """Penalize roll and pitch deviation from a target value."""
+def pen_pitch_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
+    """Penalize pitch deviation from a target value."""
     obs = env.obs_buf
     pitch = obs["policy"][:, 7]
     vel_command = obs["policy"][:, 8:10]    # Angular velocity and Z-linear velocity excluded
@@ -164,4 +164,34 @@ def pitch_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
     diff = (pitch[:] - target).abs()
     rewards[xy_zero_mask] = diff[xy_zero_mask]
 
+    return rewards
+
+def pen_roll_excess(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
+    """Penalize roll excess from target limit"""
+    roll = env.obs_buf["policy"][:, 6]
+    rewards = torch.zeros(env.num_envs, device=env.device)
+    target = torch.tensor(target, device=env.device)
+    
+    # normalize angle to [-pi, pi]
+    roll = torch.atan2(torch.sin(roll[:]), torch.cos(roll[:]))
+    
+    excess_mask = roll[:] > target
+    diff = (roll[:] - target).abs()
+    rewards[excess_mask] = diff[excess_mask]
+    
+    return rewards
+
+def pen_pitch_excess(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
+    """Penalize roll excess from target limit"""
+    pitch = env.obs_buf["policy"][:, 7]
+    rewards = torch.zeros(env.num_envs, device=env.device)
+    target = torch.tensor(target, device=env.device)
+    
+    # normalize angle to [-pi, pi]
+    pitch = torch.atan2(torch.sin(pitch[:]), torch.cos(pitch[:]))
+    
+    excess_mask = pitch[:] > target
+    diff = (pitch[:] - target).abs()
+    rewards[excess_mask] = diff[excess_mask]
+    
     return rewards
