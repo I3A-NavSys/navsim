@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-root_navsim_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+root_navsim_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../..'))
 
 """Rest everything follows."""
 
