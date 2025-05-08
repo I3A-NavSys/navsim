@@ -201,10 +201,12 @@ class ObervervationCfg:
     @configclass
     class PolicyCfg(ObsGroup):
         """Observation group for the policy."""
+        pos = ObsTerm(func=my_obs_pos, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         lin_vel = ObsTerm(func=my_obs_lin_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         ang_vel = ObsTerm(func=my_obs_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         roll = ObsTerm(func=my_obs_roll, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         pitch = ObsTerm(func=my_obs_pitch, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        yaw = ObsTerm(func=my_obs_yaw, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         current_command = ObsTerm(func=my_obs_command)
         
         
@@ -267,22 +269,20 @@ class EventCfg:
     """Event specifications for the environment."""
 
     reset_pos = EventTerm(
-        func=mdp_hover.reset_root_state_uniform, 
+        func=mdp.reset_root_state_uniform, 
         mode="reset",
         params={
             "pose_range": {
-                "x": (0, 0), 
-                "y": (0, 0), 
-                # "roll": (0, 0),
-                # "pitch": (0, 0),
+                "x": (0, 0),
+                "y": (0, 0),
                 "roll": (-0.5, 0.5),
                 "pitch": (-0.5, 0.5),
                 "yaw": (-3.14, 3.14)
             },
             "velocity_range": {
                 "x": (-2, 2),
-                "y": (2, 2),
-                "z": (2, 2)
+                "y": (-2, 2),
+                "z": (-2, 2)
             },
             "asset_cfg": SceneEntityCfg(name="aerotaxi")
         }
@@ -296,40 +296,52 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    alive = RewTerm(func=mdp_hover.is_alive, weight=2.0)
+    alive = RewTerm(func=mdp.is_alive, weight=2.0)
 
-    terminating = RewTerm(func=mdp_hover.is_terminated, weight=-400.0)
+    terminating = RewTerm(func=mdp.is_terminated, weight=-1000.0)
 
-    # modern_control = RewTerm(
-    #     func=mdp_hover.modern_control_diff,
-    #     weight=2.0,
-    # )
-
-    hover = RewTerm(
-        func=mdp_hover.lin_vel_diff,
+    rew_lin_vel_diff = RewTerm(
+        func=my_rewards.rew_lin_vel_diff,
         weight=1.0,
     )
 
-    rotation = RewTerm(
-        func=mdp_hover.ang_vel_diff,
+    rew_ang_vel_diff = RewTerm(
+        func=my_rewards.rew_ang_vel_diff,
         weight=1.0,
     )
 
-    falling = RewTerm(
-        func=mdp_hover.lin_vel_z_diff,
-        weight=-5.0,
+    pen_lin_vel_diff = RewTerm(
+        func=my_rewards.pen_lin_vel_diff,
+        weight=-1.0,
     )
 
-    roll = RewTerm(
-        func=mdp_hover.roll_diff,
+    pen_ang_vel_diff = RewTerm(
+        func=my_rewards.pen_ang_vel_diff,
+        weight=-1.0,
+    )
+
+    pen_roll_diff = RewTerm(
+        func=my_rewards.pen_roll_diff,
         weight=-10.0,
         params={"target": 0.0},
     )
 
-    pitch = RewTerm(
-        func=mdp_hover.pitch_diff,
+    pen_pitch_diff = RewTerm(
+        func=my_rewards.pen_pitch_diff,
         weight=-10.0,
         params={"target": 0.0},
+    )
+
+    pen_roll_excess = RewTerm(
+        func=my_rewards.pen_roll_excess,
+        weight=-100.0,
+        params={"target": torch.pi/4},
+    )
+
+    pen_pitch_excess = RewTerm(
+        func=my_rewards.pen_pitch_excess,
+        weight=-100.0,
+        params={"target": torch.pi/4},
     )
 
 
@@ -341,15 +353,10 @@ class RewardsCfg:
 class TerminationsCfg:
     """Termination terms for the MDP."""
 
-    # (1) Time out
     time_out = DoneTerm(func=mdp_hover.time_out, time_out=True)
-    # (2) Linear velocity in z direction exceeds a negative threshold
-    lin_vel_z_out_bounds = DoneTerm(
-        func=mdp_hover.lin_vel_z_termination,
-    )
-    # (3) Z position out of bounds
+    
     below_min_altitude = DoneTerm(
-        func=mdp_hover.below_min_altitude,
+        func=my_terminations.below_min_altitude,
         params={"asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]), 
                 "min_altitude": 10.0,
         }
@@ -376,8 +383,8 @@ class MySceneCfg(InteractiveSceneCfg):
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=False,
                 rigid_body_enabled=True,
-                max_linear_velocity=1000.0,
-                max_angular_velocity=1000.0,
+                max_linear_velocity=20.0,
+                max_angular_velocity=20.0,
                 max_depenetration_velocity=100.0,
                 enable_gyroscopic_forces=True,
             ),

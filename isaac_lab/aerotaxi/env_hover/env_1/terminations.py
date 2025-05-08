@@ -12,20 +12,14 @@ if TYPE_CHECKING:
 
 def roll_pitch_termination(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Terminate when the asset's roll or pitch exceeds a certain threshold."""
-    roll = env.obs_buf["policy"][:, 6]
-    pitch = env.obs_buf["policy"][:, 7]
+    roll = env.obs_buf["policy"][:, 9]
+    pitch = env.obs_buf["policy"][:, 10]
     
     # # normalize angle to [-pi, pi]
     roll = torch.atan2(torch.sin(roll[:]), torch.cos(roll[:]))
     pitch = torch.atan2(torch.sin(pitch[:]), torch.cos(pitch[:]))
     
-    return torch.logical_or(torch.abs(roll[:]) > torch.pi/4, torch.abs(pitch[:]) > torch.pi/4)
-
-def lin_vel_z_termination(env: ManagerBasedRLEnv) -> torch.Tensor:
-    """Terminate when the asset's linear velocity in the z direction exceeds a certain threshold."""
-    lin_vel_z = env.obs_buf["policy"][:, 2]
-    
-    return lin_vel_z[:] <= -50.0
+    return torch.logical_or(torch.abs(roll[:]) > torch.pi/3, torch.abs(pitch[:]) > torch.pi/3)
 
 def below_min_altitude(env: ManagerBasedRLEnv, min_altitude: float, asset_cfg: SceneEntityCfg) -> torch.Tensor:
     """Terminate when the asset's altitude is below a certain threshold."""

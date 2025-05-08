@@ -11,15 +11,15 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 @configclass
 class AerotaxiPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 128
-    max_iterations = 2500
+    max_iterations = 4000
     save_interval = 100
     experiment_name = "aerotaxi"
     empirical_normalization = False
     clip_actions=10
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,
-        actor_hidden_dims=[128, 128],
-        critic_hidden_dims=[128, 256],
+        actor_hidden_dims=[64, 128, 256],
+        critic_hidden_dims=[64, 128, 256],
         activation="elu",
     )
     algorithm = RslRlPpoAlgorithmCfg(
