@@ -3,13 +3,10 @@ from __future__ import annotations
 import os
 root_navsim_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
 
-"""Rest everything follows."""
-
 import math
 import torch
 
-# import isaaclab.envs.mdp as mdp
-from . import mdp_z_rotation
+import isaaclab.envs.mdp as mdp
 import isaaclab.sim as sim_utils
 from isaaclab.assets import AssetBaseCfg, Articulation, ArticulationCfg
 from isaaclab.envs import ManagerBasedRLEnv, ManagerBasedRLEnvCfg
@@ -25,6 +22,8 @@ from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.utils import configclass
 from isaaclab.actuators import DCMotorCfg
 import isaaclab.utils.math as math_utils
+from . import rewards as my_rewards
+from . import terminations as my_terminations
 
 
 # |---------------------------------------------------------|
@@ -274,7 +273,7 @@ class EventCfg:
     """Event specifications for the environment."""
 
     reset_pos = EventTerm(
-        func=mdp_z_rotation.reset_root_state_uniform, 
+        func=mdp.reset_root_state_uniform, 
         mode="reset",
         params={
             "pose_range": {
@@ -301,38 +300,33 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    # alive = RewTerm(func=mdp_z_rotation.is_alive, weight=1.0)
+    # alive = RewTerm(func=mdp.is_alive, weight=1.0)
 
-    terminating = RewTerm(func=mdp_z_rotation.is_terminated, weight=-400.0)
-
-    # modern_control = RewTerm(
-    #     func=mdp_z_rotation.modern_control_diff,
-    #     weight=0.3,
-    # )
+    terminating = RewTerm(func=mdp.is_terminated, weight=-400.0)
 
     rew_ang_vel_diff = RewTerm(
-        func=mdp_z_rotation.ang_vel_diff,
+        func=my_rewards.ang_vel_diff,
         weight=1.0,
     )
 
     rew_lin_vel_diff = RewTerm(
-        func=mdp_z_rotation.lin_vel_diff,
+        func=my_rewards.lin_vel_diff,
         weight=1.0,
     )
 
     pen_lin_vel_z_diff = RewTerm(
-        func=mdp_z_rotation.lin_vel_z_diff,
+        func=my_rewards.lin_vel_z_diff,
         weight=-2.0,
     )
 
     pen_roll_diff = RewTerm(
-        func=mdp_z_rotation.roll_diff,
+        func=my_rewards.roll_diff,
         weight=-10.0,
         params={"target": 0},
     )
 
     pen_pitch_diff = RewTerm(
-        func=mdp_z_rotation.pitch_diff,
+        func=my_rewards.pitch_diff,
         weight=-10.0,
         params={"target": 0},
     )
@@ -346,21 +340,21 @@ class RewardsCfg:
 class TerminationsCfg:
     """Termination terms for the MDP."""
 
-    time_out = DoneTerm(func=mdp_z_rotation.time_out, time_out=True)
+    time_out = DoneTerm(func=mdp.time_out, time_out=True)
     
     lin_vel_z_out_bounds = DoneTerm(
-        func=mdp_z_rotation.lin_vel_z_termination,
+        func=my_terminations.lin_vel_z_termination,
     )
     
     below_min_altitude = DoneTerm(
-        func=mdp_z_rotation.below_min_altitude,
+        func=my_terminations.below_min_altitude,
         params={"asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]), 
                 "min_altitude": 10.0,
         }
     )
 
     roll_pitch_out_bounds = DoneTerm(
-        func=mdp_z_rotation.roll_pitch_termination,
+        func=my_terminations.roll_pitch_termination,
     )
 
 

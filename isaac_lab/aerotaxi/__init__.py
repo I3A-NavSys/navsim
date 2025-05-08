@@ -1,17 +1,17 @@
 # from .aerotaxi_env_reg import *
 import gymnasium as gym
-from . import config
+from . import env_hover, env_z_rotation, env_command
 
 gym.register(
-    id="Isaac-Hover-Aerotaxi-v1",
+    id="Isaac-Hover-Aerotaxi-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
-        "env_cfg_entry_point": f"{__name__}.isaac_hover_aerotaxi_v1:UAVEnvCfg",
-        "rl_games_cfg_entry_point": f"{config.__name__}:rl_games_ppo_cfg.yaml",
-        "rsl_rl_cfg_entry_point": f"{config.__name__}.rsl_rl_ppo_cfg:AerotaxiPPORunnerCfg",
-        "skrl_cfg_entry_point": f"{config.__name__}:skrl_ppo_cfg.yaml",
-        "sb3_cfg_entry_point": f"{config.__name__}:sb3_ppo_cfg.yaml",
+        "env_cfg_entry_point": f"{env_hover.__name__}.env_0.env:UAVEnvCfg",
+        "rl_games_cfg_entry_point": f"{env_hover.__name__}.env0:rl_games_ppo_cfg.yaml",
+        "rsl_rl_cfg_entry_point": f"{env_hover.__name__}.rsl_rl_ppo_cfg:AerotaxiPPORunnerCfg",
+        "skrl_cfg_entry_point": f"{env_hover.__name__}.env0:skrl_ppo_cfg.yaml",
+        "sb3_cfg_entry_point": f"{env_hover.__name__}.env0:sb3_ppo_cfg.yaml",
     },
 )
 
@@ -20,11 +20,8 @@ gym.register(
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
-        "env_cfg_entry_point": f"{__name__}.isaac_z_rotation_aerotaxi_v0:UAVEnvCfg",
-        "rl_games_cfg_entry_point": f"{config.__name__}:rl_games_ppo_cfg.yaml",
-        "rsl_rl_cfg_entry_point": f"{config.__name__}.rsl_rl_ppo_cfg:AerotaxiPPORunnerCfg",
-        "skrl_cfg_entry_point": f"{config.__name__}:skrl_ppo_cfg.yaml",
-        "sb3_cfg_entry_point": f"{config.__name__}:sb3_ppo_cfg.yaml",
+        "env_cfg_entry_point": f"{env_z_rotation.__name__}.env_0.env:UAVEnvCfg",
+        "rsl_rl_cfg_entry_point": f"{env_z_rotation.__name__}.env_0.rsl_rl_ppo_cfg:AerotaxiPPORunnerCfg",
     },
 )
 
@@ -33,11 +30,8 @@ gym.register(
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
-        "env_cfg_entry_point": f"{__name__}.isaac_command_aerotaxi_v0:UAVEnvCfg",
-        "rl_games_cfg_entry_point": f"{config.__name__}:rl_games_ppo_cfg.yaml",
-        "rsl_rl_cfg_entry_point": f"{config.__name__}.rsl_rl_ppo_cfg:AerotaxiPPORunnerCfg",
-        "skrl_cfg_entry_point": f"{config.__name__}:skrl_ppo_cfg.yaml",
-        "sb3_cfg_entry_point": f"{config.__name__}:sb3_ppo_cfg.yaml",
+        "env_cfg_entry_point": f"{env_command.__name__}.env_0.env:UAVEnvCfg",
+        "rsl_rl_cfg_entry_point": f"{env_command.__name__}.env_0.rsl_rl_ppo_cfg:AerotaxiPPORunnerCfg",
     },
 )
 
@@ -46,11 +40,8 @@ gym.register(
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
-        "env_cfg_entry_point": f"{__name__}.isaac_command_aerotaxi_v1:UAVEnvCfg",
-        "rl_games_cfg_entry_point": f"{config.__name__}:rl_games_ppo_cfg.yaml",
-        "rsl_rl_cfg_entry_point": f"{config.__name__}.rsl_rl_ppo_cfg:AerotaxiPPORunnerCfg",
-        "skrl_cfg_entry_point": f"{config.__name__}:skrl_ppo_cfg.yaml",
-        "sb3_cfg_entry_point": f"{config.__name__}:sb3_ppo_cfg.yaml",
+        "env_cfg_entry_point": f"{env_command.__name__}.env_1.env:UAVEnvCfg",
+        "rsl_rl_cfg_entry_point": f"{env_command.__name__}.env_1.rsl_rl_ppo_cfg:AerotaxiPPORunnerCfg",
     },
 )
 
@@ -59,10 +50,7 @@ gym.register(
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
-        "env_cfg_entry_point": f"{__name__}.isaac_command_aerotaxi_v2:UAVEnvCfg",
-        "rl_games_cfg_entry_point": f"{config.__name__}:rl_games_ppo_cfg.yaml",
-        "rsl_rl_cfg_entry_point": f"{config.__name__}.rsl_rl_ppo_cfg:AerotaxiPPORunnerCfg",
-        "skrl_cfg_entry_point": f"{config.__name__}:skrl_ppo_cfg.yaml",
-        "sb3_cfg_entry_point": f"{config.__name__}:sb3_ppo_cfg.yaml",
+        "env_cfg_entry_point": f"{env_command.__name__}.env_2.env:UAVEnvCfg",
+        "rsl_rl_cfg_entry_point": f"{env_command.__name__}.env_2.rsl_rl_ppo_cfg:AerotaxiPPORunnerCfg",
     },
 )
