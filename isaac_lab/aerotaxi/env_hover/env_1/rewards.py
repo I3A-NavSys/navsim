@@ -3,13 +3,8 @@ from __future__ import annotations
 import torch
 from typing import TYPE_CHECKING
 
-from isaaclab.assets import Articulation
-from isaaclab.managers import SceneEntityCfg
-import isaaclab.utils.math as math_utils
-
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
-
 
 def rew_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     obs = env.obs_buf
@@ -25,16 +20,55 @@ def rew_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
 
     return rewards
 
-def rew_ang_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
+def rew_x_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     obs = env.obs_buf
-    ang_vel_z = obs["policy"][:, 8]
+    lin_vel = obs["policy"][:, 3]
+    vel_command = obs["policy"][:, 12]
+    rewards = torch.zeros(env.num_envs, device=env.device)
+    torch_3 = torch.tensor(3, device=env.device)
+    torch_1 = torch.tensor(1, device=env.device)
+
+    diff = (lin_vel - vel_command).abs()
+    rewards[:] = torch_3 / (torch_1 + torch.exp(torch.log(diff)))
+
+    return rewards
+
+def rew_y_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
+    obs = env.obs_buf
+    lin_vel = obs["policy"][:, 4]
+    vel_command = obs["policy"][:, 13]
+    rewards = torch.zeros(env.num_envs, device=env.device)
+    torch_3 = torch.tensor(3, device=env.device)
+    torch_1 = torch.tensor(1, device=env.device)
+
+    diff = (lin_vel - vel_command).abs()
+    rewards[:] = torch_3 / (torch_1 + torch.exp(torch.log(diff)))
+
+    return rewards
+
+def rew_z_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
+    obs = env.obs_buf
+    lin_vel = obs["policy"][:, 5]
     vel_command = obs["policy"][:, 14]
     rewards = torch.zeros(env.num_envs, device=env.device)
-    torch_10 = torch.tensor(10, device=env.device)
-    torch_2 = torch.tensor(2, device=env.device)
+    torch_3 = torch.tensor(3, device=env.device)
+    torch_1 = torch.tensor(1, device=env.device)
 
-    diff = (ang_vel_z[:] - vel_command[:]).abs()
-    rewards[:] = torch_10 / (torch_2 ** diff)
+    diff = (lin_vel - vel_command).abs()
+    rewards[:] = torch_3 / (torch_1 + torch.exp(torch.log(diff)))
+
+    return rewards
+
+def rew_z_ang_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
+    obs = env.obs_buf
+    ang_vel_z = obs["policy"][:, 8]
+    vel_command = obs["policy"][:, 15]
+    rewards = torch.zeros(env.num_envs, device=env.device)
+    torch_10 = torch.tensor(10, device=env.device)
+    torch_1 = torch.tensor(1, device=env.device)
+
+    diff = (ang_vel_z - vel_command).abs()
+    rewards[:] = torch_10 / (torch_1 + torch.exp(torch.log(diff)))
 
     return rewards
 
@@ -48,10 +82,37 @@ def pen_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
 
     return diff_norm
 
-def pen_ang_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
+def pen_x_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
+    obs = env.obs_buf
+    lin_vel = obs["policy"][:, 3]
+    vel_command = obs["policy"][:, 12]
+
+    diff = (lin_vel - vel_command).abs()
+
+    return diff
+
+def pen_y_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
+    obs = env.obs_buf
+    lin_vel = obs["policy"][:, 4]
+    vel_command = obs["policy"][:, 13]
+
+    diff = (lin_vel - vel_command).abs()
+
+    return diff
+
+def pen_z_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
+    obs = env.obs_buf
+    lin_vel = obs["policy"][:, 5]
+    vel_command = obs["policy"][:, 14]
+
+    diff = (lin_vel - vel_command).abs()
+
+    return diff
+
+def pen_z_ang_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     obs = env.obs_buf
     ang_vel_z = obs["policy"][:, 8]
-    vel_command = obs["policy"][:, 14]
+    vel_command = obs["policy"][:, 15]
 
     diff = (ang_vel_z[:] - vel_command[:]).abs()
 

@@ -91,8 +91,10 @@ class UAVactionTerm(ActionTerm):
         # print(f"[DEBUG]: raw_actions: {self._raw_actions[0]}")
         
         # Get velocities (assuming these are already tensors)
-        lin_vels = self._asset.data.root_com_lin_vel_b  # shape: (num_envs, 3)
-        ang_vels = self._asset.data.root_com_ang_vel_b  # shape: (num_envs, 3)
+        # lin_vels = self._asset.data.root_com_lin_vel_b  # shape: (num_envs, 3)
+        # ang_vels = self._asset.data.root_com_ang_vel_b  # shape: (num_envs, 3)
+        lin_vels = self._env.obs_buf["policy"][:, 3:6]
+        ang_vels = self._env.obs_buf["policy"][:, 6:9]
         
         # Compute thrust forces (vectorized)
         thrust_coeffs = torch.tensor([kFT_N, kFT_N, kFT_S, kFT_S], device=self.device)
@@ -155,19 +157,21 @@ class ActionsCfg:
 # |--------------------- OBSERVATIONS ----------------------|
 # |---------------------------------------------------------|
 
+def my_obs_pos(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
+    asset: Articulation = env.scene[asset_cfg.name]
+    return asset.data.root_com_pos_w 
+
 def my_obs_lin_vel(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
     asset: Articulation = env.scene[asset_cfg.name]
-    lin_vel = asset.data.root_com_lin_vel_b
-    return lin_vel
+    return asset.data.root_com_lin_vel_b
 
 def my_obs_ang_vel(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
     asset: Articulation = env.scene[asset_cfg.name]
-    ang_vel = asset.data.root_com_ang_vel_b
-    return ang_vel
+    return asset.data.root_com_ang_vel_b
 
 def my_obs_roll(env:ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
     asset: Articulation = env.scene[asset_cfg.name]
-    roll, _, _ = math_utils.euler_xyz_from_quat(asset.data.root_quat_w)
+    roll, _, _ = math_utils.euler_xyz_from_quat(asset.data.root_com_quat_w)
     roll = torch.atan2(torch.sin(roll), torch.cos(roll)) # normalize angle to [-pi, pi]
     roll = roll.unsqueeze(1)  # Add a dimension to match the expected shape
 
@@ -175,30 +179,23 @@ def my_obs_roll(env:ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
 
 def my_obs_pitch(env:ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
     asset: Articulation = env.scene[asset_cfg.name]
-    _, pitch, _ = math_utils.euler_xyz_from_quat(asset.data.root_quat_w)
+    _, pitch, _ = math_utils.euler_xyz_from_quat(asset.data.root_com_quat_w)
     pitch = torch.atan2(torch.sin(pitch), torch.cos(pitch)) # normalize angle to [-pi, pi]
     pitch = pitch.unsqueeze(1)  # Add a dimension to match the expected shape
 
     return pitch
 
+def my_obs_yaw(env:ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
+    asset: Articulation = env.scene[asset_cfg.name]
+    _, _, yaw = math_utils.euler_xyz_from_quat(asset.data.root_com_quat_w)
+    yaw = torch.atan2(torch.sin(yaw), torch.cos(yaw)) # normalize angle to [-pi, pi]
+    yaw = yaw.unsqueeze(1)  # Add a dimension to match the expected shape
+
+    return yaw
+
 def my_obs_command(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Get current velocity commands."""
     return env.command_manager.get_command("vel_command")
-
-def my_obs_command_error(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.Tensor:
-    """Calculate error between current state and commanded values."""
-    asset: Articulation = env.scene[asset_cfg.name]
-    
-    # Get current state
-    lin_vel = asset.data.root_com_lin_vel_b
-    ang_vel = asset.data.root_com_ang_vel_b
-    command = env.command_manager.get_command("vel_command")
-    
-    # Calculate errors
-    lin_vel_error = lin_vel - command[:, :3]
-    ang_vel_error = ang_vel[:, 2] - command[:, 3]  # Only yaw for UAV
-    
-    return torch.cat([lin_vel_error, ang_vel_error.unsqueeze(1)], dim=1)
 
 @configclass
 class ObervervationCfg:
@@ -207,15 +204,16 @@ class ObervervationCfg:
     @configclass
     class PolicyCfg(ObsGroup):
         """Observation group for the policy."""
+        pos = ObsTerm(func=my_obs_pos, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         lin_vel = ObsTerm(func=my_obs_lin_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         ang_vel = ObsTerm(func=my_obs_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         roll = ObsTerm(func=my_obs_roll, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         pitch = ObsTerm(func=my_obs_pitch, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        yaw = ObsTerm(func=my_obs_yaw, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         current_command = ObsTerm(func=my_obs_command)
-        command_error = ObsTerm(func=my_obs_command_error, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
-
-        def __pos_init__(self):
-            self.enable_corruption = False
+        
+        def __post_init__(self):
+            self.enable_corruption = False  # Commands should never be corrupted
             self.concatenate_terms = True
 
     policy: PolicyCfg = PolicyCfg()
@@ -227,8 +225,6 @@ class ObervervationCfg:
 
 class UAVcommandTerm(CommandTerm):
     """Command term for the UAV."""
-
-    _asset: Articulation
 
     def __init__(self, cfg: UAVcommandTermCfg, env: ManagerBasedRLEnv):
         super().__init__(cfg, env)
@@ -244,10 +240,8 @@ class UAVcommandTerm(CommandTerm):
 
     def _resample_command(self, env_ids):
         """Resample the command for the given environment IDs."""
-        self._command[env_ids, 0] = 0
-        self._command[env_ids, 1] = 0
-        self._command[env_ids, 2] = 0
-        self._command[env_ids, 3] = torch.empty(1, device=self.device).uniform_(-5, 5)
+        self._command[env_ids, :3] = 0
+        self._command[env_ids, 3] = torch.empty(1, device=self.device).uniform_(-5.0, 5.0)
 
     def _update_command(self):
         pass
@@ -275,12 +269,12 @@ class EventCfg:
     """Event specifications for the environment."""
 
     reset_pos = EventTerm(
-        func=mdp_z_rotation.reset_root_state_uniform, 
+        func=mdp.reset_root_state_uniform, 
         mode="reset",
         params={
             "pose_range": {
-                "x": (0, 0), 
-                "y": (0, 0), 
+                "x": (0, 0),
+                "y": (0, 0),
                 "roll": (0, 0),
                 "pitch": (0, 0),
                 "yaw": (-3.14, 3.14)
@@ -302,40 +296,52 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    # alive = RewTerm(func=mdp_z_rotation.is_alive, weight=1.0)
+    alive = RewTerm(func=mdp.is_alive, weight=2.0)
 
-    terminating = RewTerm(func=mdp_z_rotation.is_terminated, weight=-400.0)
+    terminating = RewTerm(func=mdp.is_terminated, weight=-1000.0)
 
-    # modern_control = RewTerm(
-    #     func=mdp_z_rotation.modern_control_diff,
-    #     weight=0.3,
-    # )
-
-    rew_ang_vel_diff = RewTerm(
-        func=mdp_z_rotation.ang_vel_diff,
+    rew_xy_lin_vel_diff = RewTerm(
+        func=my_rewards.rew_xy_lin_vel_diff,
         weight=1.0,
     )
 
-    rew_lin_vel_diff = RewTerm(
-        func=mdp_z_rotation.lin_vel_diff,
+    rew_z_ang_vel_diff = RewTerm(
+        func=my_rewards.rew_z_ang_vel_diff,
         weight=1.0,
     )
 
-    pen_lin_vel_z_diff = RewTerm(
-        func=mdp_z_rotation.lin_vel_z_diff,
+    pen_z_lin_vel_diff = RewTerm(
+        func=my_rewards.pen_z_lin_vel_diff,
         weight=-2.0,
     )
 
+    pen_xy_ang_vel_diff = RewTerm(
+        func=my_rewards.pen_xy_ang_vel_diff,
+        weight=-0.05,
+    )
+
     pen_roll_diff = RewTerm(
-        func=mdp_z_rotation.roll_diff,
+        func=my_rewards.pen_roll_diff,
         weight=-10.0,
-        params={"target": 0},
+        params={"target": 0.0},
     )
 
     pen_pitch_diff = RewTerm(
-        func=mdp_z_rotation.pitch_diff,
+        func=my_rewards.pen_pitch_diff,
         weight=-10.0,
-        params={"target": 0},
+        params={"target": 0.0},
+    )
+
+    pen_roll_excess = RewTerm(
+        func=my_rewards.pen_roll_excess,
+        weight=-100.0,
+        params={"target": torch.pi/4},
+    )
+
+    pen_pitch_excess = RewTerm(
+        func=my_rewards.pen_pitch_excess,
+        weight=-100.0,
+        params={"target": torch.pi/4},
     )
 
 
@@ -347,21 +353,11 @@ class RewardsCfg:
 class TerminationsCfg:
     """Termination terms for the MDP."""
 
-    time_out = DoneTerm(func=mdp_z_rotation.time_out, time_out=True)
-    
-    lin_vel_z_out_bounds = DoneTerm(
-        func=mdp_z_rotation.lin_vel_z_termination,
-    )
+    time_out = DoneTerm(func=mdp.time_out, time_out=True)
     
     below_min_altitude = DoneTerm(
-        func=mdp_z_rotation.below_min_altitude,
-        params={"asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]), 
-                "min_altitude": 10.0,
-        }
-    )
-
-    roll_pitch_out_bounds = DoneTerm(
-        func=mdp_z_rotation.roll_pitch_termination,
+        func=my_terminations.below_min_altitude,
+        params={"min_altitude": 10.0}
     )
 
 
@@ -385,9 +381,9 @@ class MySceneCfg(InteractiveSceneCfg):
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=False,
                 rigid_body_enabled=True,
-                max_linear_velocity=1000.0,
-                max_angular_velocity=1000.0,
-                max_depenetration_velocity=100.0,
+                max_linear_velocity=20.0,
+                max_angular_velocity=572.95779578552,
+                max_depenetration_velocity=10.0,
                 enable_gyroscopic_forces=True,
             ),
             articulation_props=sim_utils.ArticulationRootPropertiesCfg(

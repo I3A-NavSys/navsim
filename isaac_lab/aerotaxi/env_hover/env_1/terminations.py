@@ -15,10 +15,6 @@ def roll_pitch_termination(env: ManagerBasedRLEnv) -> torch.Tensor:
     roll = env.obs_buf["policy"][:, 9]
     pitch = env.obs_buf["policy"][:, 10]
     
-    # # normalize angle to [-pi, pi]
-    roll = torch.atan2(torch.sin(roll[:]), torch.cos(roll[:]))
-    pitch = torch.atan2(torch.sin(pitch[:]), torch.cos(pitch[:]))
-    
     return torch.logical_or(torch.abs(roll[:]) > torch.pi/3, torch.abs(pitch[:]) > torch.pi/3)
 
 def below_min_altitude(env: ManagerBasedRLEnv, min_altitude: float, asset_cfg: SceneEntityCfg) -> torch.Tensor:
