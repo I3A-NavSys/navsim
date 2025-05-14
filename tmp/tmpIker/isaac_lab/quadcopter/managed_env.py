@@ -37,8 +37,12 @@ from isaaclab.managers import ObservationGroupCfg
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.utils import configclass
 
+# User specific imports
+from mdp.actions.actions_cfg import QuadcopterMotorActionCfg
+
 # Get local resources path
-root_navsim_path = os.path.dirname(os.path.abspath(__file__))
+root_isaac_lab_path = os.path.abspath(os.path.join(
+    os.path.dirname(__file__), '..'))
 
 
 @configclass
@@ -60,8 +64,10 @@ class QuadcopterSceneCfg(InteractiveSceneCfg):
     quadcopter: ArticulationCfg = ArticulationCfg(
         prim_path="{ENV_REGEX_NS}/quadcopter",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=os.path.abspath(os.path.join(
-                root_navsim_path, "quadcopter", "quadcopter.usd")),
+            usd_path=os.path.abspath(os.path.join(root_isaac_lab_path, 
+                                                  "assets", 
+                                                  "quadcopter", 
+                                                  "quadcopter.usd")),
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 rigid_body_enabled=True)
         ),
@@ -105,9 +111,10 @@ class QuadcopterSceneCfg(InteractiveSceneCfg):
 @configclass
 class ActionsCfg:
     """Action specification for the enviroment"""
-    motor_speeds = mdp.JointEffortActionCfg(
+    motor_speeds = QuadcopterMotorActionCfg(
         asset_name="quadcopter",
-        joint_names=["motor_NE", "motor_NW", "motor_SE", "motor_SW"])
+        joint_names=["motor_NE", "motor_NW", "motor_SE", "motor_SW"],
+        scale=1.0)
 
 
 @configclass
@@ -200,7 +207,7 @@ def main():
                 print("[INFO]: Resetting environment...")
 
             # Set all joints to zero
-            joint_efforts = torch.zeros_like(env.action_manager.action)
+            joint_efforts = torch.randn_like(env.action_manager.action)
 
             # Step the environment
             obs, _ = env.step(joint_efforts)
