@@ -2,96 +2,97 @@ from __future__ import annotations
 
 import torch
 from typing import TYPE_CHECKING
-from isaaclab.managers import SceneEntityCfg
-from isaaclab.assets import Articulation
-import isaaclab.utils.math as math_utils
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
 
-
-def lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
+def rew_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     obs = env.obs_buf
-    lin_vel = obs["policy"][:, :3]
-    vel_command = obs["policy"][:, 8:11]    # Angular velocity is not needed
+    lin_vel = obs["policy"][:, 3:6]
+    vel_command = obs["policy"][:, 12:15]
     rewards = torch.zeros(env.num_envs, device=env.device)
     torch_10 = torch.tensor(10, device=env.device)
     torch_2 = torch.tensor(2, device=env.device)
 
     diff = lin_vel[:] - vel_command[:]
     diff_norm = torch.norm(diff, dim=1)
-    rewards[:] = torch_10 / torch_2 ** diff_norm
+    rewards[:] = torch_10 / (torch_2 ** diff_norm)
 
     return rewards
 
-def ang_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
+def rew_x_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     obs = env.obs_buf
-    ang_vel_z = obs["policy"][:, 5]
-    vel_command = obs["policy"][:, 11]  # Linear velocity is not needed
+    lin_vel = obs["policy"][:, 3]
+    vel_command = obs["policy"][:, 12]
+    rewards = torch.zeros(env.num_envs, device=env.device)
+    torch_3 = torch.tensor(3, device=env.device)
+    torch_1 = torch.tensor(1, device=env.device)
+
+    diff = (lin_vel - vel_command).abs()
+    rewards[:] = torch_3 / (torch_1 + torch.exp(torch.log(diff)))
+
+    return rewards
+
+def rew_y_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
+    obs = env.obs_buf
+    lin_vel = obs["policy"][:, 4]
+    vel_command = obs["policy"][:, 13]
+    rewards = torch.zeros(env.num_envs, device=env.device)
+    torch_3 = torch.tensor(3, device=env.device)
+    torch_1 = torch.tensor(1, device=env.device)
+
+    diff = (lin_vel - vel_command).abs()
+    rewards[:] = torch_3 / (torch_1 + torch.exp(torch.log(diff)))
+
+    return rewards
+
+def rew_z_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
+    obs = env.obs_buf
+    lin_vel = obs["policy"][:, 5]
+    vel_command = obs["policy"][:, 14]
+    rewards = torch.zeros(env.num_envs, device=env.device)
+    torch_3 = torch.tensor(3, device=env.device)
+    torch_1 = torch.tensor(1, device=env.device)
+
+    diff = (lin_vel - vel_command).abs()
+    rewards[:] = torch_3 / (torch_1 + torch.exp(torch.log(diff)))
+
+    return rewards
+
+def rew_xy_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
+    obs = env.obs_buf
+    lin_vel = obs["policy"][:, 3:5]
+    vel_command = obs["policy"][:, 12:14]
     rewards = torch.zeros(env.num_envs, device=env.device)
     torch_10 = torch.tensor(10, device=env.device)
     torch_2 = torch.tensor(2, device=env.device)
 
-    diff = (ang_vel_z[:] - vel_command[:]).abs()
-    rewards[:] = torch_10 / torch_2 ** diff
-
-    return rewards
-
-def pen_jerky_mov(env: ManagerBasedRLEnv) -> torch.Tensor:
-    current_actions = env.action_manager.action.abs()
-    prev_actions = env.action_manager.prev_action.abs()
-
-    diff = current_actions - prev_actions
+    diff = lin_vel[:] - vel_command[:]
     diff_norm = torch.norm(diff, dim=1)
-
-    return diff_norm
-
-def pen_pos_diff(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.Tensor:
-    asset: Articulation = env.scene[asset_cfg.name]
-    fps = env.metadata["flightplans"]
-    current_pos = asset.data.root_pos_w
-    cmd_times = env.command_manager.get_term("vel_command").time_left.cpu().numpy()
-    current_times = fps[0].finish_time() - cmd_times
-    rewards = torch.zeros(env.num_envs, device=env.device)
-
-    for i in range(env.num_envs):
-        fp_status = fps[i].status_at_time(current_times[i])
-
-        diff = current_pos[i] - torch.tensor(fp_status.pos, device=env.device)
-        diff_norm = torch.norm(diff)
-        rewards[i] = diff_norm
+    rewards[:] = torch_10 / (torch_2 ** diff_norm)
 
     return rewards
 
-def pen_ori_diff(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.Tensor:
-    asset: Articulation = env.scene[asset_cfg.name]
-    fps = env.metadata["flightplans"]
-    _, _, yaw = math_utils.euler_xyz_from_quat(asset.data.root_com_quat_w)
-    cmd_times = env.command_manager.get_term("vel_command").time_left.cpu().numpy()
-    current_times = fps[0].finish_time() - cmd_times
+def rew_z_ang_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
+    obs = env.obs_buf
+    ang_vel_z = obs["policy"][:, 8]
+    vel_command = obs["policy"][:, 15]
     rewards = torch.zeros(env.num_envs, device=env.device)
+    torch_10 = torch.tensor(10, device=env.device)
+    # torch_1 = torch.tensor(1, device=env.device)
+    torch_2 = torch.tensor(2, device=env.device)
 
-    for i in range(env.num_envs):
-        fp_status = fps[i].status_at_time(current_times[i])
-        wp_i = fps[i].get_running_index_from_time(current_times[i])
-        running_wp = fps[i].waypoints[wp_i]
-
-        if running_wp.heading is None:
-            target_dir = torch.tensor(fp_status.vel[:2], device=env.device)
-        else:
-            target_dir = torch.tensor(running_wp.heading, device=env.device)
-
-        target_ori = torch.atan2(target_dir[1], target_dir[0])
-        error_ori = target_ori - yaw[i]
-
-        rewards[i] = error_ori.abs()
+    diff = (ang_vel_z - vel_command).abs()
+    # rewards[:] = torch_10 / (torch_1 + torch.exp(torch.log(diff)))
+    rewards[:] = torch_10 / (torch_2 ** diff)
 
     return rewards
 
+# -- When command components are 0 --
 def pen_x_lin_vel(env: ManagerBasedRLEnv) -> torch.Tensor:
     obs = env.obs_buf
-    x_lin_vel = obs["policy"][:, 0]
-    x_vel_command = obs["policy"][:, 8]    # X-linear velocity
+    x_lin_vel = obs["policy"][:,3]
+    x_vel_command = obs["policy"][:, 12]    # X-linear velocity
     rewards = torch.zeros(env.num_envs, device=env.device)
     torch_0 = torch.tensor(0.0, device=env.device)
 
@@ -103,8 +104,8 @@ def pen_x_lin_vel(env: ManagerBasedRLEnv) -> torch.Tensor:
 
 def pen_y_lin_vel(env: ManagerBasedRLEnv) -> torch.Tensor:
     obs = env.obs_buf
-    y_lin_vel = obs["policy"][:, 1]
-    y_vel_command = obs["policy"][:, 9]    # Y-linear velocity
+    y_lin_vel = obs["policy"][:, 4]
+    y_vel_command = obs["policy"][:, 13]    # Y-linear velocity
     rewards = torch.zeros(env.num_envs, device=env.device)
     torch_0 = torch.tensor(0.0, device=env.device)
 
@@ -116,8 +117,8 @@ def pen_y_lin_vel(env: ManagerBasedRLEnv) -> torch.Tensor:
 
 def pen_z_lin_vel(env: ManagerBasedRLEnv) -> torch.Tensor:
     obs = env.obs_buf
-    z_lin_vel = obs["policy"][:, 2]
-    z_vel_command = obs["policy"][:, 10]    # Z-linear velocity
+    z_lin_vel = obs["policy"][:, 5]
+    z_vel_command = obs["policy"][:, 14]    # Z-linear velocity
     rewards = torch.zeros(env.num_envs, device=env.device)
     torch_0 = torch.tensor(0.0, device=env.device)
 
@@ -129,8 +130,8 @@ def pen_z_lin_vel(env: ManagerBasedRLEnv) -> torch.Tensor:
 
 def pen_xy_lin_vel(env: ManagerBasedRLEnv) -> torch.Tensor:
     obs = env.obs_buf
-    xy_lin_vel = obs["policy"][:, :2]
-    xy_vel_command = obs["policy"][:, 8:10]    # XY-linear velocity
+    xy_lin_vel = obs["policy"][:, 3:5]
+    xy_vel_command = obs["policy"][:, 12:14]    # XY-linear velocity
     rewards = torch.zeros(env.num_envs, device=env.device)
     torch_0 = torch.tensor(0.0, device=env.device)
 
@@ -142,7 +143,7 @@ def pen_xy_lin_vel(env: ManagerBasedRLEnv) -> torch.Tensor:
 
 def pen_xz_lin_vel(env: ManagerBasedRLEnv) -> torch.Tensor:
     obs = env.obs_buf
-    obs_mask = torch.tensor([1,0,1,0,0,0,0,0,1,0,1,0,0,0,0,0], device=env.device).bool()
+    obs_mask = torch.tensor([0,0,0,1,0,1,0,0,0,0,0,0,1,0,1,0], device=env.device).bool()
     xz_lin_vel = obs["policy"][:, obs_mask]
     xz_prim = xz_lin_vel[:, :2]
     xz_command = xz_lin_vel[:, 2:]
@@ -157,8 +158,8 @@ def pen_xz_lin_vel(env: ManagerBasedRLEnv) -> torch.Tensor:
 
 def pen_yz_lin_vel(env: ManagerBasedRLEnv) -> torch.Tensor:
     obs = env.obs_buf
-    yz_lin_vel = obs["policy"][:, 1:3]
-    yz_vel_command = obs["policy"][:, 9:11]    # YZ-linear velocity
+    yz_lin_vel = obs["policy"][:, 4:6]
+    yz_vel_command = obs["policy"][:, 13:15]    # YZ-linear velocity
     rewards = torch.zeros(env.num_envs, device=env.device)
     torch_0 = torch.tensor(0.0, device=env.device)
 
@@ -170,8 +171,8 @@ def pen_yz_lin_vel(env: ManagerBasedRLEnv) -> torch.Tensor:
 
 def pen_xyz_lin_vel(env: ManagerBasedRLEnv) -> torch.Tensor:
     obs = env.obs_buf
-    xyz_lin_vel = obs["policy"][:, :3]
-    xyz_vel_command = obs["policy"][:, 8:11]    # YZ-linear velocity
+    xyz_lin_vel = obs["policy"][:, 3:6]
+    xyz_vel_command = obs["policy"][:, 12:15]    # YZ-linear velocity
     rewards = torch.zeros(env.num_envs, device=env.device)
     torch_0 = torch.tensor(0.0, device=env.device)
 
@@ -181,11 +182,11 @@ def pen_xyz_lin_vel(env: ManagerBasedRLEnv) -> torch.Tensor:
 
     return rewards
 
-def pen_roll_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
+def pen_xy_roll_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
     """Penalize roll deviation from a target value."""
     obs = env.obs_buf
-    roll = obs["policy"][:, 6]
-    vel_command = obs["policy"][:, 8:10]    # Angular velocity and Z-linear velocity excluded
+    roll = obs["policy"][:, 9]
+    vel_command = obs["policy"][:, 12:14]    # Angular velocity and Z-linear velocity excluded
     rewards = torch.zeros(env.num_envs, device=env.device)
     target = torch.tensor(target, device=env.device)
     torch_0 = torch.tensor(0.0, device=env.device)
@@ -196,11 +197,11 @@ def pen_roll_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
 
     return rewards
 
-def pen_pitch_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
+def pen_xy_pitch_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
     """Penalize pitch deviation from a target value."""
     obs = env.obs_buf
-    pitch = obs["policy"][:, 7]
-    vel_command = obs["policy"][:, 8:10]    # Angular velocity and Z-linear velocity excluded
+    pitch = obs["policy"][:, 10]
+    vel_command = obs["policy"][:, 12:14]    # Angular velocity and Z-linear velocity excluded
     rewards = torch.zeros(env.num_envs, device=env.device)
     target = torch.tensor(target, device=env.device)
     torch_0 = torch.tensor(0.0, device=env.device)
@@ -213,7 +214,7 @@ def pen_pitch_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
 
 def pen_roll_excess(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
     """Penalize roll excess from target limit"""
-    roll = env.obs_buf["policy"][:, 6]
+    roll = env.obs_buf["policy"][:, 9]
     rewards = torch.zeros(env.num_envs, device=env.device)
     target = torch.tensor(target, device=env.device)
     
@@ -225,7 +226,7 @@ def pen_roll_excess(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
 
 def pen_pitch_excess(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
     """Penalize roll excess from target limit"""
-    pitch = env.obs_buf["policy"][:, 7]
+    pitch = env.obs_buf["policy"][:, 10]
     rewards = torch.zeros(env.num_envs, device=env.device)
     target = torch.tensor(target, device=env.device)
     

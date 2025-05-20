@@ -15,7 +15,7 @@ def roll_pitch_termination(env: ManagerBasedRLEnv) -> torch.Tensor:
     roll = env.obs_buf["policy"][:, 6]
     pitch = env.obs_buf["policy"][:, 7]
     
-    return torch.logical_or(torch.abs(roll[:]) > torch.pi/4, torch.abs(pitch[:]) > torch.pi/4)
+    return torch.logical_or(torch.abs(roll[:]) > torch.pi/3, torch.abs(pitch[:]) > torch.pi/3)
 
 def lin_vel_z_termination(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Terminate when the asset's linear velocity in the z direction exceeds a certain threshold."""

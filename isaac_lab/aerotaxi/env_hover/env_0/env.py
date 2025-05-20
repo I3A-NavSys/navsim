@@ -285,8 +285,8 @@ class EventCfg:
             },
             "velocity_range": {
                 "x": (-2, 2),
-                "y": (2, 2),
-                "z": (2, 2)
+                "y": (-2, 2),
+                "z": (-2, 2)
             },
             "asset_cfg": SceneEntityCfg(name="aerotaxi")
         }
@@ -302,21 +302,31 @@ class RewardsCfg:
     """Reward terms for the MDP."""
     alive = RewTerm(func=mdp.is_alive, weight=2.0)
 
-    terminating = RewTerm(func=mdp.is_terminated, weight=-400.0)
+    terminating = RewTerm(func=mdp.is_terminated, weight=-1000.0)
 
-    hover = RewTerm(
-        func=my_rewards.lin_vel_diff,
+    rew_x_lin_vel_diff = RewTerm(
+        func=my_rewards.rew_x_lin_vel_diff,
         weight=1.0,
     )
 
-    rotation = RewTerm(
-        func=my_rewards.ang_vel_diff,
+    rew_y_lin_vel_diff = RewTerm(
+        func=my_rewards.rew_y_lin_vel_diff,
         weight=1.0,
     )
 
-    falling = RewTerm(
-        func=my_rewards.lin_vel_z_diff,
-        weight=-5.0,
+    rew_z_lin_vel_diff = RewTerm(
+        func=my_rewards.rew_z_lin_vel_diff,
+        weight=1.0,
+    )
+
+    rew_z_ang_vel_diff = RewTerm(
+        func=my_rewards.rew_z_ang_vel_diff,
+        weight=1.0,
+    )
+
+    pen_jerky_mov = RewTerm(
+        func=my_rewards.pen_jerky_mov,
+        weight=-0.1,
     )
 
     roll = RewTerm(
@@ -342,10 +352,6 @@ class TerminationsCfg:
 
     # (1) Time out
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
-    # (2) Linear velocity in z direction exceeds a negative threshold
-    lin_vel_z_out_bounds = DoneTerm(
-        func=my_terminations.lin_vel_z_termination,
-    )
     # (3) Z position out of bounds
     below_min_altitude = DoneTerm(
         func=my_terminations.below_min_altitude,
@@ -375,9 +381,9 @@ class MySceneCfg(InteractiveSceneCfg):
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=False,
                 rigid_body_enabled=True,
-                max_linear_velocity=1000.0,
-                max_angular_velocity=1000.0,
-                max_depenetration_velocity=100.0,
+                max_linear_velocity=20.0,
+                max_angular_velocity=572.95779578552,
+                max_depenetration_velocity=10.0,
                 enable_gyroscopic_forces=True,
             ),
             articulation_props=sim_utils.ArticulationRootPropertiesCfg(

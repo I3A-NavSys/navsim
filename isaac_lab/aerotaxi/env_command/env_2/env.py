@@ -39,64 +39,16 @@ class FlightPlanTerm:
         self.fp_straight_line.set_waypoint(time=10, pos=[0, 0, 1.75], vel=[0,0,0], heading=[1,0])
         # Straigth line
         self.fp_straight_line.set_waypoint(time=30, pos=[100, 0, 60], vel=[10,0,0])
-        self.fp_straight_line.set_waypoint(time=40, pos=[200, 0, 60], vel=[10,0,0])
-        self.fp_straight_line.set_waypoint(time=50, pos=[300, 0, 60], vel=[10,0,0])
-        self.fp_straight_line.set_waypoint(time=60, pos=[400, 0, 60], vel=[10,0,0])
-        self.fp_straight_line.set_waypoint(time=70, pos=[500, 0, 60], vel=[10,0,0])
-        # Landing
-        self.fp_straight_line.set_waypoint(time=90, pos=[600, 0, 20], vel=[0,0,-3], heading=[1,0])
-        self.fp_straight_line.set_waypoint(time=100, pos=[600, 0, 3], vel=[0,0,-0.2], heading=[1,0])
-        self.fp_straight_line.set_waypoint(time=110, pos=[600, 0, 0], vel=[0,0,0], heading=[1,0])
+        # self.fp_straight_line.set_waypoint(time=40, pos=[200, 0, 60], vel=[10,0,0])
+        # self.fp_straight_line.set_waypoint(time=50, pos=[300, 0, 60], vel=[10,0,0])
+        # self.fp_straight_line.set_waypoint(time=60, pos=[400, 0, 60], vel=[10,0,0])
+        # self.fp_straight_line.set_waypoint(time=70, pos=[500, 0, 60], vel=[10,0,0])
+        # # Landing
+        # self.fp_straight_line.set_waypoint(time=90, pos=[600, 0, 20], vel=[0,0,-3], heading=[1,0])
+        # self.fp_straight_line.set_waypoint(time=100, pos=[600, 0, 3], vel=[0,0,-0.2], heading=[1,0])
+        # self.fp_straight_line.set_waypoint(time=110, pos=[600, 0, 0], vel=[0,0,0], heading=[1,0])
         self.fp_straight_line.connect_waypoints()
 
-        self.fp_change_level: FlightPlan = FlightPlan()
-        # Takeoff
-        self.fp_change_level.set_waypoint(time=10, pos=[0, 0, 1.75], vel=[0,0,0], heading=[1,0])
-        # Straight line
-        self.fp_change_level.set_waypoint(time=30, pos=[100, 0, 60], vel=[10,0,0])
-        self.fp_change_level.set_waypoint(time=40, pos=[200, 0, 60], vel=[10,0,0])
-        self.fp_change_level.set_waypoint(time=50, pos=[300, 0, 60], vel=[10,0,0])
-        self.fp_change_level.set_waypoint(time=60, pos=[400, 0, 60], vel=[10,0,0])
-        self.fp_change_level.set_waypoint(time=70, pos=[500, 0, 60], vel=[10,0,0])
-        # Left curve
-        self.fp_change_level.set_waypoint(time=100, pos=[650, 150, 100], vel=[0,10,0])
-        # Straight line
-        self.fp_change_level.set_waypoint(time=110, pos=[650, 250, 100], vel=[0,10,0])
-        # Left curve
-        self.fp_change_level.set_waypoint(time=120, pos=[650, 350, 100], vel=[0,10,0])
-        # Straight line
-        self.fp_change_level.set_waypoint(time=150, pos=[500, 500, 60], vel=[-10,0,0])
-        self.fp_change_level.set_waypoint(time=160, pos=[400, 500, 60], vel=[-10,0,0])
-        self.fp_change_level.set_waypoint(time=170, pos=[300, 500, 60], vel=[-10,0,0])
-        self.fp_change_level.set_waypoint(time=180, pos=[200, 500, 60], vel=[-10,0,0])
-        self.fp_change_level.set_waypoint(time=190, pos=[100, 500, 60], vel=[-10,0,0])
-        # Landing
-        self.fp_change_level.set_waypoint(time=210, pos=[0, 500, 20], vel=[0,0,-3], heading=[-1,0])
-        self.fp_change_level.set_waypoint(time=220, pos=[0, 500, 3], vel=[0,0,-0.2], heading=[-1,0])
-        self.fp_change_level.set_waypoint(time=230, pos=[0, 500, 0], vel=[0,0,0], heading=[-1,0])
-        self.fp_change_level.connect_waypoints()
-
-        self.fp_change_direction: FlightPlan = FlightPlan()
-        # Takeoff
-        self.fp_change_direction.set_waypoint(time=10, pos=[0, 0, 1.75], vel=[0,0,0], heading=[1,0])
-        # Straight line
-        self.fp_change_direction.set_waypoint(time=30, pos=[100, 0, 60], vel=[10,0,0])
-        self.fp_change_direction.set_waypoint(time=40, pos=[200, 0, 60], vel=[10,0,0])
-        self.fp_change_direction.set_waypoint(time=50, pos=[300, 0, 60], vel=[10,0,0])
-        self.fp_change_direction.set_waypoint(time=60, pos=[400, 0, 60], vel=[10,0,0])
-        self.fp_change_direction.set_waypoint(time=70, pos=[500, 0, 60], vel=[10,0,0])
-        # Change direction
-        self.fp_change_direction.set_waypoint(time=110, pos=[500, 100, 60], vel=[-10,0,0])
-        # Straight line
-        self.fp_change_direction.set_waypoint(time=120, pos=[400, 100, 60], vel=[-10,0,0])
-        self.fp_change_direction.set_waypoint(time=130, pos=[300, 100, 60], vel=[-10,0,0])
-        self.fp_change_direction.set_waypoint(time=140, pos=[200, 100, 60], vel=[-10,0,0])
-        self.fp_change_direction.set_waypoint(time=150, pos=[100, 100, 60], vel=[-10,0,0])
-        # Landing
-        self.fp_change_direction.set_waypoint(time=170, pos=[0, 100, 20], vel=[0,0,-3], heading=[-1,0])
-        self.fp_change_direction.set_waypoint(time=180, pos=[0, 100, 3], vel=[0,0,-0.2], heading=[-1,0])
-        self.fp_change_direction.set_waypoint(time=190, pos=[0, 100, 0], vel=[0,0,0], heading=[-1,0])
-        self.fp_change_direction.connect_waypoints()
 
         self.fp_change_lev_and_dir: FlightPlan = FlightPlan()
         # Takeoff
@@ -342,11 +294,26 @@ class UAVcommandTerm(CommandTerm):
     def __init__(self, cfg: UAVcommandTermCfg, env: ManagerBasedRLEnv):
         super().__init__(cfg, env)
         self._asset = env.scene["aerotaxi"]
-        self.fps = FlightPlanTerm()
-        self.training_fp = self.fps.fp_straight_line
-        # self.training_fp = self.fps.fp_change_level
-        # self.training_fp = self.fps.fp_change_direction
-        # self.training_fp = self.fps.fp_change_lev_and_dir
+        self.fp_term = FlightPlanTerm()
+        # self.training_fp = self.fp_term.fp_straight_line
+        self.training_fp = self.fp_term.fp_change_lev_and_dir
+
+        # Build a flightplan for each UAV based on its initial position
+        self.fps = []
+        env_origins = self._env.scene.env_origins
+        for i in range(self.num_envs):
+            fp = self.training_fp.copy()
+            origins = env_origins[i]
+            
+            for wp in fp.waypoints:
+                wp.pos[0] += origins[0]
+                wp.pos[1] += origins[1]
+
+            self.fps.append(fp)
+
+        env.metadata["flightplans"] = self.fps
+
+        self.fp_time = torch.tensor(float(self.training_fp.finish_time()), device=self.device)
         self._command = torch.zeros(env.num_envs, 4, device=self.device)
 
     @property
@@ -359,26 +326,26 @@ class UAVcommandTerm(CommandTerm):
 
     def _resample_command(self, env_ids):
         """Resample commands for specified environments."""
-        pass
+        self.time_left[env_ids] = self.fp_time
+        self._command[env_ids] = torch.zeros(4, device=self.device)
 
     def _update_command(self):
-        """Optionally update commands during the episode (e.g., smooth transitions)."""
-        obs = self._env.obs_buf
+        """Optionally update commands during the episode (e.g., smooth transitions)."""        
         
         pos = self._asset.data.root_com_pos_w.cpu().numpy()
-        lin_vel = obs["policy"][:, :3].cpu().numpy()
-        rot = self._asset.data.root_com_quat_w.cpu()
-        current_time = (torch.tensor(110, device=self.device) - self.time_left).cpu().numpy()
+        lin_vel = self._asset.data.root_com_lin_vel_b.cpu().numpy()
+        quat = self._asset.data.root_com_quat_w.cpu()
+        current_time = (self.fp_time - self.time_left).cpu().numpy()
 
         for env in range(self._env.num_envs):
-            rotation = Rotation.from_quat([rot[env, 1], rot[env, 2], rot[env, 3], rot[env, 0]])
-            # WP = self.training_fp.get_target_index_from_time(current_time[env])
-            # heading = self.training_fp.waypoints[WP-1].heading
+            rotation = Rotation.from_quat([quat[env, 1], quat[env, 2], quat[env, 3], quat[env, 0]])
+            WP = self.fps[env].get_running_index_from_time(current_time[env])
+            heading = self.fps[env].waypoints[WP].heading
 
-            new_command = self.training_fp.get_command(current_time[env], pos[env, :], lin_vel[env, :],
-                                                        rotation, [1,0], 2)
-            new_command = torch.tensor([new_command.velX, new_command.velY, new_command.velZ, new_command.rotZ])
-            self._command[env] = new_command
+            world_lin_vel = rotation.apply(lin_vel[env])
+            fp_command = self.fps[env].get_command(current_time[env], pos[env], world_lin_vel, rotation, heading, 2)
+            new_cmd = torch.tensor([fp_command.velX, fp_command.velY, fp_command.velZ, fp_command.rotZ], device=self.device)
+            self._command[env] = new_cmd
 
 @configclass
 class UAVcommandTermCfg(CommandTermCfg):
@@ -391,7 +358,7 @@ class UAVcommandTermCfg(CommandTermCfg):
 class CommandCfg:
     """Command specifications for the environment."""
 
-    vel_command = UAVcommandTermCfg(resampling_time_range=(110, 110))
+    vel_command = UAVcommandTermCfg(resampling_time_range=(310, 310))
 
 
 # |---------------------------------------------------------|
@@ -444,64 +411,34 @@ class RewardsCfg:
         weight=1.0,
     )
 
-    pen_x_lin_vel = RewTerm(
-        func=my_rewards.pen_x_lin_vel,
-        weight=-1.0,
+    pen_jerky_move = RewTerm(
+        func=my_rewards.pen_jerky_mov,
+        weight=-0.01,
     )
 
-    pen_y_lin_vel = RewTerm(
-        func=my_rewards.pen_y_lin_vel,
-        weight=-1.0,
+    pen_pos_diff = RewTerm(
+        func=my_rewards.pen_pos_diff,
+        weight=-0.2,
+        params={"asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"])}
     )
 
-    pen_z_lin_vel = RewTerm(
-        func=my_rewards.pen_z_lin_vel,
-        weight=-1.0,
+    pen_ori_diff = RewTerm(
+        func=my_rewards.pen_ori_diff,
+        weight=-0.2,
+        params={"asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"])}
     )
 
-    pen_xy_lin_vel = RewTerm(
-        func=my_rewards.pen_xy_lin_vel,
-        weight=-1.0,
-    )
-
-    pen_xz_lin_vel = RewTerm(
-        func=my_rewards.pen_xz_lin_vel,
-        weight=-1.0,
-    )
-
-    pen_yz_lin_vel = RewTerm(
-        func=my_rewards.pen_yz_lin_vel,
-        weight=-1.0,
-    )
-
-    pen_xyz_lin_vel = RewTerm(
-        func=my_rewards.pen_xyz_lin_vel,
-        weight=-1.0,
-    )
-
-    pen_xy_roll = RewTerm(
-        func=my_rewards.pen_roll_diff,
+    pen_roll_excess = RewTerm(
+        func=my_rewards.pen_roll_excess,
         weight=-10.0,
-        params={"target": 0.0},
+        params={"target": torch.pi/4}
     )
 
-    pen_xy_pitch = RewTerm(
-        func=my_rewards.pen_pitch_diff,
+    pen_pitch_excess = RewTerm(
+        func=my_rewards.pen_pitch_excess,
         weight=-10.0,
-        params={"target": 0.0},
+        params={"target": torch.pi/4}
     )
-
-    # pen_roll_excess = RewTerm(
-    #     func=my_rewards.pen_roll_excess,
-    #     weight=-1000.0,
-    #     params={"target": torch.pi/4}
-    # )
-
-    # pen_pitch_excess = RewTerm(
-    #     func=my_rewards.pen_pitch_excess,
-    #     weight=-1000.0,
-    #     params={"target": torch.pi/4}
-    # )
 
 
 # |---------------------------------------------------------|
@@ -514,14 +451,21 @@ class TerminationsCfg:
 
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
     
-    # below_min_altitude = DoneTerm(
-    #     func=my_terminations.below_min_altitude,
+    below_min_altitude = DoneTerm(
+        func=my_terminations.below_min_altitude,
+        params={"asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]), 
+                "min_altitude": -1.0,
+        }
+    )
+
+    # pos_limit_excess = DoneTerm(
+    #     func=my_terminations.pos_limit_excess,
     #     params={"asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]), 
-    #             "min_altitude": 10.0,
+    #             "limit": 20.0,
     #     }
     # )
 
-    roll_pitch_out_bounds = DoneTerm(
+    roll_pitch_excess = DoneTerm(
         func=my_terminations.roll_pitch_termination,
     )
 
@@ -534,10 +478,10 @@ class TerminationsCfg:
 class MySceneCfg(InteractiveSceneCfg):
     """Configuration for a UAV scene"""
 
-    ground = AssetBaseCfg(
-        prim_path="/World/ground",
-        spawn=sim_utils.GroundPlaneCfg(size=(100, 100))
-    )
+    # ground = AssetBaseCfg(
+    #     prim_path="/World/ground",
+    #     spawn=sim_utils.GroundPlaneCfg(size=(100, 100))
+    # )
 
     aerotaxi: ArticulationCfg = ArticulationCfg(
         prim_path="{ENV_REGEX_NS}/aerotaxi",
@@ -546,9 +490,9 @@ class MySceneCfg(InteractiveSceneCfg):
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=False,
                 rigid_body_enabled=True,
-                max_linear_velocity=1000.0,
-                max_angular_velocity=1000.0,
-                max_depenetration_velocity=100.0,
+                max_linear_velocity=20.0,
+                max_angular_velocity=572.95779578552,
+                max_depenetration_velocity=10.0,
                 enable_gyroscopic_forces=True,
             ),
             articulation_props=sim_utils.ArticulationRootPropertiesCfg(
@@ -622,7 +566,7 @@ class UAVEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the UAV environment."""
 
     # Scene settings
-    scene: MySceneCfg = MySceneCfg(num_envs=32, env_spacing=1, replicate_physics=False)
+    scene: MySceneCfg = MySceneCfg(num_envs=32, env_spacing=10, replicate_physics=False)
     seed: int = 0
     
     # Basic settings
@@ -642,7 +586,7 @@ class UAVEnvCfg(ManagerBasedRLEnvCfg):
         self.viewer.lookat = [0.0, 0.0, 2.0]
         # step settings
         self.decimation = 1  # env step every 4 sim steps: 200Hz / 4 = 50Hz
-        self.episode_length_s = 110.0
+        self.episode_length_s = 310.0
         # simulation settings
         self.sim.dt = 0.02  # sim step every 5ms: 200Hz
         self.sim.render_interval = self.decimation

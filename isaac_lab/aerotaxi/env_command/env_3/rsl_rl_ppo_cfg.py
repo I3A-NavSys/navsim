@@ -10,16 +10,16 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class AerotaxiPPORunnerCfg(RslRlOnPolicyRunnerCfg):
-    num_steps_per_env = 128
-    max_iterations = 1001
+    num_steps_per_env = 256
+    max_iterations = 38001
     save_interval = 100
     experiment_name = "aerotaxi"
-    empirical_normalization = False
+    empirical_normalization = True
     clip_actions=10
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,
-        actor_hidden_dims=[128, 128],
-        critic_hidden_dims=[128, 256],
+        actor_hidden_dims=[64, 128, 256],
+        critic_hidden_dims=[128, 256, 512],
         activation="elu",
     )
     algorithm = RslRlPpoAlgorithmCfg(
@@ -27,9 +27,9 @@ class AerotaxiPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         use_clipped_value_loss=True,
         clip_param=0.2,
         entropy_coef=0.005,
-        num_learning_epochs=5,
-        num_mini_batches=4,
-        learning_rate=1.0e-3,
+        num_learning_epochs=8,
+        num_mini_batches=8,
+        learning_rate=1e-3,
         schedule="adaptive",
         gamma=0.99,
         lam=0.95,
