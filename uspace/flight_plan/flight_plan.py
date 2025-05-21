@@ -92,7 +92,8 @@ class FlightPlan:
         """
         
         index = self.get_target_index_from_time(t)
-        return index - 1
+        running_i = 0 if index == 0 else index - 1
+        return running_i
     
     def get_target_index_from_time(self, t: float):
         """
@@ -425,10 +426,10 @@ class FlightPlan:
 
         # SMOOTHING COMMANDED VELOCITY
         varVel = cmdVel - UAVvel
-        varVelMagnitude = np.linalg.norm(varVel)
-        if varVelMagnitude > self.maxVarLinVel:
-            varVel /= varVelMagnitude # Normalize
-            varVel *= self.maxVarLinVel
+        # varVelMagnitude = np.linalg.norm(varVel)
+        # if varVelMagnitude > self.maxVarLinVel:
+        #     varVel /= varVelMagnitude # Normalize
+        #     varVel *= self.maxVarLinVel
         # print("varVel:", varVel)
 
         cmdVel = UAVvel + varVel
@@ -461,11 +462,11 @@ class FlightPlan:
         # COMPUTING TARGET ANGULAR VELOCITY
         currentWel = errorYaw / tToSolve
         
-        if currentWel < -self.maxVarAngVel:
-            currentWel = -self.maxVarAngVel
+        # if currentWel < -self.maxVarAngVel:
+        #     currentWel = -self.maxVarAngVel
         
-        if self.maxVarAngVel < currentWel:
-            currentWel = self.maxVarAngVel
+        # if self.maxVarAngVel < currentWel:
+        #     currentWel = self.maxVarAngVel
 
         # CREATING COMMANDED RELATIVE VELOCITY VECTOR
         cmd = Command(
