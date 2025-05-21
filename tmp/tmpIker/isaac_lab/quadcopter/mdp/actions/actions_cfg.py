@@ -5,12 +5,12 @@ from isaaclab.utils import configclass
 from dataclasses import MISSING
 
 # User specific imports
-from . import apply_force_actions
+from . import actions
 
 
 @configclass
 class QuadcopterMotorActionCfg(ActionTermCfg):
-    class_type: type[ActionTerm] = apply_force_actions.QuadcopterMotorAction
+    class_type: type[ActionTerm] = actions.QuadcopterMotorAction
 
     """List of joint names that the action will be mapped to."""
     joint_names: list[str] = MISSING

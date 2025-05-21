@@ -17,17 +17,20 @@ from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.utils import configclass
 
 # User specific imports
-from .mdp.actions.actions_cfg import QuadcopterMotorActionCfg
+from .mdp.actions import actions_cfg
+from .mdp.commands import commands_cfg
+from .mdp import observations
 from .mdp import rewards
+
 
 # Get local resources path
 root_isaac_lab_path = os.path.abspath(os.path.join(
     os.path.dirname(__file__), '..'))
 
 
-##
-# Scene definition
-##
+# |---------------------------------------------------------|
+# |--------------------- SCENE -----------------------------|
+# |---------------------------------------------------------|
 
 
 @configclass
@@ -91,21 +94,21 @@ class QuadcopterSceneCfg(InteractiveSceneCfg):
         }
     )
 
-
-##
-# MDP settings
-##
-
+# |---------------------------------------------------------|
+# |--------------------- ACTIONS ---------------------------|
+# |---------------------------------------------------------|
 
 @configclass
 class ActionsCfg:
     """Action specification for the enviroment"""
-    motor_speeds = QuadcopterMotorActionCfg(asset_name="quadcopter",
-                                            joint_names=[
-                                                "motor_NE", "motor_NW", 
-                                                "motor_SE", "motor_SW"],
-                                            scale=0.5)
+    motor_speeds = actions_cfg.QuadcopterMotorActionCfg(
+        asset_name="quadcopter",
+        joint_names=["motor_NE", "motor_NW", "motor_SE", "motor_SW"],
+        scale=1.0)
 
+# |---------------------------------------------------------|
+# |--------------------- OBSERVATIONS ----------------------|
+# |---------------------------------------------------------|
 
 @configclass
 class ObservationsCfg:
@@ -114,12 +117,31 @@ class ObservationsCfg:
     @configclass
     class PolicyCfg(ObservationGroupCfg):
         """Observations for policy group"""
+        
+        # Linear velocity [0:3]
         base_lin_vel = ObservationTermCfg(
             func=mdp.base_lin_vel,
             params={"asset_cfg": SceneEntityCfg("quadcopter")})
+        
+        # Angular velocity [3:6]
         base_ang_vel = ObservationTermCfg(
             func=mdp.base_ang_vel,
             params={"asset_cfg": SceneEntityCfg("quadcopter")})
+        
+        # Roll [6]
+        roll = ObservationTermCfg(
+            func=observations.roll,
+            params={"asset_cfg": SceneEntityCfg("quadcopter")})
+
+        # Pitch [7]
+        pitch = ObservationTermCfg(
+            func=observations.pitch,
+            params={"asset_cfg": SceneEntityCfg("quadcopter")})
+        
+        # Command [8:12]
+        command = ObservationTermCfg(
+            func=observations.command
+        )
 
         def __post_init__(self) -> None:
             self.enable_corruption = False
@@ -128,6 +150,9 @@ class ObservationsCfg:
     # Observation group
     policy: PolicyCfg = PolicyCfg()
 
+# |---------------------------------------------------------|
+# |--------------------- EVENTS ----------------------------|
+# |---------------------------------------------------------|
 
 @configclass
 class EventCfg():
@@ -141,10 +166,10 @@ class EventCfg():
             "pose_range": {
                 "x": (0.0, 0.0),
                 "y": (0.0, 0.0),
-                "z": (2.5, 2.5),
-                "roll": (0.0, 0.0),
-                "pitch": (0.0, 0.0),
-                "yaw": (0.0, 0.0)
+                "z": (10, 10),
+                "roll": (1.57, -1.57),
+                "pitch": (1.57, -1.57),
+                "yaw": (1.57, -1.57)
             },
             "velocity_range": {
                 "x": (0.0, 0.0),
@@ -154,6 +179,9 @@ class EventCfg():
         }
     )
 
+# |---------------------------------------------------------|
+# |--------------------- REWARDS ---------------------------|
+# |---------------------------------------------------------|
 
 @configclass
 class RewardsCfg:
@@ -161,37 +189,67 @@ class RewardsCfg:
 
     # (1) Constant running reward
     alive = RewardTermCfg(func=mdp.is_alive, weight=1.0)
+    
     # (2) Failure penalty
-    terminating = RewardTermCfg(func=mdp.is_terminated, weight=-3.0)
+    terminating = RewardTermCfg(func=mdp.is_terminated, weight=-5.0)
+    
     # (3) Primary task: keep linear velocity close to zero
     quadcopter_lin_vel = RewardTermCfg(
         func=rewards.lin_vel_diff,
         weight=1.0
     )
+    
     # (4) Primary task: keep angular velocity close to zero
     quadcopter_ang_vel = RewardTermCfg(
         func=rewards.ang_vel_diff,
         weight=1.0
     )
 
+    # (5) Primary task: penalize roll
+    pen_roll_diff = RewardTermCfg(
+        func=rewards.pen_roll_diff,
+        weight=-1.75,
+        params={"target": 0.0}
+    )
+
+    # (6) Primary task: penalize pitch
+    pen_pitch_diff = RewardTermCfg(
+        func=rewards.pen_pitch_diff,
+        weight=-1.75,
+        params={"target": 0.0}
+    )
+
+# |---------------------------------------------------------|
+# |--------------------- TERMINATIONS ----------------------|
+# |---------------------------------------------------------|
 
 @configclass
 class TerminationsCfg:
     """Termination terms for the MDP."""
 
     # (1) Time out
+    
     time_out = TerminationTermCfg(func=mdp.time_out, time_out=True)
+
     # (2) Quadcopter too close to ground
-    quadcopter_height = TerminationTermCfg(
+    height = TerminationTermCfg(
         func=mdp.root_height_below_minimum,
         params={"minimum_height": 0.25,
                 "asset_cfg": SceneEntityCfg("quadcopter")}
     )
 
+# |---------------------------------------------------------|
+# |--------------------- COMMANDS --------------------------|
+# |---------------------------------------------------------|
 
-##
-# Environment configuration
-##
+@configclass
+class CommandCfg:
+    """Command specifications for the enviroment."""
+    command = commands_cfg.UAVCommandTermCfg(resampling_time_range=(10, 10))
+
+# |---------------------------------------------------------|
+# |--------------------- ENVIRONMENT -----------------------|
+# |---------------------------------------------------------|
 
 
 @configclass
@@ -204,8 +262,9 @@ class QuadcopterEnvCfg(ManagerBasedRLEnvCfg):
     seed: int = 0
     
     # Basic settings
-    observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
+    observations: ObservationsCfg = ObservationsCfg()
+    commands: CommandCfg = CommandCfg()
     events: EventCfg = EventCfg()
 
     # MDP settings

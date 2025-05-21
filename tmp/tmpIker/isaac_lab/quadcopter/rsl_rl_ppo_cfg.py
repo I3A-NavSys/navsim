@@ -15,7 +15,7 @@ class QuadcopterPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     save_interval = 100
     experiment_name = "quadcopter"
     empirical_normalization = False
-    clip_actions=25
+    clip_actions=10
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,
         actor_hidden_dims=[128, 128],
