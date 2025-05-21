@@ -3,6 +3,9 @@ import sys
 import os
 import pickle   # Serialization
 import base64   # Parsing to string
+import time
+import psutil
+import GPUtil
 
 # Related third party imports
 import omni.kit.app
@@ -18,21 +21,9 @@ from scipy.spatial.transform import Rotation
 ##############################################################################
 # Adding root folder to sys.path
 
-# current_path = os.path.abspath(os.path.dirname(__file__))
-# while True:
-#     if os.path.basename(current_path) == 'NAVSIM':
-#         project_root_path = current_path
-#         break
-#     parent_path = os.path.dirname(current_path)
-#     if parent_path == current_path:
-#         raise RuntimeError("No se encontró el directorio 'ov' en la ruta.")
-#     current_path = parent_path
-# # print(f"Directorio raíz del proyecto: {project_root_path}")
-
-# if project_root_path not in sys.path:
-#     sys.path.append(project_root_path)
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.append(project_root_path)
+project_root_path = project_root_path.replace("\\", "/")
 
 
 
@@ -107,6 +98,15 @@ class Aerotaxi(BehaviorScript):
         self.refresh_rate = 1
         self.last_time_track = 0
         self.track_info = []
+        self.track_ang_vel = []
+        self.track_roll = []
+        self.track_pitch = []
+        self.track_servo_control_time = []
+        self.track_cpu_usage = []
+        self.track_mem_usage = []
+        self.track_gpu_usage = []
+        self.gpus = GPUtil.getGPUs()
+        self.completed_fps = 0
 
         #--------------------------------------------------------------------------------------------------------------
         # QUADCOPTER PARAMETERS
@@ -247,6 +247,14 @@ class Aerotaxi(BehaviorScript):
         self.is_tracking = False
         self.tracking_figure_builded = False
         self.track_info = []
+        self.track_ang_vel = []
+        self.track_roll = []
+        self.track_pitch = []
+        self.track_servo_control_time = []
+        self.track_cpu_usage = []
+        self.track_mem_usage = []
+        self.track_gpu_usage = []
+        self.completed_fps = 0
 
         self.steps = 0
 
@@ -255,6 +263,8 @@ class Aerotaxi(BehaviorScript):
         serialized_pos = base64.b64encode(pickle.dumps(np.array(self.pos))).decode('utf-8')
         if is_request_completed:
             tracked_info = base64.b64encode(pickle.dumps(np.array(self.track_info))).decode('utf-8')
+            self.completed_fps += 1
+            self.tracked_data_to_csv()
         else:
             tracked_info = ""
 
@@ -280,7 +290,8 @@ class Aerotaxi(BehaviorScript):
         # Update the drone status
         self.imu()
         self.navigation()
-        self.servo_control()
+        self.servo_control_track()
+        # self.servo_control()
         self.platform_dynamics()
         self.telemetry()
 
@@ -399,16 +410,15 @@ class Aerotaxi(BehaviorScript):
                 self.state = UAVState.IDLE
                 self.inform_operator(is_request_completed=True)
 
-                # Uncomment this to show the corresponding plots
-                # plt.close(plt.gcf())
-                # self.fp.position_figure(f"{self.prim.GetPath()}: POSITION", 0.01)
-                # self.fp.velocity_figure(f"{self.prim.GetPath()}: VELOCITY", 0.01)
-                
-                # self.fp.add_UAV_track_pos(f"{self.prim.GetPath()}: POSITION", self.track_info)
-                # self.fp.add_UAV_track_vel(f"{self.prim.GetPath()}: VELOCITY", self.track_info)
-
                 self.is_tracking = False
                 self.track_info = []
+                self.track_ang_vel = []
+                self.track_roll = []
+                self.track_pitch = []
+                self.track_servo_control_time = []
+                self.track_cpu_usage = []
+                self.track_mem_usage = []
+                self.track_gpu_usage = []
                 self.fp = None
                 self.command.off()
                 return
@@ -417,8 +427,9 @@ class Aerotaxi(BehaviorScript):
         
         # Change relative vel to absolute
         linear_vel = self.rot.apply(self.linear_vel)
-        self.command = self.fp.get_command(self.current_time, self.pos, linear_vel, self.rot, 
-                                           self.fp.waypoints[WP-1].heading, 2)
+        heading = self.fp.waypoints[0].heading if self.currentWP == 0 else self.fp.waypoints[self.currentWP - 1].heading
+
+        self.command = self.fp.get_command(self.current_time, self.pos, linear_vel, self.rot, heading, 2)
         self.cmd_exp_time = self.current_time + self.command.duration
 
     def servo_control(self):
@@ -560,81 +571,65 @@ class Aerotaxi(BehaviorScript):
 
             # Get tracking information
             self.track_info.append(Waypoint(t= self.current_time, pos=self.pos, vel=linear_vel))
+            self.track_ang_vel.append(self.angular_vel[2])
+            self.track_roll.append(self.roll)
+            self.track_pitch.append(self.pitch)
+            self.track_servo_control_time.append(self.servo_total_time)
+            self.track_cpu_usage.append(self.cpu_increment)
+            self.track_mem_usage.append(self.mem_increment)
+            self.track_gpu_usage.append(self.gpu_increment)
 
-            # Check if we want to show tracking while simulating
-            # if self.show_tracking:
-            #     # Check if we already built the figure
-            #     if not self.tracking_figure_builded:
-            #         # Build the ploting figure just once
-            #         self.tracking_figure_builded = True
+    def servo_control_track(self):
+        if self.is_tracking and self.current_time - self.last_time_track >= self.refresh_rate:
+            before_gpu_usage = GPUtil.getGPUs()[0].load * 100
+            before_mem_usage = psutil.virtual_memory().percent
+            before_cpu_usage = psutil.cpu_percent(interval=0.1)
+            before_time = time.time()
 
-            #         # Create the matplotlib figure and the corresponding plot
-            #         track_fig = plt.figure("Tracking Plot")
-            #         self.track_plot = track_fig.add_subplot(projection="3d")
+        self.servo_control()
 
-            #         # Indicate the axes name
-            #         self.track_plot.set_xlabel("x [m]")
-            #         self.track_plot.set_ylabel("y [m]")
-            #         self.track_plot.set_zlabel("z [m]")
+        if self.is_tracking and self.current_time - self.last_time_track >= self.refresh_rate:
+            after_time = time.time()
+            after_cpu_usage = psutil.cpu_percent(interval=0.1)
+            after_mem_usage = psutil.virtual_memory().percent
+            after_gpu_usage = GPUtil.getGPUs()[0].load * 100
 
-            #         # Write a title for the plot
-            #         self.track_plot.set_title("Position 3D")
+            self.servo_total_time = after_time - before_time
+            self.cpu_increment = after_cpu_usage - before_cpu_usage
+            self.mem_increment = after_mem_usage - before_mem_usage
+            self.gpu_increment = after_gpu_usage - before_gpu_usage
 
-            #         # Stablish the initial limits
-            #         # self.track_plot.set_xlim3d(-15, 15)
-            #         # self.track_plot.set_ylim3d(-15, 15)
-            #         # self.track_plot.set_zlim3d(-15, 15)
-
-            #         # Plot initial position
-            #         self.line, = self.track_plot.plot(self.xPos_track, self.yPos_track, self.zPos_track, 
-            #                                           linestyle="dashed", linewidth=1, color="black")
-
-            #     self.line.set_data(self.xPos_track, self.yPos_track)
-            #     self.line.set_3d_properties(self.zPos_track)
-            #     self.track_plot.scatter(self.xPos_track[-1], self.yPos_track[-1], self.zPos_track[-1], color="black", 
-            #                             s=10)
-
-            #     # Update plot limits
-            #     track_plot_lims = self.get_matplotlib_plot_limits(self.track_plot)
-            #     new_limits = self.update_track_plot_lims(track_plot_lims, self.pos)
-
-            #     self.track_plot.set_xlim3d(*new_limits[0])
-            #     self.track_plot.set_ylim3d(*new_limits[1])
-            #     self.track_plot.set_zlim3d(*new_limits[2])
-
-            #     plt.pause(0.01)
-
-    def get_matplotlib_plot_limits(self, plot):
-        try:
-            z_lim = plot.get_zlim3d()
-            x_lim = plot.get_xlim3d()
-            y_lim = plot.get_ylim3d()
-
-            return [x_lim, y_lim, z_lim]
+    def tracked_data_to_csv(self):
+        """This functions is in charge of creating a csv with all the data collected for the UAV control comparison
         
-        except:
-            x_lim = plot.get_xlim3d()
-            y_lim = plot.get_ylim3d()
-
-            return (x_lim, y_lim)
+        Output:
+        - It builds a csv with all the information needed
+        """
         
-    def update_track_plot_lims(self, track_plot_lims, new_pos):
-        if new_pos[0] < track_plot_lims[0][0]:
-            track_plot_lims[0] = [new_pos[0], track_plot_lims[0][1]]
+        uav_id = self.prim.GetName()
 
-        if new_pos[0] > track_plot_lims[0][1]:
-            track_plot_lims[0] = [track_plot_lims[0][0], new_pos[0]]
+        times = []
+        error = []
+        x_lin_vel = []
+        y_lin_vel = []
+        z_lin_vel = []
 
-        if new_pos[1] < track_plot_lims[1][0]:
-            track_plot_lims[1] = [new_pos[1], track_plot_lims[1][1]]
+        for wp in self.track_info:
+            times.append(wp.t)
+            status = self.fp.status_at_time(wp.t)
+            error.append(np.linalg.norm(wp.pos - status.pos))
+            x_lin_vel.append(wp.vel[0])
+            y_lin_vel.append(wp.vel[1])
+            z_lin_vel.append(wp.vel[2])
 
-        if new_pos[1] > track_plot_lims[1][1]:
-            track_plot_lims[1] = [track_plot_lims[1][0], new_pos[1]]
+        x_lin_acc = np.insert(np.diff(x_lin_vel), 0, 0)
+        y_lin_acc = np.insert(np.diff(y_lin_vel), 0, 0)
+        z_lin_acc = np.insert(np.diff(z_lin_vel), 0, 0)
+        z_ang_acc = np.insert(np.diff(self.track_ang_vel), 0, 0)
 
-        if new_pos[2] < track_plot_lims[2][0]:
-            track_plot_lims[2] = [new_pos[2], track_plot_lims[2][0]]
-
-        if new_pos[2] > track_plot_lims[2][1]:
-            track_plot_lims[2] = [track_plot_lims[2][0], new_pos[2]]
-
-        return track_plot_lims
+        data = np.column_stack((times, error, x_lin_acc, y_lin_acc, z_lin_acc, z_ang_acc, self.track_roll, 
+                                self.track_pitch, self.track_servo_control_time, self.track_cpu_usage, 
+                                self.track_mem_usage, self.track_gpu_usage))
+            
+        path = project_root_path + "/sims/exported_data" + f"/{uav_id}_{self.completed_fps}_modern_control.csv"
+        np.savetxt(path, data, delimiter=", ", fmt="%s")
