@@ -46,7 +46,7 @@ class Aerotaxi(BehaviorScript):
         # load policy
         
         # BEST:
-        policy_path = "C:/Users/aurelio/code/navsim/isaac_lab/logs/rsl_rl/Isaac-Command-Aerotaxi-v2/2025-05-19_13-41-39/exported/policy.pt"
+        policy_path = f"{project_root_path}/isaac_lab/logs/rsl_rl/Isaac-Command-Aerotaxi-v2/2025-05-19_13-41-39/exported/policy.pt"
 
         with open(policy_path, "rb") as f:
             file_bytes = io.BytesIO(f.read())
