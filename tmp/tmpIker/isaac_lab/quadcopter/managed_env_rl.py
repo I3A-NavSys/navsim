@@ -167,9 +167,12 @@ class EventCfg():
                 "x": (0.0, 0.0),
                 "y": (0.0, 0.0),
                 "z": (10, 10),
-                "roll": (1.57, -1.57),
-                "pitch": (1.57, -1.57),
-                "yaw": (1.57, -1.57)
+                # "roll": (1.57, -1.57),
+                # "pitch": (1.57, -1.57),
+                # "yaw": (1.57, -1.57)
+                "roll": (0, 0),
+                "pitch": (0, 0),
+                "yaw": (0, 0)
             },
             "velocity_range": {
                 "x": (0.0, 0.0),
@@ -191,7 +194,7 @@ class RewardsCfg:
     alive = RewardTermCfg(func=mdp.is_alive, weight=1.0)
     
     # (2) Failure penalty
-    terminating = RewardTermCfg(func=mdp.is_terminated, weight=-5.0)
+    terminating = RewardTermCfg(func=mdp.is_terminated, weight=-4.0)
     
     # (3) Primary task: keep linear velocity close to zero
     quadcopter_lin_vel = RewardTermCfg(
@@ -208,14 +211,14 @@ class RewardsCfg:
     # (5) Primary task: penalize roll
     pen_roll_diff = RewardTermCfg(
         func=rewards.pen_roll_diff,
-        weight=-1.75,
+        weight=-1.25,
         params={"target": 0.0}
     )
 
     # (6) Primary task: penalize pitch
     pen_pitch_diff = RewardTermCfg(
         func=rewards.pen_pitch_diff,
-        weight=-1.75,
+        weight=-1.25,
         params={"target": 0.0}
     )
 
