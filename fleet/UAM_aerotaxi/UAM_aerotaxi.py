@@ -93,7 +93,7 @@ class Aerotaxi(BehaviorScript):
         self.cmd_exp_time = 0
 
         # Tracking
-        self.tracking_figure_builded = False
+        self.compare_controls = False
         self.is_tracking = False
         self.refresh_rate = 1
         self.last_time_track = 0
@@ -220,7 +220,6 @@ class Aerotaxi(BehaviorScript):
         self.imu()
         self.navigation()
         self.inform_operator()
-        # carb.log_info("step,position_x,position_y,position_z,rotation_x,rotation_y,rotation_z,linear_velocity_x,linear_velocity_y,linear_velocity_z,angular_velocity_x,angular_velocity_y,angular_velocity_z")
         self.servo_control()
         self.platform_dynamics()
         self.telemetry()
@@ -245,7 +244,6 @@ class Aerotaxi(BehaviorScript):
         self.forceSW_atr.Set(Gf.Vec3f(0,0,0))
 
         self.is_tracking = False
-        self.tracking_figure_builded = False
         self.track_info = []
         self.track_ang_vel = []
         self.track_roll = []
@@ -263,8 +261,9 @@ class Aerotaxi(BehaviorScript):
         serialized_pos = base64.b64encode(pickle.dumps(np.array(self.pos))).decode('utf-8')
         if is_request_completed:
             tracked_info = base64.b64encode(pickle.dumps(np.array(self.track_info))).decode('utf-8')
-            self.completed_fps += 1
-            self.tracked_data_to_csv()
+            if self.compare_controls:
+                self.completed_fps += 1
+                self.tracked_data_to_csv()
         else:
             tracked_info = ""
 
@@ -290,8 +289,8 @@ class Aerotaxi(BehaviorScript):
         # Update the drone status
         self.imu()
         self.navigation()
-        self.servo_control_track()
-        # self.servo_control()
+        if self.compare_controls:   self.servo_control_track()
+        else:                       self.servo_control()
         self.platform_dynamics()
         self.telemetry()
 
@@ -412,15 +411,18 @@ class Aerotaxi(BehaviorScript):
 
                 self.is_tracking = False
                 self.track_info = []
-                self.track_ang_vel = []
-                self.track_roll = []
-                self.track_pitch = []
-                self.track_servo_control_time = []
-                self.track_cpu_usage = []
-                self.track_mem_usage = []
-                self.track_gpu_usage = []
                 self.fp = None
                 self.command.off()
+
+                if self.compare_controls:
+                    self.track_ang_vel = []
+                    self.track_roll = []
+                    self.track_pitch = []
+                    self.track_servo_control_time = []
+                    self.track_cpu_usage = []
+                    self.track_mem_usage = []
+                    self.track_gpu_usage = []
+
                 return
 
         self.currentWP = WP
@@ -571,13 +573,15 @@ class Aerotaxi(BehaviorScript):
 
             # Get tracking information
             self.track_info.append(Waypoint(t= self.current_time, pos=self.pos, vel=linear_vel))
-            self.track_ang_vel.append(self.angular_vel[2])
-            self.track_roll.append(self.roll)
-            self.track_pitch.append(self.pitch)
-            self.track_servo_control_time.append(self.servo_total_time)
-            self.track_cpu_usage.append(self.cpu_increment)
-            self.track_mem_usage.append(self.mem_increment)
-            self.track_gpu_usage.append(self.gpu_increment)
+
+            if self.compare_controls:
+                self.track_ang_vel.append(self.angular_vel[2])
+                self.track_roll.append(self.roll)
+                self.track_pitch.append(self.pitch)
+                self.track_servo_control_time.append(self.servo_total_time)
+                self.track_cpu_usage.append(self.cpu_increment)
+                self.track_mem_usage.append(self.mem_increment)
+                self.track_gpu_usage.append(self.gpu_increment)
 
     def servo_control_track(self):
         if self.is_tracking and self.current_time - self.last_time_track >= self.refresh_rate:
