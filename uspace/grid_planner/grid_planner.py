@@ -202,16 +202,14 @@ class GridPlanner:
             # Check if current node is end node
             if (node.i, node.j, node.L) == (end_node.i, end_node.j, end_node.L):
                 if are_new_restrictions:
-                    is_node_state_valid = node.state == 0
-                    is_combined_nodes_state_valid = (node.state == 90) and (node.parent.state == 180)
+                    incorrect_landing_1 = node.state == 90 and node.parent.state == 0
+                    incorrect_landing_2 = node.state == 180
+                    is_landing_incorrect = incorrect_landing_1 or incorrect_landing_2
 
-                    if is_node_state_valid or is_combined_nodes_state_valid:
-                        end_time = time.time()
-                        elapsed_time = end_time - start_time
+                    if is_landing_incorrect:    continue
 
-                        return self.get_route_from_node(node), elapsed_time, len(explored_nodes)
-                    
-                    continue
+                    elapsed_time = time.time() - start_time
+                    return self.get_route_from_node(node), elapsed_time, len(explored_nodes)
                 
                 else:
                     end_time = time.time()
@@ -228,12 +226,17 @@ class GridPlanner:
             # Expand new nodes according to restrictions
             new_nodes = []
             if are_new_restrictions:
-                if node.parent is not None:
-                    is_node_state_valid = node.state <= 90
-                    is_parent_state_valid = node.parent.state <= 90
-
-                    if is_node_state_valid and is_parent_state_valid:   new_nodes.append(self.get_cross_node(node))
                 new_nodes.append(self.get_next_node(node))
+                
+                is_takeoff_correct = node.parent is not None and node.parent.parent is not None
+
+                if is_takeoff_correct:
+                    restricted_maneuver_1 = node.state == 0 and node.parent.state == 90
+                    restricted_maneuver_2 = node.state == 90 and node.parent.state == 180
+                    restricted_maneuver_3 = node.state == 180
+                    include_cross_node = not restricted_maneuver_1 and not restricted_maneuver_2 and not restricted_maneuver_3
+
+                    if include_cross_node:  new_nodes.append(self.get_cross_node(node))
             
             else:
                 new_nodes.append(self.get_next_node(node))
