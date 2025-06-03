@@ -18,39 +18,36 @@ if TYPE_CHECKING:
 class QuadcopterMotorAction(ActionTerm):
     """Action term that applies forces to the motors of a quadcopter."""
 
-    cfg: actions_cfg.QuadcopterMotorActionCfg
-    """The configuration of the action term."""
-
     _asset: Articulation
     """The articulation asset on which the action term is applied."""
 
     _scale: float
     """The scaling factor applied to the input action."""
 
-    _env: ManagerBasedRLEnv
-    """ The environment in which the action term is applied."""
-
     def __init__(self, cfg: actions_cfg.QuadcopterMotorActionCfg,
                  env: ManagerBasedRLEnv):
         # Initialize the action term
         super().__init__(cfg, env)
 
-        # Resolve the joints over which the action term is applied
-        self._joint_ids, self._joint_names = self._asset.find_joints(
-            self.cfg.joint_names)
-        self._num_joints = len(self._joint_ids)
+        # Create raw actions and forces/torques tensors
+        self._raw_actions = torch.zeros(self.num_envs, 5, device=self.device)
+        self._forces = torch.zeros(env.num_envs, 5, 3, device=self.device)
+        self._torques = torch.zeros(env.num_envs, 5, 3, device=self.device)
 
-        # Avoid indexing across all joints for efficiency
-        if self._num_joints == self._asset.num_joints:
-            self._joint_ids = slice(None)
+        # Tensor with the positions where forces/torques will be applied
+        positions = torch.tensor([
+            [0, 0, 0],
+            [0.075, -0.075, 0],
+            [0.075, 0.075, 0],
+            [-0.075, -0.075, 0],
+            [-0.075, 0.075, 0]
+        ], device=self.device)
 
-        self.indices = torch.arange(self.num_envs, device=self.device)
+        # Create a view from position tensor to match environment size
+        self._positions = positions.unsqueeze(0).expand(env.num_envs, -1, -1)
 
-        # Create tensors for raw and processed actions
-        self._raw_actions = torch.zeros(self.num_envs, self.action_dim,
-                                        device=self.device)
-        self._processed_actions = torch.zeros(env.num_envs, 5, 3, 
-                                              device=self.device)
+        # Create indexes tensor
+        self._indices = torch.arange(self.num_envs, device=self.device)
 
         # Parse scale
         self._scale = float(cfg.scale)
@@ -62,7 +59,7 @@ class QuadcopterMotorAction(ActionTerm):
     @property
     def action_dim(self) -> int:
         """Return the action dimension."""
-        return self._num_joints
+        return self._raw_actions.shape[1]
 
     @property
     def raw_actions(self) -> torch.Tensor:
@@ -72,7 +69,7 @@ class QuadcopterMotorAction(ActionTerm):
     @property
     def processed_actions(self) -> torch.Tensor:
         """Return the processed actions."""
-        return self._processed_actions
+        return torch.cat(self._forces, self._torques)
 
     """
     Operations.
@@ -82,16 +79,22 @@ class QuadcopterMotorAction(ActionTerm):
         # Scale and store raw actions
         self._raw_actions[:] = actions.abs() * self._scale
 
-        # Assign the scaled raw actions to the processed actions tensor
-        self.processed_actions[:, 1:, 2] = self.raw_actions
+        # Assign the Z-axis actions to the forces/torques tensors
+        self._forces[:, 1:, 2] = self._raw_actions[:, 1:]
+        self._torques[:, 0, 2] = self._raw_actions[:, 0]
+
+        # TEST
+        # self._forces[:, 1:3, 2] = 1.582533
+        # self._forces[:, 3:5, 2] = 1.397467
+        # self._torques[:, 0, 2] = 0.005
 
     def apply_actions(self):
         # Apply forces and torques at the position of the joints
         self._asset.root_physx_view.apply_forces_and_torques_at_position(
-            force_data=self.processed_actions,
-            torque_data=None,
+            force_data=self._forces,
+            torque_data=self._torques,
             position_data=None,
-            indices=self.indices,
+            indices=self._indices,
             is_global=False
         )
 
