@@ -98,6 +98,7 @@ class QuadcopterSceneCfg(InteractiveSceneCfg):
 # |--------------------- ACTIONS ---------------------------|
 # |---------------------------------------------------------|
 
+
 @configclass
 class ActionsCfg:
     """Action specification for the enviroment"""
@@ -111,6 +112,7 @@ class ActionsCfg:
 # |--------------------- OBSERVATIONS ----------------------|
 # |---------------------------------------------------------|
 
+
 @configclass
 class ObservationsCfg:
     """Observation specification for the enviroment"""
@@ -118,17 +120,17 @@ class ObservationsCfg:
     @configclass
     class PolicyCfg(ObservationGroupCfg):
         """Observations for policy group"""
-        
+
         # Linear velocity [0:3]
         base_lin_vel = ObservationTermCfg(
             func=mdp.base_lin_vel,
             params={"asset_cfg": SceneEntityCfg("quadcopter")})
-        
+
         # Angular velocity [3:6]
         base_ang_vel = ObservationTermCfg(
             func=mdp.base_ang_vel,
             params={"asset_cfg": SceneEntityCfg("quadcopter")})
-        
+
         # Roll [6]
         roll = ObservationTermCfg(
             func=observations.roll,
@@ -138,12 +140,7 @@ class ObservationsCfg:
         pitch = ObservationTermCfg(
             func=observations.pitch,
             params={"asset_cfg": SceneEntityCfg("quadcopter")})
-        
-        # Yaw [8]
-        yaw = ObservationTermCfg(
-            func=observations.yaw,
-            params={"asset_cfg": SceneEntityCfg("quadcopter")})
-        
+
         # Command [9:13]
         command = ObservationTermCfg(
             func=observations.command
@@ -159,6 +156,7 @@ class ObservationsCfg:
 # |---------------------------------------------------------|
 # |--------------------- EVENTS ----------------------------|
 # |---------------------------------------------------------|
+
 
 @configclass
 class EventCfg():
@@ -192,22 +190,23 @@ class EventCfg():
 # |--------------------- REWARDS ---------------------------|
 # |---------------------------------------------------------|
 
+
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
 
     # (1) Constant running reward
     alive = RewardTermCfg(func=mdp.is_alive, weight=1.0)
-    
+
     # (2) Failure penalty
     terminating = RewardTermCfg(func=mdp.is_terminated, weight=-4.0)
-    
+
     # (3) Primary task: keep linear velocity close to zero
     quadcopter_lin_vel = RewardTermCfg(
         func=rewards.lin_vel_diff,
         weight=1.0
     )
-    
+
     # (4) Primary task: keep angular velocity close to zero
     quadcopter_ang_vel = RewardTermCfg(
         func=rewards.ang_vel_diff,
@@ -232,12 +231,13 @@ class RewardsCfg:
 # |--------------------- TERMINATIONS ----------------------|
 # |---------------------------------------------------------|
 
+
 @configclass
 class TerminationsCfg:
     """Termination terms for the MDP."""
 
     # (1) Time out
-    
+
     time_out = TerminationTermCfg(func=mdp.time_out, time_out=True)
 
     # (2) Quadcopter too close to ground
@@ -250,6 +250,7 @@ class TerminationsCfg:
 # |---------------------------------------------------------|
 # |--------------------- COMMANDS --------------------------|
 # |---------------------------------------------------------|
+
 
 @configclass
 class CommandCfg:
@@ -269,7 +270,7 @@ class QuadcopterEnvCfg(ManagerBasedRLEnvCfg):
     scene: QuadcopterSceneCfg = QuadcopterSceneCfg(num_envs=4096,
                                                    env_spacing=1.0)
     seed: int = 0
-    
+
     # Basic settings
     actions: ActionsCfg = ActionsCfg()
     observations: ObservationsCfg = ObservationsCfg()
