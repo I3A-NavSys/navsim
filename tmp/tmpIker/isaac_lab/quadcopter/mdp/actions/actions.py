@@ -21,8 +21,11 @@ class QuadcopterMotorAction(ActionTerm):
     _asset: Articulation
     """The articulation asset on which the action term is applied."""
 
-    _scale: float
-    """The scaling factor applied to the input action."""
+    _lin_scale: float
+    """The scaling factor applied to the linear input action."""
+
+    _ang_scale: float
+    """The scaling factor applied to the angular input action."""
 
     def __init__(self, cfg: actions_cfg.QuadcopterMotorActionCfg,
                  env: ManagerBasedRLEnv):
@@ -49,8 +52,9 @@ class QuadcopterMotorAction(ActionTerm):
         # Create indexes tensor
         self._indices = torch.arange(self.num_envs, device=self.device)
 
-        # Parse scale
-        self._scale = float(cfg.scale)
+        # Parse scales
+        self._lin_scale = float(cfg.lin_scale)
+        self._ang_scale = float(cfg.ang_scale)
 
     """
     Properties.
@@ -76,12 +80,15 @@ class QuadcopterMotorAction(ActionTerm):
     """
 
     def process_actions(self, actions: torch.Tensor):
-        # Scale and store raw actions
-        self._raw_actions[:] = actions.abs() * self._scale
+        # Store raw actions
+        self._raw_actions[:] = actions
+
+        # Get absolute value for linear force actions
+        self._raw_actions[:, 1:] = self._raw_actions[:, 1:].abs()
 
         # Assign the Z-axis actions to the forces/torques tensors
-        self._forces[:, 1:, 2] = self._raw_actions[:, 1:]
-        self._torques[:, 0, 2] = self._raw_actions[:, 0]
+        self._forces[:, 1:, 2] = self._raw_actions[:, 1:] * self._lin_scale
+        self._torques[:, 0, 2] = self._raw_actions[:, 0] * self._ang_scale
 
         # TEST
         # self._forces[:, 1:3, 2] = 1.582533
@@ -93,7 +100,7 @@ class QuadcopterMotorAction(ActionTerm):
         self._asset.root_physx_view.apply_forces_and_torques_at_position(
             force_data=self._forces,
             torque_data=self._torques,
-            position_data=None,
+            position_data=self._positions,
             indices=self._indices,
             is_global=False
         )

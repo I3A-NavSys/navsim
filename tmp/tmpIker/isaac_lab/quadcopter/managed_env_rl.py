@@ -104,7 +104,8 @@ class ActionsCfg:
     motor_speeds = actions_cfg.QuadcopterMotorActionCfg(
         asset_name="quadcopter",
         joint_names=["motor_NE", "motor_NW", "motor_SE", "motor_SW"],
-        scale=1.0)
+        lin_scale=1.0,
+        ang_scale=0.25)
 
 # |---------------------------------------------------------|
 # |--------------------- OBSERVATIONS ----------------------|
@@ -138,7 +139,12 @@ class ObservationsCfg:
             func=observations.pitch,
             params={"asset_cfg": SceneEntityCfg("quadcopter")})
         
-        # Command [8:12]
+        # Yaw [8]
+        yaw = ObservationTermCfg(
+            func=observations.yaw,
+            params={"asset_cfg": SceneEntityCfg("quadcopter")})
+        
+        # Command [9:13]
         command = ObservationTermCfg(
             func=observations.command
         )
@@ -167,17 +173,17 @@ class EventCfg():
                 "x": (0.0, 0.0),
                 "y": (0.0, 0.0),
                 "z": (10, 10),
-                # "roll": (1.57, -1.57),
-                # "pitch": (1.57, -1.57),
-                # "yaw": (1.57, -1.57)
-                "roll": (0, 0),
-                "pitch": (0, 0),
-                "yaw": (0, 0)
+                "roll": (1.57, -1.57),
+                "pitch": (1.57, -1.57),
+                "yaw": (1.57, -1.57)
             },
             "velocity_range": {
-                "x": (0.0, 0.0),
-                "y": (0.0, 0.0),
-                "z": (0.0, 0.0)
+                "x": (-1.0, 1.0),
+                "y": (-1.0, 1.0),
+                "z": (-1.0, 1.0),
+                "roll": (-1.0, 1.0),
+                "pitch": (-1.0, 1.0),
+                "yaw": (-1.0, 1.0)
             }
         }
     )
@@ -281,7 +287,7 @@ class QuadcopterEnvCfg(ManagerBasedRLEnvCfg):
         self.decimation = 1
         self.episode_length_s = 5.0
         # viewer settings
-        self.viewer.eye = (8.0, 0.0, 5.0)
+        self.viewer.eye = (8.0, 0.0, 10.0)
         # simulation settings
         self.sim.dt = 0.02
         self.sim.render_interval = self.decimation
