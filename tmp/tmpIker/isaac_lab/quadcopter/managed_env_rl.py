@@ -27,6 +27,173 @@ from .mdp import rewards
 root_isaac_lab_path = os.path.abspath(os.path.join(
     os.path.dirname(__file__), '..'))
 
+# |---------------------------------------------------------|
+# |--------------------- COMMANDS --------------------------|
+# |---------------------------------------------------------|
+
+
+@configclass
+class CommandCfg:
+    """Command specifications for the enviroment."""
+    command = commands_cfg.UAVCommandTermCfg(resampling_time_range=(10, 10))
+
+
+# |---------------------------------------------------------|
+# |--------------------- ACTIONS ---------------------------|
+# |---------------------------------------------------------|
+
+@configclass
+class ActionsCfg:
+    """Action specification for the enviroment"""
+    motor_speeds = actions_cfg.QuadcopterMotorActionCfg(
+        asset_name="quadcopter",
+        joint_names=["motor_NE", "motor_NW", "motor_SE", "motor_SW"],
+        lin_scale=1.0,
+        ang_scale=0.25)
+
+# |---------------------------------------------------------|
+# |--------------------- OBSERVATIONS ----------------------|
+# |---------------------------------------------------------|
+
+
+@configclass
+class ObservationsCfg:
+    """Observation specification for the enviroment"""
+
+    @configclass
+    class PolicyCfg(ObservationGroupCfg):
+        """Observations for policy group"""
+
+        # Linear velocity [0:3]
+        lin_vel = ObservationTermCfg(
+            func=mdp.base_lin_vel,
+            params={"asset_cfg": SceneEntityCfg("quadcopter")})
+
+        # Angular velocity [3:6]
+        ang_vel = ObservationTermCfg(
+            func=mdp.base_ang_vel,
+            params={"asset_cfg": SceneEntityCfg("quadcopter")})
+
+        # Roll [6]
+        roll = ObservationTermCfg(
+            func=observations.roll,
+            params={"asset_cfg": SceneEntityCfg("quadcopter")})
+
+        # Pitch [7]
+        pitch = ObservationTermCfg(
+            func=observations.pitch,
+            params={"asset_cfg": SceneEntityCfg("quadcopter")})
+
+        # Yaw [8]
+        yaw = ObservationTermCfg(
+            func=observations.yaw,
+            params={"asset_cfg": SceneEntityCfg("quadcopter")})
+
+        # Command [9:13]
+        command = ObservationTermCfg(
+            func=observations.command
+        )
+
+        def __post_init__(self) -> None:
+            self.enable_corruption = False
+            self.concatenate_terms = True
+
+    # Observation group
+    policy: PolicyCfg = PolicyCfg()
+
+# |---------------------------------------------------------|
+# |--------------------- REWARDS ---------------------------|
+# |---------------------------------------------------------|
+
+
+@configclass
+class RewardsCfg:
+    """Reward terms for the MDP."""
+
+    # (1) Constant running reward
+    alive = RewardTermCfg(func=mdp.is_alive, weight=1.0)
+
+    # (2) Failure penalty
+    terminating = RewardTermCfg(func=mdp.is_terminated, weight=-4.0)
+
+    # (3) Primary task: keep linear velocity close to zero
+    quadcopter_lin_vel = RewardTermCfg(
+        func=rewards.lin_vel_diff,
+        weight=1.0
+    )
+
+    # (4) Primary task: keep angular velocity close to zero
+    quadcopter_ang_vel = RewardTermCfg(
+        func=rewards.ang_vel_diff,
+        weight=1.0
+    )
+
+    # (5) Primary task: penalize roll
+    pen_roll_diff = RewardTermCfg(
+        func=rewards.pen_roll_diff,
+        weight=-1.25,
+        params={"target": 0.0}
+    )
+
+    # (6) Primary task: penalize pitch
+    pen_pitch_diff = RewardTermCfg(
+        func=rewards.pen_pitch_diff,
+        weight=-1.25,
+        params={"target": 0.0}
+    )
+
+# |---------------------------------------------------------|
+# |--------------------- TERMINATIONS ----------------------|
+# |---------------------------------------------------------|
+
+
+@configclass
+class TerminationsCfg:
+    """Termination terms for the MDP."""
+
+    # (1) Time out
+
+    time_out = TerminationTermCfg(func=mdp.time_out, time_out=True)
+
+    # (2) Quadcopter too close to ground
+    height = TerminationTermCfg(
+        func=mdp.root_height_below_minimum,
+        params={"minimum_height": 0.25,
+                "asset_cfg": SceneEntityCfg("quadcopter")}
+    )
+
+# |---------------------------------------------------------|
+# |--------------------- EVENTS ----------------------------|
+# |---------------------------------------------------------|
+
+
+@configclass
+class EventCfg():
+    """Configuration for events"""
+    # On reset
+    reset_quadcopter_position = EventTermCfg(
+        func=mdp.reset_root_state_uniform,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg(name="quadcopter"),
+            "pose_range": {
+                "x": (0.0, 0.0),
+                "y": (0.0, 0.0),
+                "z": (10, 10),
+                "roll": (1.57, -1.57),
+                "pitch": (1.57, -1.57),
+                "yaw": (1.57, -1.57)
+            },
+            "velocity_range": {
+                "x": (-1.0, 1.0),
+                "y": (-1.0, 1.0),
+                "z": (-1.0, 1.0),
+                "roll": (-1.0, 1.0),
+                "pitch": (-1.0, 1.0),
+                "yaw": (-1.0, 1.0)
+            }
+        }
+    )
 
 # |---------------------------------------------------------|
 # |--------------------- SCENE -----------------------------|
@@ -93,169 +260,6 @@ class QuadcopterSceneCfg(InteractiveSceneCfg):
             )
         }
     )
-
-# |---------------------------------------------------------|
-# |--------------------- ACTIONS ---------------------------|
-# |---------------------------------------------------------|
-
-
-@configclass
-class ActionsCfg:
-    """Action specification for the enviroment"""
-    motor_speeds = actions_cfg.QuadcopterMotorActionCfg(
-        asset_name="quadcopter",
-        joint_names=["motor_NE", "motor_NW", "motor_SE", "motor_SW"],
-        lin_scale=1.0,
-        ang_scale=0.25)
-
-# |---------------------------------------------------------|
-# |--------------------- OBSERVATIONS ----------------------|
-# |---------------------------------------------------------|
-
-
-@configclass
-class ObservationsCfg:
-    """Observation specification for the enviroment"""
-
-    @configclass
-    class PolicyCfg(ObservationGroupCfg):
-        """Observations for policy group"""
-
-        # Linear velocity [0:3]
-        base_lin_vel = ObservationTermCfg(
-            func=mdp.base_lin_vel,
-            params={"asset_cfg": SceneEntityCfg("quadcopter")})
-
-        # Angular velocity [3:6]
-        base_ang_vel = ObservationTermCfg(
-            func=mdp.base_ang_vel,
-            params={"asset_cfg": SceneEntityCfg("quadcopter")})
-
-        # Roll [6]
-        roll = ObservationTermCfg(
-            func=observations.roll,
-            params={"asset_cfg": SceneEntityCfg("quadcopter")})
-
-        # Pitch [7]
-        pitch = ObservationTermCfg(
-            func=observations.pitch,
-            params={"asset_cfg": SceneEntityCfg("quadcopter")})
-
-        # Command [9:13]
-        command = ObservationTermCfg(
-            func=observations.command
-        )
-
-        def __post_init__(self) -> None:
-            self.enable_corruption = False
-            self.concatenate_terms = True
-
-    # Observation group
-    policy: PolicyCfg = PolicyCfg()
-
-# |---------------------------------------------------------|
-# |--------------------- EVENTS ----------------------------|
-# |---------------------------------------------------------|
-
-
-@configclass
-class EventCfg():
-    """Configuration for events"""
-    # On reset
-    reset_quadcopter_position = EventTermCfg(
-        func=mdp.reset_root_state_uniform,
-        mode="reset",
-        params={
-            "asset_cfg": SceneEntityCfg(name="quadcopter"),
-            "pose_range": {
-                "x": (0.0, 0.0),
-                "y": (0.0, 0.0),
-                "z": (10, 10),
-                "roll": (1.57, -1.57),
-                "pitch": (1.57, -1.57),
-                "yaw": (1.57, -1.57)
-            },
-            "velocity_range": {
-                "x": (-1.0, 1.0),
-                "y": (-1.0, 1.0),
-                "z": (-1.0, 1.0),
-                "roll": (-1.0, 1.0),
-                "pitch": (-1.0, 1.0),
-                "yaw": (-1.0, 1.0)
-            }
-        }
-    )
-
-# |---------------------------------------------------------|
-# |--------------------- REWARDS ---------------------------|
-# |---------------------------------------------------------|
-
-
-@configclass
-class RewardsCfg:
-    """Reward terms for the MDP."""
-
-    # (1) Constant running reward
-    alive = RewardTermCfg(func=mdp.is_alive, weight=1.0)
-
-    # (2) Failure penalty
-    terminating = RewardTermCfg(func=mdp.is_terminated, weight=-4.0)
-
-    # (3) Primary task: keep linear velocity close to zero
-    quadcopter_lin_vel = RewardTermCfg(
-        func=rewards.lin_vel_diff,
-        weight=1.0
-    )
-
-    # (4) Primary task: keep angular velocity close to zero
-    quadcopter_ang_vel = RewardTermCfg(
-        func=rewards.ang_vel_diff,
-        weight=1.0
-    )
-
-    # (5) Primary task: penalize roll
-    pen_roll_diff = RewardTermCfg(
-        func=rewards.pen_roll_diff,
-        weight=-1.25,
-        params={"target": 0.0}
-    )
-
-    # (6) Primary task: penalize pitch
-    pen_pitch_diff = RewardTermCfg(
-        func=rewards.pen_pitch_diff,
-        weight=-1.25,
-        params={"target": 0.0}
-    )
-
-# |---------------------------------------------------------|
-# |--------------------- TERMINATIONS ----------------------|
-# |---------------------------------------------------------|
-
-
-@configclass
-class TerminationsCfg:
-    """Termination terms for the MDP."""
-
-    # (1) Time out
-
-    time_out = TerminationTermCfg(func=mdp.time_out, time_out=True)
-
-    # (2) Quadcopter too close to ground
-    height = TerminationTermCfg(
-        func=mdp.root_height_below_minimum,
-        params={"minimum_height": 0.25,
-                "asset_cfg": SceneEntityCfg("quadcopter")}
-    )
-
-# |---------------------------------------------------------|
-# |--------------------- COMMANDS --------------------------|
-# |---------------------------------------------------------|
-
-
-@configclass
-class CommandCfg:
-    """Command specifications for the enviroment."""
-    command = commands_cfg.UAVCommandTermCfg(resampling_time_range=(10, 10))
 
 # |---------------------------------------------------------|
 # |--------------------- ENVIRONMENT -----------------------|
