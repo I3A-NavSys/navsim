@@ -45,7 +45,7 @@ def lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     observations = env.obs_buf["policy"]
     lin_vel = observations[:, :3]
     rewards = torch.zeros(env.num_envs, device=env.device)
-    reference = observations[:, 8:11]
+    reference = observations[:, 9:12]
     diff = lin_vel[:] - reference
     diff = torch.norm(diff, dim=1)
     rewards[:] = 10.0 / (1.0 + diff)
@@ -57,7 +57,7 @@ def ang_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     observations = env.obs_buf["policy"]
     ang_vel = observations[:, 5]
     rewards = torch.zeros(env.num_envs, device=env.device)
-    reference = observations[:, 11]
+    reference = observations[:, 12]
     diff = ang_vel[:] - reference
     diff = torch.norm(diff)
     rewards[:] = 10.0 / (1.0 + diff)
@@ -65,7 +65,7 @@ def ang_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
 
 
 def pen_roll_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
-    """Penalize roll and pitch deviation from a target value."""
+    """Penalize roll deviation from a target value."""
     roll = env.obs_buf["policy"][:, 6]
     target = torch.tensor(target, device=env.device)
 
@@ -74,10 +74,19 @@ def pen_roll_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
 
 
 def pen_pitch_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
-    """Penalize roll and pitch deviation from a target value."""
+    """Penalize pitch deviation from a target value."""
     pitch = env.obs_buf["policy"][:, 7]
     target = torch.tensor(target, device=env.device)
 
     diff = (pitch[:] - target).abs()
+
+    return diff
+
+def pen_yaw_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
+    """Penalize yaw deviation from a target value."""
+    yaw = env.obs_buf["policy"][:, 8]
+    target = torch.tensor(target, device=env.device)
+
+    diff = (yaw[:] - target).abs()
 
     return diff
