@@ -119,13 +119,13 @@ class RewardsCfg:
     # (3) Primary task: keep linear velocity close to zero
     quadcopter_lin_vel = RewardTermCfg(
         func=rewards.lin_vel_diff,
-        weight=1.0
+        weight=1.5
     )
 
     # (4) Primary task: keep angular velocity close to zero
     quadcopter_ang_vel = RewardTermCfg(
         func=rewards.ang_vel_diff,
-        weight=1.0
+        weight=1.5
     )
 
     # (5) Primary task: penalize roll
@@ -138,6 +138,13 @@ class RewardsCfg:
     # (6) Primary task: penalize pitch
     pen_pitch_diff = RewardTermCfg(
         func=rewards.pen_pitch_diff,
+        weight=-1.25,
+        params={"target": 0.0}
+    )
+
+    # (7) Primary task: penalize yaw
+    pen_yaw_diff = RewardTermCfg(
+        func=rewards.pen_yaw_diff,
         weight=-1.25,
         params={"target": 0.0}
     )
