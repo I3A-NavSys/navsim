@@ -11,6 +11,10 @@ from isaaclab.utils import math
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
 
+def pos(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.Tensor:
+    asset: Articulation = env.scene[asset_cfg.name]
+    return asset.data.root_pos_w
+
 def roll(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.Tensor:
     asset: Articulation = env.scene[asset_cfg.name]
     roll, _, _ = math.euler_xyz_from_quat(asset.data.root_quat_w)
