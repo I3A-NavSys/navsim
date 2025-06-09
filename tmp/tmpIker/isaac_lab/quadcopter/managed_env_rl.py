@@ -216,54 +216,68 @@ class QuadcopterSceneCfg(InteractiveSceneCfg):
                           spawn=sim_utils.GroundPlaneCfg())
 
     # Lights
-    dome_light = AssetBaseCfg(prim_path="/World/DomeLight",
-                              spawn=sim_utils.DomeLightCfg(
-                                  intensity=3000.0, color=(0.75, 0.75, 0.75))
-                              )
+    dome_light = AssetBaseCfg(
+        prim_path="/World/DomeLight",
+        spawn=sim_utils.DomeLightCfg(
+            intensity=3000.0, color=(0.75, 0.75, 0.75)
+        )
+    )
 
     # Quadcopter
     quadcopter: ArticulationCfg = ArticulationCfg(
         prim_path="{ENV_REGEX_NS}/quadcopter",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=os.path.abspath(os.path.join(root_isaac_lab_path,
-                                                  "assets",
-                                                  "quadcopter",
-                                                  "quadcopter.usd")),
+            usd_path=os.path.abspath(
+                os.path.join(
+                    root_isaac_lab_path,
+                    "assets",
+                    "quadcopter",
+                    "quadcopter.usd"
+                )
+            ),
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
-                rigid_body_enabled=True)
+                rigid_body_enabled = True,
+                kinematic_enabled = False,
+                linear_damping = 0.05,
+                angular_damping = 0.1,
+                max_linear_velocity = 20.0,
+                max_angular_velocity = 360.0,
+                enable_gyroscopic_forces = True,
+                retain_accelerations = True
+            )
         ),
         actuators={
             "motor_NE": DCMotorCfg(
                 joint_names_expr=["motor_NE"],
                 stiffness=0.0,
                 damping=0.0,
-                saturation_effort=100000.0,
-                velocity_limit=100000.0,
-                effort_limit=100000.0
+                saturation_effort=100.0,
+                velocity_limit=100.0,
+                effort_limit=100.0
             ),
             "motor_NW": DCMotorCfg(
                 joint_names_expr=["motor_NW"],
                 stiffness=0.0,
                 damping=0.0,
-                saturation_effort=100000.0,
-                velocity_limit=100000.0,
-                effort_limit=100000.0
+                saturation_effort=100.0,
+                velocity_limit=100.0,
+                effort_limit=100.0
             ),
             "motor_SE": DCMotorCfg(
                 joint_names_expr=["motor_SE"],
                 stiffness=0.0,
                 damping=0.0,
-                saturation_effort=100000.0,
-                velocity_limit=100000.0,
-                effort_limit=100000.0
+                saturation_effort=100.0,
+                velocity_limit=100.0,
+                effort_limit=100.0
             ),
             "motor_SW": DCMotorCfg(
                 joint_names_expr=["motor_SW"],
                 stiffness=0.0,
                 damping=0.0,
-                saturation_effort=100000.0,
-                velocity_limit=100000.0,
-                effort_limit=100000.0
+                saturation_effort=100.0,
+                velocity_limit=100.0,
+                effort_limit=100.0
             )
         }
     )
