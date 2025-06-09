@@ -66,12 +66,12 @@ class ObservationsCfg:
 
         # Linear velocity [0:3]
         lin_vel = ObservationTermCfg(
-            func=mdp.base_lin_vel,
+            func=observations.lin_vel,
             params={"asset_cfg": SceneEntityCfg("quadcopter")})
 
         # Angular velocity [3:6]
         ang_vel = ObservationTermCfg(
-            func=mdp.base_ang_vel,
+            func=observations.ang_vel,
             params={"asset_cfg": SceneEntityCfg("quadcopter")})
 
         # Roll [6]
@@ -119,33 +119,33 @@ class RewardsCfg:
     # (3) Primary task: keep linear velocity close to zero
     quadcopter_lin_vel = RewardTermCfg(
         func=rewards.lin_vel_diff,
-        weight=1.5
+        weight=2.0
     )
 
     # (4) Primary task: keep angular velocity close to zero
     quadcopter_ang_vel = RewardTermCfg(
         func=rewards.ang_vel_diff,
-        weight=1.5
+        weight=2.0
     )
 
     # (5) Primary task: penalize roll
     pen_roll_diff = RewardTermCfg(
         func=rewards.pen_roll_diff,
-        weight=-1.25,
+        weight=-1.5,
         params={"target": 0.0}
     )
 
     # (6) Primary task: penalize pitch
     pen_pitch_diff = RewardTermCfg(
         func=rewards.pen_pitch_diff,
-        weight=-1.25,
+        weight=-1.5,
         params={"target": 0.0}
     )
 
     # (7) Primary task: penalize yaw
     pen_yaw_diff = RewardTermCfg(
         func=rewards.pen_yaw_diff,
-        weight=-1.25,
+        weight=-2.0,
         params={"target": 0.0}
     )
 
