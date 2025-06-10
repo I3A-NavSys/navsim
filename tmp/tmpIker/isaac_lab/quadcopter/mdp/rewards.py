@@ -47,7 +47,7 @@ def lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     rewards = torch.zeros(env.num_envs, device=env.device)
     reference = observations[:, 9:12]
     diff = lin_vel[:] - reference
-    diff = torch.norm(diff, dim=1)
+    diff = torch.linalg.norm(diff, dim=1)
     rewards[:] = 10.0 / (1.0 + diff)
     return rewards
 
@@ -59,7 +59,7 @@ def ang_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     rewards = torch.zeros(env.num_envs, device=env.device)
     reference = observations[:, 12]
     diff = ang_vel[:] - reference
-    diff = torch.norm(diff)
+    diff = torch.linalg.norm(diff)
     rewards[:] = 10.0 / (1.0 + diff)
     return rewards
 
