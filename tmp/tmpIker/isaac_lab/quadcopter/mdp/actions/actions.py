@@ -90,11 +90,6 @@ class QuadcopterMotorAction(ActionTerm):
         self._forces[:, 1:, 2] = self._raw_actions[:, 1:] * self._lin_scale
         self._torques[:, 0, 2] = self._raw_actions[:, 0] * self._ang_scale
 
-        # TEST
-        # self._forces[:, 1:3, 2] = 1.582533
-        # self._forces[:, 3:5, 2] = 1.397467
-        # self._torques[:, 0, 2] = 0.005
-
     def apply_actions(self):
         # Apply forces and torques at the position of the joints
         self._asset.root_physx_view.apply_forces_and_torques_at_position(
@@ -104,6 +99,3 @@ class QuadcopterMotorAction(ActionTerm):
             indices=self._indices,
             is_global=False
         )
-
-    def reset(self, env_ids: Sequence[int] | None = None) -> None:
-        self._raw_actions[env_ids] = 0.0
