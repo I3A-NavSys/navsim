@@ -11,6 +11,18 @@ from isaaclab.utils import math
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
 
+def pos(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.Tensor:
+    asset: Articulation = env.scene[asset_cfg.name]
+    return asset.data.root_pos_w
+
+def lin_vel(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.Tensor:
+    asset: Articulation = env.scene[asset_cfg.name]
+    return asset.data.root_com_lin_vel_b
+
+def ang_vel(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.Tensor:
+    asset: Articulation = env.scene[asset_cfg.name]
+    return asset.data.root_com_ang_vel_b
+
 def roll(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.Tensor:
     asset: Articulation = env.scene[asset_cfg.name]
     roll, _, _ = math.euler_xyz_from_quat(asset.data.root_quat_w)
@@ -18,12 +30,19 @@ def roll(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.Tensor:
     roll = roll.unsqueeze(1)
     return roll
 
-def pitch(env:ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
+def pitch(env:ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.Tensor:
     asset: Articulation = env.scene[asset_cfg.name]
     _, pitch, _ = math.euler_xyz_from_quat(asset.data.root_quat_w)
     pitch = torch.atan2(torch.sin(pitch), torch.cos(pitch))
     pitch = pitch.unsqueeze(1)
     return pitch
+
+def yaw(env:ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.Tensor:
+    asset: Articulation = env.scene[asset_cfg.name]
+    _, _, yaw = math.euler_xyz_from_quat(asset.data.root_quat_w)
+    yaw = torch.atan2(torch.sin(yaw), torch.cos(yaw))
+    yaw = yaw.unsqueeze(1)
+    return yaw
 
 def command(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Get current command."""
