@@ -4,6 +4,7 @@ from isaacsim.gui.components.element_wrappers import DropDown
 import carb.events
 import omni.timeline
 import omni.physx
+from omni.isaac.core.prims import RigidPrimView
 
 import pickle
 import base64
@@ -11,10 +12,13 @@ import sys, os
 import numpy as np
 import math
 import matplotlib.pyplot as plt
+import torch
 
 from navsim_utils.extensions_utils import ExtensionUtils
 from uspace.grid_planner.grid_planner import GridPlanner
 from uspace.flight_plan.flight_plan import FlightPlan
+# from .uav_ia_control import UAVcontrol
+from .uav_matrix_control import UAVcontrol
 
 file_path = os.path.dirname(__file__)
 
@@ -34,8 +38,6 @@ class RequestState:
     COMPLETED = "completed"
 
 class Operator(omni.ext.IExt):
-    # ext_id is current extension id. It can be used with extension manager to query additional information, like where
-    # this extension is located on filesystem.
     def on_startup(self, ext_id):
         self.init_vars()
         self.build_ui()
@@ -46,31 +48,65 @@ class Operator(omni.ext.IExt):
         self.on_play_sub = None
 
     def on_physics_step(self, step_size:int):
-        self.current_time += step_size
+        if self.is_sim_played:
+            self.uav_control.update(self.current_time, self.uavs, step_size)
+            self.current_time += step_size
 
     def on_timeline_stop(self, event):
         self.current_time = 0
+        self.is_sim_played = False
+        self.rigid_prim_view = None
+        self.uav_control = None
         
     def on_timeline_play(self, event):
-        self.gp.clear_grid()
-        self.clients_requests = {}
-        self.uavs = {}
-        self.uav_plots = {}
-        self.ui_uav_plots_frame.clear()
-        self.vertiports_from_id, self.vertiports_from_pos = self.find_vertiports()
-        self.print_vertiports()
+        if not self.is_sim_played:
+            # Reset all variables
+            self.gp.clear_grid()
+            self.clients_requests = {}
+            self.uavs = {}
+            self.uav_plots = {}
+            self.ui_uav_plots_frame.clear()
+            self.vertiports_from_id, self.vertiports_from_pos = self.find_vertiports()
+            self.print_vertiports()
+            self.print_clients()
 
-        self.print_clients()
+            # Get UAVs rigid prim view each time simulation is played, as stage could be modified
+            self.rigid_prim_view = RigidPrimView([
+                "/World/UAVs/UAV_*/base", 
+                "/World/UAVs/UAV_*/rotor_NW", 
+                "/World/UAVs/UAV_*/rotor_NE", 
+                "/World/UAVs/UAV_*/rotor_SW", 
+                "/World/UAVs/UAV_*/rotor_SE"
+            ])
+            self.rigid_prim_view.initialize()
+            self.uav_amount = self.rigid_prim_view.count // self.max_uav_links
+
+            self.init_uavs()
+            self.uav_control = UAVcontrol(self.rigid_prim_view, self.torch_device, self.uavs, self.operator_event, 
+                                          self.event_stream)
+            self.print_uavs()
+            self.ui_select_uav_to_plot.repopulate()
+
+            self.is_sim_played = True
 
     def init_vars(self):
+        self.rigid_prim_view = None
+        self.max_uav_links = 5
+        self.uav_amount = 0
+        self.uav_control = None
+        # self.torch_device = "cuda:0" if torch.cuda.is_available() else "cpu"
+        self.torch_device = "cpu"
+
         self.physx_interface = omni.physx.get_physx_interface()
         self.on_physics_step_sub = self.physx_interface.subscribe_physics_on_step_events(self.on_physics_step, True, 0)
 
         self.timeline = omni.timeline.get_timeline_interface()
         self.on_stop_sub = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
-            int(omni.timeline.TimelineEventType.STOP), self.on_timeline_stop)
+            int(omni.timeline.TimelineEventType.STOP), self.on_timeline_stop
+        )
         self.on_play_sub = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
-            int(omni.timeline.TimelineEventType.PLAY), self.on_timeline_play)
+            int(omni.timeline.TimelineEventType.PLAY), self.on_timeline_play
+        )
         
         self.navsim_utils = ExtensionUtils()
         self.gp = GridPlanner()
@@ -81,12 +117,32 @@ class Operator(omni.ext.IExt):
         self.uspace_clients_event = carb.events.type_from_string("NavSim.USpaceClients")
         self.event_sub = self.event_stream.create_subscription_to_push_by_type(self.operator_event, self.event_listener)
 
+        self.is_sim_played = False
         self.current_time = 0
         self.clients_requests = {}
         self.uavs = {}
         self.uav_plots = {}     # {uav_id: {"amazon_request_1": {"fp": fp, "track_info": track_info}, "amazon_request_2": {"fp": fp, "track_info": track_info}} }
         self.vertiports_from_id = {}
         self.vertiports_from_pos = {}
+
+    def init_uavs(self):
+        pos, _ = self.rigid_prim_view.get_world_poses(indices=range(self.uav_amount))
+
+        for i in range(self.uav_amount):
+            uav_id = f"UAV_{i}"
+            uav_state = UAVState.IDLE
+            uav_time = 0
+            uav_pos = pos[i]
+            uav_flightplan = None
+
+            self.uavs[uav_id] = {
+                "id": uav_id,
+                "state": uav_state,
+                "time": uav_time,
+                "pos": uav_pos,
+                "flightplan": uav_flightplan,
+                "request": None
+            }
 
     def find_vertiports(self):
         vertiports_prims = self.navsim_utils.get_vertiport_prims()
@@ -300,7 +356,6 @@ class Operator(omni.ext.IExt):
         np.savetxt(fp_path, fp_trace, delimiter=", ", fmt="%s")
         np.savetxt(tracked_info_path, tracked_info_trace, delimiter=", ", fmt="%s")
 
-
     def process_request(self, client_id, request_id):
         request = self.clients_requests[client_id][request_id]
 
@@ -341,15 +396,17 @@ class Operator(omni.ext.IExt):
 
         # The closest uav is not at the origin
         else:
-            i = closest_uav["pos"][0] // self.gp.cell_side
-            j = closest_uav["pos"][1] // self.gp.cell_side
+            pass
+            # TODO: Esto no funciona
+            # i = closest_uav["pos"][0] // self.gp.cell_side
+            # j = closest_uav["pos"][1] // self.gp.cell_side
 
-            i2 = request_origin[0] // self.gp.cell_side
-            j2 = request_origin[1] // self.gp.cell_side
+            # i2 = request_origin[0] // self.gp.cell_side
+            # j2 = request_origin[1] // self.gp.cell_side
 
-            init_time_slot = math.ceil(self.current_time / self.gp.slot_time)
+            # init_time_slot = math.ceil(self.current_time / self.gp.slot_time)
 
-            route, _ = self.gp.get_best_route(2, (i, j), (i2, j2), init_time_slot, init_time_slot)
+            # route, _ = self.gp.get_best_route(2, (i, j), (i2, j2), init_time_slot, init_time_slot)
 
     def add_takeoff_landing_wps(self, fp: FlightPlan, init_pos, end_pos):
         init_time = fp.init_time() - 2 * self.gp.slot_time
@@ -386,9 +443,10 @@ class Operator(omni.ext.IExt):
         # fp.postpone(self.current_time + 0.1)
 
     def send_flightplan(self, uav_id, fp):
-        uav_event = carb.events.type_from_string("NavSim." + uav_id)
-        serialized_fp = base64.b64encode(pickle.dumps(fp)).decode('utf-8')
-        self.event_stream.push(uav_event, payload={"method": "eventFn_FlightPlan", "fp": serialized_fp})
+        # uav_event = carb.events.type_from_string("NavSim." + uav_id)
+        # serialized_fp = base64.b64encode(pickle.dumps(fp)).decode('utf-8')
+        # self.event_stream.push(uav_event, payload={"method": "eventFn_FlightPlan", "fp": serialized_fp})
+        self.uavs[uav_id]["flightplan"] = fp
         
     def inform_client(self, client_id, request_id):
         self.event_stream.push(self.uspace_clients_event, payload={"client_id": client_id, "request_id": request_id, 
@@ -449,7 +507,7 @@ class Operator(omni.ext.IExt):
                     with self.ui_uav_plots_collapsable:
                         with ui.VStack(height=0):
                             self.ui_select_uav_to_plot = DropDown("Select UAV", 
-                                                                  populate_fn=self.populate_select_usv_to_plot,
+                                                                  populate_fn=self.populate_select_uav_to_plot,
                                                                   on_selection_fn=self.update_uav_plots_frame)
                             self.ui_select_uav_to_plot.repopulate()
 
@@ -463,7 +521,7 @@ class Operator(omni.ext.IExt):
                                             vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
                                             style={"background_color": 0xFF5b5b5b, "margin":5}, height=150)
 
-    def populate_select_usv_to_plot(self):
+    def populate_select_uav_to_plot(self):
         return list(self.uavs.keys())
 
     def update_uav_plots_frame(self, uav_id):
