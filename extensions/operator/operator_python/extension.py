@@ -49,8 +49,8 @@ class Operator(omni.ext.IExt):
 
     def on_physics_step(self, step_size:int):
         if self.is_sim_played:
-            self.uav_control.update(self.current_time, self.uavs, step_size)
             self.current_time += step_size
+            self.uav_control.update(self.current_time, self.uavs, step_size)
 
     def on_timeline_stop(self, event):
         self.current_time = 0
@@ -69,17 +69,11 @@ class Operator(omni.ext.IExt):
             self.vertiports_from_id, self.vertiports_from_pos = self.find_vertiports()
             self.print_vertiports()
             self.print_clients()
+            self.torch_device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
             # Get UAVs rigid prim view each time simulation is played, as stage could be modified
-            self.rigid_prim_view = RigidPrimView([
-                "/World/UAVs/UAV_*/base", 
-                "/World/UAVs/UAV_*/rotor_NW", 
-                "/World/UAVs/UAV_*/rotor_NE", 
-                "/World/UAVs/UAV_*/rotor_SW", 
-                "/World/UAVs/UAV_*/rotor_SE"
-            ])
+            self.rigid_prim_view = RigidPrimView(["/World/UAVs/UAV_*",])
             self.rigid_prim_view.initialize()
-            self.uav_amount = self.rigid_prim_view.count // self.max_uav_links
 
             self.init_uavs()
             self.uav_control = UAVcontrol(self.rigid_prim_view, self.torch_device, self.uavs, self.operator_event, 
@@ -89,13 +83,18 @@ class Operator(omni.ext.IExt):
 
             self.is_sim_played = True
 
+    def set_grid_parameters(self):
+        self.gp.cell_side = self.ui_grid_cell_size.model.get_value_as_int()
+        self.gp.slot_time = self.ui_grid_slot_time.model.get_value_as_int()
+        self.gp.x_height = self.ui_grid_x_level_height.model.get_value_as_int()
+        self.gp.y_height = self.ui_grid_y_level_height.model.get_value_as_int()
+
+    # ----------------------------------
+    # -------- INITIALIZATION ----------
+    # ----------------------------------
     def init_vars(self):
         self.rigid_prim_view = None
-        self.max_uav_links = 5
-        self.uav_amount = 0
         self.uav_control = None
-        # self.torch_device = "cuda:0" if torch.cuda.is_available() else "cpu"
-        self.torch_device = "cpu"
 
         self.physx_interface = omni.physx.get_physx_interface()
         self.on_physics_step_sub = self.physx_interface.subscribe_physics_on_step_events(self.on_physics_step, True, 0)
@@ -126,9 +125,9 @@ class Operator(omni.ext.IExt):
         self.vertiports_from_pos = {}
 
     def init_uavs(self):
-        pos, _ = self.rigid_prim_view.get_world_poses(indices=range(self.uav_amount))
+        pos, _ = self.rigid_prim_view.get_world_poses(indices=range(self.rigid_prim_view.count))
 
-        for i in range(self.uav_amount):
+        for i in range(self.rigid_prim_view.count):
             uav_id = f"UAV_{i}"
             uav_state = UAVState.IDLE
             uav_time = 0
@@ -159,6 +158,75 @@ class Operator(omni.ext.IExt):
 
         return vertiports_from_id, vertiports_from_pos
 
+    # ----------------------------------
+    # ------ TRACKED INFORMATION -------
+    # ----------------------------------
+    def plot_uav_pos(self, uav_id, key):
+        fp: FlightPlan = self.uav_plots[uav_id][key]["fp"]
+        tracked_info = self.uav_plots[uav_id][key]["tracked_info"]
+
+        fp.position_figure(f"{key}: POSITION", self.plot_time_steps)
+        fp.add_UAV_track_pos(f"{key}: POSITION", tracked_info)
+
+    def plot_uav_vel(self, uav_id, key):
+        fp: FlightPlan = self.uav_plots[uav_id][key]["fp"]
+        tracked_info = self.uav_plots[uav_id][key]["tracked_info"]
+
+        fp.velocity_figure(f"{key}: VELOCITY", self.plot_time_steps)
+        fp.add_UAV_track_vel(f"{key}: VELOCITY", tracked_info)
+
+    def plot_uav_acc(self, uav_id, key):
+        fp: FlightPlan = self.uav_plots[uav_id][key]["fp"]
+        tracked_info = self.uav_plots[uav_id][key]["tracked_info"]
+
+        fp.acceleration_figure(f"{key}: ACCELERATION", self.plot_time_steps)
+        # fp.add_UAV_track_pos(f"{uav_id}: ACCELERATION", tracked_info)
+
+    def save_figures(self, uav_id, key):
+        pos_fig_name = f"{key}: POSITION"
+        vel_fig_name = f"{key}: VELOCITY"
+        acc_fig_name = f"{key}: ACCELERATION"
+        
+        id = uav_id.replace("/", "_")
+        path = project_root_path + "/sims/figures" + f"/{id}_{key}"
+        
+        if plt.fignum_exists(pos_fig_name):     plt.figure(pos_fig_name).savefig(fname=path + "_pos.svg")
+        if plt.fignum_exists(vel_fig_name):     plt.figure(vel_fig_name).savefig(fname=path + "_vel.svg")
+        if plt.fignum_exists(acc_fig_name):     plt.figure(acc_fig_name).savefig(fname=path + "_acc.svg")
+
+    def export_request_tracking_data(self, uav_id, key):
+        fp: FlightPlan = self.uav_plots[uav_id][key]["fp"]
+        tracked_info = self.uav_plots[uav_id][key]["tracked_info"]
+        tracked_info_trace_rows = len(tracked_info)
+        tracked_info_trace_cols = 7
+
+        waypoints = [[wp.t, wp.pos[0], wp.pos[1], wp.pos[2]] for wp in fp.waypoints]
+
+        fp_trace = fp.trace(self.plot_time_steps)
+        tracked_info_trace = np.zeros((tracked_info_trace_rows, tracked_info_trace_cols))
+        for i in range(tracked_info_trace_rows):
+            wp = tracked_info[i]
+
+            tracked_info_trace[i, 0] = wp.t
+            tracked_info_trace[i, 1] = wp.pos[0]
+            tracked_info_trace[i, 2] = wp.pos[1]
+            tracked_info_trace[i, 3] = wp.pos[2]
+            tracked_info_trace[i, 4] = wp.vel[0]
+            tracked_info_trace[i, 5] = wp.vel[1]
+            tracked_info_trace[i, 6] = wp.vel[2]
+
+        id = uav_id.replace("/", "_")
+        waypoints_path = project_root_path + "/sims/exported_data" + f"/{id}_{key}_waypoints.csv"
+        fp_path = project_root_path + "/sims/exported_data" + f"/{id}_{key}_flightplan.csv"
+        tracked_info_path = project_root_path + "/sims/exported_data" + f"/{id}_{key}_tracked_info.csv"
+
+        np.savetxt(waypoints_path, waypoints, delimiter=", ", fmt="%s")
+        np.savetxt(fp_path, fp_trace, delimiter=", ", fmt="%s")
+        np.savetxt(tracked_info_path, tracked_info_trace, delimiter=", ", fmt="%s")
+
+    # ----------------------------------
+    # -- EVENTS AND REQUESTS HANDLING --
+    # ----------------------------------
     def event_listener(self, event):
         sender = event.payload["sender"]
 
@@ -245,116 +313,6 @@ class Operator(omni.ext.IExt):
             # If the current selected uav to see its plots is the one which finished the request, we update the list
             if self.ui_select_uav_to_plot.get_selection() == uav_id:
                 self.update_uav_plots_frame(uav_id)
-
-    def print_uavs(self):
-        final_string = ""
-        for value in self.uavs.values():
-            string = "ID: " + value["id"] + "\n"
-            string += "State: " + value["state"] + "\n"
-            string += "Time: "+ str(value["time"]) + "\n"
-            string += "Position: " + str(value["pos"]) + "\n"
-            if value["request"] is None:
-                string += "Request: None\n"
-            else:
-                string += "Request: " + value["request"]["client_id"] + " - " + value["request"]["request_id"] + "\n"
-
-            string += "\n"
-
-            final_string += string
-
-        self.ui_uavs_label.text = final_string
-
-    def print_clients(self):
-        final_string = ""
-        for key, values in self.clients_requests.items():
-            client_id = key
-            for key, value in values.items():
-                string = "Client ID: " + client_id + "\n"
-                string += "Request ID: " + key + "\n"
-                string += "Init time: " + str(value["init_time"]) + "\n"
-                string += "End time: " + str(value["end_time"]) + "\n"
-                string += "Origin: " + str(value["origin"]) + "\n"              # Given by a vertiport id
-                string += "Destination: " + str(value["destination"]) + "\n"    # Given by a vertiport id
-                string += "\n"
-
-                final_string += string
-
-        self.ui_clients_label.text = final_string
-                    
-    def print_vertiports(self):
-        final_string = ""
-        for key, value in self.vertiports_from_id.items():
-            string = "ID: " + key + "\n"
-            string += "Position: " + str(value["position"]) + "\n"
-            string += "Model: " + value["model"] + "\n"
-            string += "\n"
-
-            final_string += string
-
-        self.ui_vertiports_label.text = final_string
-
-    def plot_uav_pos(self, uav_id, key):
-        fp: FlightPlan = self.uav_plots[uav_id][key]["fp"]
-        tracked_info = self.uav_plots[uav_id][key]["tracked_info"]
-
-        fp.position_figure(f"{key}: POSITION", self.plot_time_steps)
-        fp.add_UAV_track_pos(f"{key}: POSITION", tracked_info)
-
-    def plot_uav_vel(self, uav_id, key):
-        fp: FlightPlan = self.uav_plots[uav_id][key]["fp"]
-        tracked_info = self.uav_plots[uav_id][key]["tracked_info"]
-
-        fp.velocity_figure(f"{key}: VELOCITY", self.plot_time_steps)
-        fp.add_UAV_track_vel(f"{key}: VELOCITY", tracked_info)
-
-    def plot_uav_acc(self, uav_id, key):
-        fp: FlightPlan = self.uav_plots[uav_id][key]["fp"]
-        tracked_info = self.uav_plots[uav_id][key]["tracked_info"]
-
-        fp.acceleration_figure(f"{key}: ACCELERATION", self.plot_time_steps)
-        # fp.add_UAV_track_pos(f"{uav_id}: ACCELERATION", tracked_info)
-
-    def save_figures(self, uav_id, key):
-        pos_fig_name = f"{key}: POSITION"
-        vel_fig_name = f"{key}: VELOCITY"
-        acc_fig_name = f"{key}: ACCELERATION"
-        
-        id = uav_id.replace("/", "_")
-        path = project_root_path + "/sims/figures" + f"/{id}_{key}"
-        
-        if plt.fignum_exists(pos_fig_name):     plt.figure(pos_fig_name).savefig(fname=path + "_pos.svg")
-        if plt.fignum_exists(vel_fig_name):     plt.figure(vel_fig_name).savefig(fname=path + "_vel.svg")
-        if plt.fignum_exists(acc_fig_name):     plt.figure(acc_fig_name).savefig(fname=path + "_acc.svg")
-
-    def export_request_tracking_data(self, uav_id, key):
-        fp: FlightPlan = self.uav_plots[uav_id][key]["fp"]
-        tracked_info = self.uav_plots[uav_id][key]["tracked_info"]
-        tracked_info_trace_rows = len(tracked_info)
-        tracked_info_trace_cols = 7
-
-        waypoints = [[wp.t, wp.pos[0], wp.pos[1], wp.pos[2]] for wp in fp.waypoints]
-
-        fp_trace = fp.trace(self.plot_time_steps)
-        tracked_info_trace = np.zeros((tracked_info_trace_rows, tracked_info_trace_cols))
-        for i in range(tracked_info_trace_rows):
-            wp = tracked_info[i]
-
-            tracked_info_trace[i, 0] = wp.t
-            tracked_info_trace[i, 1] = wp.pos[0]
-            tracked_info_trace[i, 2] = wp.pos[1]
-            tracked_info_trace[i, 3] = wp.pos[2]
-            tracked_info_trace[i, 4] = wp.vel[0]
-            tracked_info_trace[i, 5] = wp.vel[1]
-            tracked_info_trace[i, 6] = wp.vel[2]
-
-        id = uav_id.replace("/", "_")
-        waypoints_path = project_root_path + "/sims/exported_data" + f"/{id}_{key}_waypoints.csv"
-        fp_path = project_root_path + "/sims/exported_data" + f"/{id}_{key}_flightplan.csv"
-        tracked_info_path = project_root_path + "/sims/exported_data" + f"/{id}_{key}_tracked_info.csv"
-
-        np.savetxt(waypoints_path, waypoints, delimiter=", ", fmt="%s")
-        np.savetxt(fp_path, fp_trace, delimiter=", ", fmt="%s")
-        np.savetxt(tracked_info_path, tracked_info_trace, delimiter=", ", fmt="%s")
 
     def process_request(self, client_id, request_id):
         request = self.clients_requests[client_id][request_id]
@@ -452,6 +410,9 @@ class Operator(omni.ext.IExt):
         self.event_stream.push(self.uspace_clients_event, payload={"client_id": client_id, "request_id": request_id, 
                                                                    "state": RequestState.COMPLETED})
 
+    # ----------------------------------
+    # ---- UI BUILDING AND HANDLING ----
+    # ----------------------------------
     def build_ui(self):
         self.window = ui.Window("OP: NavSim - Operator", width=300, height=300)
         self.window.deferred_dock_in("Layers")
@@ -551,8 +512,49 @@ class Operator(omni.ext.IExt):
 
                         ui.Separator()
 
-    def set_grid_parameters(self):
-        self.gp.cell_side = self.ui_grid_cell_size.model.get_value_as_int()
-        self.gp.slot_time = self.ui_grid_slot_time.model.get_value_as_int()
-        self.gp.x_height = self.ui_grid_x_level_height.model.get_value_as_int()
-        self.gp.y_height = self.ui_grid_y_level_height.model.get_value_as_int()
+    def print_uavs(self):
+        final_string = ""
+        for value in self.uavs.values():
+            string = "ID: " + value["id"] + "\n"
+            string += "State: " + value["state"] + "\n"
+            string += "Time: "+ str(value["time"]) + "\n"
+            string += "Position: " + str(value["pos"]) + "\n"
+            if value["request"] is None:
+                string += "Request: None\n"
+            else:
+                string += "Request: " + value["request"]["client_id"] + " - " + value["request"]["request_id"] + "\n"
+
+            string += "\n"
+
+            final_string += string
+
+        self.ui_uavs_label.text = final_string
+
+    def print_clients(self):
+        final_string = ""
+        for key, values in self.clients_requests.items():
+            client_id = key
+            for key, value in values.items():
+                string = "Client ID: " + client_id + "\n"
+                string += "Request ID: " + key + "\n"
+                string += "Init time: " + str(value["init_time"]) + "\n"
+                string += "End time: " + str(value["end_time"]) + "\n"
+                string += "Origin: " + str(value["origin"]) + "\n"              # Given by a vertiport id
+                string += "Destination: " + str(value["destination"]) + "\n"    # Given by a vertiport id
+                string += "\n"
+
+                final_string += string
+
+        self.ui_clients_label.text = final_string
+                    
+    def print_vertiports(self):
+        final_string = ""
+        for key, value in self.vertiports_from_id.items():
+            string = "ID: " + key + "\n"
+            string += "Position: " + str(value["position"]) + "\n"
+            string += "Model: " + value["model"] + "\n"
+            string += "\n"
+
+            final_string += string
+
+        self.ui_vertiports_label.text = final_string
