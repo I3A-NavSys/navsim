@@ -1,5 +1,7 @@
 import pickle   # Serialization
 import base64   # Parsing to string
+import sys, os
+import torch
 
 
 import omni.ext
@@ -8,41 +10,104 @@ from isaacsim.gui.components.element_wrappers import *
 import carb.events
 import omni.timeline
 import omni.physx
-# Adding root 'ov' folder to sys.path
-import sys, os
-project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
-if project_root_path not in sys.path:
-    sys.path.append(project_root_path)
+from omni.isaac.core.prims import RigidPrimView
 
 
 from uspace.flight_plan.command import Command
 from navsim_utils.extensions_utils import ExtensionUtils
+# from fleet.uav_ia_control import UAVcontrol
+from fleet.uav_matrix_control import UAVcontrol
 
-# Any class derived from `omni.ext.IExt` in top level module (defined in `python.modules` of `extension.toml`) will be
-# instantiated when extension gets enabled and `on_startup(ext_id)` will be called. Later when extension gets disabled
-# on_shutdown() is called.
+
+file_path = os.path.dirname(__file__)
+project_root_path = os.path.abspath(os.path.join(file_path, '../../..'))
+if project_root_path not in sys.path:
+    sys.path.append(project_root_path)
+
 
 class CommandGenerator(omni.ext.IExt):
-    # ext_id is current extension id. It can be used with extension manager to query additional information, like where
-    # this extension is located on filesystem.
 
     def on_startup(self, ext_id):
-        # Buidl ExtUtils instance
-        self.ext_utils = ExtensionUtils()
+        self.init_vars()
+        self.build_ui()
 
-        # Getting the simulation current time
-        self.current_time = 0
+    def on_shutdown(self):
+        self.on_physics_step_sub = None
+        self.on_stop_sub = None
+        self.on_play_sub = None
+
+    def init_vars(self):
+        self.rigid_prim_view = None
+        self.uav_control = None
+        
+        self.navsim_utils = ExtensionUtils()
+
         self.physx_interface = omni.physx.get_physx_interface()
-        self.physics_timer_callback = self.physx_interface.subscribe_physics_step_events(self.physics_timer_callback_fn)
+        self.on_physics_step_sub = self.physx_interface.subscribe_physics_on_step_events(self.on_physics_step, True, 0)
 
         self.timeline = omni.timeline.get_timeline_interface()
-        self.event_timer_callback = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
-            int(omni.timeline.TimelineEventType.STOP), self.timeline_timer_callback_fn)
+        self.on_stop_sub = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
+            int(omni.timeline.TimelineEventType.STOP), self.on_stop
+        )
+        self.on_play_sub = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
+            int(omni.timeline.TimelineEventType.PLAY), self.on_play
+        )
 
-        # Get the bus event stream
         self.event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
 
-        # Create the window
+        self.is_sim_played = False
+        self.current_time = 0
+        self.uavs = {}
+
+    def on_physics_step(self, step_size:int):
+        if self.is_sim_played:
+            self.current_time += step_size
+            self.uav_control.update(self.current_time, self.uavs, step_size)
+
+    def on_stop(self, event):
+        self.current_time = 0
+        self.is_sim_played = False
+        self.rigid_prim_view = None
+        self.uav_control = None
+
+    def on_play(self, event):
+        if not self.is_sim_played:
+            self.uavs = {}
+            self.torch_device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
+            self.rigid_prim_view = RigidPrimView(["/World/*/UAV_*",])
+            self.rigid_prim_view.initialize()
+
+            self.init_uavs()
+            self.uav_control = UAVcontrol(
+                self.rigid_prim_view, 
+                self.torch_device, 
+                self.uavs, 
+                "", 
+                self.event_stream)
+            
+            self.is_sim_played = True
+
+    def init_uavs(self):
+        pos, _ = self.rigid_prim_view.get_world_poses(indices=range(self.rigid_prim_view.count))
+
+        for i in range(self.rigid_prim_view.count):
+            uav_id = f"UAV_{i}"
+            uav_state = "idle"
+            uav_time = 0
+            uav_pos = pos[i]
+            uav_flightplan = None
+
+            self.uavs[uav_id] = {
+                "id": uav_id,
+                "state": uav_state,
+                "time": uav_time,
+                "pos": uav_pos,
+                "flightplan": uav_flightplan,
+                "request": None
+            }
+
+    def build_ui(self):
         self._window = ui.Window("CG: NavSim - Command Generator", width=400, height=200)
         with self._window.frame:
 
@@ -50,7 +115,7 @@ class CommandGenerator(omni.ext.IExt):
                 ui.Spacer(height=10)
 
                 # UAV selector dropdown                    
-                self.UAV_selector_dropdown = self.ext_utils.build_uav_selector()
+                self.UAV_selector_dropdown = self.navsim_utils.build_uav_selector()
 
                 with ui.HStack(spacing=10):
 
@@ -130,87 +195,29 @@ class CommandGenerator(omni.ext.IExt):
                     ui.Button(
                         "SEND", 
                         height=50,
-                        clicked_fn = self.on_click)
-
-                    # 100 drones testing
-                    # ui.Button(
-                    #     "UP", 
-                    #     height=50,
-                    #     clicked_fn = self.up)
+                        clicked_fn = self.send_command)
                     
-                    # ui.Button(
-                    #     "ROTATE", 
-                    #     height=50,
-                    #     clicked_fn = self.rotate)
-
-
-
-    def physics_timer_callback_fn(self, step_size:int):
-        self.current_time += step_size
-
-
-
-    def timeline_timer_callback_fn(self, event):
-        self.current_time = 0
-
-
-
-    def on_click(self):   
-        if self.UAV_selector_dropdown.get_selection() is None:
+    def send_command(self):
+        selected_uav = self.UAV_selector_dropdown.get_selection()
+        if selected_uav is None:
             raise Exception("[REMOTE COMMAND ext] No drone selected")
-        
-        drone = self.ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
-        
-        print(f"[REMOTE COMMAND ext] Command sent at simulation time: {self.current_time:.2f}")
-
-        # Create the event to send commands to the UAV
-        self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(drone.GetPath()))
                 
         # Set command data structure
         command = Command(
-                        on = self.rotors_CB.checked, 
-                        velX = self.velX_FF.model.get_value_as_float(), 
-                        velY = self.velY_FF.model.get_value_as_float(), 
-                        velZ = self.velZ_FF.model.get_value_as_float(),
-                        rotZ = self.rotZ_FF.model.get_value_as_float(),
-                        duration = self.duration_FF.model.get_value_as_float())
+            on = self.rotors_CB.checked, 
+            velX = self.velX_FF.model.get_value_as_float(), 
+            velY = self.velY_FF.model.get_value_as_float(), 
+            velZ = self.velZ_FF.model.get_value_as_float(),
+            rotZ = self.rotZ_FF.model.get_value_as_float(),
+            duration = self.duration_FF.model.get_value_as_float()
+        )
 
-        serialized_command = base64.b64encode(pickle.dumps(command)).decode('utf-8')
-        self.event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_RemoteCommand", "command": serialized_command})
+        uav_i = int(selected_uav.removeprefix("UAV_"))
+        self.uav_control.commands[selected_uav] = command
+        self.uav_control.cmd_exp_time[uav_i] = self.current_time + command.duration
 
-    # def up(self):
-    #     command = Command(
-    #         on = 1, 
-    #         velX = 0, 
-    #         velY = 0, 
-    #         velZ = 1,
-    #         rotZ = 0,
-    #         duration = 1)
+        # for i in range(self.rigid_prim_view.count):
+        #     uav_id = f"UAV_{i}"
+        #     self.uav_control.commands[uav_id] = command
+        #     self.uav_control.cmd_exp_time[i] = self.current_time + command.duration
 
-    #     serialized_command = base64.b64encode(pickle.dumps(command)).decode('utf-8')
-    #     abejorros_prim = get_current_stage().GetPrimAtPath("/World/abejorros")
-    #     children = abejorros_prim.GetChildren()
-    #     for uav in children:
-    #         self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(uav.GetPath()))
-    #         self.event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_RemoteCommand", "command": serialized_command})
-
-    # def rotate(self):
-    #     command = Command(
-    #         on = 1, 
-    #         velX = 1, 
-    #         velY = 0, 
-    #         velZ = 0,
-    #         rotZ = 1,
-    #         duration = 100)
-
-    #     serialized_command = base64.b64encode(pickle.dumps(command)).decode('utf-8')
-    #     abejorros_prim = get_current_stage().GetPrimAtPath("/World/abejorros")
-    #     children = abejorros_prim.GetChildren()
-    #     for uav in children:
-    #         self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(uav.GetPath()))
-    #         self.event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_RemoteCommand", "command": serialized_command})
-
-
-    def on_shutdown(self):
-        # print("[REMOTE COMMAND ext] shutdown")
-        pass
