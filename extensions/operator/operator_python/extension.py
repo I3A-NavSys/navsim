@@ -17,8 +17,8 @@ import torch
 from navsim_utils.extensions_utils import ExtensionUtils
 from uspace.grid_planner.grid_planner import GridPlanner
 from uspace.flight_plan.flight_plan import FlightPlan
-# from .uav_ia_control import UAVcontrol
-from .uav_matrix_control import UAVcontrol
+from .uav_ia_control import UAVcontrol
+# from .uav_matrix_control import UAVcontrol
 
 file_path = os.path.dirname(__file__)
 
@@ -59,7 +59,7 @@ class Operator(omni.ext.IExt):
         self.uav_control = None
         
     def on_timeline_play(self, event):
-        if not self.is_sim_played:
+        if self.is_extension_on and not self.is_sim_played:
             # Reset all variables
             self.gp.clear_grid()
             self.clients_requests = {}
@@ -116,6 +116,7 @@ class Operator(omni.ext.IExt):
         self.uspace_clients_event = carb.events.type_from_string("NavSim.USpaceClients")
         self.event_sub = self.event_stream.create_subscription_to_push_by_type(self.operator_event, self.event_listener)
 
+        self.is_extension_on = False
         self.is_sim_played = False
         self.current_time = 0
         self.clients_requests = {}
@@ -228,8 +229,11 @@ class Operator(omni.ext.IExt):
     # -- EVENTS AND REQUESTS HANDLING --
     # ----------------------------------
     def event_listener(self, event):
-        sender = event.payload["sender"]
+        if not event.payload["is_request"]:
+            self.switch_on_off(event.payload["state"], is_from_event=True)
+            return
 
+        sender = event.payload["sender"]
         match sender:
             case "uav":
                 uav_id = event.payload["id"]
@@ -407,8 +411,15 @@ class Operator(omni.ext.IExt):
         self.uavs[uav_id]["flightplan"] = fp
         
     def inform_client(self, client_id, request_id):
-        self.event_stream.push(self.uspace_clients_event, payload={"client_id": client_id, "request_id": request_id, 
-                                                                   "state": RequestState.COMPLETED})
+        self.event_stream.push(
+            self.uspace_clients_event, 
+            payload={
+                "is_request": True,
+                "client_id": client_id, 
+                "request_id": request_id, 
+                "state": RequestState.COMPLETED
+            }
+        )
 
     # ----------------------------------
     # ---- UI BUILDING AND HANDLING ----
@@ -422,6 +433,19 @@ class Operator(omni.ext.IExt):
             with ui.ScrollingFrame(horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
                                     vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED):
                 with ui.VStack(spacing=self.navsim_utils.SPACING_S, height=0):
+                    # Title
+                    ui.Spacer(height=10)
+                    ui.Label("NAVSIM - OPERATOR", alignment=ui.Alignment.CENTER, style={"font_size": 20, "font_weight": "bold"})
+                    ui.Spacer(height=5)
+
+                    # On/Off button
+                    self.on_off_button = ui.ToolButton(
+                        text="ON", 
+                        height=30, 
+                        clicked_fn=lambda state=False, is_from_event=False: self.switch_on_off(state, is_from_event), 
+                        style={"background_color": ui.color("#6f9523")}
+                    )
+
                     # GridPlanner parameters
                     ui.Label("GRID PARAMETERS", alignment=ui.Alignment.CENTER)
                     
@@ -453,7 +477,7 @@ class Operator(omni.ext.IExt):
                         self.ui_uavs_label = ui.Label("", padding=self.navsim_utils.LABEL_PADDING)
 
                     # Clients collapsable
-                    self.ui_clients_collapsable = ui.CollapsableFrame("Clients", collapsed=False,
+                    self.ui_clients_collapsable = ui.CollapsableFrame("Requests", collapsed=False,
                                                                         style=self.navsim_utils.CollapsableFrame_style)
                     with self.ui_clients_collapsable:
                         self.ui_clients_label = ui.Label("")
@@ -481,6 +505,44 @@ class Operator(omni.ext.IExt):
                                             horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
                                             vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
                                             style={"background_color": 0xFF5b5b5b, "margin":5}, height=150)
+
+    def switch_on_off(self, state, is_from_event):
+        model = self.on_off_button.model
+        model_value = model.get_value_as_bool()
+
+        if is_from_event:
+            internal_state = state
+            model.set_value(state)
+        else:
+            internal_state = model_value
+
+        if internal_state:
+            self.switch_extension_state(on=True, is_from_event=is_from_event)
+
+            style={"background_color": ui.color("#952323")}
+            self.on_off_button.set_style(style)
+            self.on_off_button.text = "OFF"
+
+        else:
+            self.switch_extension_state(on=False, is_from_event=is_from_event)
+            
+            style={"background_color": ui.color("#6f9523")}
+            self.on_off_button.set_style(style)
+            self.on_off_button.text = "ON"
+
+    def switch_extension_state(self, on, is_from_event):
+        # Update internal state
+        self.is_extension_on = on
+
+        if not is_from_event:
+            # Update Clients extension state
+            self.event_stream.push(
+                self.uspace_clients_event, 
+                payload={
+                    "is_request": False, 
+                    "state": on
+                }
+            )
 
     def populate_select_uav_to_plot(self):
         return list(self.uavs.keys())

@@ -157,6 +157,7 @@ class UAVcontrol:
             tracked_info = base64.b64encode(pickle.dumps(tracked_info)).decode('utf-8')
 
         payload = {
+            "is_request": True,
             "sender": "uav",
             "id": id,
             "state": state,

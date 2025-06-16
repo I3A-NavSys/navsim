@@ -33,23 +33,26 @@ class USpaceClients(omni.ext.IExt):
         self.event_sub = None
 
     def on_physics_step(self, step_size:int):
-        self.current_time += step_size
+        if self.is_sim_played:
+            self.current_time += step_size
 
     def on_timeline_stop(self, event):
         self.current_time = 0
-        self.is_simulating = False
+        self.is_sim_played = False
         self.amazon_new_request_timer = self.amazon_new_request_timer_base
         self.ui_amazon_new_req.text = f"New Request: {self.amazon_new_request_timer_base}"
         
     def on_timeline_play(self, event):
-        random.seed(2)
-        # 2 -> R5, R6, R25
-        self.clients = {}
-        self.amount_amazon_requests = 0
-        self.vertiports_from_id, self.vertiports_from_pos = self.find_vertiports()
+        if self.is_extension_on and not self.is_sim_played:
+            random.seed(2)
+            # 2 -> R5, R6, R25
+            self.clients = {}
+            self.amount_amazon_requests = 0
+            self.vertiports_from_id, self.vertiports_from_pos = self.find_vertiports()
 
-        self.build_ui()
-        self.start_simulation()
+            # self.build_ui()
+            self.ui_amazon_requests.text = ""
+            self.start_simulation()
     
     def init_vars(self):
         self.physx_interface = omni.physx.get_physx_interface()
@@ -66,18 +69,23 @@ class USpaceClients(omni.ext.IExt):
         self.uspace_clients_event = carb.events.type_from_string("NavSim.USpaceClients")
         self.event_sub = self.event_stream.create_subscription_to_push_by_type(self.uspace_clients_event, self.event_listener)
         
-        self.amazon_new_request_timer_base = 30
+        self.amazon_new_request_timer_base = 10
         self.amazon_new_request_timer = self.amazon_new_request_timer_base
         self.amazon_id = "amazon"
         self.amount_amazon_requests = 0
 
+        self.is_extension_on = False
+        self.is_sim_played = False
         self.current_time = 0
-        self.is_simulating = False
         self.vertiports_from_id = {}
         self.clients = {}
         self.navsim_utils = ExtensionUtils()
 
     def event_listener(self, event):
+        if not event.payload["is_request"]:
+            self.switch_on_off(event.payload["state"], is_from_event=True)
+            return
+
         client_id = event.payload["client_id"]
         request_id = event.payload["request_id"]
         request_state = event.payload["state"]
@@ -88,12 +96,23 @@ class USpaceClients(omni.ext.IExt):
         self.window = ui.Window("CL: NavSim - clients", width=300, height=300, raster_policy=ui.RasterPolicy.NEVER)
         with self.window.frame:
             with ui.ScrollingFrame():
-                with ui.VStack(spacing=10, height=0):
+                with ui.VStack(spacing=8, height=0):
+                    # Title
                     ui.Spacer(height=10)
-                    # Info
-                    ui.Label("NAVSIM - CLIENTS", alignment=ui.Alignment.CENTER, style={"font_size": 20, "font_weight": "bold"})
-
+                    ui.Label(
+                        "NAVSIM - CLIENTS", 
+                        alignment=ui.Alignment.CENTER, 
+                        style={"font_size": 20, "font_weight": "bold"}
+                    )
                     ui.Spacer(height=5)
+
+                    # On/Off button
+                    self.on_off_button = ui.ToolButton(
+                        text="ON", 
+                        height=30, 
+                        clicked_fn=lambda state=False, is_from_event=False: self.switch_on_off(state, is_from_event), 
+                        style={"background_color": ui.color("#6f9523")}
+                    )
 
                     # Amazon client
                     with ui.ZStack(height=200):
@@ -148,6 +167,44 @@ class USpaceClients(omni.ext.IExt):
 
                     ui.Button("Send request", height=50, clicked_fn=self.send_request_by_hand)
 
+    def switch_on_off(self, state, is_from_event):
+        model = self.on_off_button.model
+        model_value = model.get_value_as_bool()
+        
+        if is_from_event:
+            internal_state = state
+            model.set_value(state)
+        else:
+            internal_state = model_value
+
+        if internal_state:
+            self.switch_extension_state(on=True, is_from_event=is_from_event)
+
+            style={"background_color": ui.color("#952323")}
+            self.on_off_button.set_style(style)
+            self.on_off_button.text = "OFF"
+
+        else:
+            self.switch_extension_state(on=False, is_from_event=is_from_event)
+            
+            style={"background_color": ui.color("#6f9523")}
+            self.on_off_button.set_style(style)
+            self.on_off_button.text = "ON"
+
+    def switch_extension_state(self, on, is_from_event):
+        # Update internal state
+        self.is_extension_on = on
+
+        if not is_from_event:
+            # Update Operator extension state
+            self.event_stream.push(
+                self.operator_event, 
+                payload={
+                    "is_request": False, 
+                    "state": on
+                }
+            )
+
     def send_request_by_hand(self):
         client_id = self.ui_client_id.model.get_value_as_string()
         request_id = self.ui_request_id.model.get_value_as_string()
@@ -159,6 +216,7 @@ class USpaceClients(omni.ext.IExt):
         finish_time = "In progress"
 
         request = {
+            "is_request": True,
             "sender": "client",
             "client_id": client_id,
             "request_id": request_id,
@@ -216,17 +274,15 @@ class USpaceClients(omni.ext.IExt):
                 pass
 
     def start_simulation(self):
-        if not self.is_simulating:
-            self.is_simulating = True
-
-            asyncio.ensure_future(self.start_amazon())
+        self.is_sim_played = True
+        asyncio.ensure_future(self.start_amazon())
 
     async def start_amazon(self):
-        while self.is_simulating:
+        while self.is_sim_played:
             await asyncio.sleep(1)
 
             # Avoid exception when saving file while running simulation
-            if not hasattr(self, "is_simulating"):
+            if not hasattr(self, "is_sim_played"):
                 break
 
             self.amazon_new_request_timer -= 1
@@ -255,6 +311,7 @@ class USpaceClients(omni.ext.IExt):
             destination = random.choice(vertiport_ids)
 
         request = {
+            "is_request": True,
             "sender": "client",
             "client_id": client_id,
             "request_id": request_id,
@@ -269,8 +326,7 @@ class USpaceClients(omni.ext.IExt):
         self.amount_amazon_requests += 1
 
         return request
-        
-            
+                   
     def register_request(self, client_id, request):
         if client_id not in self.clients:
             self.clients[client_id] = {}
