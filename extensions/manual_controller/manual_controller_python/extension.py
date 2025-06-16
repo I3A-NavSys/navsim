@@ -1,24 +1,3 @@
-# Adding root 'project' folder to sys.path
-import sys
-import os
-# This line will add to the python list of paths to look for modules the path to the project root
-project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
-
-if project_root_path not in sys.path:
-    sys.path.append(project_root_path)
-
-import omni.ext
-from isaacsim.gui.components.ui_utils import ui
-import omni.kit.app
-import carb.events
-from omni.isaac.ui.element_wrappers import DropDown
-from omni.isaac.core.utils.stage import get_current_stage
-
-import asyncio
-from .controller_logic import ControllerLogic
-
-from navsim_utils.extensions_utils import ExtensionUtils
-
 try:
     import matplotlib
 except:
@@ -40,18 +19,117 @@ except:
                     "# -- END CODE --------------------------------\n")
 
 import matplotlib.pyplot as plt
+import sys
+import os
+import asyncio
+import torch
+
+
+import omni.ext
+from isaacsim.gui.components.ui_utils import ui
+import omni.kit.app
+import carb.events
+from omni.isaac.ui.element_wrappers import DropDown
+from omni.isaac.core.utils.stage import get_current_stage
+from omni.isaac.core.prims import RigidPrimView
+
+
+from .controller_logic import ControllerLogic
+from navsim_utils.extensions_utils import ExtensionUtils
+# from fleet.uav_ia_control import UAVcontrol
+from fleet.uav_matrix_control import UAVcontrol
+
+
+file_path = os.path.dirname(__file__)
+project_root_path = os.path.abspath(os.path.join(file_path, '../../..'))
+if project_root_path not in sys.path:
+    sys.path.append(project_root_path)
+
 
 class ManualController(omni.ext.IExt):
 
     def on_startup(self, ext_id):
-        self.create_vars()
+        self.init_vars()
         self.build_ui()
 
     def on_shutdown(self):
         self.stop_update()
         self.manual_control.destroy_camera(get_current_stage())
 
-    def create_vars(self):
+        self.on_physics_step_sub = None
+        self.on_stop_sub = None
+        self.on_play_sub = None
+
+    def on_physics_step(self, step_size:int):
+        if self.is_sim_played:
+            self.current_time += step_size
+            self.uav_control.update(self.current_time, self.uavs, step_size)
+            self.manual_control.current_time = self.current_time
+
+    def on_stop(self, event):
+        self.current_time = 0
+        self.is_sim_played = False
+        self.rigid_prim_view = None
+        self.uav_control = None
+
+    def on_play(self, event):
+        if not self.is_sim_played:
+            self.uavs = {}
+            self.torch_device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
+            self.rigid_prim_view = RigidPrimView(["/World/*/UAV_*",])
+            self.rigid_prim_view.initialize()
+
+            self.init_uavs()
+            self.uav_control = UAVcontrol(
+                self.rigid_prim_view, 
+                self.torch_device, 
+                self.uavs, 
+                "", 
+                self.event_stream)
+            
+            self.is_sim_played = True
+
+    def init_uavs(self):
+        pos, _ = self.rigid_prim_view.get_world_poses(indices=range(self.rigid_prim_view.count))
+
+        for i in range(self.rigid_prim_view.count):
+            uav_id = f"UAV_{i}"
+            uav_state = "idle"
+            uav_time = 0
+            uav_pos = pos[i]
+            uav_flightplan = None
+
+            self.uavs[uav_id] = {
+                "id": uav_id,
+                "state": uav_state,
+                "time": uav_time,
+                "pos": uav_pos,
+                "flightplan": uav_flightplan,
+                "request": None
+            }
+
+    def init_vars(self):
+        self.rigid_prim_view = None
+        self.uav_control = None
+
+        self.physx_interface = omni.physx.get_physx_interface()
+        self.on_physics_step_sub = self.physx_interface.subscribe_physics_on_step_events(self.on_physics_step, True, 0)
+
+        self.timeline = omni.timeline.get_timeline_interface()
+        self.on_stop_sub = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
+            int(omni.timeline.TimelineEventType.STOP), self.on_stop
+        )
+        self.on_play_sub = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
+            int(omni.timeline.TimelineEventType.PLAY), self.on_play
+        )
+
+        self.event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
+
+        self.is_sim_played = False
+        self.current_time = 0
+        self.uavs = {}
+
         # Build ExtensionUtils instance
         self.ext_utils = ExtensionUtils()
 
@@ -69,17 +147,15 @@ class ManualController(omni.ext.IExt):
         self.plots_appearance = 1
         self.build_plots = False
         self.sub = omni.kit.app.get_app().get_update_event_stream().create_subscription_to_pop(
-                                                                                self.build_plots_container, 
-                                                                                name="Plots_building")
+            self.build_plots_container, 
+            name="Plots_building"
+        )
 
         # Control variable
         self.stop_update_plot = True
 
         # Manual control
         self.manual_control = ControllerLogic()
-
-        # App interface
-        self.app_interface = omni.kit.app.get_app_interface()
 
     def build_ui(self):
         with self.window.frame:
@@ -311,7 +387,11 @@ class ManualController(omni.ext.IExt):
         # Get the selected UAV
         uav = self.ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
 
-        self.manual_control.start(uav)
+        self.manual_control.start(
+            uav, 
+            self.UAV_selector_dropdown.get_selection(), 
+            self.uav_control
+        )
 
         # Start the coroutine that updates the plots
         asyncio.ensure_future(self.update_plot())

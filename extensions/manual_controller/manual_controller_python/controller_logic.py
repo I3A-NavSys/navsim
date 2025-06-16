@@ -25,6 +25,7 @@ class ControllerLogic:
         self.invert_camera_movement = False
         self.camera_path = "/manual_controller_CAM"
         self.perspective_camera_path = "/OmniverseKit_Persp"
+        self.current_time = 0.0
 
         # External inputs
         self.joystick = JoystickInput()
@@ -33,7 +34,7 @@ class ControllerLogic:
         # Get the bus event stream
         self.msg_bus_event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
 
-    def start(self, prim):
+    def start(self, prim, name, uav_control):
         if self._stop:
             self._stop = False
 
@@ -42,6 +43,8 @@ class ControllerLogic:
 
             # Selected drone
             self.prim = prim
+            self.prim_name = name
+            self.uav_control = uav_control
 
             # Build follow velocity camera
             self.camera = self.stage.GetPrimAtPath(self.camera_path)
@@ -51,9 +54,6 @@ class ControllerLogic:
                 self.camera_distance_attr = self.camera.GetAttribute("physxFollowCamera:followMinDistance")
                 self.camera_yaw_attr = self.camera.GetAttribute("physxFollowCamera:yawAngle")
                 self.camera_pitch_attr = self.camera.GetAttribute("physxFollowCamera:pitchAngle")
-
-            # Create the event to have a communication between the UAV and the joystick
-            self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(self.prim.GetPath()))
 
             # Needed variables
             self.inputs = [0,0,0,0,0,0,0,0]
@@ -110,22 +110,19 @@ class ControllerLogic:
             pitch = self.inputs[8]
             self.move_camera(derease_distance, increase_distance, yaw, pitch)
 
-            # print(self.current_on)
-
             # Set command
             command = Command(
-                            on = self.current_on,
-                            velX = vel[0],
-                            velY = vel[1],
-                            velZ = vel[2],
-                            rotZ = rot,
-                            duration = None)
+                on = self.current_on,
+                velX = vel[0],
+                velY = vel[1],
+                velZ = vel[2],
+                rotZ = rot,
+                duration = 0.1
+            )
 
-            serialized_command = base64.b64encode(pickle.dumps(command)).decode('utf-8')
-
-            # Push UAV_EVENT with the inputs
-            self.msg_bus_event_stream.push(self.UAV_EVENT, payload={"method": "eventFn_RemoteCommand", 
-                                                                    "command": serialized_command})
+            uav_i = int(self.prim_name.removeprefix("UAV_"))
+            self.uav_control.commands[self.prim_name] = command
+            self.uav_control.cmd_exp_time[uav_i] = self.current_time + command.duration
 
             await asyncio.sleep(0.1)
 
