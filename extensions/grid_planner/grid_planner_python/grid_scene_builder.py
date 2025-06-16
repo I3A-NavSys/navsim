@@ -13,7 +13,7 @@ def define_scene(project_root_path, sphere_amount, distance, x_level, y_level, o
     uavs_prim_path = "/World/UAVs"
     vertiport_usd_path = project_root_path + "/assets/vertiports/vertiport_aerotaxi.usd"
     # aerotaxi_usd_path = project_root_path + "/fleet/UAM_aerotaxi/UAM_aerotaxi.usd"
-    aerotaxi_usd_path = project_root_path + "/isaac_lab/aerotaxi/UAM_aerotaxi_lab.usd"
+    aerotaxi_usd_path = project_root_path + "/fleet/UAM_aerotaxi/1_rb_model.usd"
     environment_scope_path = "/World/Environment"
     light_prim_path = environment_scope_path + "/Light"
     physics_scene_prim_path = environment_scope_path + "/PhysicsScene"
