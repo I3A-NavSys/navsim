@@ -1,17 +1,26 @@
-import pickle   # Serialization
-import base64   # Parsing to string
-
 import numpy as np
 import asyncio
+import sys
+import os
+
+
 import carb.events
 import omni.kit.app
 from omni.isaac.core.utils.stage import get_current_stage
 import omni.kit.viewport.utility
 from pxr import UsdGeom, Gf, PhysxSchema
 
+
+file_path = os.path.dirname(__file__)
+project_root_path = os.path.abspath(os.path.join(file_path, '../../..'))
+if project_root_path not in sys.path:
+    sys.path.append(project_root_path)
+    
+
 from uspace.flight_plan.command import Command
 from .joystick_input import JoystickInput
 from .keyboard_input import KeyboardInput
+
 
 class ControllerLogic:
     def __init__(self):
