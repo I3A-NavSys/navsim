@@ -17,8 +17,8 @@ import torch
 from navsim_utils.extensions_utils import ExtensionUtils
 from uspace.grid_planner.grid_planner import GridPlanner
 from uspace.flight_plan.flight_plan import FlightPlan
-from .uav_ia_control import UAVcontrol
-# from .uav_matrix_control import UAVcontrol
+from fleet.uav_ia_control import UAVcontrol
+# from fleet.uav_matrix_control import UAVcontrol
 
 file_path = os.path.dirname(__file__)
 

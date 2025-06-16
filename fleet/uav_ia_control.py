@@ -18,7 +18,7 @@ from uspace.flight_plan.flight_plan import FlightPlan
 from uspace.flight_plan.waypoint import Waypoint
 from uspace.flight_plan.command import Command
 
-project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
+project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(project_root_path)
 project_root_path = project_root_path.replace("\\", "/")
 
@@ -111,7 +111,8 @@ class UAVcontrol:
         for i, (uav_id, uav) in enumerate(self.uavs.items()):
             # Skip UAV if it has no flight plan assigned
             has_flightplan = uav["flightplan"] is not None
-            if not has_flightplan:      continue
+            has_command = self.commands[uav_id].on
+            if not has_flightplan and not has_command:  continue
 
             # Compute the UAV control
             self.imu(i)
@@ -170,6 +171,9 @@ class UAVcontrol:
         self.local_ang_vel = self.rot.inv().apply(self.world_ang_vel)
 
     def navigation(self, i, uav_id, uav):
+        has_flightplan = uav["flightplan"] is not None
+        if not has_flightplan:  return
+        
         uav_flightplan: FlightPlan = uav["flightplan"]
         target_wp = uav_flightplan.get_target_index_from_time(self.current_time)
         num_wps = len(uav_flightplan.waypoints)
