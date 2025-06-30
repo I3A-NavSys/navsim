@@ -124,3 +124,4 @@ CATKIN_IGNORE
 /tmp/tmpVictor/playground/*
 *logs
 *isaac_lab/exported*
+.thumbs/
