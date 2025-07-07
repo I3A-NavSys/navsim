@@ -37,7 +37,8 @@ from omni.isaac.core.prims import RigidPrimView
 from .controller_logic import ControllerLogic
 from navsim_utils.extensions_utils import ExtensionUtils
 # from fleet.uav_ia_control import UAVcontrol
-from fleet.uav_matrix_control import UAVcontrol
+# from fleet.uav_matrix_control import UAVcontrol
+from fleet.uav_matrix_control_quadcopter import UAVcontrol
 
 
 file_path = os.path.dirname(__file__)
@@ -77,8 +78,12 @@ class ManualController(omni.ext.IExt):
             self.uavs = {}
             self.torch_device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-            self.rigid_prim_view = RigidPrimView(["/World/*/UAV_*",])
-            self.rigid_prim_view.initialize()
+            try:
+                self.rigid_prim_view = RigidPrimView(["/World/*/UAV_*",])
+                self.rigid_prim_view.initialize()
+            except Exception as e:
+                carb.log_warn(f"[REMOTE COMMAND ext] Error initializing RigidPrimView: {e}")
+                return
 
             self.init_uavs()
             self.uav_control = UAVcontrol(
