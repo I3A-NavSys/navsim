@@ -17,6 +17,7 @@ from uspace.flight_plan.command import Command
 from navsim_utils.extensions_utils import ExtensionUtils
 # from fleet.uav_ia_control import UAVcontrol
 from fleet.uav_matrix_control import UAVcontrol
+# from fleet.uav_matrix_control_quadcopter import UAVcontrol
 
 
 file_path = os.path.dirname(__file__)
@@ -75,15 +76,19 @@ class CommandGenerator(omni.ext.IExt):
             self.uavs = {}
             self.torch_device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-            self.rigid_prim_view = RigidPrimView(["/World/*/UAV_*",])
-            self.rigid_prim_view.initialize()
+            try:
+                self.rigid_prim_view = RigidPrimView(["/World/*/UAV_*",])
+                self.rigid_prim_view.initialize()
+            except Exception as e:
+                carb.log_warn(f"[REMOTE COMMAND ext] Error initializing RigidPrimView: {e}")
+                return
 
             self.init_uavs()
             self.uav_control = UAVcontrol(
                 self.rigid_prim_view, 
                 self.torch_device, 
                 self.uavs, 
-                "", 
+                carb.events.type_from_string(""), 
                 self.event_stream)
             
             self.is_sim_played = True
@@ -213,11 +218,10 @@ class CommandGenerator(omni.ext.IExt):
         )
 
         uav_i = int(selected_uav.removeprefix("UAV_"))
-        self.uav_control.commands[selected_uav] = command
+        self.uav_control.commands[uav_i] = command
         self.uav_control.cmd_exp_time[uav_i] = self.current_time + command.duration
 
         # for i in range(self.rigid_prim_view.count):
-        #     uav_id = f"UAV_{i}"
-        #     self.uav_control.commands[uav_id] = command
+        #     self.uav_control.commands[i] = command
         #     self.uav_control.cmd_exp_time[i] = self.current_time + command.duration
 
