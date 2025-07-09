@@ -84,12 +84,7 @@ class ObservationsCfg:
             func=observations.pitch,
             params={"asset_cfg": SceneEntityCfg("quadcopter")})
 
-        # Yaw [8]
-        yaw = ObservationTermCfg(
-            func=observations.yaw,
-            params={"asset_cfg": SceneEntityCfg("quadcopter")})
-
-        # Command [9:13]
+        # Command [8:12]
         command = ObservationTermCfg(
             func=observations.command
         )
@@ -114,38 +109,31 @@ class RewardsCfg:
     alive = RewardTermCfg(func=mdp.is_alive, weight=1.0)
 
     # (2) Failure penalty
-    terminating = RewardTermCfg(func=mdp.is_terminated, weight=-4.0)
+    terminating = RewardTermCfg(func=mdp.is_terminated, weight=-100.0)
 
     # (3) Primary task: keep linear velocity close to zero
     quadcopter_lin_vel = RewardTermCfg(
         func=rewards.lin_vel_diff,
-        weight=2.0
+        weight=1.25
     )
 
     # (4) Primary task: keep angular velocity close to zero
     quadcopter_ang_vel = RewardTermCfg(
         func=rewards.ang_vel_diff,
-        weight=2.0
+        weight=1.25
     )
 
     # (5) Primary task: penalize roll
     pen_roll_diff = RewardTermCfg(
         func=rewards.pen_roll_diff,
-        weight=-1.5,
+        weight=-1.25,
         params={"target": 0.0}
     )
 
     # (6) Primary task: penalize pitch
     pen_pitch_diff = RewardTermCfg(
         func=rewards.pen_pitch_diff,
-        weight=-1.5,
-        params={"target": 0.0}
-    )
-
-    # (7) Primary task: penalize yaw
-    pen_yaw_diff = RewardTermCfg(
-        func=rewards.pen_yaw_diff,
-        weight=-2.0,
+        weight=-1.25,
         params={"target": 0.0}
     )
 
@@ -187,17 +175,17 @@ class EventCfg():
                 "x": (0.0, 0.0),
                 "y": (0.0, 0.0),
                 "z": (10, 10),
-                "roll": (1.57, -1.57),
-                "pitch": (1.57, -1.57),
-                "yaw": (1.57, -1.57)
+                "roll": (0, 0.0),
+                "pitch": (0.0, 0.0),
+                "yaw": (0.0, 0.0)
             },
             "velocity_range": {
-                "x": (-1.0, 1.0),
-                "y": (-1.0, 1.0),
-                "z": (-1.0, 1.0),
-                "roll": (-1.0, 1.0),
-                "pitch": (-1.0, 1.0),
-                "yaw": (-1.0, 1.0)
+                "x": (0.0, 0.0),
+                "y": (0.0, 0.0),
+                "z": (0.0, 0.0),
+                "roll": (0.0, 0.0),
+                "pitch": (0.0, 0.0),
+                "yaw": (0.0, 0.0)
             }
         }
     )
@@ -237,13 +225,9 @@ class QuadcopterSceneCfg(InteractiveSceneCfg):
             ),
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 rigid_body_enabled = True,
-                kinematic_enabled = False,
-                linear_damping = 0.05,
-                angular_damping = 0.1,
-                max_linear_velocity = 20.0,
-                max_angular_velocity = 360.0,
-                enable_gyroscopic_forces = True,
-                retain_accelerations = True
+                max_linear_velocity=20.0,
+                max_angular_velocity=360.0,
+                enable_gyroscopic_forces = True
             )
         ),
         actuators={
@@ -296,16 +280,14 @@ class QuadcopterEnvCfg(ManagerBasedRLEnvCfg):
                                                    env_spacing=1.0)
     seed: int = 0
 
-    # Basic settings
+    # Set simulation configurations
+    commands: CommandCfg = CommandCfg()
     actions: ActionsCfg = ActionsCfg()
     observations: ObservationsCfg = ObservationsCfg()
-    commands: CommandCfg = CommandCfg()
-    events: EventCfg = EventCfg()
-
-    # MDP settings
     rewards: RewardsCfg = RewardsCfg()
     terminations: TerminationsCfg = TerminationsCfg()
-
+    events: EventCfg = EventCfg()
+    
     # Post initialization
     def __post_init__(self) -> None:
         """Post initialization."""
@@ -313,7 +295,8 @@ class QuadcopterEnvCfg(ManagerBasedRLEnvCfg):
         self.decimation = 1
         self.episode_length_s = 5.0
         # viewer settings
-        self.viewer.eye = (8.0, 0.0, 10.0)
+        self.viewer.eye = (10.0, 0.0, 11.0)
+        self.viewer.lookat = (-90.0, 0.0, -5.0)
         # simulation settings
         self.sim.dt = 0.02
         self.sim.render_interval = self.decimation
