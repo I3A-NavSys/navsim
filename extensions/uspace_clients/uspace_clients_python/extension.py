@@ -51,7 +51,7 @@ class USpaceClients(omni.ext.IExt):
             self.vertiports_from_id, self.vertiports_from_pos = self.find_vertiports()
 
             # self.build_ui()
-            self.ui_amazon_requests.text = ""
+            self.ui_amazon_requests_container.clear()
             self.start_simulation()
     
     def init_vars(self):
@@ -132,10 +132,14 @@ class USpaceClients(omni.ext.IExt):
                                             "border_radius": 10, 
                                             "corner_flag": ui.CornerFlag.ALL})
                                 
-                                with ui.ScrollingFrame(horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
-                                            vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
-                                            style={"background_color": 0xFF5b5b5b, "margin":7}, height=150):
-                                    self.ui_amazon_requests = ui.Label("", alignment=ui.Alignment.LEFT)
+                                self.ui_amazon_requests_scrolling_frame = ui.ScrollingFrame(
+                                    horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
+                                    vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
+                                    style={"background_color": 0xFF5b5b5b, "margin":7}, height=150
+                                )
+                                
+                                with self.ui_amazon_requests_scrolling_frame:
+                                    self.ui_amazon_requests_container = ui.VStack(height=0)
 
                             self.ui_amazon_new_req = ui.Label(f"New Request: {self.amazon_new_request_timer_base}", alignment=ui.Alignment.CENTER_BOTTOM, 
                                     style={"font_size": 12, "margin": 10})
@@ -255,23 +259,49 @@ class USpaceClients(omni.ext.IExt):
     def print_requests(self, client):
         match client:
             case "amazon":
-                final_string = ""
-                for key, value in self.clients[client].items():
-                    string = "Request ID: " + key + "\n"
-                    string += "Init time: " + str(value["init_time"]) + "\n"
-                    string += "End time: " + str(value["end_time"]) + "\n"
-                    string += "Origin: " + str(value["origin"]) + "\n"
-                    string += "Destination: " + str(value["destination"]) + "\n"
-                    string += "Request begin time: " + str(value["request_begin_time"]) + "\n"
-                    string += "Request finish time: " + str(value["request_finish_time"]) + "\n"
-                    string += "\n"
-
-                    final_string += string
-
-                self.ui_amazon_requests.text = final_string
+                self.ui_amazon_requests_container.clear()
 
             case _:
                 pass
+
+        for key, value in self.clients[client].items():
+            self.print_new_request(
+                client,
+                key, 
+                value["init_time"],
+                value["end_time"],
+                value["origin"],
+                value["destination"],
+                value["request_begin_time"],
+                value["request_finish_time"]
+            )
+
+    def print_new_request(self, client, request_id, init_time, end_time, 
+                          origin, destination, request_begin_time, request_finish_time):
+        match client:
+            case "amazon":
+                container = self.ui_amazon_requests_container
+            
+            case _:
+                pass
+
+        request_id_label = ui.Label(f"Request ID: {request_id}\n")
+        init_time_label = ui.Label(f"Init time: {init_time}\n")
+        end_time_label = ui.Label(f"End time: {end_time}\n")
+        origin_label = ui.Label(f"Origin: {origin}\n")
+        destination_label = ui.Label(f"Destination: {destination}\n")
+        request_begin_time_label = ui.Label(f"Request begin time: {request_begin_time}\n")
+        request_finish_time_label = ui.Label(f"Request finish time: {request_finish_time}\n")
+        spacer = ui.Spacer(height=10)
+
+        container.add_child(request_id_label)
+        container.add_child(init_time_label)
+        container.add_child(end_time_label)
+        container.add_child(origin_label)
+        container.add_child(destination_label)
+        container.add_child(request_begin_time_label)
+        container.add_child(request_finish_time_label)
+        container.add_child(spacer)
 
     def start_simulation(self):
         self.is_sim_played = True
@@ -339,7 +369,17 @@ class USpaceClients(omni.ext.IExt):
             "request_begin_time": request["request_begin_time"],
             "request_finish_time": request["request_finish_time"]
         }
-        self.print_requests(self.amazon_id)
+
+        self.print_new_request(
+            client_id,
+            request["request_id"],
+            request["init_time"],
+            request["end_time"],
+            request["origin"],
+            request["destination"],
+            request["request_begin_time"],
+            request["request_finish_time"]
+        )
     
     def reset_new_request_timer(self, client):
         match client:

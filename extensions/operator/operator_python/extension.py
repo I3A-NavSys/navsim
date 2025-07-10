@@ -46,6 +46,7 @@ class Operator(omni.ext.IExt):
         self.on_physics_step_sub = None
         self.on_stop_sub = None
         self.on_play_sub = None
+        self.event_sub = None
 
     def on_physics_step(self, step_size:int):
         if self.is_sim_played:
@@ -68,7 +69,12 @@ class Operator(omni.ext.IExt):
             self.ui_uav_plots_frame.clear()
             self.vertiports_from_id, self.vertiports_from_pos = self.find_vertiports()
             self.print_vertiports()
-            self.print_clients()
+            self.ui_requests_scrolling_frame.style = {
+                "background_color": 0xFF5b5b5b, 
+                "margin": 7,
+                "height": 150
+            }
+            self.ui_requests_container.clear()
             self.torch_device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
             # Get UAVs rigid prim view each time simulation is played, as stage could be modified
@@ -283,7 +289,7 @@ class Operator(omni.ext.IExt):
                     "destination": destination
                 }
 
-                self.print_clients()
+                self.print_new_request(client_id, request_id, init_time, end_time, origin, destination)
                 self.process_request(client_id, request_id)
 
     def check_request_completed(self, uav_id, uav_state, uav_flightplan, event):
@@ -474,19 +480,45 @@ class Operator(omni.ext.IExt):
                     self.ui_uavs_collapsable = ui.CollapsableFrame("UAVs", collapsed=False,
                                                                    style=self.navsim_utils.CollapsableFrame_style)
                     with self.ui_uavs_collapsable:
-                        self.ui_uavs_label = ui.Label("", padding=self.navsim_utils.LABEL_PADDING)
+                        self.ui_uavs_scrolling_frame = ui.ScrollingFrame(
+                            horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
+                            vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
+                            style={"background_color": 0xFF5b5b5b, "margin":7}, 
+                            height=150
+                        )
+                        
+                        with self.ui_uavs_scrolling_frame:
+                            self.ui_uavs_container = ui.VStack(height=0)
 
-                    # Clients collapsable
-                    self.ui_clients_collapsable = ui.CollapsableFrame("Requests", collapsed=False,
+                    # Client requests collapsable
+                    self.ui_requests_collapsable = ui.CollapsableFrame("Requests", collapsed=False,
                                                                         style=self.navsim_utils.CollapsableFrame_style)
-                    with self.ui_clients_collapsable:
-                        self.ui_clients_label = ui.Label("")
+                    with self.ui_requests_collapsable:
+                        self.ui_requests_scrolling_frame = ui.ScrollingFrame(
+                            horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
+                            vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
+                            style={"background_color": 0xFF5b5b5b, "margin":7}, 
+                            height=150
+                        )
 
+                        with self.ui_requests_scrolling_frame:
+                            self.ui_requests_container = ui.VStack(height=0)
+                        
+                    # Vertiports collapsable
                     self.ui_vertiports_collapsable = ui.CollapsableFrame("Vertiports", collapsed=False,
                                                                         style=self.navsim_utils.CollapsableFrame_style)
                     with self.ui_vertiports_collapsable:
-                        self.ui_vertiports_label = ui.Label("")
+                        self.ui_vertiports_scrolling_frame = ui.ScrollingFrame(
+                            horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
+                            vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
+                            style={"background_color": 0xFF5b5b5b, "margin":7}, 
+                            height=150
+                        )
+                        
+                        with self.ui_vertiports_scrolling_frame:
+                            self.ui_vertiports_container = ui.VStack(height=0)
 
+                    # UAV plots collapsable
                     self.ui_uav_plots_collapsable = ui.CollapsableFrame("UAV plots", collapsed=False,
                                                                         style=self.navsim_utils.CollapsableFrame_style)
                     with self.ui_uav_plots_collapsable:
@@ -575,48 +607,72 @@ class Operator(omni.ext.IExt):
                         ui.Separator()
 
     def print_uavs(self):
-        final_string = ""
-        for value in self.uavs.values():
-            string = "ID: " + value["id"] + "\n"
-            string += "State: " + value["state"] + "\n"
-            string += "Time: "+ str(value["time"]) + "\n"
-            string += "Position: " + str(value["pos"]) + "\n"
-            if value["request"] is None:
-                string += "Request: None\n"
-            else:
-                string += "Request: " + value["request"]["client_id"] + " - " + value["request"]["request_id"] + "\n"
+        self.ui_uavs_container.clear()
 
-            string += "\n"
+        for uav_id, value in self.uavs.items():
+            if value["request"]:    request = f"{value['request']['client_id']} - {value['request']['request_id']}"  
+            else:                   request = "None"
+            self.print_new_uav(uav_id, value["state"], value["time"], value["pos"], request)
 
-            final_string += string
+    def print_new_uav(self, uav_id, state, time, pos, request):        
+        id_label = ui.Label(f"ID: {uav_id}\n")
+        state_label = ui.Label(f"State: {state}\n")
+        time_label = ui.Label(f"Time: {time}\n")
+        pos_label = ui.Label(f"Position: {pos}\n")
+        request_label = ui.Label(f"Request: {request}\n")
+        spacer = ui.Spacer(height=10)
 
-        self.ui_uavs_label.text = final_string
+        self.ui_uavs_container.add_child(id_label)
+        self.ui_uavs_container.add_child(state_label)
+        self.ui_uavs_container.add_child(time_label)
+        self.ui_uavs_container.add_child(pos_label)
+        self.ui_uavs_container.add_child(request_label)
+        self.ui_uavs_container.add_child(spacer)
 
-    def print_clients(self):
-        final_string = ""
-        for key, values in self.clients_requests.items():
-            client_id = key
-            for key, value in values.items():
-                string = "Client ID: " + client_id + "\n"
-                string += "Request ID: " + key + "\n"
-                string += "Init time: " + str(value["init_time"]) + "\n"
-                string += "End time: " + str(value["end_time"]) + "\n"
-                string += "Origin: " + str(value["origin"]) + "\n"              # Given by a vertiport id
-                string += "Destination: " + str(value["destination"]) + "\n"    # Given by a vertiport id
-                string += "\n"
+    def print_requests(self):
+        self.ui_requests_container.clear()
 
-                final_string += string
+        for client_id, requests in self.clients_requests.items():
+            for request_id, request in requests.items():
+                self.print_new_request(
+                    client_id, 
+                    request_id, 
+                    request["init_time"], 
+                    request["end_time"], 
+                    request["origin"], 
+                    request["destination"]
+                )
 
-        self.ui_clients_label.text = final_string
+    def print_new_request(self, client_id, request_id, init_time, end_time, origin, destination):        
+        client_id_label = ui.Label(f"Client ID: {client_id}\n")
+        request_id_label = ui.Label(f"Request ID: {request_id}\n")
+        init_time_label = ui.Label(f"Init time: {init_time}\n")
+        end_time_label = ui.Label(f"End time: {end_time}\n")
+        origin_label = ui.Label(f"Origin: {origin}\n")
+        destination_label = ui.Label(f"Destination: {destination}\n")
+        spacer = ui.Spacer(height=10)
+
+        self.ui_requests_container.add_child(client_id_label)
+        self.ui_requests_container.add_child(request_id_label)
+        self.ui_requests_container.add_child(init_time_label)
+        self.ui_requests_container.add_child(end_time_label)
+        self.ui_requests_container.add_child(origin_label)
+        self.ui_requests_container.add_child(destination_label)
+        self.ui_requests_container.add_child(spacer)
                     
     def print_vertiports(self):
-        final_string = ""
+        self.ui_vertiports_container.clear()
+
         for key, value in self.vertiports_from_id.items():
-            string = "ID: " + key + "\n"
-            string += "Position: " + str(value["position"]) + "\n"
-            string += "Model: " + value["model"] + "\n"
-            string += "\n"
+            self.print_new_vertiport(key, value["position"], value["model"])
 
-            final_string += string
+    def print_new_vertiport(self, id, position, model):
+        id_label = ui.Label(f"ID: {id}\n")
+        position_label = ui.Label(f"Position: {position}\n")
+        model_label = ui.Label(f"Model: {model}\n")
+        spacer = ui.Spacer(height=10)
 
-        self.ui_vertiports_label.text = final_string
+        self.ui_vertiports_container.add_child(id_label)
+        self.ui_vertiports_container.add_child(position_label)
+        self.ui_vertiports_container.add_child(model_label)
+        self.ui_vertiports_container.add_child(spacer)
