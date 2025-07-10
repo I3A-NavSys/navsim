@@ -16,16 +16,23 @@ class Joysticks:
         self.joysticks: list[pygame.joystick.JoystickType] = []
         self.joysticks_ids = []
         self.logger = logging.getLogger("A_joy")
+        self.initialized = False
 
     def start(self):
-        # Initialize pygame environment
-        pygame.init()
-        pygame.joystick.init()
+        if not self.initialized:
+            self.initialized = True
+
+            # Initialize pygame environment
+            pygame.init()
+            pygame.joystick.init()
 
     def stop(self):
-        # Finish pygame environment
-        pygame.joystick.quit()
-        pygame.quit()
+        if self.initialized:
+            self.initialized = False
+            
+            # Finish pygame environment
+            pygame.joystick.quit()
+            pygame.quit()
 
         self.joysticks_inputs = {}
         self.joysticks: list[pygame.joystick.JoystickType] = []

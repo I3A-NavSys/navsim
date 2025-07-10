@@ -1,13 +1,8 @@
-import pickle   # Serialization
-import base64   # Parsing to string
-
 import numpy as np
-import asyncio
-import carb.events
-import omni.kit.app
-import omni.kit.viewport.utility
-from pxr import UsdGeom, Gf, PhysxSchema
+
+
 import omni.physx
+
 
 from uspace.flight_plan.command import Command
 from navsim_utils.extensions_utils import ExtensionUtils
@@ -15,49 +10,46 @@ from .joysticks import Joysticks
 
 class Controller:
     def __init__(self):
+        self.current_time = 0
         self.is_running = False
         self.linear_vel_limit = 3.5
         self.ang_vel_limit = 1
-        self.invert_camera_movement = False
-        self.camera_path = "/manual_controller_CAM"
-        self.perspective_camera_path = "/OmniverseKit_Persp"
         self.joysticks = Joysticks()
-        self.event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
-        self.uav_events = []
-        self.ext_utils = ExtensionUtils()
-        self.init_positions = [Gf.Vec3f(0,0,1), Gf.Vec3f(10,0,1), Gf.Vec3f(10,10,1), Gf.Vec3f(0,10,1)]
-        self.init_orientation = Gf.Quatd(1,0,0,0)
+        self.physics_sub = None
         
-    def start(self):
+    def start(self, uav_control):
         if not self.is_running:
+            self.uav_control = uav_control
+            self.uav_names = list(self.uav_control.uavs.keys())
             self.is_running = True
-            self.uavs = self.get_uavs()
-            self.uavs_rottors_on_change = [False for i in range(len(self.uavs))]
-            self.uavs_current_rottors_on = [False for i in range(len(self.uavs))]
 
-            for uav in self.uavs:
-                event = carb.events.type_from_string("NavSim." + str(uav.GetPath()))
-                self.uav_events.append(event)
+            self.uavs_rottors_on_change = [False for i in range(self.uav_control.rigid_prim_view.count)]
+            self.uavs_current_rottors_on = [False for i in range(self.uav_control.rigid_prim_view.count)]
             
             self.joysticks.start()
 
-            # Attach control updates to physics steps
-            self.physx_interface = omni.physx.get_physx_interface()
-            self.physics_sub = self.physx_interface.subscribe_physics_step_events(self.control)
+            if self.physics_sub is None:
+                # Attach control updates to physics steps
+                self.physx_interface = omni.physx.get_physx_interface()
+                self.physics_sub = self.physx_interface.subscribe_physics_step_events(self.control)
 
     def stop(self):
         if self.is_running:
             self.is_running = False
-            self.physics_sub = None
-            self.joysticks.stop()
 
-    def control(self, event):
+            if self.physics_sub is not None:
+                self.physics_sub.unsubscribe()
+                self.physics_sub = None
+                
+            self.joysticks.stop()
+            self.current_time = 0
+
+    def control(self, step_size):
         joysticks_ids, joysticks_inputs = self.joysticks.get_inputs()
 
         for i in range(len(joysticks_ids)):
             # Get required info
-            uav_event = self.uav_events[i]
-            uav = self.uavs[i]
+            uav_name = self.uav_names[i]
             joystick_id = joysticks_ids[i]
             joystick_input = joysticks_inputs[joystick_id]
             rottors_on_change = self.uavs_rottors_on_change[i]
@@ -75,9 +67,23 @@ class Controller:
 
             # Reset position if that is the case
             if reset_position == 1:
-                self.event_stream.push(uav_event, payload={"method": "eventFn_ResetControl"})
-                uav.GetAttribute("xformOp:translate").Set(self.init_positions[i])
-                uav.GetAttribute("xformOp:orient").Set(self.init_orientation)
+                self.uav_control.x[i]  = np.zeros((8, 1))  # model state
+                self.uav_control.y[i]  = np.zeros((4, 1))  # model output
+                self.uav_control.u[i]  = np.zeros((4, 1))  # input (rotors speeds)
+                self.uav_control.r[i]  = np.zeros((4, 1))  # model reference
+                self.uav_control.e[i]  = np.zeros((4, 1))  # model error
+                self.uav_control.E[i]  = np.zeros((4, 1))  # model accumulated error
+
+                self.uav_control.rigid_prim_view.set_world_poses(
+                    positions=[self.uav_control.rigid_prim_view.get_world_poses([i])[0][0]],
+                    orientations=[(1, 0, 0, 0)],
+                    indices=i,
+                    usd=False
+                )
+                self.uav_control.rigid_prim_view.set_velocities(
+                    velocities=np.zeros(6),
+                    indices=i,
+                )
 
             # Evaluate whether rottors should be on off according to same button
             if rottors_on == 1 and not rottors_on_change:
@@ -95,23 +101,14 @@ class Controller:
                             velY = vel[1],
                             velZ = vel[2],
                             rotZ = rot,
-                            duration = None)
+                            duration = 0.1)
 
-            serialized_command = base64.b64encode(pickle.dumps(command)).decode('utf-8')
+            uav_i = int(uav_name.removeprefix("UAV_"))
+            self.uav_control.commands[uav_name] = command
+            self.uav_control.cmd_exp_time[uav_i] = self.current_time + command.duration
 
-            # Push uav_event with the inputs
-            self.event_stream.push(uav_event, payload={"method": "eventFn_RemoteCommand", 
-                                                                    "command": serialized_command})
-        
+            # print(self.uav_control.commands["UAV_0"].print_command())
 
     def check_joysticks(self):
-        joysticks_ids, joysticks_inputs = self.joysticks.get_inputs()
+        _, joysticks_inputs = self.joysticks.get_inputs()
         return joysticks_inputs
-
-    def get_uavs(self):
-        uavs = []
-        uav_names = self.ext_utils.get_navsim_UAV_names()
-        for name in uav_names:
-            uavs.append(self.ext_utils.get_prim_by_name(name))
-
-        return uavs
