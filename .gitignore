@@ -125,3 +125,4 @@ CATKIN_IGNORE
 *logs
 *isaac_lab/exported*
 .thumbs/
+**/.thumbs/*
