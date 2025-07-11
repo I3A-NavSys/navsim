@@ -1,0 +1,674 @@
+# Standard library imports
+import sys
+import os
+import pickle   # Serialization
+import base64   # Parsing to string
+import time
+import psutil
+import GPUtil
+
+# Related third party imports
+import omni.kit.app
+import carb.events
+import numpy as np
+import matplotlib.pyplot as plt
+from omni.kit.scripting import BehaviorScript
+from pxr import Sdf, Gf
+from scipy.spatial.transform import Rotation
+
+
+
+##############################################################################
+# Adding root folder to sys.path
+
+project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.append(project_root_path)
+project_root_path = project_root_path.replace("\\", "/")
+
+
+
+##############################################################################
+# Local application/library specific imports
+from uspace.flight_plan.flight_plan import FlightPlan
+from uspace.flight_plan.waypoint import Waypoint
+from uspace.flight_plan.command import Command
+
+class UAVState:
+    IDLE = "idle"
+    BUSY = "busy"
+    DEAD = "dead"
+
+class Aerotaxi(BehaviorScript):
+
+    def on_init(self):
+        self.current_time = 0
+        self.delta_time = 0
+
+        self.pos_atr    = self.prim.GetAttribute("xformOp:translate")
+        self.ori_atr    = self.prim.GetAttribute("xformOp:orient")
+
+        self.linVel_atr = self.prim.GetAttribute("physics:velocity")
+        self.angVel_atr = self.prim.GetAttribute("physics:angularVelocity")
+
+        self.force_atr = self.prim.GetAttribute("physxForce:force")
+        self.force_atr.Set(Gf.Vec3f(0,0,0))
+        self.torque_atr = self.prim.GetAttribute("physxForce:torque")
+        self.torque_atr.Set(Gf.Vec3f(0,0,0))
+
+        self.primRotors = self.prim.GetChild("rotors")
+        primNE = self.primRotors.GetChild("NE")
+        self.forceNE_atr = primNE.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
+        self.forceNE_atr.Set(Gf.Vec3f(0,0,0))
+
+        primNW = self.primRotors.GetChild("NW")
+        self.forceNW_atr = primNW.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
+        self.forceNW_atr.Set(Gf.Vec3f(0,0,0))
+
+        primSE = self.primRotors.GetChild("SE")
+        self.forceSE_atr = primSE.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
+        self.forceSE_atr.Set(Gf.Vec3f(0,0,0))
+
+        primSW = self.primRotors.GetChild("SW")
+        self.forceSW_atr = primSW.CreateAttribute("physxForce:force", Sdf.ValueTypeNames.Float3)
+        self.forceSW_atr.Set(Gf.Vec3f(0,0,0))
+
+        self.steps = 0        
+        
+        # Create the omniverse event associated to this UAV
+        self.UAV_EVENT = carb.events.type_from_string("NavSim." + str(self.prim.GetPath()))
+        self.event_stream = omni.kit.app.get_app().get_message_bus_event_stream()
+        self.event_sub = self.event_stream.create_subscription_to_push_by_type(self.UAV_EVENT, self.push_subscripted_event_method)
+
+        #--------------------------------------------------------------------------------------------------------------
+        # NAVIGATION PARAMETERS
+
+        self.operator_event = carb.events.type_from_string("NavSim.Operator")
+
+        # Create the FlightPlan
+        fp = FlightPlan()
+        # Build the waypoints
+        fp.set_waypoint(label="wp01", time=0, pos=[1071.0, 1039.0, 216.1])
+        fp.set_waypoint(label="wp02", time=40, pos=[1071.0, 1039.0, 230.0])
+        # fp.set_waypoint(label="wp03", time=30, pos=[1110.0, 1039.0, 230.0])
+
+        # Connect waypoints
+        fp.connect_waypoints()
+
+        # Postpone 10 seconds the flightplan
+        fp.postpone(5)
+
+        self.fp = fp
+        self.currentWP = None
+        self.state = UAVState.IDLE
+
+        # AutoPilot navigation command
+        self.command = Command()
+        self.cmd_exp_time = 0
+
+        # Tracking
+        self.compare_controls = False
+        self.is_tracking = False
+        self.refresh_rate = 1
+        self.last_time_track = 0
+        self.track_info = []
+        self.track_ang_vel = []
+        self.track_roll = []
+        self.track_pitch = []
+        self.track_servo_control_time = []
+        self.track_cpu_usage = []
+        self.track_mem_usage = []
+        self.track_gpu_usage = []
+        self.gpus = GPUtil.getGPUs()
+        self.completed_fps = 0
+
+        #--------------------------------------------------------------------------------------------------------------
+        # QUADCOPTER PARAMETERS
+
+        self.g    = 9.81
+
+        mass_attr = self.prim.GetAttribute("physics:mass")
+        self.mass = mass_attr.Get()
+        self.mass = 2000
+        # print(f"mass: {self.mass}")
+
+        inertia_attr = self.prim.GetAttribute("physics:diagonalInertia")
+        self.inertia = inertia_attr.Get()
+        # print(f"inertia: {self.inertia}")
+
+        self.pos   = Gf.Vec3f(0, 0, 0)
+        self.roll  = 0
+        self.pitch = 0
+        self.yaw   = 0
+        self.linear_vel  = Gf.Vec3f(0, 0, 0)
+        self.angular_vel = Gf.Vec3f(0, 0, 0)
+
+        # Rotors speed (rad/s)
+        self.w_rotor_NE = 0.0
+        self.w_rotor_NW = 0.0
+        self.w_rotor_SE = 0.0
+        self.w_rotor_SW = 0.0
+    
+        # Max and minimum angular velocity of the motors
+        self.w_max = 62.8319       # rad/s = 600rpm
+        self.w_min = 0             # rad/s =   0rpm
+
+        # Aerodynamic thrust force constant
+        # Force generated by the rotors is FT = kFT * w²
+        self.kFT_N =  4.6544       # north side
+        self.kFT_S =  0.9309       # south side
+        self.w_hov = 41.8879       # rad/s = 400rpm
+
+        # Aerodynamic drag force constant
+        # Moment generated by the rotors is MDR = kMDR * w²
+        self.kMDR_N = 5.9683
+        self.kMDR_S = 1.4921
+
+        # Aerodynamic drag force constant per axis
+        # Drag force generated by the air friction, opposite to the velocity is FD = -kFD * r_dot*|r_dot| (depends on 
+        # the shape of the object in each axis).
+        # Horizontal axis:
+        self.kFDx = 3.0625
+        self.kFDy = 4.0000
+        # Vertical axis:
+        self.kFDz = 7.8400
+
+        # Aerodynamic drag moment constant per axis
+        # Drag moment generated by the air friction, opposite to the angular velocity is MD = -kMD * rpy_dot*|rpy_dot| 
+        # (depends on the shape of the object in each axis).
+        self.kMDx = 37.4010
+        self.kMDy = 25.8580
+        self.kMDz = 20.2514
+
+        #--------------------------------------------------------------------------------------------------------------
+        # LOW LEVEL CONTROL
+
+        self.x  = np.zeros((8, 1))  # model state
+        self.y  = np.zeros((4, 1))  # model output
+        self.u  = np.zeros((4, 1))  # input (rotors speeds)
+        self.r  = np.zeros((4, 1))  # model reference
+        self.e  = np.zeros((4, 1))  # model error
+        self.E  = np.zeros((4, 1))  # model accumulated error
+        
+        self.Kx = np.array([        # state control matrix
+            [ -14.6551,  -45.5032,   -4.1872,  -13.0009,    3.8871,   -6.6331,    2.1363,    6.4114 ],
+            [  14.6551,  -45.5032,    4.1872,  -13.0009,   -3.8871,   -6.6331,   -2.1363,    6.4114 ],
+            [ -58.6206,  227.5161,  -16.7487,   65.0046,  -24.4514,   33.1656,    8.5453,    6.4114 ],
+            [  58.6206,  227.5161,   16.7487,   65.0046,   24.4514,   33.1656,   -8.5453,    6.4114 ]
+        ])
+
+        self.Ky = np.array([        # error control matrix
+            [ -3.1839,    1.0254,    4.2743,    2.5914 ],
+            [ -3.1839,   -1.0254,    4.2743,   -2.5914 ],
+            [ 15.9195,    4.1017,    4.2743,  -16.3009 ],
+            [ 15.9195,   -4.1017,    4.2743,   16.3009 ]           
+        ])
+
+        self.Hs = np.array([        # hovering speed
+            [self.w_hov], 
+            [self.w_hov], 
+            [self.w_hov], 
+            [self.w_hov]
+        ])
+        
+        self.E_max = 150            # maximum model accumulated error
+    
+    def on_destroy(self):
+        self.event_sub = None
+    #------------------------------------------------------------------------------------------------------------------
+    # EVENT HANDLERS
+
+    def on_play(self):
+        # print(f"PLAY    {self.prim_path}")
+        # print(f"\t {self.current_time} \t {self.delta_time}")
+
+        # Tracking
+        self.show_tracking = False
+        self.refresh_rate = 1
+        self.last_time_track = 0
+        
+        self.state = UAVState.IDLE
+        # Create the FlightPlan
+        fp = FlightPlan()
+        # Build the waypoints
+        fp.set_waypoint(label="wp01", time=0, pos=[1071.0, 1039.0, 216.1])
+        fp.set_waypoint(label="wp02", time=15, pos=[1071.0, 1039.0, 230.0])
+        fp.set_waypoint(label="wp03", time=35, pos=[1110.0, 1039.0, 230.0])
+        fp.set_waypoint(label="wp04", time=60, pos=[1150.0, 1039.0, 125.0])
+        fp.set_waypoint(label="wp05", time=80, pos=[1200.0, 1039.0, 125.0])
+        fp.set_waypoint(label="wp06", time=100, pos=[1200.0, 990.0, 125.0])
+        fp.set_waypoint(label="wp07", time=120, pos=[1150.0, 950.0, 125.0])
+        fp.set_waypoint(label="wp08", time=160, pos=[1150.0, 720.0, 125.0])
+        fp.set_waypoint(label="wp09", time=190, pos=[1290.0, 720.0, 125.0])
+        # fp.set_waypoint(label="wp10", time=220, pos=[1470.0, 600.0, 125.0])
+        fp.set_waypoint(label="wp11", time=240, pos=[1590.0, 520.0, 125.0])
+        fp.set_waypoint(label="wp12", time=260, pos=[1590.0, 520.0, 88.5])
+
+        # Connect waypoints
+        fp.connect_waypoints()
+
+        # Postpone 1 seconds the flightplan
+        fp.postpone(1)
+
+        self.fp = fp
+
+        # Update the drone status
+        self.imu()
+        self.navigation()
+        self.inform_operator()
+        self.servo_control()
+        self.platform_dynamics()
+        self.telemetry()
+
+    def on_pause(self):
+        # print(f"PAUSE   {self.prim_path}")
+        pass
+
+    def on_stop(self):
+        # print(f"STOP    {self.prim_path}")
+        self.current_time = 0
+        self.delta_time = 0
+
+        self.command.off()
+        self.rotors_off()
+
+        self.force_atr.Set(Gf.Vec3f(0,0,0))
+        self.torque_atr.Set(Gf.Vec3f(0,0,0))
+        self.forceNE_atr.Set(Gf.Vec3f(0,0,0))
+        self.forceNW_atr.Set(Gf.Vec3f(0,0,0))
+        self.forceSE_atr.Set(Gf.Vec3f(0,0,0))
+        self.forceSW_atr.Set(Gf.Vec3f(0,0,0))
+
+        self.is_tracking = False
+        self.track_info = []
+        self.track_ang_vel = []
+        self.track_roll = []
+        self.track_pitch = []
+        self.track_servo_control_time = []
+        self.track_cpu_usage = []
+        self.track_mem_usage = []
+        self.track_gpu_usage = []
+        self.completed_fps = 0
+
+        self.steps = 0
+
+    def inform_operator(self, is_request_completed=False):
+        serialized_fp = base64.b64encode(pickle.dumps(self.fp)).decode('utf-8')
+        serialized_pos = base64.b64encode(pickle.dumps(np.array(self.pos))).decode('utf-8')
+        if is_request_completed:
+            tracked_info = base64.b64encode(pickle.dumps(np.array(self.track_info))).decode('utf-8')
+            if self.compare_controls:
+                self.completed_fps += 1
+                self.tracked_data_to_csv()
+        else:
+            tracked_info = ""
+
+        payload = {
+            "sender": "uav",
+            "id": str(self.prim.GetPath()),
+            "state": self.state,
+            "time":self.current_time,
+            "pos": serialized_pos,
+            "flightplan": serialized_fp,
+            "tracked_info": tracked_info
+        }
+
+        self.event_stream.push(self.operator_event, payload=payload)
+
+    def on_update(self, current_time: float, delta_time: float):
+        # print(f"UPDATE  {self.prim_path} \t {current_time:.3f} \t {delta_time:.3f}")
+
+        # Get current simulation time
+        self.current_time = current_time
+        self.delta_time = delta_time
+
+        # Update the drone status
+        self.imu()
+        self.navigation()
+        if self.compare_controls:   self.servo_control_track()
+        else:                       self.servo_control()
+        self.platform_dynamics()
+        self.telemetry()
+
+    def push_subscripted_event_method(self, e):       
+
+        try:
+            method = getattr(self, e.payload["method"]) 
+        except:
+            print(f"Method {e.payload['method']} not found")
+            return
+        
+        match e.payload["method"]:
+            case "eventFn_RemoteCommand":
+                method(e.payload["command"])
+            case "eventFn_FlightPlan":
+                method(e.payload["fp"])
+            case _:
+                method()
+            
+    def eventFn_RemoteCommand(self, command):
+        self.command : Command = pickle.loads(base64.b64decode(command))
+        if self.command.duration is not None:
+            self.cmd_exp_time = self.current_time + self.command.duration
+            print(f"[{self.current_time}] {self.prim_path}: command received")
+        
+    def eventFn_FlightPlan(self, fp):
+        self.fp :FlightPlan = pickle.loads(base64.b64decode(fp))
+        self.currentWP = None
+        print(f"[{self.current_time}] {self.prim_path}: flightplan received")
+            
+    #------------------------------------------------------------------------------------------------------------------
+    # FLYING FUNCTIONS
+
+    def rotors_off(self):
+        # Apagamos motores
+        self.w_rotor_NE = 0
+        self.w_rotor_NW = 0
+        self.w_rotor_SE = 0
+        self.w_rotor_SW = 0
+        self.primRotors.GetAttribute("visibility").Set("inherited")
+
+        # Reset del control
+        self.E = np.zeros((4, 1))
+
+    def imu(self):
+        self.pos  = self.pos_atr.Get()
+        # print(f"\nposition:  {self.pos}")
+
+        ori  = self.ori_atr.Get()
+        # print(f"\norientation:  {self.ori}")
+     
+        W = ori.real
+        X = ori.imaginary[0]
+        Y = ori.imaginary[1]
+        Z = ori.imaginary[2]
+        # print(f"Orientation:  {W:.4f} {X:.4f} {Y:.4f} {Z:.4f}")
+
+        self.rot = Rotation.from_quat([X,Y,Z,W])     
+        self.roll, self.pitch, self.yaw = self.rot.as_euler('xyz', degrees=False)
+        # print(f"Euler RPY (rad):  {self.roll:.2f} {self.pitch:.2f} {self.yaw:.2f}")
+        # roll, pitch, yaw = rot.as_euler('xyz', degrees=True)
+        # print(f"Euler RPY (deg):  {roll:.0f} {pitch:.0f} {yaw:.0f}")
+
+        self.linear_vel  = self.linVel_atr.Get()
+        # print(f"linear velocity  (local):  {self.linear_vel}")
+
+        self.angular_vel = self.angVel_atr.Get() * np.pi / 180
+        # print(f"angular velocity (local):  {self.angular_vel}")
+
+        # Print imu data
+        # carb.log_info(f"{self.steps},{self.pos[0]},{self.pos[1]},{self.pos[2]},{self.roll},{self.pitch},{self.yaw},{self.linear_vel[0]},{self.linear_vel[1]},{self.linear_vel[2]},{self.angular_vel[0]},{self.angular_vel[1]},{self.angular_vel[2]}")
+
+        self.steps = self.steps + 1
+
+    def navigation(self):
+        # This function converts a flight plan position at certain time
+        # to a navigation command (desired velocity vector and rotation)
+        if self.fp is None:
+            return
+
+        # Check FP vigency
+        WP = self.fp.get_target_index_from_time(self.current_time)
+        numWPs = len(self.fp.waypoints)
+
+        if self.currentWP is None and WP != 0:
+            # This flight plan is obsolete
+            print(f"[{self.current_time:3.2f}] {self.prim_path} discarding FP due to it is obsolete")
+            self.fp = None
+            return
+        
+        # Navigation status has changed?
+        if self.currentWP != WP:
+            if WP == 0:
+                initPos = self.fp.waypoints[0].pos.copy()
+                initPos -= self.pos
+
+                if np.linalg.norm(initPos) < self.fp.radius:
+                    # Drone waiting to start the flight
+                    print(f"[{self.current_time:3.2f}] {self.prim_path} waiting to start a FP")
+                    self.state = UAVState.BUSY
+                    self.inform_operator()
+
+                else:
+                    # Drone in an incorrect starting position
+                    print(f"[{self.current_time:3.2f}] {self.prim_path} discarding FP due to an incorrect starting position")
+                    self.fp = None
+                    return
+
+            elif WP < numWPs:
+                self.is_tracking = True
+                print(f"[{self.current_time:3.2f}] {self.prim_path} flying to {self.fp.waypoints[WP].label}")
+                self.inform_operator()
+
+            else:
+                print(f"[{self.current_time:3.2f}] {self.prim_path} has completed its flight plan")
+                self.state = UAVState.IDLE
+                self.inform_operator(is_request_completed=True)
+
+                self.is_tracking = False
+                self.track_info = []
+                self.fp = None
+                self.command.hover()
+
+                if self.compare_controls:
+                    self.track_ang_vel = []
+                    self.track_roll = []
+                    self.track_pitch = []
+                    self.track_servo_control_time = []
+                    self.track_cpu_usage = []
+                    self.track_mem_usage = []
+                    self.track_gpu_usage = []
+
+                return
+
+        self.currentWP = WP
+        
+        # Change relative vel to absolute
+        linear_vel = self.rot.apply(self.linear_vel)
+        heading = self.fp.waypoints[0].heading if self.currentWP == 0 else self.fp.waypoints[self.currentWP - 1].heading
+
+        self.command = self.fp.get_command(self.current_time, self.pos, linear_vel, self.rot, heading, 2)
+        self.cmd_exp_time = self.current_time + self.command.duration
+
+    def servo_control(self):
+        # This function converts 
+        # a navigation command (desired velocity vector and rotation)
+        # to speeds of the four rotors
+
+        if not self.command.on:
+            self.rotors_off()
+            return
+
+        if self.command.duration is not None:
+            if self.current_time > self.cmd_exp_time:
+                self.command.hover()
+
+        self.primRotors.GetAttribute("visibility").Set("invisible")
+
+        # Assign the model reference to be followed
+        self.r[0, 0] = self.command.velX       # bXdot
+        self.r[1, 0] = self.command.velY       # bYdot
+        self.r[2, 0] = self.command.velZ       # bZdot
+        self.r[3, 0] = self.command.rotZ       # hZdot
+        # print(f"r: {np.round(self.r.T, 2)}")
+
+        # Assign model state
+        self.x[0, 0] = self.roll           # ePhi
+        self.x[1, 0] = self.pitch          # eTheta
+        self.x[2, 0] = self.angular_vel[0] # bWx
+        self.x[3, 0] = self.angular_vel[1] # bWy
+        self.x[4, 0] = self.angular_vel[2] # bWz
+        self.x[5, 0] = self.linear_vel[0]  # bXdot
+        self.x[6, 0] = self.linear_vel[1]  # bYdot
+        self.x[7, 0] = self.linear_vel[2]  # bZdot
+        # print(f"x: {np.round(self.x.T, 2)}")
+
+        # Assign model output
+        self.y[0, 0] = self.x[5, 0]        # bXdot
+        self.y[1, 0] = self.x[6, 0]        # bYdot
+        self.y[2, 0] = self.x[7, 0]        # bZdot
+        self.y[3, 0] = self.x[4, 0]        # bWz
+        # print(f"y: {np.round(self.y.T, 2)}")
+
+        # Error between the output and the reference 
+        # (between the commanded velocity and the drone velocity)
+        self.e = self.y - self.r
+        # print(f"e: {np.round(self.e.T, 2)}")
+
+        # Cumulative error
+        self.E = self.E + (self.e * self.delta_time)
+        # print(f"E: {np.round(self.E.T, 2)}")
+
+        # Error saturation
+        # if self.E[0, 0] >  self.E_max : self.E[0, 0] =  self.E_max
+        # if self.E[0, 0] < -self.E_max : self.E[0, 0] = -self.E_max
+        # if self.E[1, 0] >  self.E_max : self.E[1, 0] =  self.E_max
+        # if self.E[1, 0] < -self.E_max : self.E[1, 0] = -self.E_max
+        # if self.E[2, 0] >  self.E_max : self.E[2, 0] =  self.E_max
+        # if self.E[2, 0] < -self.E_max : self.E[2, 0] = -self.E_max
+        # if self.E[3, 0] >  self.E_max : self.E[3, 0] =  self.E_max
+        # if self.E[3, 0] < -self.E_max : self.E[3, 0] = -self.E_max
+
+        # Dynamic system control
+        self.u = self.Hs - self.Kx @ self.x - self.Ky @ self.E
+        # print(f"u: {np.round(self.u.T, 2)}")
+
+        # Rotor speed saturation
+        if self.u[0, 0] > self.w_max : self.u[0, 0] = self.w_max
+        if self.u[0, 0] < self.w_min : self.u[0, 0] = self.w_min
+        if self.u[1, 0] > self.w_max : self.u[1, 0] = self.w_max
+        if self.u[1, 0] < self.w_min : self.u[1, 0] = self.w_min
+        if self.u[2, 0] > self.w_max : self.u[2, 0] = self.w_max
+        if self.u[2, 0] < self.w_min : self.u[2, 0] = self.w_min
+        if self.u[3, 0] > self.w_max : self.u[3, 0] = self.w_max
+        if self.u[3, 0] < self.w_min : self.u[3, 0] = self.w_min
+
+        # Assign rotor speed
+        self.w_rotor_NE = self.u[0, 0]
+        self.w_rotor_NW = self.u[1, 0]
+        self.w_rotor_SE = self.u[2, 0]
+        self.w_rotor_SW = self.u[3, 0]
+
+    def platform_dynamics(self):
+        # Esta función traduce 
+        # la velocidad de rotación de los 4 motores
+        # a fuerzas y torques del sólido libre
+        # Con esto simulamos rotación de sustentación
+        # self.w_rotor_NE = self.w_hov
+        # self.w_rotor_NW = self.w_rotor_NE
+        # self.w_rotor_SE = self.w_rotor_NE
+        # self.w_rotor_SW = self.w_rotor_NE
+
+        # Apply thrust force
+        FT_NE = Gf.Vec3f(0, 0, self.kFT_N * self.w_rotor_NE**2)
+        FT_NW = Gf.Vec3f(0, 0, self.kFT_N * self.w_rotor_NW**2)
+        FT_SE = Gf.Vec3f(0, 0, self.kFT_S * self.w_rotor_SE**2)
+        FT_SW = Gf.Vec3f(0, 0, self.kFT_S * self.w_rotor_SW**2)
+        self.forceNE_atr.Set(FT_NE)
+        self.forceNW_atr.Set(FT_NW)
+        self.forceSE_atr.Set(FT_SE)
+        self.forceSW_atr.Set(FT_SW)
+
+        # Apply the air friction force to the drone
+        FD = Gf.Vec3f(
+            -self.kFDx * self.linear_vel[0] * abs(self.linear_vel[0]),
+            -self.kFDy * self.linear_vel[1] * abs(self.linear_vel[1]),
+            -self.kFDz * self.linear_vel[2] * abs(self.linear_vel[2]))
+        self.force_atr.Set(FD)
+      
+        # Compute the drag moment
+        MDR_NE = self.kMDR_N * self.w_rotor_NE**2
+        MDR_NW = self.kMDR_N * self.w_rotor_NW**2
+        MDR_SE = self.kMDR_S * self.w_rotor_SE**2
+        MDR_SW = self.kMDR_S * self.w_rotor_SW**2
+        MDR = Gf.Vec3f(0, 0, MDR_NE - MDR_NW - MDR_SE + MDR_SW)
+        # print(f"MDR  = {MDR}")
+
+        # Compute the air friction moment
+        MD = Gf.Vec3f(
+            -self.kMDx * self.angular_vel[0] * abs(self.angular_vel[0]),
+            -self.kMDy * self.angular_vel[1] * abs(self.angular_vel[1]),
+            -self.kMDz * self.angular_vel[2] * abs(self.angular_vel[2]))
+        # print(f"MD  = {MD}")
+
+        # Apply the moments to the drone
+        self.torque_atr.Set(MDR + MD)
+        # print(f"Torque Z => \t {MDR[2]:.4f} + {MD[2]:.4f} = {MDR[2] + MD[2]:.4f}")
+
+    #------------------------------------------------------------------------------------------------------------------
+    # TRACKING FUNCTIONS
+
+    def telemetry(self):
+        # Update every self.refresh_rate seconds
+        if self.is_tracking and self.current_time - self.last_time_track >= self.refresh_rate:
+            # Update last_time_track
+            self.last_time_track = self.current_time
+
+            # Change relative vel to absolute
+            linear_vel = self.rot.apply(self.linear_vel)
+
+            # Get tracking information
+            self.track_info.append(Waypoint(t= self.current_time, pos=self.pos, vel=linear_vel))
+
+            if self.compare_controls:
+                self.track_ang_vel.append(self.angular_vel[2])
+                self.track_roll.append(self.roll)
+                self.track_pitch.append(self.pitch)
+                self.track_servo_control_time.append(self.servo_total_time)
+                self.track_cpu_usage.append(self.cpu_increment)
+                self.track_mem_usage.append(self.mem_increment)
+                self.track_gpu_usage.append(self.gpu_increment)
+
+    def servo_control_track(self):
+        if self.is_tracking and self.current_time - self.last_time_track >= self.refresh_rate:
+            before_gpu_usage = GPUtil.getGPUs()[0].load * 100
+            before_mem_usage = psutil.virtual_memory().percent
+            before_cpu_usage = psutil.cpu_percent(interval=0.1)
+            before_time = time.time()
+
+        self.servo_control()
+
+        if self.is_tracking and self.current_time - self.last_time_track >= self.refresh_rate:
+            after_time = time.time()
+            after_cpu_usage = psutil.cpu_percent(interval=0.1)
+            after_mem_usage = psutil.virtual_memory().percent
+            after_gpu_usage = GPUtil.getGPUs()[0].load * 100
+
+            self.servo_total_time = after_time - before_time
+            self.cpu_increment = after_cpu_usage - before_cpu_usage
+            self.mem_increment = after_mem_usage - before_mem_usage
+            self.gpu_increment = after_gpu_usage - before_gpu_usage
+
+    def tracked_data_to_csv(self):
+        """This functions is in charge of creating a csv with all the data collected for the UAV control comparison
+        
+        Output:
+        - It builds a csv with all the information needed
+        """
+        
+        uav_id = self.prim.GetName()
+
+        times = []
+        error = []
+        x_lin_vel = []
+        y_lin_vel = []
+        z_lin_vel = []
+
+        for wp in self.track_info:
+            times.append(wp.t)
+            status = self.fp.status_at_time(wp.t)
+            error.append(np.linalg.norm(wp.pos - status.pos))
+            x_lin_vel.append(wp.vel[0])
+            y_lin_vel.append(wp.vel[1])
+            z_lin_vel.append(wp.vel[2])
+
+        x_lin_acc = np.insert(np.diff(x_lin_vel), 0, 0)
+        y_lin_acc = np.insert(np.diff(y_lin_vel), 0, 0)
+        z_lin_acc = np.insert(np.diff(z_lin_vel), 0, 0)
+        z_ang_acc = np.insert(np.diff(self.track_ang_vel), 0, 0)
+
+        data = np.column_stack((times, error, x_lin_acc, y_lin_acc, z_lin_acc, z_ang_acc, self.track_roll, 
+                                self.track_pitch, self.track_servo_control_time, self.track_cpu_usage, 
+                                self.track_mem_usage, self.track_gpu_usage))
+            
+        path = project_root_path + "/sims/exported_data" + f"/{uav_id}_{self.completed_fps}_modern_control.csv"
+        np.savetxt(path, data, delimiter=", ", fmt="%s")
