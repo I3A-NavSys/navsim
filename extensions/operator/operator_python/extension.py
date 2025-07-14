@@ -14,6 +14,7 @@ import math
 import matplotlib.pyplot as plt
 import torch
 
+from navsim_utils.sim_utils import TimeManager, GeospatialManager
 from navsim_utils.extensions_utils import ExtensionUtils
 from uspace.grid_planner.grid_planner import GridPlanner
 from uspace.flight_plan.flight_plan import FlightPlan
@@ -58,9 +59,20 @@ class Operator(omni.ext.IExt):
         self.is_sim_played = False
         self.rigid_prim_view = None
         self.uav_control = None
+        self.time_manager.stop()
         
     def on_timeline_play(self, event):
-        if self.is_extension_on and not self.is_sim_played:
+        is_resume = self.is_extension_on and self.is_sim_played
+        is_played = not self.is_extension_on or not self.is_sim_played
+
+        if is_resume:
+            self.time_manager.resume()
+            return
+
+        if is_played:
+            # Start the time manager
+            self.time_manager.start()
+
             # Reset all variables
             self.gp.clear_grid()
             self.clients_requests = {}
@@ -81,13 +93,25 @@ class Operator(omni.ext.IExt):
             self.rigid_prim_view = RigidPrimView(["/World/UAVs/UAV_*",])
             self.rigid_prim_view.initialize()
 
+            # Initialize UAVs control
             self.init_uavs()
-            self.uav_control = UAVcontrol(self.rigid_prim_view, self.torch_device, self.uavs, self.operator_event, 
-                                          self.event_stream)
+            self.uav_control = UAVcontrol(
+                self.rigid_prim_view, 
+                self.torch_device, 
+                self.uavs, 
+                self.operator_event,
+                self.event_stream
+            )
+
+            # Update UI
             self.print_uavs()
             self.ui_select_uav_to_plot.repopulate()
 
             self.is_sim_played = True
+
+    def on_timeline_pause(self, event):
+        if self.is_extension_on:
+            self.time_manager.pause()
 
     def set_grid_parameters(self):
         self.gp.cell_side = self.ui_grid_cell_size.model.get_value_as_int()
@@ -112,7 +136,12 @@ class Operator(omni.ext.IExt):
         self.on_play_sub = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
             int(omni.timeline.TimelineEventType.PLAY), self.on_timeline_play
         )
+        self.on_pause_sub = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
+            int(omni.timeline.TimelineEventType.PAUSE), self.on_timeline_pause
+        )
         
+        self.time_manager = TimeManager()
+        self.geospatial_manager = GeospatialManager()
         self.navsim_utils = ExtensionUtils()
         self.gp = GridPlanner()
         self.plot_time_steps = 0.01
@@ -137,7 +166,7 @@ class Operator(omni.ext.IExt):
         for i in range(self.rigid_prim_view.count):
             uav_id = f"UAV_{i}"
             uav_state = UAVState.IDLE
-            uav_time = 0
+            uav_time = self.time_manager.sim_to_real(0)
             uav_pos = pos[i]
             uav_flightplan = None
 
@@ -244,7 +273,7 @@ class Operator(omni.ext.IExt):
             case "uav":
                 uav_id = event.payload["id"]
                 uav_state = event.payload["state"]
-                uav_time = event.payload["time"]
+                uav_time = self.time_manager.sim_to_real(event.payload["time"])
                 uav_pos = pickle.loads(base64.b64decode(event.payload["pos"]))
                 uav_flightplan = pickle.loads(base64.b64decode(event.payload["flightplan"]))
 
@@ -274,8 +303,8 @@ class Operator(omni.ext.IExt):
             case "client":
                 client_id = event.payload["client_id"]
                 request_id = event.payload["request_id"]
-                init_time = event.payload["init_time"]
-                end_time = event.payload["end_time"]
+                init_time = pickle.loads(base64.b64decode(event.payload["init_time"]))
+                end_time = pickle.loads(base64.b64decode(event.payload["end_time"]))
                 origin = event.payload["origin"]
                 destination = event.payload["destination"]
 
@@ -289,7 +318,14 @@ class Operator(omni.ext.IExt):
                     "destination": destination
                 }
 
-                self.print_new_request(client_id, request_id, init_time, end_time, origin, destination)
+                self.print_new_request(
+                    client_id, 
+                    request_id, 
+                    init_time, 
+                    end_time, 
+                    origin, 
+                    destination
+                )
                 self.process_request(client_id, request_id)
 
     def check_request_completed(self, uav_id, uav_state, uav_flightplan, event):
@@ -320,7 +356,8 @@ class Operator(omni.ext.IExt):
             # Reset uav request
             self.uavs[uav_id]["request"] = None
 
-            # If the current selected uav to see its plots is the one which finished the request, we update the list
+            # If the current selected uav to see its plots is the one which finished 
+            # the request, we update the list
             if self.ui_select_uav_to_plot.get_selection() == uav_id:
                 self.update_uav_plots_frame(uav_id)
 
@@ -329,6 +366,8 @@ class Operator(omni.ext.IExt):
 
         request_origin = self.vertiports_from_id[request["origin"]]["position"]
         request_destination = self.vertiports_from_id[request["destination"]]["position"]
+        request_init_time = self.time_manager.real_to_sim(request["init_time"])
+        request_end_time = self.time_manager.real_to_sim(request["end_time"])
 
         idle_uavs = [uav for uav in self.uavs.values() if uav["state"] == UAVState.IDLE]
         if not idle_uavs:   return
@@ -344,9 +383,9 @@ class Operator(omni.ext.IExt):
             i2 = request_destination[0] // self.gp.cell_side
             j2 = request_destination[1] // self.gp.cell_side
             # Round up the initial time
-            init_time_slot = math.ceil(request["init_time"] / self.gp.slot_time)
+            init_time_slot = math.ceil(request_init_time / self.gp.slot_time)
             # Round down the end time
-            end_time_slot = math.floor(request["end_time"] / self.gp.slot_time)
+            end_time_slot = math.floor(request_end_time / self.gp.slot_time)
 
             route, _ = self.gp.get_best_route(2, (i, j), (i2, j2), init_time_slot, end_time_slot)
 
@@ -406,9 +445,6 @@ class Operator(omni.ext.IExt):
         fp.set_waypoint(time=end_time_3, pos=end_pos_3, vel=end_vel_3, heading=end_heading)
 
         fp.connect_waypoints()
-        # fp.remove_negative_time()
-        # fp.postpone(self.current_time + 1 * self.gp.slot_time)
-        # fp.postpone(self.current_time + 0.1)
 
     def send_flightplan(self, uav_id, fp):
         # uav_event = carb.events.type_from_string("NavSim." + uav_id)
@@ -610,9 +646,18 @@ class Operator(omni.ext.IExt):
         self.ui_uavs_container.clear()
 
         for uav_id, value in self.uavs.items():
-            if value["request"]:    request = f"{value['request']['client_id']} - {value['request']['request_id']}"  
-            else:                   request = "None"
-            self.print_new_uav(uav_id, value["state"], value["time"], value["pos"], request)
+            request = "None"
+            if value["request"]:    
+                request = f"{value['request']['client_id']} - " \
+                          f"{value['request']['request_id']}"
+
+            self.print_new_uav(
+                uav_id, 
+                value["state"], 
+                value["time"], 
+                value["pos"], 
+                request
+            )
 
     def print_new_uav(self, uav_id, state, time, pos, request):        
         id_label = ui.Label(f"ID: {uav_id}\n")
@@ -637,8 +682,8 @@ class Operator(omni.ext.IExt):
                 self.print_new_request(
                     client_id, 
                     request_id, 
-                    request["init_time"], 
-                    request["end_time"], 
+                    self.time_manager.sim_to_real(request["init_time"]), 
+                    self.time_manager.sim_to_real(request["end_time"]), 
                     request["origin"], 
                     request["destination"]
                 )

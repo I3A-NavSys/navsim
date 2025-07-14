@@ -10,7 +10,10 @@ import asyncio
 import random
 import os
 import sys
+import pickle
+import base64
 
+from navsim_utils.sim_utils import TimeManager, GeospatialManager
 from navsim_utils.extensions_utils import ExtensionUtils
 
 project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
@@ -31,6 +34,8 @@ class USpaceClients(omni.ext.IExt):
         self.on_stop_sub = None
         self.on_play_sub = None
         self.event_sub = None
+        self.amazon_task.cancel()
+        
 
     def on_physics_step(self, step_size:int):
         if self.is_sim_played:
@@ -39,20 +44,41 @@ class USpaceClients(omni.ext.IExt):
     def on_timeline_stop(self, event):
         self.current_time = 0
         self.is_sim_played = False
+        self.time_manager.stop()
+        self.amazon_task.cancel()
         self.amazon_new_request_timer = self.amazon_new_request_timer_base
         self.ui_amazon_new_req.text = f"New Request: {self.amazon_new_request_timer_base}"
         
     def on_timeline_play(self, event):
-        if self.is_extension_on and not self.is_sim_played:
+        is_resume = self.is_extension_on and self.is_sim_played
+        is_played = not self.is_extension_on or not self.is_sim_played
+
+        if is_resume:
+            self.time_manager.resume()
+            self.amazon_task = asyncio.ensure_future(self.start_amazon())
+            return
+
+        if is_played:
             random.seed(2)
             # 2 -> R5, R6, R25
             self.clients = {}
             self.amount_amazon_requests = 0
             self.vertiports_from_id, self.vertiports_from_pos = self.find_vertiports()
 
-            # self.build_ui()
+            # Clear UI containers
             self.ui_amazon_requests_container.clear()
-            self.start_simulation()
+
+            # Start the time manager
+            self.time_manager.start()
+
+            # Start the simulation
+            self.is_sim_played = True
+            self.amazon_task = asyncio.ensure_future(self.start_amazon())
+
+    def on_timeline_pause(self, event):
+        if self.is_extension_on:
+            self.time_manager.pause()
+            self.amazon_task.cancel()
     
     def init_vars(self):
         self.physx_interface = omni.physx.get_physx_interface()
@@ -63,6 +89,8 @@ class USpaceClients(omni.ext.IExt):
             int(omni.timeline.TimelineEventType.STOP), self.on_timeline_stop)
         self.on_play_sub = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
             int(omni.timeline.TimelineEventType.PLAY), self.on_timeline_play)
+        self.on_pause_sub = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
+            int(omni.timeline.TimelineEventType.PAUSE), self.on_timeline_pause)
         
         self.event_stream = omni.kit.app.get_app().get_message_bus_event_stream()
         self.operator_event = carb.events.type_from_string("NavSim.Operator")
@@ -80,6 +108,8 @@ class USpaceClients(omni.ext.IExt):
         self.vertiports_from_id = {}
         self.clients = {}
         self.navsim_utils = ExtensionUtils()
+        self.time_manager = TimeManager()
+        self.geospatial_manager = GeospatialManager()
 
     def event_listener(self, event):
         if not event.payload["is_request"]:
@@ -224,12 +254,12 @@ class USpaceClients(omni.ext.IExt):
             "sender": "client",
             "client_id": client_id,
             "request_id": request_id,
-            "init_time": init_time,
-            "end_time": end_time,
+            "init_time": self.time_manager.sim_to_real(init_time),
+            "end_time": self.time_manager.sim_to_real(end_time),
             "origin": origin,
             "destination": destination,
-            "request_begin_time": begin_time,
-            "request_finish_time": finish_time
+            "request_begin_time": self.time_manager.sim_to_real(begin_time),
+            "request_finish_time": self.time_manager.sim_to_real(finish_time)
         }
 
         self.event_stream.push(self.operator_event, payload=request)
@@ -252,7 +282,8 @@ class USpaceClients(omni.ext.IExt):
 
     def update_request_state(self, client_id, request_id, state):
         if state == RequestState.COMPLETED:
-            self.clients[client_id][request_id]["request_finish_time"] = round(self.current_time, 2)
+            time = self.time_manager.sim_to_real(self.current_time)
+            self.clients[client_id][request_id]["request_finish_time"] = time
 
         self.print_requests(client_id)
 
@@ -303,10 +334,6 @@ class USpaceClients(omni.ext.IExt):
         container.add_child(request_finish_time_label)
         container.add_child(spacer)
 
-    def start_simulation(self):
-        self.is_sim_played = True
-        asyncio.ensure_future(self.start_amazon())
-
     async def start_amazon(self):
         while self.is_sim_played:
             await asyncio.sleep(1)
@@ -321,17 +348,16 @@ class USpaceClients(omni.ext.IExt):
             if self.amazon_new_request_timer == 0:                
                 request = self.create_request(self.amazon_id)
                 self.event_stream.push(self.operator_event, payload=request)
-
-                self.register_request(self.amazon_id, request)
+                
                 self.reset_new_request_timer(self.amazon_id)
 
     def create_request(self, client_id):
         request_id = f"request_{self.amount_amazon_requests}"
-        begin_time = round(self.current_time, 2)
-        finish_time = "In progress"
+        begin_time = self.current_time
+        finish_time = "None"
 
-        init_time = round(begin_time + random.randint(30, 60), 2)
-        end_time = round(init_time + random.randint(30, 60), 2)
+        init_time = begin_time + random.randint(30, 60)
+        end_time = init_time + random.randint(30, 60)
 
         vertiport_ids = list(self.vertiports_from_id.keys())
         origin = random.choice(vertiport_ids)
@@ -340,16 +366,37 @@ class USpaceClients(omni.ext.IExt):
         while destination == origin:
             destination = random.choice(vertiport_ids)
 
+        # Convert times to real time
+        begin_time = self.time_manager.sim_to_real(begin_time)
+        init_time = self.time_manager.sim_to_real(init_time)
+        end_time = self.time_manager.sim_to_real(end_time)
+
+        self.register_request(
+            client_id, 
+            request_id,
+            init_time, 
+            end_time, 
+            origin, 
+            destination, 
+            begin_time, 
+            finish_time
+        )
+
+        # Build the request payload
+        serialized_begin_time = base64.b64encode(pickle.dumps(begin_time)).decode('utf-8')
+        serialized_init_time = base64.b64encode(pickle.dumps(init_time)).decode('utf-8')
+        serialized_end_time = base64.b64encode(pickle.dumps(end_time)).decode('utf-8')
+
         request = {
             "is_request": True,
             "sender": "client",
             "client_id": client_id,
             "request_id": request_id,
-            "init_time": init_time,
-            "end_time": end_time,
+            "init_time": serialized_init_time,
+            "end_time": serialized_end_time,
             "origin": origin,
             "destination": destination,
-            "request_begin_time": begin_time,
+            "request_begin_time": serialized_begin_time,
             "request_finish_time": finish_time
         }
 
@@ -357,28 +404,29 @@ class USpaceClients(omni.ext.IExt):
 
         return request
                    
-    def register_request(self, client_id, request):
+    def register_request(self, client_id, request_id, init_time, end_time, origin, 
+                         destination, request_begin_time, request_finish_time):
         if client_id not in self.clients:
             self.clients[client_id] = {}
 
-        self.clients[client_id][request["request_id"]] = {
-            "init_time": request["init_time"],
-            "end_time": request["end_time"],
-            "origin": request["origin"],
-            "destination": request["destination"],
-            "request_begin_time": request["request_begin_time"],
-            "request_finish_time": request["request_finish_time"]
+        self.clients[client_id][request_id] = {
+            "init_time": init_time,
+            "end_time": end_time,
+            "origin": origin,
+            "destination": destination,
+            "request_begin_time": request_begin_time,
+            "request_finish_time": request_finish_time
         }
 
         self.print_new_request(
             client_id,
-            request["request_id"],
-            request["init_time"],
-            request["end_time"],
-            request["origin"],
-            request["destination"],
-            request["request_begin_time"],
-            request["request_finish_time"]
+            request_id,
+            init_time,
+            end_time,
+            origin,
+            destination,
+            request_begin_time,
+            request_finish_time
         )
     
     def reset_new_request_timer(self, client):
