@@ -949,6 +949,43 @@ class FlightPlan:
         yVelTimePlot.scatter(timeUAV, yVelUAV, color="black", s=10, gid="UAVtracking", zorder=2)
         zVelTimePlot.scatter(timeUAV, zVelUAV, color="black", s=10, gid="UAVtracking", zorder=2)
 
+    def add_UAV_track_acc(self, figName, UAVinfo : List[Waypoint]):
+        posFig = plt.figure(figName)
+        subplots = posFig.get_axes()
+        accPlot3D = subplots[0]
+        xAccTimePlot = subplots[1]
+        yAccTimePlot = subplots[2]
+        zAccTimePlot = subplots[3]
+
+        xVelUAV = []
+        yVelUAV = []
+        zVelUAV = []
+        timeUAV = []
+
+        for wp in UAVinfo:
+            xVelUAV.append(wp.vel[0])
+            yVelUAV.append(wp.vel[1])
+            zVelUAV.append(wp.vel[2])
+            timeUAV.append(wp.t)
+
+        xAccUAV = np.diff(xVelUAV, prepend=xVelUAV[:1])
+        yAccUAV = np.diff(yVelUAV, prepend=yVelUAV[:1])
+        zAccUAV = np.diff(zVelUAV, prepend=zVelUAV[:1])
+        
+        # Plot UAV route
+        accPlot3D.plot(timeUAV, np.sqrt(xAccUAV**2 + yAccUAV**2 + zAccUAV**2), linestyle="dashed", linewidth=1, 
+                       color="black", gid="UAVtracking", zorder=2)
+        xAccTimePlot.plot(timeUAV, xAccUAV, linestyle="dashed", linewidth=1, color="black", gid="UAVtracking", zorder=2)
+        yAccTimePlot.plot(timeUAV, yAccUAV, linestyle="dashed", linewidth=1, color="black", gid="UAVtracking", zorder=2)
+        zAccTimePlot.plot(timeUAV, zAccUAV, linestyle="dashed", linewidth=1, color="black", gid="UAVtracking", zorder=2)
+
+        # Highlight UAV route positions
+        accPlot3D.scatter(timeUAV, np.sqrt(xAccUAV**2 + yAccUAV**2 + zAccUAV**2), color="black", s=10, gid="UAVtracking", 
+                          zorder=2)
+        xAccTimePlot.scatter(timeUAV, xAccUAV, color="black", s=10, gid="UAVtracking", zorder=2)
+        yAccTimePlot.scatter(timeUAV, yAccUAV, color="black", s=10, gid="UAVtracking", zorder=2)
+        zAccTimePlot.scatter(timeUAV, zAccUAV, color="black", s=10, gid="UAVtracking", zorder=2)
+
 class ToggleUAVtracking(ToolToggleBase):
     default_keymap = 'S'
     description = 'Show by gid'

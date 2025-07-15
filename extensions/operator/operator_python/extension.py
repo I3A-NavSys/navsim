@@ -219,7 +219,7 @@ class Operator(omni.ext.IExt):
         tracked_info = self.uav_plots[uav_id][key]["tracked_info"]
 
         fp.acceleration_figure(f"{key}: ACCELERATION", self.plot_time_steps)
-        fp.add_UAV_track_pos(f"{uav_id}: ACCELERATION", tracked_info)
+        fp.add_UAV_track_acc(f"{key}: ACCELERATION", tracked_info)
 
     def save_figures(self, uav_id, key):
         pos_fig_name = f"{key}: POSITION"
