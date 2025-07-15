@@ -35,8 +35,10 @@ class UAVState:
     DEAD = "dead"
 
 class RequestState:
-    PENDING = "pending"
-    COMPLETED = "completed"
+    CANCELLED = "Cancelled"
+    PENDING = "Pending"
+    IN_PROGRESS = "In progress"
+    COMPLETED = "Completed"
 
 class Operator(omni.ext.IExt):
     def on_startup(self, ext_id):
@@ -331,27 +333,22 @@ class Operator(omni.ext.IExt):
     def check_request_completed(self, uav_id, uav_state, uav_flightplan, event):
         # Check if uav has completed the request
         if self.uavs[uav_id]["state"] == UAVState.BUSY and uav_state == UAVState.IDLE:
-            # Inform the client that the request was completed
-            self.inform_client(self.uavs[uav_id]["request"]["client_id"], 
-                                self.uavs[uav_id]["request"]["request_id"])
-            
-            # Store uav tracked info
-            tracked_info = pickle.loads(base64.b64decode(event.payload["tracked_info"]))
             client_id = self.uavs[uav_id]["request"]["client_id"]
             request_id = self.uavs[uav_id]["request"]["request_id"]
 
-            if uav_id in self.uav_plots:
-                self.uav_plots[uav_id][f"{client_id}_{request_id}"] = {
-                    "fp": uav_flightplan, 
-                    "tracked_info": tracked_info
-                }
+            # Inform the client that the request was completed
+            self.inform_client(client_id, request_id, RequestState.COMPLETED)
+            
+            # Store uav tracked info
+            tracked_info = pickle.loads(base64.b64decode(event.payload["tracked_info"]))
 
-            else:
+            if uav_id not in self.uav_plots:
                 self.uav_plots[uav_id] = {}
-                self.uav_plots[uav_id][f"{client_id}_{request_id}"] = {
-                    "fp": uav_flightplan, 
-                    "tracked_info": tracked_info
-                }
+
+            self.uav_plots[uav_id][f"{client_id}_{request_id}"] = {
+                "fp": uav_flightplan, 
+                "tracked_info": tracked_info
+            }
 
             # Reset uav request
             self.uavs[uav_id]["request"] = None
@@ -401,20 +398,12 @@ class Operator(omni.ext.IExt):
             self.uavs[closest_uav["id"]]["request"] = {"client_id": client_id, "request_id": request_id}
             self.print_uavs()
 
+            self.inform_client(client_id, request_id, RequestState.IN_PROGRESS)
+
         # The closest uav is not at the origin
         else:
-            pass
-            # TODO: Esto no funciona
-            # i = closest_uav["pos"][0] // self.gp.cell_side
-            # j = closest_uav["pos"][1] // self.gp.cell_side
-
-            # i2 = request_origin[0] // self.gp.cell_side
-            # j2 = request_origin[1] // self.gp.cell_side
-
-            # init_time_slot = math.ceil(self.current_time / self.gp.slot_time)
-
-            # route, _ = self.gp.get_best_route(2, (i, j), (i2, j2), init_time_slot, init_time_slot)
-
+            self.inform_client(client_id, request_id, RequestState.CANCELLED)
+            
     def add_takeoff_landing_wps(self, fp: FlightPlan, init_pos, end_pos):
         init_time = fp.init_time() - 2 * self.gp.slot_time
         end_time_1 = fp.finish_time() + 2 * self.gp.slot_time
@@ -452,14 +441,14 @@ class Operator(omni.ext.IExt):
         # self.event_stream.push(uav_event, payload={"method": "eventFn_FlightPlan", "fp": serialized_fp})
         self.uavs[uav_id]["flightplan"] = fp
         
-    def inform_client(self, client_id, request_id):
+    def inform_client(self, client_id, request_id, state):
         self.event_stream.push(
             self.uspace_clients_event, 
             payload={
                 "is_request": True,
                 "client_id": client_id, 
                 "request_id": request_id, 
-                "state": RequestState.COMPLETED
+                "state": state
             }
         )
 
