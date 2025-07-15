@@ -3,22 +3,19 @@ from isaacsim.gui.components.ui_utils import ui
 import carb.events
 import omni.timeline
 import omni.physx
-from omni.isaac.core.utils.stage import get_current_stage
 import omni.kit.app
 
 import asyncio
 import random
-import os
-import sys
 import pickle
 import base64
 
 from navsim_utils.sim_utils import TimeManager, GeospatialManager
 from navsim_utils.extensions_utils import ExtensionUtils
+from navsim_utils.paths_utils import get_navsim_root_path
 
-project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
-if project_root_path not in sys.path:
-    sys.path.append(project_root_path)
+
+project_root_path = get_navsim_root_path()
 
 class RequestState:
     CANCELLED = "Cancelled"
@@ -48,7 +45,8 @@ class USpaceClients(omni.ext.IExt):
         self.time_manager.stop()
         self.amazon_task.cancel()
         self.amazon_new_request_timer = self.amazon_new_request_timer_base
-        self.ui_amazon_new_req.text = f"New Request: {self.amazon_new_request_timer_base}"
+        text = f"New Request: {self.amazon_new_request_timer_base}"
+        self.ui_amazon_new_req.text = text
         
     def on_timeline_play(self, event):
         is_resume = self.is_extension_on and self.is_sim_played
@@ -213,18 +211,17 @@ class USpaceClients(omni.ext.IExt):
             internal_state = model_value
 
         if internal_state:
-            self.switch_extension_state(on=True, is_from_event=is_from_event)
-
+            on = True
             style={"background_color": ui.color("#952323")}
-            self.on_off_button.set_style(style)
             self.on_off_button.text = "OFF"
 
         else:
-            self.switch_extension_state(on=False, is_from_event=is_from_event)
-            
+            on = False
             style={"background_color": ui.color("#6f9523")}
-            self.on_off_button.set_style(style)
             self.on_off_button.text = "ON"
+
+        self.switch_extension_state(on=on, is_from_event=is_from_event)
+        self.on_off_button.set_style(style)
 
     def switch_extension_state(self, on, is_from_event):
         # Update internal state
@@ -310,8 +307,17 @@ class USpaceClients(omni.ext.IExt):
                 value["request_finish_time"]
             )
 
-    def print_new_request(self, client, request_id, state, init_time, end_time, 
-                          origin, destination, request_begin_time, request_finish_time):
+    def print_new_request(self, 
+        client, 
+        request_id, 
+        state, 
+        init_time, 
+        end_time,
+        origin, 
+        destination, 
+        request_begin_time, 
+        request_finish_time
+    ):
         match client:
             case "amazon":
                 container = self.ui_amazon_requests_container
@@ -369,10 +375,8 @@ class USpaceClients(omni.ext.IExt):
 
         vertiport_ids = list(self.vertiports_from_id.keys())
         origin = random.choice(vertiport_ids)
+        vertiport_ids.remove(origin)
         destination = random.choice(vertiport_ids)
-
-        while destination == origin:
-            destination = random.choice(vertiport_ids)
 
         request = self.process_request(
             client_id,
@@ -387,8 +391,17 @@ class USpaceClients(omni.ext.IExt):
         )
         return request
                    
-    def process_request(self, client_id, request_id, state, init_time, end_time, origin, 
-                         destination, request_begin_time, request_finish_time):
+    def process_request(self, 
+        client_id, 
+        request_id, 
+        state, 
+        init_time, 
+        end_time, 
+        origin,
+        destination, 
+        request_begin_time, 
+        request_finish_time
+    ):
         # Convert times to real time
         real_begin_time = self.time_manager.sim_to_real(request_begin_time)
         real_init_time = self.time_manager.sim_to_real(init_time)
@@ -426,8 +439,17 @@ class USpaceClients(omni.ext.IExt):
 
         return request
 
-    def register_request(self, client_id, request_id, state, init_time, end_time, origin, 
-                         destination, request_begin_time, request_finish_time):
+    def register_request(self, 
+        client_id, 
+        request_id, 
+        state, 
+        init_time, 
+        end_time, 
+        origin,
+        destination, 
+        request_begin_time, 
+        request_finish_time
+    ):
         if client_id not in self.clients:
             self.clients[client_id] = {}
 
@@ -459,7 +481,8 @@ class USpaceClients(omni.ext.IExt):
                 self.amazon_new_request_timer = self.amazon_new_request_timer_base
                 var = random.randint(-5, 5)
                 self.amazon_new_request_timer += var
-                self.ui_amazon_new_req.text = f"New Request: {self.amazon_new_request_timer}"
+                text = f"New Request: {self.amazon_new_request_timer}"
+                self.ui_amazon_new_req.text = text
 
             case _:
                 pass
