@@ -43,21 +43,21 @@ class USpaceClients(omni.ext.IExt):
         self.current_time = 0
         self.is_sim_played = False
         self.time_manager.stop()
-        self.amazon_task.cancel()
+        if hasattr(self, "amazon_task"):    self.amazon_task.cancel()
         self.amazon_new_request_timer = self.amazon_new_request_timer_base
         text = f"New Request: {self.amazon_new_request_timer_base}"
         self.ui_amazon_new_req.text = text
         
     def on_timeline_play(self, event):
         is_resume = self.is_extension_on and self.is_sim_played
-        is_played = not self.is_extension_on or not self.is_sim_played
+        is_play = self.is_extension_on and not self.is_sim_played
 
         if is_resume:
             self.time_manager.resume()
             self.amazon_task = asyncio.ensure_future(self.start_amazon())
             return
 
-        if is_played:
+        if is_play:
             random.seed(2)
             # 2 -> R5, R6, R25
             self.clients = {}

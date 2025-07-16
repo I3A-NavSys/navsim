@@ -60,13 +60,13 @@ class Operator(omni.ext.IExt):
         
     def on_timeline_play(self, event):
         is_resume = self.is_extension_on and self.is_sim_played
-        is_played = not self.is_extension_on or not self.is_sim_played
+        is_play = self.is_extension_on and not self.is_sim_played
 
         if is_resume:
             self.time_manager.resume()
             return
 
-        if is_played:
+        if is_play:
             # Start the time manager
             self.time_manager.start()
 
