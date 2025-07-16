@@ -126,17 +126,23 @@ class Operator(omni.ext.IExt):
         self.uav_control = None
 
         self.physx_interface = omni.physx.get_physx_interface()
-        self.on_physics_step_sub = self.physx_interface.subscribe_physics_on_step_events(self.on_physics_step, True, 0)
+        self.on_physics_step_sub = self.physx_interface.subscribe_physics_step_events(
+            self.on_physics_step
+        )
 
         self.timeline = omni.timeline.get_timeline_interface()
-        self.on_stop_sub = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
-            int(omni.timeline.TimelineEventType.STOP), self.on_timeline_stop
+        timeline_stream = self.timeline.get_timeline_event_stream()
+        self.on_stop_sub = timeline_stream.create_subscription_to_pop_by_type(
+            int(omni.timeline.TimelineEventType.STOP), 
+            self.on_timeline_stop
         )
-        self.on_play_sub = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
-            int(omni.timeline.TimelineEventType.PLAY), self.on_timeline_play
+        self.on_play_sub = timeline_stream.create_subscription_to_pop_by_type(
+            int(omni.timeline.TimelineEventType.PLAY), 
+            self.on_timeline_play
         )
-        self.on_pause_sub = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
-            int(omni.timeline.TimelineEventType.PAUSE), self.on_timeline_pause
+        self.on_pause_sub = timeline_stream.create_subscription_to_pop_by_type(
+            int(omni.timeline.TimelineEventType.PAUSE), 
+            self.on_timeline_pause
         )
         
         self.time_manager = TimeManager()
@@ -148,7 +154,10 @@ class Operator(omni.ext.IExt):
         self.event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
         self.operator_event = carb.events.type_from_string("NavSim.Operator")
         self.uspace_clients_event = carb.events.type_from_string("NavSim.USpaceClients")
-        self.event_sub = self.event_stream.create_subscription_to_push_by_type(self.operator_event, self.event_listener)
+        self.event_sub = self.event_stream.create_subscription_to_push_by_type(
+            self.operator_event, 
+            self.event_listener
+        )
 
         self.is_extension_on = False
         self.is_sim_played = False
@@ -161,7 +170,9 @@ class Operator(omni.ext.IExt):
         self.idle_uavs = [] # Stores the ids of the idle UAVs
 
     def init_uavs(self):
-        pos, _ = self.rigid_prim_view.get_world_poses(indices=range(self.rigid_prim_view.count))
+        pos, _ = self.rigid_prim_view.get_world_poses(
+            indices=range(self.rigid_prim_view.count)
+        )
 
         for i in range(self.rigid_prim_view.count):
             uav_id = f"UAV_{i}"

@@ -81,20 +81,32 @@ class USpaceClients(omni.ext.IExt):
     
     def init_vars(self):
         self.physx_interface = omni.physx.get_physx_interface()
-        self.on_physics_step_sub = self.physx_interface.subscribe_physics_on_step_events(self.on_physics_step, True, 0)
+        self.on_physics_step_sub = self.physx_interface.subscribe_physics_step_events(
+            self.on_physics_step
+        )
 
         self.timeline = omni.timeline.get_timeline_interface()
-        self.on_stop_sub = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
-            int(omni.timeline.TimelineEventType.STOP), self.on_timeline_stop)
-        self.on_play_sub = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
-            int(omni.timeline.TimelineEventType.PLAY), self.on_timeline_play)
-        self.on_pause_sub = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
-            int(omni.timeline.TimelineEventType.PAUSE), self.on_timeline_pause)
+        timeline_stream = self.timeline.get_timeline_event_stream()
+        self.on_stop_sub = timeline_stream.create_subscription_to_pop_by_type(
+            int(omni.timeline.TimelineEventType.STOP), 
+            self.on_timeline_stop
+        )
+        self.on_play_sub = timeline_stream.create_subscription_to_pop_by_type(
+            int(omni.timeline.TimelineEventType.PLAY), 
+            self.on_timeline_play
+        )
+        self.on_pause_sub = timeline_stream.create_subscription_to_pop_by_type(
+            int(omni.timeline.TimelineEventType.PAUSE), 
+            self.on_timeline_pause
+        )
         
         self.event_stream = omni.kit.app.get_app().get_message_bus_event_stream()
         self.operator_event = carb.events.type_from_string("NavSim.Operator")
         self.uspace_clients_event = carb.events.type_from_string("NavSim.USpaceClients")
-        self.event_sub = self.event_stream.create_subscription_to_push_by_type(self.uspace_clients_event, self.event_listener)
+        self.event_sub = self.event_stream.create_subscription_to_push_by_type(
+            self.uspace_clients_event, 
+            self.event_listener
+        )
         
         self.amazon_new_request_timer_base = 10
         self.amazon_new_request_timer = self.amazon_new_request_timer_base
