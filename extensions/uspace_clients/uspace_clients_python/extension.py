@@ -23,6 +23,11 @@ class RequestState:
     IN_PROGRESS = "In progress"
     COMPLETED = "Completed"
 
+class TypeMessage:
+    EXTENSSION_ON_OFF = "extension_on_off"
+    CMD_FP_REQUEST = "cmd_fp_request"
+    USPACE = "uspace"
+
 class USpaceClients(omni.ext.IExt):
     def on_startup(self, ext_id):
         self.init_vars()
@@ -123,13 +128,22 @@ class USpaceClients(omni.ext.IExt):
         self.geospatial_manager = GeospatialManager()
 
     def event_listener(self, event):
-        if not event.payload["is_request"]:
-            self.switch_on_off(event.payload["state"], is_from_event=True)
-            return
+        payload = event.payload
 
-        client_id = event.payload["client_id"]
-        request_id = event.payload["request_id"]
-        request_state = event.payload["state"]
+        match payload["type_message"]:
+            case TypeMessage.EXTENSSION_ON_OFF:
+                self.handle_extension_on_off_msg(payload)
+
+            case TypeMessage.USPACE:
+                self.handle_uspace_msg(payload)
+
+    def handle_extension_on_off_msg(self, payload):
+        self.switch_on_off(payload["state"], is_from_event=True)
+
+    def handle_uspace_msg(self, payload):
+        client_id = payload["client_id"]
+        request_id = payload["request_id"]
+        request_state = payload["state"]
 
         self.update_request_state(client_id, request_id, request_state)
 
@@ -240,14 +254,7 @@ class USpaceClients(omni.ext.IExt):
         self.is_extension_on = on
 
         if not is_from_event:
-            # Update Operator extension state
-            self.event_stream.push(
-                self.operator_event, 
-                payload={
-                    "is_request": False, 
-                    "state": on
-                }
-            )
+            self.inform_operator(TypeMessage.EXTENSSION_ON_OFF)
 
     def send_request_by_hand(self):
         client_id = self.ui_client_id.model.get_value_as_string()
@@ -370,7 +377,7 @@ class USpaceClients(omni.ext.IExt):
 
             if self.amazon_new_request_timer == 0:                
                 request = self.create_request(self.amazon_id)
-                self.event_stream.push(self.operator_event, payload=request)
+                self.inform_operator(TypeMessage.USPACE, request=request)
                 
                 self.reset_new_request_timer(self.amazon_id)
 
@@ -437,8 +444,6 @@ class USpaceClients(omni.ext.IExt):
         serialized_end_time = base64.b64encode(pickle.dumps(real_end_time)).decode('utf-8')
 
         request = {
-            "is_request": True,
-            "sender": "client",
             "client_id": client_id,
             "request_id": request_id,
             "init_time": serialized_init_time,
@@ -498,3 +503,16 @@ class USpaceClients(omni.ext.IExt):
 
             case _:
                 pass
+
+    def inform_operator(self, type_message, request=None):
+        payload = {"type_message": type_message}
+
+        match type_message:
+            case TypeMessage.USPACE:
+                payload["sender"] = "client"
+                payload["request"] = request
+
+            case TypeMessage.EXTENSSION_ON_OFF:
+                payload["state"] = self.is_extension_on
+
+        self.event_stream.push(self.operator_event, payload=payload)

@@ -27,6 +27,11 @@ class UAVState:
     BUSY = "busy"
     DEAD = "dead"
 
+class TypeMessage:
+    EXTENSSION_ON_OFF = "extension_on_off"
+    CMD_FP_REQUEST = "cmd_fp_request"
+    USPACE = "uspace"
+
 class UAVcontrol:
     def __init__(self, rigid_prim_view, torch_device, uavs, operator_event, event_stream):
         self.rigid_prim_view: RigidPrimView = rigid_prim_view
@@ -256,7 +261,15 @@ class UAVcontrol:
         for i in well_positioned:
             uav_id = self.uav_ids[i]
             print(f"[{self.current_time:3.2f}] {uav_id}: waiting to start flightplan")
-            self.inform_operator(uav_id, UAVState.BUSY, self.current_time, self.poses[i], self.flightplans[i], "")
+            self.inform_operator(
+                TypeMessage.USPACE,
+                uav_id,
+                UAVState.BUSY, 
+                self.current_time, 
+                self.poses[i], 
+                self.flightplans[i], 
+                ""
+            )
         
         # Handle poorly positioned UAVs
         for i in poorly_positioned:
@@ -276,7 +289,15 @@ class UAVcontrol:
             
             label = fp.waypoints[target_wp].label if fp.waypoints[target_wp].label else str(target_wp)
             print(f"[{self.current_time:3.2f}] {uav_id}: flying to {label}")
-            self.inform_operator(uav_id, UAVState.BUSY, self.current_time, self.poses[i], fp, "")
+            self.inform_operator(
+                TypeMessage.USPACE,
+                uav_id, 
+                UAVState.BUSY, 
+                self.current_time, 
+                self.poses[i], 
+                fp, 
+                ""
+            )
 
     def _batch_process_completed_plans(self, indices):
         """Process completed flight plans"""
@@ -287,8 +308,16 @@ class UAVcontrol:
             fp = self.flightplans[i]
             
             print(f"[{self.current_time:3.2f}] {uav_id}: flight plan completed")
-            self.inform_operator(uav_id, UAVState.IDLE, self.current_time, self.poses[i], fp, 
-                               self.tracked_info[uav_id], is_request_completed=True)
+            self.inform_operator(
+                TypeMessage.USPACE,
+                uav_id, 
+                UAVState.IDLE, 
+                self.current_time, 
+                self.poses[i], 
+                fp, 
+                self.tracked_info[uav_id], 
+                is_request_completed=True
+            )
             
             # Reset state
             self.tracked_info[uav_id] = []
@@ -494,23 +523,45 @@ class UAVcontrol:
         for key in self.track_arrays:
             self.track_arrays[key][i] = []
 
-    def inform_operator(self, id, state, time, pos, flightplan, tracked_info, is_request_completed=False):
-        """Operator notification"""
-        serialized_fp = base64.b64encode(pickle.dumps(flightplan)).decode('utf-8')
-        serialized_pos = base64.b64encode(pickle.dumps(pos)).decode('utf-8')
-        if is_request_completed:
-            tracked_info = base64.b64encode(pickle.dumps(tracked_info)).decode('utf-8')
+    def inform_operator(
+        self, 
+        type_message, 
+        id=None, 
+        state=None, 
+        time=None, 
+        pos=None, 
+        flightplan=None, 
+        tracked_info=None, 
+        is_request_completed=False
+    ):
+        payload = {"type_message": type_message}
 
-        payload = {
-            "is_request": True, 
-            "sender": "uav", 
-            "id": id, 
-            "state": state,
-            "time": time, 
-            "pos": serialized_pos, 
-            "flightplan": serialized_fp,
-            "tracked_info": tracked_info
-        }
+        match type_message:
+            case TypeMessage.USPACE:    
+                serialized_fp = base64.b64encode(
+                    pickle.dumps(flightplan)
+                ).decode('utf-8')
+                serialized_pos = base64.b64encode(
+                    pickle.dumps(pos)
+                ).decode('utf-8')
+                
+                if is_request_completed:
+                    tracked_info = base64.b64encode(
+                        pickle.dumps(tracked_info)
+                    ).decode('utf-8')
+
+                request = {
+                    "id": id,
+                    "state": state,
+                    "time": time,
+                    "pos": serialized_pos,
+                    "flightplan": serialized_fp,
+                    "tracked_info": tracked_info
+                }
+
+                payload["sender"] = "uav"
+                payload["request"] = request
+
         self.event_stream.push(self.operator_event, payload=payload)
 
     def rotors_off(self):

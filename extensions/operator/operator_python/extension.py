@@ -35,6 +35,11 @@ class RequestState:
     IN_PROGRESS = "In progress"
     COMPLETED = "Completed"
 
+class TypeMessage:
+    EXTENSSION_ON_OFF = "extension_on_off"
+    CMD_FP_REQUEST = "cmd_fp_request"
+    USPACE = "uspace"
+
 class Operator(omni.ext.IExt):
     def on_startup(self, ext_id):
         self.init_vars()
@@ -293,10 +298,23 @@ class Operator(omni.ext.IExt):
     def event_listener(self, event):
         payload = event.payload
 
-        if not payload["is_request"]:
-            self.switch_on_off(payload["state"], is_from_event=True)
-            return
+        match payload["type_message"]:
+            case TypeMessage.EXTENSSION_ON_OFF:
+                self.handle_ext_on_off_msg(payload)
 
+            case TypeMessage.CMD_FP_REQUEST:
+                self.handle_cmd_fp_request_msg(payload)
+
+            case TypeMessage.USPACE:
+                self.handle_uspace_msg(payload)
+
+    def handle_ext_on_off_msg(self, payload):
+        self.switch_on_off(payload["state"], is_from_event=True)
+
+    def handle_cmd_fp_request_msg(self, payload):
+        pass
+
+    def handle_uspace_msg(self, payload):
         match payload["sender"]:
             case "uav":
                 self.process_uav_message(payload)
@@ -304,13 +322,15 @@ class Operator(omni.ext.IExt):
                 self.process_client_message(payload)
 
     def process_uav_message(self, payload):
-        uav_id = payload["id"]
-        uav_state = payload["state"]
-        uav_time = self.time_manager.sim_to_real(payload["time"])
-        uav_pos = pickle.loads(base64.b64decode(payload["pos"]))
-        uav_flightplan = pickle.loads(base64.b64decode(payload["flightplan"]))
-        if len(payload["tracked_info"]) > 0:
-            tracked_info = pickle.loads(base64.b64decode(payload["tracked_info"]))
+        request = payload["request"]
+
+        uav_id = request["id"]
+        uav_state = request["state"]
+        uav_time = self.time_manager.sim_to_real(request["time"])
+        uav_pos = pickle.loads(base64.b64decode(request["pos"]))
+        uav_flightplan = pickle.loads(base64.b64decode(request["flightplan"]))
+        if request["tracked_info"] != "":
+            tracked_info = pickle.loads(base64.b64decode(request["tracked_info"]))
         else:
             tracked_info = ""
 
@@ -340,7 +360,12 @@ class Operator(omni.ext.IExt):
         request_id = self.uavs[uav_id]["request"]["request_id"]
 
         # Inform the client that the request was completed
-        self.inform_client(client_id, request_id, RequestState.COMPLETED)
+        self.inform_client(
+            TypeMessage.USPACE,
+            client_id, 
+            request_id, 
+            RequestState.COMPLETED
+        )
 
         # Add the flightplan and tracked info to the uav plots
         if uav_id not in self.uav_plots:
@@ -364,12 +389,14 @@ class Operator(omni.ext.IExt):
             self.update_uav_plots_frame(uav_id)
 
     def process_client_message(self, payload):
-        client_id = payload["client_id"]
-        request_id = payload["request_id"]
-        init_time = pickle.loads(base64.b64decode(payload["init_time"]))
-        end_time = pickle.loads(base64.b64decode(payload["end_time"]))
-        origin = payload["origin"]
-        destination = payload["destination"]
+        request = payload["request"]
+
+        client_id = request["client_id"]
+        request_id = request["request_id"]
+        init_time = pickle.loads(base64.b64decode(request["init_time"]))
+        end_time = pickle.loads(base64.b64decode(request["end_time"]))
+        origin = request["origin"]
+        destination = request["destination"]
 
         if client_id not in self.clients_requests:
             self.clients_requests[client_id] = {}
@@ -423,11 +450,21 @@ class Operator(omni.ext.IExt):
                 }
                 self.print_uavs()
 
-                self.inform_client(client_id, request_id, RequestState.IN_PROGRESS)
+                self.inform_client(
+                    TypeMessage.USPACE, 
+                    client_id, 
+                    request_id, 
+                    RequestState.IN_PROGRESS
+                )
 
                 return
 
-        self.inform_client(client_id, request_id, RequestState.CANCELLED)
+        self.inform_client(
+            TypeMessage.USPACE,
+            client_id, 
+            request_id, 
+            RequestState.CANCELLED
+        )
             
     def get_flightplan(self, 
         request_origin, 
@@ -524,16 +561,25 @@ class Operator(omni.ext.IExt):
     def send_flightplan(self, uav_id, fp):
         self.uavs[uav_id]["flightplan"] = fp
         
-    def inform_client(self, client_id, request_id, state):
-        self.event_stream.push(
-            self.uspace_clients_event, 
-            payload={
-                "is_request": True,
-                "client_id": client_id, 
-                "request_id": request_id, 
-                "state": state
-            }
-        )
+    def inform_client(
+        self, 
+        type_message, 
+        client_id=None, 
+        request_id=None, 
+        request_state=None
+    ):
+        payload = {"type_message": type_message}
+
+        match type_message:
+            case TypeMessage.USPACE:
+                payload["client_id"] = client_id
+                payload["request_id"] = request_id
+                payload["state"] = request_state
+
+            case TypeMessage.EXTENSSION_ON_OFF:
+                payload["state"] = self.is_extension_on
+
+        self.event_stream.push(self.uspace_clients_event, payload=payload)
 
     # ----------------------------------
     # ---- UI BUILDING AND HANDLING ----
@@ -709,14 +755,8 @@ class Operator(omni.ext.IExt):
         self.is_extension_on = on
 
         if not is_from_event:
-            # Update Clients extension state
-            self.event_stream.push(
-                self.uspace_clients_event, 
-                payload={
-                    "is_request": False, 
-                    "state": on
-                }
-            )
+            self.inform_client(TypeMessage.EXTENSSION_ON_OFF)
+        
 
     def populate_select_uav_to_plot(self):
         return list(self.uavs.keys())
