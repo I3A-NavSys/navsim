@@ -1,23 +1,19 @@
-import sys
-import os
 import pickle   # Serialization
 import base64   # Parsing to string
-import time as pytime
-import psutil
 import GPUtil
-import torch
 import numpy as np
-import io
 from scipy.spatial.transform import Rotation
+
+
 from omni.isaac.core.prims import RigidPrimView
 
-from uspace.flight_plan.flight_plan import FlightPlan
+
 from uspace.flight_plan.waypoint import Waypoint
 from uspace.flight_plan.command import Command
+from navsim_utils.paths_utils import get_navsim_root_path
 
-project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
-sys.path.append(project_root_path)
-project_root_path = project_root_path.replace("\\", "/")
+
+project_root_path = get_navsim_root_path()
 
 class UAVState:
     IDLE = "idle"
@@ -170,7 +166,8 @@ class UAVcontrol:
         self._batch_platform_dynamics()
         
         # 7. Apply physics
-        self._apply_physics()
+        if np.any(self.active_mask):
+            self._apply_physics()
 
     def _batch_collect_imu_data(self):
         """Optimized IMU data collection with minimal conversions"""
@@ -479,9 +476,11 @@ class UAVcontrol:
 
     def _apply_physics(self):
         """Apply forces and torques to all UAVs"""
+        
         self.rigid_prim_view.apply_forces_and_torques_at_pos(
-            forces=self.forces_to_apply,
-            torques=self.torques_to_apply,
+            forces=self.forces_to_apply[self.active_mask],
+            torques=self.torques_to_apply[self.active_mask],
+            indices=np.where(self.active_mask)[0],
             is_global=False
         )
 
