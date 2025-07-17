@@ -20,8 +20,8 @@ from navsim_utils.extensions_utils import ExtensionUtils
 from navsim_utils.paths_utils import get_navsim_root_path
 from uspace.grid_planner.grid_planner import GridPlanner
 from uspace.flight_plan.flight_plan import FlightPlan
-# from fleet.uav_ia_control import UAVcontrol
-from fleet.uav_matrix_control import UAVcontrol
+from fleet.uav_ia_control import UAVcontrol
+# from fleet.uav_matrix_control import UAVcontrol
 
 
 project_root_path = get_navsim_root_path()
@@ -365,6 +365,7 @@ class Operator(omni.ext.IExt):
 
         if uav_id not in self.uavs:
             self.uavs[uav_id] = {"request": None}
+            self.ui_select_uav_to_plot.repopulate()
 
         self.check_request_completed(uav_id, uav_state, uav_flightplan, tracked_info)
 
@@ -373,8 +374,6 @@ class Operator(omni.ext.IExt):
         self.uavs[uav_id]["time"] = uav_time
         self.uavs[uav_id]["pos"] = uav_pos
         self.uavs[uav_id]["flightplan"] = uav_flightplan
-
-        self.ui_select_uav_to_plot.repopulate()
 
         self.print_uavs()
 

@@ -329,12 +329,6 @@ class FlightPlanGenerator(omni.ext.IExt):
         if selected_uav is None:
             raise Exception("[FP GENERATOR ext] No drone selected")
 
-        self.flightplan.waypoints.clear()
-        self.flightplan.set_waypoint(time=10, pos=[-150, -200, 1.75], vel=[0, 0, 0], heading=[1, 0])
-        self.flightplan.set_waypoint(time=15, pos=[-150, -200, 6], vel=[0, 0, 0])
-        self.flightplan.set_waypoint(time=20, pos=[-140, -200, 6], vel=[0, 0, 0])
-        self.flightplan.connect_waypoints()
-
         serialized_fp = base64.b64encode(pickle.dumps(self.flightplan)).decode('utf-8')
 
         self.inform_operator(TypeMessage.CMD_FP_REQUEST, selected_uav, serialized_fp)
