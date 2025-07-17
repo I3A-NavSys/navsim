@@ -1,5 +1,6 @@
 import pickle
 import base64
+import numpy as np
 
 
 import omni.kit.app
@@ -9,6 +10,7 @@ import carb.events
 from isaacsim.gui.components.element_wrappers import *
 import omni.timeline
 import omni.physx
+import omni.kit.window.file_importer
 
 
 from uspace.flight_plan.flight_plan import FlightPlan
@@ -120,6 +122,23 @@ class FlightPlanGenerator(omni.ext.IExt):
                     self.build_waypoint_frame()
                     # Create waypoint list
                     self.build_waypoint_list()
+                    # Import/Export buttons
+                    with ui.HStack(
+                        spacing=self.extension_utils.SPACING_S, 
+                        style=self.extension_utils.HStack_A
+                    ):
+                        # Import flight plan button
+                        ui.Button(
+                            "Import Flight Plan", 
+                            height=50, 
+                            clicked_fn=self.import_flightplan
+                        )
+                        # Export flight plan button
+                        ui.Button(
+                            "Export Flight Plan", 
+                            height=50, 
+                            clicked_fn=self.export_flightplan
+                        )
                     # Send flight plan button
                     ui.Button(
                         "Send Flight Plan", 
@@ -261,13 +280,13 @@ class FlightPlanGenerator(omni.ext.IExt):
                         style=self.extension_utils.Label_A, 
                         width=self.extension_utils.LABEL_PADDING
                     )
-                    self.waypoind_id = ui.StringField()
+                    self.waypoint_id = ui.StringField()
 
                     # Enabled field checkbox
-                    self.check_waypoind_id = ui.CheckBox(
+                    self.waypoint_id_check_handle = ui.CheckBox(
                         width=self.extension_utils.MINIMAL_WIDTH
                     )
-                    self.check_waypoind_id.model.set_value(True)
+                    self.waypoint_id_check_handle.model.set_value(True)
 
                 # Add buttons
                 with ui.VStack(height=self.extension_utils.MINIMAL_HEIGHT):
@@ -316,13 +335,96 @@ class FlightPlanGenerator(omni.ext.IExt):
                         height=self.extension_utils.MINIMAL_HEIGHT, 
                         spacing=self.extension_utils.SPACING_S
                     )
-                    with self.waypoint_list:
-                        ui.Spacer(height=self.extension_utils.MINIMAL_HEIGHT)
-                        self.empty_waypoint_list_label = ui.Label(
-                            "Waypoint list is empty", 
-                            style=self.extension_utils.Label_A, 
-                            alignment=ui.Alignment.CENTER_TOP
-                        )
+                    self.reset_waypoints()
+
+    def import_flightplan(self):
+        """Import flight plan from a CSV file selected via file dialog"""
+    
+        def on_import_click(filename, dirname, selections):
+            try:
+                # Reset waypoints before importing
+                self.reset_waypoints()
+
+                # Load data from CSV file
+                path = f"{dirname}/{filename}"
+                data = np.loadtxt(path, delimiter=',', dtype=str)
+                
+                for row in data:
+                    label = row[0]
+                    time = float(row[1])
+                    pos = np.array(row[2:5], dtype=float)
+                    vel = np.array(row[5:8], dtype=float)
+                    heading = np.array(row[8:10], dtype=float)
+
+                    # Add waypoint to the flight plan
+                    self.flightplan.set_waypoint(
+                        label=label, 
+                        time=time, 
+                        pos=pos, 
+                        vel=vel, 
+                        heading=heading
+                    )
+                
+                # Update UI to show imported waypoints
+                self.print_waypoints()
+                
+            except Exception as e:
+                print(f"[FP GENERATOR] Error importing flight plan: {str(e)}")
+        
+        # Create and show file import dialog
+        import_dialog = omni.kit.window.file_importer.get_file_importer()
+        import_dialog.show_window(
+            title="Import Flight Plan",
+            import_button_label="Import",
+            import_handler=on_import_click,
+            file_extension_types=[(".csv", "CSV Files")],
+            file_filter_handler=None
+        )
+
+    def export_flightplan(self):
+        """Export flight plan to a CSV file with name selected via file dialog"""
+        
+        if not self.flightplan.waypoints:
+            print("[FP GENERATOR] No waypoints to export")
+            return
+        
+        def on_export_click(filename, dirname, selections):
+            if filename and dirname:
+                # Ensure .csv extension
+                if not filename.endswith('.csv'):
+                    filename += '.csv'
+                
+                # Construct full path
+                full_path = f"{dirname}/{filename}"
+                
+                try:
+                    data = []
+
+                    for wp in self.flightplan.waypoints:
+                        label = wp.label
+                        time = wp.t
+                        pos = wp.pos
+                        vel = wp.vel
+                        heading = wp.heading if wp.heading is not None else [0, 0]
+                        
+                        data.append([label, time, *pos, *vel, *heading])
+                    
+                    # Save to CSV file
+                    np.savetxt(full_path, np.array(data), delimiter=",", fmt="%s")
+                    print(f"[FP GENERATOR] Successfully exported flight plan to: {full_path}")
+                    
+                except Exception as e:
+                    print(f"[FP GENERATOR] Error exporting flight plan: {e}")
+        
+        # Create and show file export dialog
+        export_dialog = omni.kit.window.file_importer.get_file_importer()
+        export_dialog.show_window(
+            title="Export Flight Plan",
+            import_button_label="Export",
+            import_handler=on_export_click,
+            file_extension_types=[(".csv", "CSV Files")],
+            file_filter_handler=None
+        )
 
     def send_flightplan(self):
         selected_uav = self.UAV_selector_dropdown.get_selection()
@@ -335,7 +437,7 @@ class FlightPlanGenerator(omni.ext.IExt):
 
     def reset_waypoints(self):
         self.waypoint_list.clear()
-        self.flightplan.waypoints = []
+        self.flightplan.waypoints.clear()
         with self.waypoint_list:
             ui.Spacer(height=self.extension_utils.MINIMAL_HEIGHT)
             self.empty_waypoint_list_label = ui.Label(
@@ -344,51 +446,43 @@ class FlightPlanGenerator(omni.ext.IExt):
                 alignment=ui.Alignment.CENTER_TOP
             )
                     
-    def update_variables(self):
+    def get_field_values(self):
         # Time
         if self.time_check_handle.model.get_value_as_bool():
-            self.time = self.time_handle.model.as_int
+            time = self.time_handle.model.get_value_as_int()
         else:
-            self.time = None
+            time = None
         
         # Position
         if self.position_check_handle.model.get_value_as_bool():
-            self.position = [0,0,0]
+            pos = [0,0,0]
             for i in range(3):
-                self.position[i] = self.position_handles[i].model.as_float
+                pos[i] = self.position_handles[i].model.get_value_as_float()
         else:
-            self.position = None
+            pos = None
 
         # Velocity
         if self.velocity_check_handle.model.get_value_as_bool():
-            self.velocity = [0,0,0]
+            vel = [0,0,0]
             for i in range(3):
-                self.velocity[i] = self.velocity_handles[i].model.as_float
+                vel[i] = self.velocity_handles[i].model.get_value_as_float()
         else:
-            self.velocity = None
+            vel = None
 
         # Fly over
-        self.fly_over = self.fly_over_check_handle.model.get_value_as_bool()
-                
-    def add_waypoint(self):
-        # Remove waypoints from UI
+        fly_over = self.fly_over_check_handle.model.get_value_as_bool()
+
+        # Waypoint ID
+        if self.waypoint_id_check_handle.model.get_value_as_bool():
+            label = self.waypoint_id.model.get_value_as_string()
+        else:
+            label = ""
+
+        return time, pos, vel, fly_over, label
+
+    def print_waypoints(self):
         self.waypoint_list.clear()
         
-        # Update variables from UI fields
-        self.update_variables()
-
-        # Create the new waypoint variables
-        label = self.waypoind_id.model.get_value_as_string()
-        time = self.time
-        pos = self.position
-        vel = self.velocity
-        fly_over = self.fly_over
-
-        # Add waypoint to the list
-        self.flightplan.set_waypoint(label=label, time=time, pos=pos, vel=vel)
-        self.flightplan.connect_waypoints()
-        
-        # Add waypoint to the UI
         with self.waypoint_list:                        
             for waypoint in self.flightplan.waypoints:
                 with ui.HStack():
@@ -453,6 +547,16 @@ class FlightPlanGenerator(omni.ext.IExt):
                         )
 
                 ui.Separator()
+
+    def add_waypoint(self):
+        # Update variables from UI fields
+        time, pos, vel, fly_over, label = self.get_field_values()
+
+        # Add waypoint to the list
+        self.flightplan.set_waypoint(label=label, time=time, pos=pos, vel=vel)
+        self.flightplan.connect_waypoints()
+        
+        self.print_waypoints()
 
     def inform_operator(self, type_message, uav_id, fp):
         """Inform the operator about the flightplan to be sent to the UAV"""
