@@ -336,7 +336,11 @@ class Operator(omni.ext.IExt):
                 self.send_command(uav_id, cmd)
 
             case AerialOperation.FLIGHTPLAN:
-                fp = request["fp"]
+                fp = pickle.loads(base64.b64decode(request["fp"]))
+                self.uavs[uav_id]["request"] = {
+                    "client_id": "FP Generator",
+                    "request_id": "flightplan"
+                }
                 self.send_flightplan(uav_id, fp)
 
     def handle_uspace_msg(self, payload):
@@ -385,12 +389,13 @@ class Operator(omni.ext.IExt):
         request_id = self.uavs[uav_id]["request"]["request_id"]
 
         # Inform the client that the request was completed
-        self.inform_client(
-            TypeMessage.USPACE,
-            client_id, 
-            request_id, 
-            RequestState.COMPLETED
-        )
+        if client_id != "FP Generator":
+            self.inform_client(
+                TypeMessage.USPACE,
+                client_id, 
+                request_id, 
+                RequestState.COMPLETED
+            )
 
         # Add the flightplan and tracked info to the uav plots
         if uav_id not in self.uav_plots:

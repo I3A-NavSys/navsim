@@ -1,4 +1,5 @@
-import torch
+import pickle
+import base64
 
 
 import omni.kit.app
@@ -8,14 +9,20 @@ import carb.events
 from isaacsim.gui.components.element_wrappers import *
 import omni.timeline
 import omni.physx
-from omni.isaac.core.prims import RigidPrimView
 
 
 from uspace.flight_plan.flight_plan import FlightPlan
 from navsim_utils.extensions_utils import ExtensionUtils
-# from fleet.uav_ia_control import UAVcontrol
-from fleet.uav_matrix_control import UAVcontrol
 
+
+class TypeMessage:
+    EXTENSSION_ON_OFF = "extension_on_off"
+    CMD_FP_REQUEST = "cmd_fp_request"
+    USPACE = "uspace"
+
+class AerialOperation:
+    COMMAND = "command"
+    FLIGHTPLAN = "flightplan"
 
 class FlightPlanGenerator(omni.ext.IExt):
     def on_startup(self, ext_id):
@@ -25,79 +32,21 @@ class FlightPlanGenerator(omni.ext.IExt):
     def on_shutdown(self):
         self.on_physics_step_sub = None
         self.on_stop_sub = None
-        self.on_play_sub = None
 
     def on_physics_step(self, step_size):
-        if self.is_sim_played:
-            self.current_time += step_size
-            self.uav_control.update(self.current_time, self.uavs, step_size)
+        self.current_time += step_size
 
     def on_timeline_stop(self, event):
         self.current_time = 0
-        self.is_sim_played = False
-        self.rigid_prim_view = None
-        self.uav_control = None
-
-    def on_timeline_play(self, event):
-        if self.is_sim_played:
-            return
-        
-        self.uavs = {}
-        self.torch_device = "cuda:0" if torch.cuda.is_available() else "cpu"
-
-        try:
-            self.rigid_prim_view = RigidPrimView(["/World/*/UAV_*",])
-            self.rigid_prim_view.initialize()
-        except Exception as e:
-            carb.log_warn(f"[FP GENERATOR ext] Error initializing RigidPrimView: {e}")
-            return
-
-        self.init_uavs()
-        self.uav_control = UAVcontrol(
-            self.rigid_prim_view, 
-            self.torch_device, 
-            self.uavs, 
-            carb.events.type_from_string(""), 
-            self.event_stream
-        )
-        self.uav_control.torch_device = "FP GENERATOR"
-        
-        self.is_sim_played = True
-
-    def init_uavs(self):
-        pos, _ = self.rigid_prim_view.get_world_poses(
-            indices=range(self.rigid_prim_view.count)
-        )
-
-        for i in range(self.rigid_prim_view.count):
-            uav_id = f"UAV_{i}"
-            uav_state = "idle"
-            uav_time = 0
-            uav_pos = pos[i]
-            uav_flightplan = None
-
-            self.uavs[uav_id] = {
-                "id": uav_id,
-                "state": uav_state,
-                "time": uav_time,
-                "pos": uav_pos,
-                "flightplan": uav_flightplan,
-                "request": None
-            }
 
     def init_vars(self):
-        # Control instances
-        self.rigid_prim_view = None
-        self.uav_control = None
-        self.is_sim_played = False
+        self.extension_utils = ExtensionUtils()
         self.current_time = 0
 
         # Message bus event stream
         app_interface = omni.kit.app.get_app_interface()
         self.event_stream = app_interface.get_message_bus_event_stream()
-
-        # Initialize utils instance
-        self.extension_utils = ExtensionUtils()
+        self.operator_event = carb.events.type_from_string("NavSim.Operator")
         
         # Field variables
         self.position = [0, 0, 0]
@@ -139,10 +88,6 @@ class FlightPlanGenerator(omni.ext.IExt):
         self.on_stop_sub = timeline_stream.create_subscription_to_pop_by_type(
             int(omni.timeline.TimelineEventType.STOP),  
             self.on_timeline_stop
-        )
-        self.on_play_sub = timeline_stream.create_subscription_to_pop_by_type(
-            int(omni.timeline.TimelineEventType.PLAY),
-            self.on_timeline_play
         )
         
     def build_ui(self):
@@ -380,15 +325,19 @@ class FlightPlanGenerator(omni.ext.IExt):
                         )
 
     def send_flightplan(self):
-        uav_id = self.UAV_selector_dropdown.get_selection()
-        
+        selected_uav = self.UAV_selector_dropdown.get_selection()
+        if selected_uav is None:
+            raise Exception("[FP GENERATOR ext] No drone selected")
+
         self.flightplan.waypoints.clear()
         self.flightplan.set_waypoint(time=10, pos=[-150, -200, 1.75], vel=[0, 0, 0], heading=[1, 0])
         self.flightplan.set_waypoint(time=15, pos=[-150, -200, 6], vel=[0, 0, 0])
         self.flightplan.set_waypoint(time=20, pos=[-140, -200, 6], vel=[0, 0, 0])
         self.flightplan.connect_waypoints()
 
-        self.uavs[uav_id]["flightplan"] = self.flightplan
+        serialized_fp = base64.b64encode(pickle.dumps(self.flightplan)).decode('utf-8')
+
+        self.inform_operator(TypeMessage.CMD_FP_REQUEST, selected_uav, serialized_fp)
 
     def reset_waypoints(self):
         self.waypoint_list.clear()
@@ -510,3 +459,20 @@ class FlightPlanGenerator(omni.ext.IExt):
                         )
 
                 ui.Separator()
+
+    def inform_operator(self, type_message, uav_id, fp):
+        """Inform the operator about the flightplan to be sent to the UAV"""
+        
+        payload = {"type_message": type_message}
+
+        match type_message:
+            case TypeMessage.CMD_FP_REQUEST:
+                request = {
+                    "uav_id": uav_id,
+                    "fp": fp
+                }
+
+                payload["operation"] = AerialOperation.FLIGHTPLAN
+                payload["request"] = request
+
+        self.event_stream.push(self.operator_event, payload=payload)
