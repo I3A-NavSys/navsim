@@ -98,6 +98,8 @@ class Operator(omni.ext.IExt):
         self.rigid_prim_view = RigidPrimView(["/World/UAVs/UAV_*",])
         self.rigid_prim_view.initialize()
         self.uavs = {}
+        self.uav_plots = {}
+        self.ui_uav_plots_frame.clear()
         self.torch_device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
         self.init_uavs()
@@ -113,8 +115,6 @@ class Operator(omni.ext.IExt):
         # Reset all variables
         self.gp.clear_grid()
         self.clients_requests = {}
-        self.uav_plots = {}
-        self.ui_uav_plots_frame.clear()
         self.vertiports_from_id, self.vertiports_from_pos = self.find_vertiports()
         self.print_vertiports()
         self.ui_requests_container.clear()
