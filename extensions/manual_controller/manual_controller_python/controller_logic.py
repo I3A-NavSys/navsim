@@ -1,26 +1,28 @@
 import numpy as np
 import asyncio
-import sys
-import os
+import pickle
+import base64
 
 
-import carb.events
 import omni.kit.app
 from omni.isaac.core.utils.stage import get_current_stage
 import omni.kit.viewport.utility
 from pxr import UsdGeom, Gf, PhysxSchema
 
 
-file_path = os.path.dirname(__file__)
-project_root_path = os.path.abspath(os.path.join(file_path, '../../..'))
-if project_root_path not in sys.path:
-    sys.path.append(project_root_path)
-    
-
 from uspace.flight_plan.command import Command
 from .joystick_input import JoystickInput
 from .keyboard_input import KeyboardInput
 
+
+class TypeMessage:
+    EXTENSSION_ON_OFF = "extension_on_off"
+    CMD_FP_REQUEST = "cmd_fp_request"
+    USPACE = "uspace"
+
+class AerialOperation:
+    COMMAND = "command"
+    FLIGHTPLAN = "flightplan"
 
 class ControllerLogic:
     def __init__(self):
@@ -43,7 +45,7 @@ class ControllerLogic:
         # Get the bus event stream
         self.msg_bus_event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
 
-    def start(self, prim, name, uav_control):
+    def start(self, prim, name, operator_event):
         if self._stop:
             self._stop = False
 
@@ -53,7 +55,7 @@ class ControllerLogic:
             # Selected drone
             self.prim = prim
             self.prim_name = name
-            self.uav_control = uav_control
+            self.operator_event = operator_event
 
             # Build follow velocity camera
             self.camera = self.stage.GetPrimAtPath(self.camera_path)
@@ -130,8 +132,8 @@ class ControllerLogic:
             )
 
             uav_i = int(self.prim_name.removeprefix("UAV_"))
-            self.uav_control.commands[self.prim_name] = command
-            self.uav_control.cmd_exp_time[uav_i] = self.current_time + command.duration
+            serialized_cmd = base64.b64encode(pickle.dumps(command)).decode('utf-8')
+            self.inform_operator(TypeMessage.CMD_FP_REQUEST, uav_i, serialized_cmd)
 
             await asyncio.sleep(0.1)
 
@@ -261,3 +263,20 @@ class ControllerLogic:
             subject_rel.SetTargets([new_target_path])
             self.camera.Unload()
             self.camera.Load()
+
+    def inform_operator(self, type_message, uav_id, cmd):
+        """Inform the operator about the command to be sent to the UAV"""
+        
+        payload = {"type_message": type_message}
+
+        match type_message:
+            case TypeMessage.CMD_FP_REQUEST:
+                request = {
+                    "uav_id": uav_id,
+                    "cmd": cmd
+                }
+
+                payload["operation"] = AerialOperation.COMMAND
+                payload["request"] = request
+
+        self.event_stream.push(self.operator_event, payload=payload)

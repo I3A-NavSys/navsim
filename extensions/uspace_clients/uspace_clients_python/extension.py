@@ -12,10 +12,7 @@ import base64
 
 from navsim_utils.sim_utils import TimeManager, GeospatialManager
 from navsim_utils.extensions_utils import ExtensionUtils
-from navsim_utils.paths_utils import get_navsim_root_path
 
-
-project_root_path = get_navsim_root_path()
 
 class RequestState:
     CANCELLED = "Cancelled"

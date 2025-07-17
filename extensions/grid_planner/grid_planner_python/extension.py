@@ -1,31 +1,20 @@
 import omni.ext
-import omni.kit.window.stage
 from isaacsim.gui.components.ui_utils import ui
-from isaacsim.gui.components.element_wrappers import DropDown
 import carb.events
 import omni.timeline
 import omni.physx
-import omni.usd
-from pxr import Gf
-from omni.isaac.core.utils.stage import add_reference_to_stage
-import omni.kit.window.file.save_stage_ui
-import omni.kit.window.filepicker
 
 import pickle
 import base64
-import sys, os
-import asyncio
 
+from navsim_utils.paths_utils import get_navsim_root_path
 from navsim_utils.extensions_utils import ExtensionUtils
 from uspace.grid_planner.grid_planner import GridPlanner
 from uspace.flight_plan.flight_plan import FlightPlan
 from extensions.grid_planner.grid_planner_python.grid_scene_builder import build_scene
 
-file_path = os.path.dirname(__file__)
 
-project_root_path = os.path.abspath(os.path.join(file_path, '../../..'))
-if project_root_path not in sys.path:
-    sys.path.append(project_root_path)
+project_root_path = get_navsim_root_path()
 
 class GridPlannerExt(omni.ext.IExt):
     # ext_id is current extension id. It can be used with extension manager to query additional information, like where

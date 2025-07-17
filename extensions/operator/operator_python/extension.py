@@ -6,6 +6,7 @@ import omni.timeline
 import omni.physx
 from omni.isaac.core.prims import RigidPrimView
 
+
 import pickle
 import base64
 import numpy as np
@@ -13,13 +14,14 @@ import math
 import matplotlib.pyplot as plt
 import torch
 
+
 from navsim_utils.sim_utils import TimeManager, GeospatialManager
 from navsim_utils.extensions_utils import ExtensionUtils
 from navsim_utils.paths_utils import get_navsim_root_path
 from uspace.grid_planner.grid_planner import GridPlanner
 from uspace.flight_plan.flight_plan import FlightPlan
-from fleet.uav_ia_control import UAVcontrol
-# from fleet.uav_matrix_control import UAVcontrol
+# from fleet.uav_ia_control import UAVcontrol
+from fleet.uav_matrix_control import UAVcontrol
 
 
 project_root_path = get_navsim_root_path()
@@ -39,6 +41,10 @@ class TypeMessage:
     EXTENSSION_ON_OFF = "extension_on_off"
     CMD_FP_REQUEST = "cmd_fp_request"
     USPACE = "uspace"
+
+class AerialOperation:
+    COMMAND = "command"
+    FLIGHTPLAN = "flightplan"
 
 class Operator(omni.ext.IExt):
     def on_startup(self, ext_id):
@@ -64,14 +70,13 @@ class Operator(omni.ext.IExt):
         self.time_manager.stop()
         
     def on_timeline_play(self, event):
-        is_resume = self.is_extension_on and self.is_sim_played
-        is_play = self.is_extension_on and not self.is_sim_played
-
-        if is_resume:
+        # Resume simulation from pause
+        if self.is_sim_played:
             self.time_manager.resume()
             return
 
-        if is_play:
+        # If simulation is not played, start it
+        if not self.is_sim_played:
             # Start the time manager
             self.time_manager.start()
 
@@ -312,7 +317,19 @@ class Operator(omni.ext.IExt):
         self.switch_on_off(payload["state"], is_from_event=True)
 
     def handle_cmd_fp_request_msg(self, payload):
-        pass
+        operation = payload["operation"]
+        request = payload["request"]
+        uav_id = request["uav_id"]
+
+        match operation:
+            case AerialOperation.COMMAND:
+                cmd = pickle.loads(base64.b64decode(request["cmd"]))
+                self.send_command(uav_id, cmd)
+
+            case AerialOperation.FLIGHTPLAN:
+                fp = request["fp"]
+                self.send_flightplan(uav_id, fp)
+
 
     def handle_uspace_msg(self, payload):
         match payload["sender"]:
@@ -557,6 +574,10 @@ class Operator(omni.ext.IExt):
         )
 
         fp.connect_waypoints()
+
+    def send_command(self, uav_id, cmd):
+        self.uav_control.commands[uav_id] = cmd
+        self.uav_control.cmd_exp_time[uav_id] = self.current_time + cmd.duration
 
     def send_flightplan(self, uav_id, fp):
         self.uavs[uav_id]["flightplan"] = fp

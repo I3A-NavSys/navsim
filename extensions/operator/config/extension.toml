@@ -1,6 +1,6 @@
 [core]
 reloadable = true
-order = 10
+order = 1
 
 [package]
 # Semantic Versioning is used: https://semver.org/

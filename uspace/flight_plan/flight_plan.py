@@ -1,13 +1,29 @@
-# Standard library imports
 import copy
 from typing import List, Optional
-
-# Related third party imports
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backend_tools import ToolToggleBase
 from matplotlib.collections import PathCollection
 from scipy.spatial.transform import Rotation
+
+try:
+    import matplotlib
+except:
+    raise Exception("ERROR: 'matplotlib' package is not installed. Copy and paste in the Script Editor the " + 
+                    "folllowing code\n\n" + 
+                    "# -- START CODE ------------------------------\n" +
+                    "import omni.kit.pipapi\n" +
+                    "omni.kit.pipapi.install(\"matplotlib\")\n" +
+                    "# -- END CODE --------------------------------\n")
+try:
+    matplotlib.use("Qt5Agg")
+except:
+    raise Exception("ERROR: 'PyQt5' package is not installed. Copy and paste in the Script Editor the " +
+                    "folllowing code\n\n" + 
+                    "# -- START CODE ------------------------------\n" +
+                    "import omni.kit.pipapi\n" +
+                    "omni.kit.pipapi.install(\"PyQt5\")\n" +
+                    "# -- END CODE --------------------------------\n")
 try:
     import mplcursors
 except:
@@ -18,7 +34,7 @@ except:
                     "omni.kit.pipapi.install(\"mplcursors\")\n" +
                     "# -- END CODE --------------------------------\n")
 
-# Local application/library specific imports
+
 from uspace.flight_plan.waypoint import Waypoint
 from uspace.flight_plan.command import Command
 

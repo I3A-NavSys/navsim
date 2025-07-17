@@ -1,54 +1,21 @@
-try:
-    import matplotlib
-except:
-    raise Exception("ERROR: 'matplotlib' package is not installed. Copy and paste in the Script Editor the " + 
-                    "folllowing code\n\n" + 
-                    "# -- START CODE ------------------------------\n" +
-                    "import omni.kit.pipapi\n" +
-                    "omni.kit.pipapi.install(\"matplotlib\")\n" +
-                    "# -- END CODE --------------------------------\n")
-
-try:
-    matplotlib.use("Qt5Agg")
-except:
-    raise Exception("ERROR: 'PyQt5' package is not installed. Copy and paste in the Script Editor the " +
-                    "folllowing code\n\n" + 
-                    "# -- START CODE ------------------------------\n" +
-                    "import omni.kit.pipapi\n" +
-                    "omni.kit.pipapi.install(\"PyQt5\")\n" +
-                    "# -- END CODE --------------------------------\n")
-
-import matplotlib.pyplot as plt
-import sys
-import os
 import asyncio
-import torch
 
 
+import omni.kit.app
 import omni.ext
 from isaacsim.gui.components.ui_utils import ui
-import omni.kit.app
-import carb.events
 from omni.isaac.ui.element_wrappers import DropDown
 from omni.isaac.core.utils.stage import get_current_stage
-from omni.isaac.core.prims import RigidPrimView
+import carb.events
+import omni.timeline
+import omni.physx
 
 
 from .controller_logic import ControllerLogic
 from navsim_utils.extensions_utils import ExtensionUtils
-# from fleet.uav_ia_control import UAVcontrol
-# from fleet.uav_matrix_control import UAVcontrol
-from fleet.uav_matrix_control_quadcopter import UAVcontrol
-
-
-file_path = os.path.dirname(__file__)
-project_root_path = os.path.abspath(os.path.join(file_path, '../../..'))
-if project_root_path not in sys.path:
-    sys.path.append(project_root_path)
 
 
 class ManualController(omni.ext.IExt):
-
     def on_startup(self, ext_id):
         self.init_vars()
         self.build_ui()
@@ -59,88 +26,35 @@ class ManualController(omni.ext.IExt):
 
         self.on_physics_step_sub = None
         self.on_stop_sub = None
-        self.on_play_sub = None
+        self.plots_update_sub = None
 
     def on_physics_step(self, step_size:int):
-        if self.is_sim_played:
-            self.current_time += step_size
-            self.uav_control.update(self.current_time, self.uavs, step_size)
-            self.manual_control.current_time = self.current_time
+        self.current_time += step_size
+        self.manual_control.current_time = self.current_time
 
     def on_stop(self, event):
         self.current_time = 0
-        self.is_sim_played = False
-        self.rigid_prim_view = None
-        self.uav_control = None
-
-    def on_play(self, event):
-        if not self.is_sim_played:
-            self.uavs = {}
-            self.torch_device = "cuda:0" if torch.cuda.is_available() else "cpu"
-
-            try:
-                self.rigid_prim_view = RigidPrimView(["/World/*/UAV_*",])
-                self.rigid_prim_view.initialize()
-            except Exception as e:
-                carb.log_warn(f"[REMOTE COMMAND ext] Error initializing RigidPrimView: {e}")
-                return
-
-            self.init_uavs()
-            self.uav_control = UAVcontrol(
-                self.rigid_prim_view, 
-                self.torch_device, 
-                self.uavs, 
-                "", 
-                self.event_stream)
-            
-            self.is_sim_played = True
-
-    def init_uavs(self):
-        pos, _ = self.rigid_prim_view.get_world_poses(indices=range(self.rigid_prim_view.count))
-
-        for i in range(self.rigid_prim_view.count):
-            uav_id = f"UAV_{i}"
-            uav_state = "idle"
-            uav_time = 0
-            uav_pos = pos[i]
-            uav_flightplan = None
-
-            self.uavs[uav_id] = {
-                "id": uav_id,
-                "state": uav_state,
-                "time": uav_time,
-                "pos": uav_pos,
-                "flightplan": uav_flightplan,
-                "request": None
-            }
 
     def init_vars(self):
-        self.rigid_prim_view = None
-        self.uav_control = None
+        self.ext_utils = ExtensionUtils()
+        self.current_time = 0
+        self.stop_update_plot = True
+        self.manual_control = ControllerLogic()
 
         self.physx_interface = omni.physx.get_physx_interface()
-        self.on_physics_step_sub = self.physx_interface.subscribe_physics_on_step_events(self.on_physics_step, True, 0)
+        self.on_physics_step_sub = self.physx_interface.subscribe_physics_step_events(
+            self.on_physics_step
+        )
 
         self.timeline = omni.timeline.get_timeline_interface()
-        self.on_stop_sub = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
-            int(omni.timeline.TimelineEventType.STOP), self.on_stop
-        )
-        self.on_play_sub = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
-            int(omni.timeline.TimelineEventType.PLAY), self.on_play
+        timeline_stream = self.timeline.get_timeline_event_stream()
+        self.on_stop_sub = timeline_stream.create_subscription_to_pop_by_type(
+            int(omni.timeline.TimelineEventType.STOP), 
+            self.on_stop
         )
 
         self.event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
-
-        self.is_sim_played = False
-        self.current_time = 0
-        self.uavs = {}
-
-        # Build ExtensionUtils instance
-        self.ext_utils = ExtensionUtils()
-
-        # UI window
-        # The ui.RasterPolicy.NEVER is to always update plots line drawing
-        self.window = ui.Window("MC: NavSim - Manual Controller", width=600, height=600, raster_policy=ui.RasterPolicy.NEVER)
+        self.operator_event = carb.events.type_from_string("NavSim.Operator")
 
         # Plot data
         self.x_lv_plot_data = [0.0, 0.0]
@@ -151,61 +65,85 @@ class ManualController(omni.ext.IExt):
         # Plots appereance
         self.plots_appearance = 1
         self.build_plots = False
-        self.sub = omni.kit.app.get_app().get_update_event_stream().create_subscription_to_pop(
+        update_event_stream = omni.kit.app.get_app_interface().get_update_event_stream()
+        self.plots_update_sub = update_event_stream.create_subscription_to_pop(
             self.build_plots_container, 
             name="Plots_building"
         )
 
-        # Control variable
-        self.stop_update_plot = True
-
-        # Manual control
-        self.manual_control = ControllerLogic()
-
     def build_ui(self):
-        with self.window.frame:
+        # The ui.RasterPolicy.NEVER is to always update plots line drawing
+        self.window = ui.Window(
+            "MC: NavSim - Manual Controller", 
+            width=600, 
+            height=600, 
+            raster_policy=ui.RasterPolicy.NEVER
+        )
 
+        with self.window.frame:
             with ui.ScrollingFrame():
                 with ui.VStack(spacing=10, height=0):
                     ui.Spacer(height=10)
 
                     # UAV selector dropdown
                     self.UAV_selector_dropdown: DropDown = self.ext_utils.build_uav_selector()
-                    self.UAV_selector_dropdown.set_on_selection_fn(self.change_uav_subject)
+                    self.UAV_selector_dropdown.set_on_selection_fn(
+                        self.change_uav_subject
+                    )
 
                     ui.Spacer(height=10)
 
                     # Controls power
-                    self.controls_power = ui.CollapsableFrame(title="Control", collapsed=False)
+                    self.controls_power = ui.CollapsableFrame(
+                        title="Control", 
+                        collapsed=False
+                    )
 
                     with self.controls_power:
                         with ui.VStack(style={"margin": 1}, height=0, spacing=5):
                             # Linear velocity Max
                             with ui.HStack(alignment=ui.Alignment.RIGHT):
                                 ui.Label("Linear velocity Max")
-                                self.linear_vel_power = ui.FloatSlider(min=0.5, max=10, step=0.5, precision=1, 
-                                                                       style={"background_color": ui.color(0.13), 
-                                                                              "secondary_color": ui.color(0.3), 
-                                                                              "draw_mode": ui.SliderDrawMode.FILLED})
+                                self.linear_vel_power = ui.FloatSlider(
+                                    min=0.5, 
+                                    max=10, 
+                                    step=0.5, 
+                                    precision=1, 
+                                    style={
+                                        "background_color": ui.color(0.13), 
+                                        "secondary_color": ui.color(0.3), 
+                                        "draw_mode": ui.SliderDrawMode.FILLED
+                                    }
+                                )
                                 self.linear_vel_power.model.set_value(1)
-                                self.linear_vel_power.model.add_value_changed_fn(self.on_linear_vel_power_change)
+                                self.linear_vel_power.model.add_value_changed_fn(
+                                    self.on_linear_vel_power_change
+                                )
 
                             # Angular velocity Max
                             with ui.HStack(alignment=ui.Alignment.RIGHT):
                                 ui.Label("Angular velocity Max")
-                                self.angular_vel_power = ui.FloatSlider(min=0.5, max=6, step=0.5, precision=1, 
-                                                                        style={"background_color": ui.color(0.13), 
-                                                                               "secondary_color": ui.color(0.3), 
-                                                                               "draw_mode": ui.SliderDrawMode.FILLED})
+                                self.angular_vel_power = ui.FloatSlider(
+                                    min=0.5, 
+                                    max=6, 
+                                    step=0.5, 
+                                    precision=1, 
+                                    style={
+                                        "background_color": ui.color(0.13), 
+                                        "secondary_color": ui.color(0.3), 
+                                        "draw_mode": ui.SliderDrawMode.FILLED
+                                    }
+                                )
                                 self.angular_vel_power.model.set_value(1)
                                 self.angular_vel_power.model.add_value_changed_fn(self.on_angular_vel_power_change)
 
                             # Invert camera movement direction
                             with ui.HStack(alignment=ui.Alignment.RIGHT):
                                 ui.Label("Invert camera movement control")
-                                self.invert_camera_movement_checkbox = ui.CheckBox(width=0)
-                                self.invert_camera_movement_checkbox.model.add_value_changed_fn(
-                                                                                self.on_invert_camera_mov_change)
+                                self.inv_cam_mov_checkbox = ui.CheckBox(width=0)
+                                self.inv_cam_mov_checkbox.model.add_value_changed_fn(
+                                    self.on_invert_camera_mov_change
+                                )
 
                             # On/Off init rotors
                             with ui.HStack(alignment=ui.Alignment.RIGHT):
@@ -215,17 +153,22 @@ class ManualController(omni.ext.IExt):
                             ui.Spacer(height=15)
 
                             # Start/Stop manual control
-                            self.start_stop_tool_button = ui.ToolButton(text="START", height=30, 
-                                                                        clicked_fn=self.start_stop_update, 
-                                                                        style={"background_color": ui.color("#6f9523")})
+                            self.start_stop_tool_button = ui.ToolButton(
+                                text="START", 
+                                height=30, 
+                                clicked_fn=self.start_stop_update, 
+                                style={"background_color": ui.color("#6f9523")}
+                            )
 
 
                     # Controls ploting
-                    self.controls_ploting = ui.CollapsableFrame(title="Visualization", collapsed=False)
+                    self.controls_ploting = ui.CollapsableFrame(
+                        title="Visualization", 
+                        collapsed=False
+                    )
 
                     with self.controls_ploting:
                         self.plots_container = ui.VStack(height=0)
-
                         self.build_plot_container_content()
 
     def change_uav_subject(self, uav_name):
@@ -237,7 +180,7 @@ class ManualController(omni.ext.IExt):
         if not self.stop_update_plot:
             # Get needed info
             self.rotors_on = self.start_rotors_on_off_checkbox.model.get_value_as_bool()
-            self.invert_camera_movement = self.invert_camera_movement_checkbox.model.get_value_as_bool()
+            self.invert_camera_movement = self.inv_cam_mov_checkbox.model.get_value_as_bool()
             self.manual_control.current_on = self.rotors_on
             self.manual_control.invert_camera_movement = self.invert_camera_movement
 
@@ -291,14 +234,25 @@ class ManualController(omni.ext.IExt):
             # Plots appereance section
             with ui.HStack():
                 ui.Label("Plots appereance", alignment=ui.Alignment.LEFT)
-                self.plots_appearance_combo_box = ui.ComboBox(self.plots_appearance, "Rows", "Group", "Stack")
-                self.plots_appearance_combo_box.model.add_item_changed_fn(self.change_plot_distribution)
+                self.plots_appearance_combo_box = ui.ComboBox(
+                    self.plots_appearance, 
+                    "Rows", 
+                    "Group", 
+                    "Stack"
+                )
+                self.plots_appearance_combo_box.model.add_item_changed_fn(
+                    self.change_plot_distribution
+                )
 
             # Make UI beauty
             ui.Spacer(height=10)
 
-            self.reset_plots_button = ui.Button("RESET PLOTS", clicked_fn=self.reset_plot, height=35, 
-                                                style={"Button":{"background_color": ui.color("#952323")}})
+            self.reset_plots_button = ui.Button(
+                "RESET PLOTS", 
+                clicked_fn=self.reset_plot, 
+                height=35, 
+                style={"Button":{"background_color": ui.color("#952323")}}
+            )
 
             # Make UI beauty
             ui.Spacer(height=30)
@@ -334,10 +288,18 @@ class ManualController(omni.ext.IExt):
     async def update_plot(self):
         while not self.stop_update_plot:
             # Get external inputs
-            self.x_lv_plot_data.append(self.manual_control.inputs[0] * -self.linear_vel_limit)
-            self.y_lv_plot_data.append(self.manual_control.inputs[1] * -self.linear_vel_limit)
-            self.z_lv_plot_data.append(self.manual_control.inputs[2] * -self.linear_vel_limit)
-            self.z_av_plot_data.append(self.manual_control.inputs[3] * -self.angular_vel_limit)
+            self.x_lv_plot_data.append(
+                self.manual_control.inputs[0] * -self.linear_vel_limit
+            )
+            self.y_lv_plot_data.append(
+                self.manual_control.inputs[1] * -self.linear_vel_limit
+            )
+            self.z_lv_plot_data.append(
+                self.manual_control.inputs[2] * -self.linear_vel_limit
+            )
+            self.z_av_plot_data.append(
+                self.manual_control.inputs[3] * -self.angular_vel_limit
+            )
             
             # To have a continuous plot line
             if len(self.x_lv_plot_data) > 50:
@@ -379,7 +341,7 @@ class ManualController(omni.ext.IExt):
         self.linear_vel_limit = self.linear_vel_power.model.get_value_as_float()
         self.angular_vel_limit = self.angular_vel_power.model.get_value_as_float()
         self.rotors_on = self.start_rotors_on_off_checkbox.model.get_value_as_bool()
-        self.invert_camera_movement = self.invert_camera_movement_checkbox.model.get_value_as_bool()
+        self.invert_camera_movement = self.inv_cam_mov_checkbox.model.get_value_as_bool()
 
         self.manual_control.ang_vel_limit = self.angular_vel_limit
         self.manual_control.linear_vel_limit = self.linear_vel_limit
@@ -395,7 +357,7 @@ class ManualController(omni.ext.IExt):
         self.manual_control.start(
             uav, 
             self.UAV_selector_dropdown.get_selection(), 
-            self.uav_control
+            self.operator_event
         )
 
         # Start the coroutine that updates the plots
@@ -454,41 +416,81 @@ class ManualController(omni.ext.IExt):
         self.TRDW = False
 
         # X linear vel
-        self.x_linear_vel_label = ui.Label("X linear velocity (m/s)", alignment=ui.Alignment.CENTER)
+        self.x_linear_vel_label = ui.Label(
+            "X linear velocity (m/s)", 
+            alignment=ui.Alignment.CENTER
+        )
         ui.Spacer(height=5)
         self.x_max_lvl = ui.Label("1.0")
-        self.x_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.x_lv_plot_data, height=50, alignment=ui.Alignment.CENTER, 
-                                 style={"color": ui.color("#B13333")})
+        self.x_lv_plot = ui.Plot(
+            ui.Type.LINE, 
+            -1, 
+            1, 
+            *self.x_lv_plot_data, 
+            height=50, 
+            alignment=ui.Alignment.CENTER, 
+            style={"color": ui.color("#B13333")}
+        )
         self.x_min_lvl = ui.Label("-1.0")
 
         ui.Spacer(height=10)
 
         # Y linear vel
-        self.y_linear_vel_label = ui.Label("Y linear velocity (m/s)", alignment=ui.Alignment.CENTER)
+        self.y_linear_vel_label = ui.Label(
+            "Y linear velocity (m/s)", 
+            alignment=ui.Alignment.CENTER
+        )
         ui.Spacer(height=5)
         self.y_max_lvl = ui.Label("1.0")
-        self.y_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.y_lv_plot_data, height=50, alignment=ui.Alignment.CENTER, 
-                                 style={"color": ui.color("#54B133")})
+        self.y_lv_plot = ui.Plot(
+            ui.Type.LINE, 
+            -1, 
+            1, 
+            *self.y_lv_plot_data, 
+            height=50, 
+            alignment=ui.Alignment.CENTER, 
+            style={"color": ui.color("#54B133")}
+        )
         self.y_min_lvl = ui.Label("-1.0")
 
         ui.Spacer(height=10)
 
         # Z linear vel
-        self.z_linear_vel_label = ui.Label("Z linear velocity (m/s)", alignment=ui.Alignment.CENTER)
+        self.z_linear_vel_label = ui.Label(
+            "Z linear velocity (m/s)", 
+            alignment=ui.Alignment.CENTER
+        )
         ui.Spacer(height=5)
         self.z_max_lvl = ui.Label("1.0")
-        self.z_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_lv_plot_data, height=50, alignment=ui.Alignment.CENTER, 
-                                 style={"color": ui.color("#4C73E2")})
+        self.z_lv_plot = ui.Plot(
+            ui.Type.LINE, 
+            -1, 
+            1, 
+            *self.z_lv_plot_data, 
+            height=50, 
+            alignment=ui.Alignment.CENTER, 
+            style={"color": ui.color("#4C73E2")}
+        )
         self.z_min_lvl = ui.Label("-1.0")
             
         ui.Spacer(height=10)
 
         # Z angular vel
-        self.z_angular_vel_label = ui.Label("Z angular velocity (rad/s)", alignment=ui.Alignment.CENTER)
+        self.z_angular_vel_label = ui.Label(
+            "Z angular velocity (rad/s)", 
+            alignment=ui.Alignment.CENTER
+        )
         ui.Spacer(height=5)
         self.z_max_avl = ui.Label("1.0")
-        self.z_av_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_av_plot_data, height=50, alignment=ui.Alignment.CENTER, 
-                                 style={"color": ui.color.orange})
+        self.z_av_plot = ui.Plot(
+            ui.Type.LINE, 
+            -1, 
+            1, 
+            *self.z_av_plot_data, 
+            height=50, 
+            alignment=ui.Alignment.CENTER, 
+            style={"color": ui.color.orange}
+        )
         self.z_min_avl = ui.Label("-1.0")
 
     def second_way(self):
@@ -497,72 +499,165 @@ class ManualController(omni.ext.IExt):
         with ui.HStack(spacing=5):
             with ui.VStack():
                 # X linear vel
-                self.x_linear_vel_label = ui.Label("X linear velocity (m/s)", alignment=ui.Alignment.CENTER)
+                self.x_linear_vel_label = ui.Label(
+                    "X linear velocity (m/s)", 
+                    alignment=ui.Alignment.CENTER
+                )
                 ui.Spacer(height=5)
                 self.x_max_lvl = ui.Label("1.0")
-                self.x_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.x_lv_plot_data, height=50, 
-                                         alignment=ui.Alignment.CENTER, style={"color": ui.color("#B13333")})
+                self.x_lv_plot = ui.Plot(
+                    ui.Type.LINE, 
+                    -1, 
+                    1, 
+                    *self.x_lv_plot_data, height=50, 
+                    alignment=ui.Alignment.CENTER, 
+                    style={"color": ui.color("#B13333")}
+                )
                 self.x_min_lvl = ui.Label("-1.0")
 
             with ui.VStack():
                 # Y linear vel
-                self.y_linear_vel_label = ui.Label("Y linear velocity (m/s)", alignment=ui.Alignment.CENTER)
+                self.y_linear_vel_label = ui.Label(
+                    "Y linear velocity (m/s)", 
+                    alignment=ui.Alignment.CENTER
+                )
                 ui.Spacer(height=5)
                 self.y_max_lvl = ui.Label("1.0")
-                self.y_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.y_lv_plot_data, height=50, 
-                                         alignment=ui.Alignment.CENTER, style={"color": ui.color("#54B133")})
+                self.y_lv_plot = ui.Plot(
+                    ui.Type.LINE, 
+                    -1, 
+                    1, 
+                    *self.y_lv_plot_data, 
+                    height=50, 
+                    alignment=ui.Alignment.CENTER, 
+                    style={"color": ui.color("#54B133")}
+                )
                 self.y_min_lvl = ui.Label("-1.0")
 
             with ui.VStack():
                 # Z linear vel
-                self.z_linear_vel_label = ui.Label("Z linear velocity (m/s)", alignment=ui.Alignment.CENTER)
+                self.z_linear_vel_label = ui.Label(
+                    "Z linear velocity (m/s)", 
+                    alignment=ui.Alignment.CENTER
+                )
                 ui.Spacer(height=5)
                 self.z_max_lvl = ui.Label("1.0")
-                self.z_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_lv_plot_data, height=50, 
-                                         alignment=ui.Alignment.CENTER, style={"color": ui.color("#4C73E2")})
+                self.z_lv_plot = ui.Plot(
+                    ui.Type.LINE, 
+                    -1, 
+                    1, 
+                    *self.z_lv_plot_data, 
+                    height=50, 
+                    alignment=ui.Alignment.CENTER, 
+                    style={"color": ui.color("#4C73E2")}
+                )
                 self.z_min_lvl = ui.Label("-1.0")
             
         ui.Spacer(height=20)
 
         # Z angular vel
-        self.z_angular_vel_label = ui.Label("Z angular velocity (rad/s)", alignment=ui.Alignment.CENTER)
+        self.z_angular_vel_label = ui.Label(
+            "Z angular velocity (rad/s)", 
+            alignment=ui.Alignment.CENTER
+        )
         ui.Spacer(height=5)
         self.z_max_avl = ui.Label("1.0")
-        self.z_av_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_av_plot_data, height=50, 
-                                 alignment=ui.Alignment.CENTER, style={"color": ui.color.orange})
+        self.z_av_plot = ui.Plot(
+            ui.Type.LINE, 
+            -1, 
+            1, 
+            *self.z_av_plot_data, 
+            height=50, 
+            alignment=ui.Alignment.CENTER, 
+            style={"color": ui.color.orange}
+        )
         self.z_min_avl = ui.Label("-1.0")
 
     def third_way(self):
         self.TRDW = True
 
-        self.x_linear_vel_label = ui.Label("Linear velocity (m/s)", alignment=ui.Alignment.CENTER)
+        self.x_linear_vel_label = ui.Label(
+            "Linear velocity (m/s)", 
+            alignment=ui.Alignment.CENTER
+        )
         ui.Spacer(height=5)
         self.x_max_lvl = ui.Label("1.0")
         
         with ui.ZStack():
-            ui.Rectangle(style={"background_color": 0xFF555555, "border_color": 0xFF000000, "border_width": 1})
-            frame = ui.Frame(width=ui.Percent(100), height=50, opaque_for_mouse_events=True, style={"color": 0xFFFFFFFF})
+            ui.Rectangle(
+                style={
+                    "background_color": 0xFF555555, 
+                    "border_color": 0xFF000000, 
+                    "border_width": 1
+                }
+            )
+            frame = ui.Frame(
+                width=ui.Percent(100), 
+                height=50, 
+                opaque_for_mouse_events=True, 
+                style={"color": 0xFFFFFFFF}
+            )
 
             with frame:
                 with ui.ZStack():
                     # X linear vel
-                    self.x_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.x_lv_plot_data, width=ui.Percent(100), 
-                                             height=50, style={"color": ui.color("#B13333"), "background_color": 0x00000000})
+                    self.x_lv_plot = ui.Plot(
+                        ui.Type.LINE, 
+                        -1, 
+                        1, 
+                        *self.x_lv_plot_data, 
+                        width=ui.Percent(100), 
+                        height=50, 
+                        style={
+                            "color": ui.color("#B13333"), 
+                            "background_color": 0x00000000
+                        }
+                    )
 
                     # Y linear vel
-                    self.y_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.y_lv_plot_data, width=ui.Percent(100), 
-                                             height=50, style={"color": ui.color("#54B133"), "background_color": 0x00000000})
+                    self.y_lv_plot = ui.Plot(
+                        ui.Type.LINE, 
+                        -1, 
+                        1, 
+                        *self.y_lv_plot_data, 
+                        width=ui.Percent(100), 
+                        height=50, 
+                        style={
+                            "color": ui.color("#54B133"), 
+                            "background_color": 0x00000000
+                        }
+                    )
 
                     # Z linear vel
-                    self.z_lv_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_lv_plot_data, width=ui.Percent(100), 
-                                             height=50, style={"color": ui.color("#4C73E2"), "background_color": 0x00000000})
+                    self.z_lv_plot = ui.Plot(
+                        ui.Type.LINE, 
+                        -1, 
+                        1, 
+                        *self.z_lv_plot_data, 
+                        width=ui.Percent(100), 
+                        height=50, 
+                        style={
+                            "color": ui.color("#4C73E2"), 
+                            "background_color": 0x00000000
+                        }
+                    )
             
         self.x_min_lvl = ui.Label("-1.0")
 
         # Z angular vel
-        self.z_angular_vel_label = ui.Label("Z angular velocity (rad/s)", alignment=ui.Alignment.CENTER)
+        self.z_angular_vel_label = ui.Label(
+            "Z angular velocity (rad/s)", 
+            alignment=ui.Alignment.CENTER
+        )
         ui.Spacer(height=5)
         self.z_max_avl = ui.Label("1.0")
-        self.z_av_plot = ui.Plot(ui.Type.LINE, -1, 1, *self.z_av_plot_data, height=50, alignment=ui.Alignment.CENTER, 
-                                 style={"color": ui.color.orange})
+        self.z_av_plot = ui.Plot(
+            ui.Type.LINE, 
+            -1, 
+            1, 
+            *self.z_av_plot_data, 
+            height=50, 
+            alignment=ui.Alignment.CENTER, 
+            style={"color": ui.color.orange}
+        )
         self.z_min_avl = ui.Label("-1.0")
