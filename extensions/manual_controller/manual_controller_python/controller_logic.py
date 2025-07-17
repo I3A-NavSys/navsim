@@ -25,7 +25,7 @@ class AerialOperation:
     FLIGHTPLAN = "flightplan"
 
 class ControllerLogic:
-    def __init__(self):
+    def __init__(self, event_stream, operator_event):
         # Loop condition
         self._stop = True
 
@@ -42,10 +42,10 @@ class ControllerLogic:
         self.joystick = JoystickInput()
         self.keyboard = KeyboardInput()
 
-        # Get the bus event stream
-        self.msg_bus_event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
+        self.event_stream = event_stream
+        self.operator_event = operator_event
 
-    def start(self, prim, name, operator_event):
+    def start(self, prim, name):
         if self._stop:
             self._stop = False
 
@@ -55,7 +55,6 @@ class ControllerLogic:
             # Selected drone
             self.prim = prim
             self.prim_name = name
-            self.operator_event = operator_event
 
             # Build follow velocity camera
             self.camera = self.stage.GetPrimAtPath(self.camera_path)

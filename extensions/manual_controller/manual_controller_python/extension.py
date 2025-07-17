@@ -34,12 +34,18 @@ class ManualController(omni.ext.IExt):
 
     def on_stop(self, event):
         self.current_time = 0
+        self.start_stop_tool_button.model.set_value(False)
+        self.start_stop_update()
+        self.stop_update()
 
     def init_vars(self):
+        self.event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
+        self.operator_event = carb.events.type_from_string("NavSim.Operator")
+        
         self.ext_utils = ExtensionUtils()
         self.current_time = 0
         self.stop_update_plot = True
-        self.manual_control = ControllerLogic()
+        self.manual_control = ControllerLogic(self.event_stream, self.operator_event)
 
         self.physx_interface = omni.physx.get_physx_interface()
         self.on_physics_step_sub = self.physx_interface.subscribe_physics_step_events(
@@ -52,9 +58,6 @@ class ManualController(omni.ext.IExt):
             int(omni.timeline.TimelineEventType.STOP), 
             self.on_stop
         )
-
-        self.event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
-        self.operator_event = carb.events.type_from_string("NavSim.Operator")
 
         # Plot data
         self.x_lv_plot_data = [0.0, 0.0]
@@ -354,11 +357,7 @@ class ManualController(omni.ext.IExt):
         # Get the selected UAV
         uav = self.ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
 
-        self.manual_control.start(
-            uav, 
-            self.UAV_selector_dropdown.get_selection(), 
-            self.operator_event
-        )
+        self.manual_control.start(uav, self.UAV_selector_dropdown.get_selection())
 
         # Start the coroutine that updates the plots
         asyncio.ensure_future(self.update_plot())

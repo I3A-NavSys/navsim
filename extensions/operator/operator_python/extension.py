@@ -77,43 +77,11 @@ class Operator(omni.ext.IExt):
 
         # If simulation is not played, start it
         if not self.is_sim_played:
-            # Start the time manager
-            self.time_manager.start()
+            self.start_uav_control()
 
-            # Reset all variables
-            self.gp.clear_grid()
-            self.clients_requests = {}
-            self.uavs = {}
-            self.uav_plots = {}
-            self.ui_uav_plots_frame.clear()
-            self.vertiports_from_id, self.vertiports_from_pos = self.find_vertiports()
-            self.print_vertiports()
-            self.torch_device = "cuda:0" if torch.cuda.is_available() else "cpu"
-            self.ui_requests_container.clear()
-            self.ui_requests_scrolling_frame.style = {
-                "background_color": 0xFF5b5b5b, 
-                "margin": 7,
-                "height": 150
-            }
-
-            # Get UAVs rigid prim view each time simulation is played, 
-            # as stage could be modified
-            self.rigid_prim_view = RigidPrimView(["/World/UAVs/UAV_*",])
-            self.rigid_prim_view.initialize()
-
-            # Initialize UAVs control
-            self.init_uavs()
-            self.uav_control = UAVcontrol(
-                self.rigid_prim_view, 
-                self.torch_device, 
-                self.uavs, 
-                self.operator_event,
-                self.event_stream
-            )
-
-            # Update UI
-            self.print_uavs()
-            self.ui_select_uav_to_plot.repopulate()
+            # If extension is on for a grid scene
+            if self.is_extension_on:
+                self.start_grid_control()
 
             # Update control flow variables
             self.is_sim_played = True
@@ -121,6 +89,44 @@ class Operator(omni.ext.IExt):
     def on_timeline_pause(self, event):
         if self.is_extension_on:
             self.time_manager.pause()
+
+    def start_uav_control(self):
+        # Start the time manager
+        self.time_manager.start()
+
+        # Start UAV control
+        self.rigid_prim_view = RigidPrimView(["/World/UAVs/UAV_*",])
+        self.rigid_prim_view.initialize()
+        self.uavs = {}
+        self.torch_device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
+        self.init_uavs()
+        self.uav_control = UAVcontrol(
+            self.rigid_prim_view, 
+            self.torch_device, 
+            self.uavs, 
+            self.operator_event,
+            self.event_stream
+        )
+
+    def start_grid_control(self):
+        # Reset all variables
+        self.gp.clear_grid()
+        self.clients_requests = {}
+        self.uav_plots = {}
+        self.ui_uav_plots_frame.clear()
+        self.vertiports_from_id, self.vertiports_from_pos = self.find_vertiports()
+        self.print_vertiports()
+        self.ui_requests_container.clear()
+        self.ui_requests_scrolling_frame.style = {
+            "background_color": 0xFF5b5b5b, 
+            "margin": 7,
+            "height": 150
+        }
+
+        # Update UI
+        self.print_uavs()
+        self.ui_select_uav_to_plot.repopulate()
 
     def set_grid_parameters(self):
         self.gp.cell_side = self.ui_grid_cell_size.model.get_value_as_int()
@@ -317,6 +323,9 @@ class Operator(omni.ext.IExt):
         self.switch_on_off(payload["state"], is_from_event=True)
 
     def handle_cmd_fp_request_msg(self, payload):
+        if self.uav_control is None:
+            return
+
         operation = payload["operation"]
         request = payload["request"]
         uav_id = request["uav_id"]
@@ -329,7 +338,6 @@ class Operator(omni.ext.IExt):
             case AerialOperation.FLIGHTPLAN:
                 fp = request["fp"]
                 self.send_flightplan(uav_id, fp)
-
 
     def handle_uspace_msg(self, payload):
         match payload["sender"]:
@@ -777,8 +785,7 @@ class Operator(omni.ext.IExt):
 
         if not is_from_event:
             self.inform_client(TypeMessage.EXTENSSION_ON_OFF)
-        
-
+    
     def populate_select_uav_to_plot(self):
         return list(self.uavs.keys())
 
