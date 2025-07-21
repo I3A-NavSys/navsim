@@ -91,6 +91,10 @@ class Operator(omni.ext.IExt):
             self.event_stream
         )
 
+        # Update UI
+        self.print_uavs()
+        self.ui_select_uav_to_plot.repopulate()
+
     def start_grid_control(self):
         # Reset all variables
         self.gp.clear_grid()
@@ -103,10 +107,6 @@ class Operator(omni.ext.IExt):
             "margin": 7,
             "height": 150
         }
-
-        # Update UI
-        self.print_uavs()
-        self.ui_select_uav_to_plot.repopulate()
 
     def set_grid_parameters(self):
         self.gp.cell_side = self.ui_grid_cell_size.model.get_value_as_int()
@@ -632,34 +632,6 @@ class Operator(omni.ext.IExt):
                         style={"background_color": ui.color("#6f9523")}
                     )
 
-                    # GridPlanner parameters
-                    ui.Label("GRID PARAMETERS", alignment=ui.Alignment.CENTER)
-                    
-                    with ui.HStack():
-                        ui.Label("Cell size")
-                        self.ui_grid_cell_size = ui.IntField()
-                        self.ui_grid_cell_size.model.set_value(100)
-                    with ui.HStack():
-                        ui.Label("Slot time")
-                        self.ui_grid_slot_time = ui.IntField()
-                        self.ui_grid_slot_time.model.set_value(10)
-                    with ui.HStack():
-                        ui.Label("X level height")
-                        self.ui_grid_x_level_height = ui.IntField()
-                        self.ui_grid_x_level_height.model.set_value(60)
-                    with ui.HStack():
-                        ui.Label("Y level height")
-                        self.ui_grid_y_level_height = ui.IntField()
-                        self.ui_grid_y_level_height.model.set_value(100)
-
-                    self.ui_grid_set_params = ui.Button(
-                        "SET PARAMETERS", 
-                        height=50, 
-                        clicked_fn=self.set_grid_parameters
-                    )
-
-                    ui.Separator()
-
                     # UAVs collapsable
                     self.ui_uavs_collapsable = ui.CollapsableFrame(
                         "UAVs", 
@@ -719,7 +691,8 @@ class Operator(omni.ext.IExt):
                     )
 
                     with self.ui_uav_plots_collapsable:
-                        with ui.VStack(height=0):
+                        with ui.VStack(height=0, style=self.navsim_utils.VStack_A):
+                            # Selector
                             self.ui_select_uav_to_plot = DropDown(
                                 "Select UAV", 
                                 populate_fn=self.populate_select_uav_to_plot,
@@ -727,22 +700,30 @@ class Operator(omni.ext.IExt):
                             )
                             self.ui_select_uav_to_plot.repopulate()
 
-                            with ui.ZStack(style={"margin":20}):
-                                ui.Rectangle(
-                                    height=150, 
-                                    style={
-                                        "background_color": 0xFF5b5b5b, 
-                                        "border_radius": 10, 
-                                        "corner_flag": ui.CornerFlag.ALL,
-                                    }
-                                )
-                                
-                                self.ui_uav_plots_frame = ui.ScrollingFrame(
-                                    horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
-                                    vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
-                                    style={"background_color": 0xFF5b5b5b, "margin":5}, 
-                                    height=150
-                                )
+                            ui.Spacer(height=20)
+
+                            # Content frame
+                            with ui.ScrollingFrame(
+                                horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
+                                vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
+                                height=200,
+                                style=self.navsim_utils.ScrollingFrame_style
+                            ):
+                                with ui.ZStack():
+                                    ui.Rectangle(
+                                        style={
+                                            "background_color": 0xFF5b5b5b, 
+                                            "border_radius": 5, 
+                                            "corner_flag": ui.CornerFlag.ALL
+                                        }
+                                    )
+
+                                    self.ui_uav_plots_frame = ui.VStack(
+                                        spacing=self.navsim_utils.SPACING_S,
+                                        height=0
+                                    )
+
+                            ui.Spacer(height=10)
 
     def switch_on_off(self, state, is_from_event):
         # Get model value
@@ -782,47 +763,47 @@ class Operator(omni.ext.IExt):
     def update_uav_plots_frame(self, uav_id):
         self.ui_uav_plots_frame.clear()
 
-        if uav_id in self.uav_plots:
-            uav_plots = self.uav_plots[uav_id]
-        
-            with self.ui_uav_plots_frame:
-                with ui.VStack(heigth=0):
-                    for key in uav_plots.keys():
-                        with ui.HStack(spacing=self.navsim_utils.SPACING_S):
-                            ui.Label(key)
+        if uav_id not in self.uav_plots:
+            return
 
-                            ui.Button(
-                                text="PLOT POS", 
-                                clicked_fn=lambda uav_id=uav_id, key=key: 
-                                    self.plot_uav_pos(uav_id, key)
-                            )
-                            
-                            ui.Button(
-                                text="PLOT VEL", 
-                                clicked_fn=lambda uav_id=uav_id, key=key: 
-                                    self.plot_uav_vel(uav_id, key)
-                            )
-                            
-                            ui.Button(
-                                text="PLOT ACC", 
-                                clicked_fn=lambda uav_id=uav_id, key=key: 
-                                    self.plot_uav_acc(uav_id, key)
-                            )
-                        
-                        with ui.HStack(spacing=self.navsim_utils.SPACING_S):
-                            ui.Button(
-                                text="SAVE ACTIVE FIGURES", 
-                                clicked_fn=lambda uav_id=uav_id, key=key: 
-                                    self.save_figures(uav_id, key)
-                            )
+        with self.ui_uav_plots_frame:
+            for key in self.uav_plots[uav_id].keys():
+                ui.Spacer(height=5)
+                ui.Label(key, alignment=ui.Alignment.CENTER)
 
-                            ui.Button(
-                                text="EXPORT DATA", 
-                                clicked_fn=lambda uav_id=uav_id, key=key: 
-                                    self.export_request_tracking_data(uav_id, key)
-                            )
+                with ui.HStack(spacing=self.navsim_utils.SPACING_S):
+                    ui.Button(
+                        text="PLOT POS", 
+                        clicked_fn=lambda uav_id=uav_id, key=key: 
+                            self.plot_uav_pos(uav_id, key)
+                    )
+                    
+                    ui.Button(
+                        text="PLOT VEL", 
+                        clicked_fn=lambda uav_id=uav_id, key=key: 
+                            self.plot_uav_vel(uav_id, key)
+                    )
+                    
+                    ui.Button(
+                        text="PLOT ACC", 
+                        clicked_fn=lambda uav_id=uav_id, key=key: 
+                            self.plot_uav_acc(uav_id, key)
+                    )
+                
+                with ui.HStack(spacing=self.navsim_utils.SPACING_S):
+                    ui.Button(
+                        text="SAVE ACTIVE FIGURES", 
+                        clicked_fn=lambda uav_id=uav_id, key=key: 
+                            self.save_figures(uav_id, key)
+                    )
 
-                        ui.Separator()
+                    ui.Button(
+                        text="EXPORT DATA", 
+                        clicked_fn=lambda uav_id=uav_id, key=key: 
+                            self.export_request_tracking_data(uav_id, key)
+                    )
+
+                ui.Line()
 
     def print_uavs(self):
         self.ui_uavs_container.clear()
