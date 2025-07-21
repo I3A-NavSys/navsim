@@ -146,7 +146,13 @@ class USpaceClients(omni.ext.IExt):
         self.update_request_state(client_id, request_id, request_state)
 
     def build_ui(self):        
-        self.window = ui.Window("CL: NavSim - clients", width=300, height=300, raster_policy=ui.RasterPolicy.NEVER)
+        self.window = ui.Window(
+            "CL: NavSim - clients", 
+            width=300, 
+            height=300, 
+            raster_policy=ui.RasterPolicy.NEVER
+        )
+
         with self.window.frame:
             with ui.ScrollingFrame():
                 with ui.VStack(spacing=8, height=0):
@@ -163,39 +169,67 @@ class USpaceClients(omni.ext.IExt):
                     self.on_off_button = ui.ToolButton(
                         text="ON", 
                         height=30, 
-                        clicked_fn=lambda state=False, is_from_event=False: self.switch_on_off(state, is_from_event), 
+                        clicked_fn=lambda state=False, is_from_event=False: 
+                            self.switch_on_off(state, is_from_event), 
                         style={"background_color": ui.color("#6f9523")}
                     )
 
                     # Amazon client
                     with ui.ZStack(height=200):
-                        ui.Rectangle(style={"background_color": 0xFF303030, 
-                                            "border_radius": 10, 
-                                            "corner_flag": ui.CornerFlag.ALL})
+                        ui.Rectangle(
+                            style={
+                                "background_color": 0xFF303030, 
+                                "border_radius": 10, 
+                                "corner_flag": ui.CornerFlag.ALL
+                            }
+                        )
                         
-                        ui.Label("AMAZON", alignment=ui.Alignment.LEFT_CENTER, 
-                                style={"font_size": 14, "font_weight": "bold", "margin_width": 10})
+                        ui.Label(
+                            "AMAZON", 
+                            alignment=ui.Alignment.LEFT_CENTER, 
+                            style={
+                                "font_size": 14, 
+                                "font_weight": "bold", 
+                                "margin_width": 10
+                            }
+                        )
                         
                         with ui.VStack(height=50, style={"margin_width": 30}):
-                            ui.Label("Requests", alignment=ui.Alignment.CENTER_TOP,
-                                    style={"font_size": 14, "font_weight": "bold", "margin_height": 5})
+                            ui.Label(
+                                "Requests", 
+                                alignment=ui.Alignment.CENTER_TOP,
+                                style={
+                                    "font_size": 14, 
+                                    "font_weight": "bold", 
+                                    "margin_height": 5
+                                }
+                            )
 
                             with ui.ZStack():
-                                ui.Rectangle(height=150, style={"background_color": 0xFF5b5b5b, 
-                                            "border_radius": 10, 
-                                            "corner_flag": ui.CornerFlag.ALL})
+                                ui.Rectangle(
+                                    height=150, 
+                                    style={
+                                        "background_color": 0xFF5b5b5b, 
+                                        "border_radius": 10, 
+                                        "corner_flag": ui.CornerFlag.ALL
+                                    }
+                                )
                                 
                                 self.ui_amazon_requests_scrolling_frame = ui.ScrollingFrame(
                                     horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
                                     vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
-                                    style={"background_color": 0xFF5b5b5b, "margin":7}, height=150
+                                    style={"background_color": 0xFF5b5b5b, "margin":7}, 
+                                    height=150
                                 )
                                 
                                 with self.ui_amazon_requests_scrolling_frame:
                                     self.ui_amazon_requests_container = ui.VStack(height=0)
 
-                            self.ui_amazon_new_req = ui.Label(f"New Request: {self.amazon_new_request_timer_base}", alignment=ui.Alignment.CENTER_BOTTOM, 
-                                    style={"font_size": 12, "margin": 10})
+                            self.ui_amazon_new_req = ui.Label(
+                                f"New Request: {self.amazon_new_request_timer_base}", 
+                                alignment=ui.Alignment.CENTER_BOTTOM, 
+                                style={"font_size": 12, "margin": 10}
+                            )
 
                     ui.Spacer(height=30)
                     # Force new request
@@ -222,7 +256,11 @@ class USpaceClients(omni.ext.IExt):
                         self.ui_destination = ui.StringField()
                         self.ui_destination.model.set_value("v_12")
 
-                    ui.Button("Send request", height=50, clicked_fn=self.send_request_by_hand)
+                    ui.Button(
+                        "Send request", 
+                        height=50, 
+                        clicked_fn=self.send_request_by_hand
+                    )
 
     def switch_on_off(self, state, is_from_event):
         model = self.on_off_button.model
