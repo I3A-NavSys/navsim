@@ -34,6 +34,7 @@ class USpaceClients(omni.ext.IExt):
         self.on_physics_step_sub = None
         self.on_stop_sub = None
         self.on_play_sub = None
+        self.on_pause_sub = None
         self.event_sub = None
         if hasattr(self, "amazon_task"):    self.amazon_task.cancel()
         
