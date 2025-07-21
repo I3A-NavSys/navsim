@@ -4,25 +4,16 @@ import pickle
 import base64
 
 
-import omni.kit.app
 from omni.isaac.core.utils.stage import get_current_stage
 import omni.kit.viewport.utility
 from pxr import UsdGeom, Gf, PhysxSchema
 
 
+from navsim_utils.sim_utils import *
 from uspace.flight_plan.command import Command
 from .joystick_input import JoystickInput
 from .keyboard_input import KeyboardInput
 
-
-class TypeMessage:
-    EXTENSSION_ON_OFF = "extension_on_off"
-    CMD_FP_REQUEST = "cmd_fp_request"
-    USPACE = "uspace"
-
-class AerialOperation:
-    COMMAND = "command"
-    FLIGHTPLAN = "flightplan"
 
 class ControllerLogic:
     def __init__(self, event_stream, operator_event):
@@ -267,15 +258,15 @@ class ControllerLogic:
         """Inform the operator about the command to be sent to the UAV"""
         
         payload = {"type_message": type_message}
+        msg = {"sender": TypeSender.COMMAND_GENERATOR}
 
         match type_message:
             case TypeMessage.CMD_FP_REQUEST:
-                request = {
+                msg["request"] = {
                     "uav_id": uav_id,
                     "cmd": cmd
                 }
 
-                payload["operation"] = AerialOperation.COMMAND
-                payload["request"] = request
+        payload["msg"] = msg
 
         self.event_stream.push(self.operator_event, payload=payload)

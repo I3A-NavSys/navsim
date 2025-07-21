@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import torch
 
 
-from navsim_utils.sim_utils import TimeManager, GeospatialManager
+from navsim_utils.sim_utils import *
 from navsim_utils.extensions_utils import ExtensionUtils
 from navsim_utils.paths_utils import get_navsim_root_path
 from uspace.grid_planner.grid_planner import GridPlanner
@@ -25,26 +25,6 @@ from fleet.uav_ia_control import UAVcontrol
 
 
 project_root_path = get_navsim_root_path()
-
-class UAVState:
-    IDLE = "idle"
-    BUSY = "busy"
-    DEAD = "dead"
-
-class RequestState:
-    CANCELLED = "Cancelled"
-    PENDING = "Pending"
-    IN_PROGRESS = "In progress"
-    COMPLETED = "Completed"
-
-class TypeMessage:
-    EXTENSSION_ON_OFF = "extension_on_off"
-    CMD_FP_REQUEST = "cmd_fp_request"
-    USPACE = "uspace"
-
-class AerialOperation:
-    COMMAND = "command"
-    FLIGHTPLAN = "flightplan"
 
 class Operator(omni.ext.IExt):
     def on_startup(self, ext_id):
@@ -320,22 +300,23 @@ class Operator(omni.ext.IExt):
                 self.handle_uspace_msg(payload)
 
     def handle_ext_on_off_msg(self, payload):
-        self.switch_on_off(payload["state"], is_from_event=True)
+        msg = payload["msg"]
+        self.switch_on_off(msg["state"], is_from_event=True)
 
     def handle_cmd_fp_request_msg(self, payload):
         if self.uav_control is None:
             return
 
-        operation = payload["operation"]
-        request = payload["request"]
+        msg = payload["msg"]
+        request = msg["request"]
         uav_id = request["uav_id"]
 
-        match operation:
-            case AerialOperation.COMMAND:
+        match msg["sender"]:
+            case TypeSender.COMMAND_GENERATOR:
                 cmd = pickle.loads(base64.b64decode(request["cmd"]))
                 self.send_command(uav_id, cmd)
 
-            case AerialOperation.FLIGHTPLAN:
+            case TypeSender.FLIGHTPLAN_GENERATOR:
                 fp = pickle.loads(base64.b64decode(request["fp"]))
                 self.uavs[uav_id]["request"] = {
                     "client_id": "FP Generator",
@@ -344,14 +325,16 @@ class Operator(omni.ext.IExt):
                 self.send_flightplan(uav_id, fp)
 
     def handle_uspace_msg(self, payload):
-        match payload["sender"]:
-            case "uav":
-                self.process_uav_message(payload)
-            case "client":
-                self.process_client_message(payload)
+        msg = payload["msg"]
+        
+        match msg["sender"]:
+            case TypeSender.SINGLE_UAV:
+                self.process_uav_message(msg)
+            case TypeSender.USPACE_CLIENT:
+                self.process_client_message(msg)
 
-    def process_uav_message(self, payload):
-        request = payload["request"]
+    def process_uav_message(self, msg):
+        request = msg["request"]
 
         uav_id = request["id"]
         uav_state = request["state"]
@@ -417,8 +400,8 @@ class Operator(omni.ext.IExt):
         if self.ui_select_uav_to_plot.get_selection() == uav_id:
             self.update_uav_plots_frame(uav_id)
 
-    def process_client_message(self, payload):
-        request = payload["request"]
+    def process_client_message(self, msg):
+        request = msg["request"]
 
         client_id = request["client_id"]
         request_id = request["request_id"]
@@ -602,15 +585,18 @@ class Operator(omni.ext.IExt):
         request_state=None
     ):
         payload = {"type_message": type_message}
+        msg = {"sender": TypeSender.OPERATOR_UAV}
 
         match type_message:
             case TypeMessage.USPACE:
-                payload["client_id"] = client_id
-                payload["request_id"] = request_id
-                payload["state"] = request_state
+                msg["client_id"] = client_id
+                msg["request_id"] = request_id
+                msg["state"] = request_state
 
             case TypeMessage.EXTENSSION_ON_OFF:
-                payload["state"] = self.is_extension_on
+                msg["state"] = self.is_extension_on
+
+        payload["msg"] = msg
 
         self.event_stream.push(self.uspace_clients_event, payload=payload)
 

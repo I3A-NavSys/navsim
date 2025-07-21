@@ -13,16 +13,8 @@ import omni.physx
 
 from uspace.flight_plan.command import Command
 from navsim_utils.extensions_utils import ExtensionUtils
+from navsim_utils.sim_utils import *
 
-
-class TypeMessage:
-    EXTENSSION_ON_OFF = "extension_on_off"
-    CMD_FP_REQUEST = "cmd_fp_request"
-    USPACE = "uspace"
-
-class AerialOperation:
-    COMMAND = "command"
-    FLIGHTPLAN = "flightplan"
 
 class CommandGenerator(omni.ext.IExt):
     def on_startup(self, ext_id):
@@ -186,15 +178,15 @@ class CommandGenerator(omni.ext.IExt):
         """Inform the operator about the command to be sent to the UAV"""
         
         payload = {"type_message": type_message}
+        msg = {"sender": TypeSender.COMMAND_GENERATOR}
 
         match type_message:
             case TypeMessage.CMD_FP_REQUEST:
-                request = {
+                msg["request"] = {
                     "uav_id": uav_id,
                     "cmd": cmd
                 }
 
-                payload["operation"] = AerialOperation.COMMAND
-                payload["request"] = request
+        payload["msg"] = msg
 
         self.event_stream.push(self.operator_event, payload=payload)

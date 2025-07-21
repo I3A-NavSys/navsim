@@ -10,26 +10,10 @@ import pickle
 import base64
 
 
-from navsim_utils.sim_utils import TimeManager, GeospatialManager
+from navsim_utils.sim_utils import *
 from navsim_utils.extensions_utils import ExtensionUtils
 from uspace.grid_planner.grid_planner import GridPlanner
 
-class TypeSender:
-    USPACE_MANAGER = "uspace_manager"
-    USPACE_CLIENT = "uspace_client"
-    OPERATOR_UAV = "operator_uav"
-    OPERATOR_VERTIPORT = "operator_vertiport"
-
-class RequestState:
-    CANCELLED = "Cancelled"
-    PENDING = "Pending"
-    IN_PROGRESS = "In progress"
-    COMPLETED = "Completed"
-
-class TypeMessage:
-    EXTENSSION_ON_OFF = "extension_on_off"
-    CMD_FP_REQUEST = "cmd_fp_request"
-    USPACE = "uspace"
 
 class USpaceClients(omni.ext.IExt):
     def on_startup(self, ext_id):
@@ -42,8 +26,7 @@ class USpaceClients(omni.ext.IExt):
         self.event_sub = None
         
     def on_physics_step(self, step_size:int):
-        if self.is_sim_played:
-            self.current_time += step_size
+        self.current_time += step_size
 
     def on_timeline_stop(self, event):
         self.current_time = 0
@@ -83,6 +66,13 @@ class USpaceClients(omni.ext.IExt):
                 self.handle_uspace_msg(payload)
 
     def handle_uspace_msg(self, payload):
+        msg = payload["msg"]
+
+        match msg["sender"]:
+            case TypeSender.OPERATOR_UAV:
+                self.handle_operator_uav_msg(msg)
+
+    def handle_operator_uav_msg(self, msg):
         pass
 
     def build_ui(self):        
@@ -172,10 +162,12 @@ class USpaceClients(omni.ext.IExt):
 
     def inform_operator(self, type_message, request=None):
         payload = {"type_message": type_message}
+        msg = {"sender": TypeSender.USPACE_MANAGER}
 
         match type_message:
             case TypeMessage.USPACE:
-                payload["sender"] = "manager"
-                payload["request"] = request
+                msg["request"] = request
+
+        payload["msg"] = msg
 
         self.event_stream.push(self.operator_event, payload=payload)

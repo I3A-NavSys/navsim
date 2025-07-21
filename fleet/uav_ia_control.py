@@ -13,6 +13,7 @@ from omni.isaac.core.prims import RigidPrimView
 from uspace.flight_plan.waypoint import Waypoint
 from uspace.flight_plan.command import Command
 from navsim_utils.paths_utils import get_navsim_root_path
+from navsim_utils.sim_utils import *
 
 
 project_root_path = get_navsim_root_path()
@@ -533,6 +534,7 @@ class UAVcontrol:
         is_request_completed=False
     ):
         payload = {"type_message": type_message}
+        msg = {"sender": TypeSender.SINGLE_UAV}
 
         match type_message:
             case TypeMessage.USPACE:    
@@ -548,7 +550,7 @@ class UAVcontrol:
                         pickle.dumps(tracked_info)
                     ).decode('utf-8')
 
-                request = {
+                msg["request"] = {
                     "id": id,
                     "state": state,
                     "time": time,
@@ -557,8 +559,7 @@ class UAVcontrol:
                     "tracked_info": tracked_info
                 }
 
-                payload["sender"] = "uav"
-                payload["request"] = request
+        payload["msg"] = msg
 
         self.event_stream.push(self.operator_event, payload=payload)
 

@@ -15,16 +15,8 @@ import omni.kit.window.file_importer
 
 from uspace.flight_plan.flight_plan import FlightPlan
 from navsim_utils.extensions_utils import ExtensionUtils
+from navsim_utils.sim_utils import *
 
-
-class TypeMessage:
-    EXTENSSION_ON_OFF = "extension_on_off"
-    CMD_FP_REQUEST = "cmd_fp_request"
-    USPACE = "uspace"
-
-class AerialOperation:
-    COMMAND = "command"
-    FLIGHTPLAN = "flightplan"
 
 class FlightPlanGenerator(omni.ext.IExt):
     def on_startup(self, ext_id):
@@ -562,15 +554,15 @@ class FlightPlanGenerator(omni.ext.IExt):
         """Inform the operator about the flightplan to be sent to the UAV"""
         
         payload = {"type_message": type_message}
+        msg = {"sender": TypeSender.FLIGHTPLAN_GENERATOR}
 
         match type_message:
             case TypeMessage.CMD_FP_REQUEST:
-                request = {
+                msg["request"] = {
                     "uav_id": uav_id,
                     "fp": fp
                 }
 
-                payload["operation"] = AerialOperation.FLIGHTPLAN
-                payload["request"] = request
+        payload["msg"] = msg
 
         self.event_stream.push(self.operator_event, payload=payload)

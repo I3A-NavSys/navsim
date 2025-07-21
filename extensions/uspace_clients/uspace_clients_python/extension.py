@@ -10,20 +10,9 @@ import random
 import pickle
 import base64
 
-from navsim_utils.sim_utils import TimeManager, GeospatialManager
+from navsim_utils.sim_utils import *
 from navsim_utils.extensions_utils import ExtensionUtils
 
-
-class RequestState:
-    CANCELLED = "Cancelled"
-    PENDING = "Pending"
-    IN_PROGRESS = "In progress"
-    COMPLETED = "Completed"
-
-class TypeMessage:
-    EXTENSSION_ON_OFF = "extension_on_off"
-    CMD_FP_REQUEST = "cmd_fp_request"
-    USPACE = "uspace"
 
 class USpaceClients(omni.ext.IExt):
     def on_startup(self, ext_id):
@@ -136,14 +125,19 @@ class USpaceClients(omni.ext.IExt):
                 self.handle_uspace_msg(payload)
 
     def handle_extension_on_off_msg(self, payload):
-        self.switch_on_off(payload["state"], is_from_event=True)
+        msg = payload["msg"]
+        self.switch_on_off(msg["state"], is_from_event=True)
 
     def handle_uspace_msg(self, payload):
-        client_id = payload["client_id"]
-        request_id = payload["request_id"]
-        request_state = payload["state"]
+        msg = payload["msg"]
 
-        self.update_request_state(client_id, request_id, request_state)
+        match msg["sender"]:
+            case TypeSender.OPERATOR_UAV:
+                self.update_request_state(
+                    msg["client_id"], 
+                    msg["request_id"], 
+                    msg["state"]
+                )
 
     def build_ui(self):        
         self.window = ui.Window(
@@ -542,13 +536,15 @@ class USpaceClients(omni.ext.IExt):
 
     def inform_operator(self, type_message, request=None):
         payload = {"type_message": type_message}
+        msg = {"sender": TypeSender.USPACE_CLIENT}
 
         match type_message:
             case TypeMessage.USPACE:
-                payload["sender"] = "client"
-                payload["request"] = request
+                msg["request"] = request
 
             case TypeMessage.EXTENSSION_ON_OFF:
-                payload["state"] = self.is_extension_on
+                msg["state"] = self.is_extension_on
+
+        payload["msg"] = msg
 
         self.event_stream.push(self.operator_event, payload=payload)
