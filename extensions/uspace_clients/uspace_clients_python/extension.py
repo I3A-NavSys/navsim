@@ -39,6 +39,7 @@ class USpaceClients(omni.ext.IExt):
         self.amazon_new_request_timer = self.amazon_new_request_timer_base
         text = f"New Request: {self.amazon_new_request_timer_base}"
         self.ui_amazon_new_req.text = text
+        self.vertiports_ready_async.clear()
         
     def on_timeline_play(self, event):
         is_resume = self.is_extension_on and self.is_sim_played
@@ -50,11 +51,15 @@ class USpaceClients(omni.ext.IExt):
             return
 
         if is_play:
+            # Set the seed for reproducibility of random requests
             random.seed(2)
-            # 2 -> R5, R6, R25
+            
+            # Ask for vertiports ids
+            self.inform_operator_vertiport(TypeMessage.USPACE)
+            
+            # Reset variables
             self.clients = {}
             self.amount_amazon_requests = 0
-            self.vertiports_from_id, self.vertiports_from_pos = self.find_vertiports()
 
             # Clear UI containers
             self.ui_amazon_requests_container.clear()
@@ -93,8 +98,9 @@ class USpaceClients(omni.ext.IExt):
         )
         
         self.event_stream = omni.kit.app.get_app().get_message_bus_event_stream()
-        self.operator_event = carb.events.type_from_string("NavSim.Operator")
+        self.operator_uav_event = carb.events.type_from_string("NavSim.OperatorUAV")
         self.uspace_clients_event = carb.events.type_from_string("NavSim.USpaceClients")
+        self.operator_vertiport_event = carb.events.type_from_string("NavSim.OperatorVertiport")
         self.event_sub = self.event_stream.create_subscription_to_push_by_type(
             self.uspace_clients_event, 
             self.event_listener
@@ -104,13 +110,16 @@ class USpaceClients(omni.ext.IExt):
         self.amazon_new_request_timer = self.amazon_new_request_timer_base
         self.amazon_id = "amazon"
         self.amount_amazon_requests = 0
+        # Event to signal when vertiports are ready
+        self.vertiports_ready_async = asyncio.Event()
+        self.vertiports_ready_async.clear()
 
         self.is_extension_on = False
         self.is_sim_played = False
         self.current_time = 0
-        self.vertiports_from_id = {}
+        self.vertiports = {}
         self.clients = {}
-        self.navsim_utils = ExtensionUtils()
+        self.extension_utils = ExtensionUtils()
         self.time_manager = TimeManager()
         self.geospatial_manager = GeospatialManager()
 
@@ -138,6 +147,10 @@ class USpaceClients(omni.ext.IExt):
                     msg["request_id"], 
                     msg["state"]
                 )
+                
+            case TypeSender.OPERATOR_VERTIPORT:
+                self.vertiports = msg["vertiports"]
+                self.vertiports_ready_async.set()
 
     def build_ui(self):        
         self.window = ui.Window(
@@ -284,7 +297,7 @@ class USpaceClients(omni.ext.IExt):
         self.is_extension_on = on
 
         if not is_from_event:
-            self.inform_operator(TypeMessage.EXTENSSION_ON_OFF)
+            self.inform_operator_uav(TypeMessage.EXTENSSION_ON_OFF)
 
     def send_request_by_hand(self):
         client_id = self.ui_client_id.model.get_value_as_string()
@@ -308,22 +321,22 @@ class USpaceClients(omni.ext.IExt):
             begin_time,
             finish_time
         )
-        self.event_stream.push(self.operator_event, payload=request)
+        self.inform_operator_uav(TypeMessage.USPACE, request=request)
 
-    def find_vertiports(self):
-        vertiports_prims = self.navsim_utils.get_vertiport_prims()
-        vertiports_from_id = {}
-        vertiports_from_pos = {}
+    # def find_vertiports(self):
+    #     vertiports_prims = self.extension_utils.get_vertiport_prims()
+    #     vertiports_from_id = {}
+    #     vertiports_from_pos = {}
         
-        for prim in vertiports_prims:
-            id = prim.GetAttribute("NavSim:id").Get()
-            position = prim.GetAttribute("xformOp:translate").Get()
-            model = prim.GetAttribute("NavSim:model").Get()
+    #     for prim in vertiports_prims:
+    #         id = prim.GetAttribute("NavSim:id").Get()
+    #         position = prim.GetAttribute("xformOp:translate").Get()
+    #         model = prim.GetAttribute("NavSim:model").Get()
 
-            vertiports_from_id[id] = {"position": position, "model": model}
-            vertiports_from_pos[position] = id
+    #         vertiports_from_id[id] = {"position": position, "model": model}
+    #         vertiports_from_pos[position] = id
 
-        return vertiports_from_id, vertiports_from_pos
+    #     return vertiports_from_id, vertiports_from_pos
 
     def update_request_state(self, client_id, request_id, state):
         is_terminated = state in (RequestState.CANCELLED, RequestState.COMPLETED)
@@ -396,6 +409,7 @@ class USpaceClients(omni.ext.IExt):
 
     async def start_amazon(self):
         while self.is_sim_played:
+            await self.vertiports_ready_async.wait()
             await asyncio.sleep(1)
 
             # Avoid exception when saving file while running simulation
@@ -407,7 +421,7 @@ class USpaceClients(omni.ext.IExt):
 
             if self.amazon_new_request_timer == 0:                
                 request = self.create_request(self.amazon_id)
-                self.inform_operator(TypeMessage.USPACE, request=request)
+                self.inform_operator_uav(TypeMessage.USPACE, request=request)
                 
                 self.reset_new_request_timer(self.amazon_id)
 
@@ -422,7 +436,7 @@ class USpaceClients(omni.ext.IExt):
         init_time = begin_time + random.randint(30, 60)
         end_time = init_time + random.randint(30, 60)
 
-        vertiport_ids = list(self.vertiports_from_id.keys())
+        vertiport_ids = list(self.vertiports.keys())
         origin = random.choice(vertiport_ids)
         vertiport_ids.remove(origin)
         destination = random.choice(vertiport_ids)
@@ -534,7 +548,7 @@ class USpaceClients(omni.ext.IExt):
             case _:
                 pass
 
-    def inform_operator(self, type_message, request=None):
+    def inform_operator_uav(self, type_message, request=None):
         payload = {"type_message": type_message}
         msg = {"sender": TypeSender.USPACE_CLIENT}
 
@@ -547,4 +561,17 @@ class USpaceClients(omni.ext.IExt):
 
         payload["msg"] = msg
 
-        self.event_stream.push(self.operator_event, payload=payload)
+        self.event_stream.push(self.operator_uav_event, payload=payload)
+        
+    def inform_operator_vertiport(self, type_message):
+        payload = {"type_message": type_message}
+        msg = {"sender": TypeSender.USPACE_CLIENT}
+        
+        match type_message:
+            case TypeMessage.USPACE:
+                msg["want_vertiports"] = True
+        
+        payload["msg"] = msg
+
+        self.event_stream.push(self.operator_vertiport_event, payload=payload)
+    

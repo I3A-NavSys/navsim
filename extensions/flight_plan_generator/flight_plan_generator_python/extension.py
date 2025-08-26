@@ -33,6 +33,10 @@ class FlightPlanGenerator(omni.ext.IExt):
     def on_timeline_stop(self, event):
         self.current_time = 0
 
+    def on_timeline_play(self, event):
+        if self.flightplan.waypoints:
+            self.send_flightplan()
+
     def init_vars(self):
         self.extension_utils = ExtensionUtils()
         self.current_time = 0
@@ -40,7 +44,7 @@ class FlightPlanGenerator(omni.ext.IExt):
         # Message bus event stream
         app_interface = omni.kit.app.get_app_interface()
         self.event_stream = app_interface.get_message_bus_event_stream()
-        self.operator_event = carb.events.type_from_string("NavSim.Operator")
+        self.operator_uav_event = carb.events.type_from_string("NavSim.OperatorUAV")
         
         # Field variables
         self.position = [0, 0, 0]
@@ -82,6 +86,10 @@ class FlightPlanGenerator(omni.ext.IExt):
         self.on_stop_sub = timeline_stream.create_subscription_to_pop_by_type(
             int(omni.timeline.TimelineEventType.STOP),  
             self.on_timeline_stop
+        )
+        self.on_play_sub = timeline_stream.create_subscription_to_pop_by_type(
+            int(omni.timeline.TimelineEventType.PLAY),  
+            self.on_timeline_play
         )
         
     def build_ui(self):
@@ -346,7 +354,13 @@ class FlightPlanGenerator(omni.ext.IExt):
                     time = float(row[1])
                     pos = np.array(row[2:5], dtype=float)
                     vel = np.array(row[5:8], dtype=float)
-                    heading = np.array(row[8:10], dtype=float)
+                    # heading = np.array(row[8:10], dtype=float)
+                    heading = row[8:10]
+                    
+                    if heading[0] == 'None':
+                        heading = None
+                    else:
+                        heading = np.array(heading, dtype=float)
 
                     # Add waypoint to the flight plan
                     self.flightplan.set_waypoint(
@@ -357,6 +371,7 @@ class FlightPlanGenerator(omni.ext.IExt):
                         heading=heading
                     )
                 
+                self.flightplan.connect_waypoints()
                 # Update UI to show imported waypoints
                 self.print_waypoints()
                 
@@ -565,4 +580,4 @@ class FlightPlanGenerator(omni.ext.IExt):
 
         payload["msg"] = msg
 
-        self.event_stream.push(self.operator_event, payload=payload)
+        self.event_stream.push(self.operator_uav_event, payload=payload)

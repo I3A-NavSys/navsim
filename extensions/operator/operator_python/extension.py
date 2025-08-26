@@ -20,8 +20,8 @@ from navsim_utils.extensions_utils import ExtensionUtils
 from navsim_utils.paths_utils import get_navsim_root_path
 from uspace.grid_planner.grid_planner import GridPlanner
 from uspace.flight_plan.flight_plan import FlightPlan
-from fleet.uav_ia_control import UAVcontrol
-# from fleet.uav_matrix_control import UAVcontrol
+# from fleet.uav_ia_control import UAVcontrol
+from fleet.uav_matrix_control import UAVcontrol
 
 
 project_root_path = get_navsim_root_path()
@@ -37,7 +37,7 @@ class Operator(omni.ext.IExt):
         self.on_play_sub = None
         self.event_sub = None
 
-    def on_physics_step(self, step_size:int):
+    def on_physics_step(self, step_size: int):
         if self.is_sim_played:
             self.current_time += step_size
             self.uav_control.update(self.current_time, self.uavs, step_size)
@@ -48,7 +48,7 @@ class Operator(omni.ext.IExt):
         self.rigid_prim_view = None
         self.uav_control = None
         self.time_manager.stop()
-        
+
     def on_timeline_play(self, event):
         # Resume simulation from pause
         if self.is_sim_played:
@@ -59,9 +59,14 @@ class Operator(omni.ext.IExt):
         if not self.is_sim_played:
             self.start_uav_control()
 
-            # If extension is on for a grid scene
-            if self.is_extension_on:
-                self.start_grid_control()
+            # Reset variables
+            self.clients_requests = {}
+            self.ui_requests_container.clear()
+            self.ui_requests_scrolling_frame.style = {
+                "background_color": 0xFF5B5B5B,
+                "margin": 7,
+                "height": 150,
+            }
 
             # Update control flow variables
             self.is_sim_played = True
@@ -84,29 +89,16 @@ class Operator(omni.ext.IExt):
 
         self.init_uavs()
         self.uav_control = UAVcontrol(
-            self.rigid_prim_view, 
-            self.torch_device, 
-            self.uavs, 
-            self.operator_event,
-            self.event_stream
+            self.rigid_prim_view,
+            self.torch_device,
+            self.uavs,
+            self.operator_uav_event,
+            self.event_stream,
         )
 
         # Update UI
         self.print_uavs()
         self.ui_select_uav_to_plot.repopulate()
-
-    def start_grid_control(self):
-        # Reset all variables
-        self.gp.clear_grid()
-        self.clients_requests = {}
-        self.vertiports_from_id, self.vertiports_from_pos = self.find_vertiports()
-        self.print_vertiports()
-        self.ui_requests_container.clear()
-        self.ui_requests_scrolling_frame.style = {
-            "background_color": 0xFF5b5b5b, 
-            "margin": 7,
-            "height": 150
-        }
 
     def set_grid_parameters(self):
         self.gp.cell_side = self.ui_grid_cell_size.model.get_value_as_int()
@@ -140,18 +132,19 @@ class Operator(omni.ext.IExt):
             int(omni.timeline.TimelineEventType.PAUSE), 
             self.on_timeline_pause
         )
-        
+
         self.time_manager = TimeManager()
         self.geospatial_manager = GeospatialManager()
-        self.navsim_utils = ExtensionUtils()
+        self.extension_utils = ExtensionUtils()
         self.gp = GridPlanner()
         self.plot_time_steps = 0.01
 
         self.event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
-        self.operator_event = carb.events.type_from_string("NavSim.Operator")
+        self.operator_uav_event = carb.events.type_from_string("NavSim.OperatorUAV")
         self.uspace_clients_event = carb.events.type_from_string("NavSim.USpaceClients")
+        self.uspace_manager_event = carb.events.type_from_string("NavSim.USpaceManager")
         self.event_sub = self.event_stream.create_subscription_to_push_by_type(
-            self.operator_event, 
+            self.operator_uav_event,
             self.event_listener
         )
 
@@ -163,7 +156,7 @@ class Operator(omni.ext.IExt):
         self.vertiports_from_pos = {}
         self.uavs = {}
         self.uav_plots = {}
-        self.idle_uavs = [] # Stores the ids of the idle UAVs
+        self.idle_uavs = []  # Stores the ids of the idle UAVs
 
     def init_uavs(self):
         pos, _ = self.rigid_prim_view.get_world_poses(
@@ -184,25 +177,10 @@ class Operator(omni.ext.IExt):
                 "time": uav_time,
                 "pos": uav_pos,
                 "flightplan": uav_flightplan,
-                "request": request
+                "request": request,
             }
 
             self.idle_uavs.append(uav_id)
-
-    def find_vertiports(self):
-        vertiports_prims = self.navsim_utils.get_vertiport_prims()
-        vertiports_from_id = {}
-        vertiports_from_pos = {}
-        
-        for prim in vertiports_prims:
-            id = prim.GetAttribute("NavSim:id").Get()
-            position = prim.GetAttribute("xformOp:translate").Get()
-            model = prim.GetAttribute("NavSim:model").Get()
-
-            vertiports_from_id[id] = {"position": position, "model": model}
-            vertiports_from_pos[position] = id
-
-        return vertiports_from_id, vertiports_from_pos
 
     # ----------------------------------
     # ------ TRACKED INFORMATION -------
@@ -232,10 +210,10 @@ class Operator(omni.ext.IExt):
         pos_fig_name = f"{key}: POSITION"
         vel_fig_name = f"{key}: VELOCITY"
         acc_fig_name = f"{key}: ACCELERATION"
-        
+
         id = uav_id.replace("/", "_")
         path = project_root_path + "/sims/figures" + f"/{id}_{key}"
-        
+
         if plt.fignum_exists(pos_fig_name):
             plt.figure(pos_fig_name).savefig(fname=path + "_pos.svg")
 
@@ -267,17 +245,17 @@ class Operator(omni.ext.IExt):
             tracked_info_trace[i, 6] = wp.vel[2]
 
         id = uav_id.replace("/", "_")
-        waypoints_path = project_root_path \
-            + "/sims/exported_data" \
-            + f"/{id}_{key}_waypoints.csv"
-        
-        fp_path = project_root_path \
-            + "/sims/exported_data" \
-            + f"/{id}_{key}_flightplan.csv"
-        
-        tracked_info_path = project_root_path \
-            + "/sims/exported_data" \
-            + f"/{id}_{key}_tracked_info.csv"
+        waypoints_path = (
+            project_root_path + "/sims/exported_data" + f"/{id}_{key}_waypoints.csv"
+        )
+
+        fp_path = (
+            project_root_path + "/sims/exported_data" + f"/{id}_{key}_flightplan.csv"
+        )
+
+        tracked_info_path = (
+            project_root_path + "/sims/exported_data" + f"/{id}_{key}_tracked_info.csv"
+        )
 
         np.savetxt(waypoints_path, waypoints, delimiter=", ", fmt="%s")
         np.savetxt(fp_path, fp_trace, delimiter=", ", fmt="%s")
@@ -320,13 +298,13 @@ class Operator(omni.ext.IExt):
                 fp = pickle.loads(base64.b64decode(request["fp"]))
                 self.uavs[uav_id]["request"] = {
                     "client_id": "FP Generator",
-                    "request_id": "flightplan"
+                    "request_id": "flightplan",
                 }
                 self.send_flightplan(uav_id, fp)
 
     def handle_uspace_msg(self, payload):
         msg = payload["msg"]
-        
+
         match msg["sender"]:
             case TypeSender.SINGLE_UAV:
                 self.process_uav_message(msg)
@@ -366,7 +344,7 @@ class Operator(omni.ext.IExt):
 
         if not is_completed:
             return
-        
+
         client_id = self.uavs[uav_id]["request"]["client_id"]
         request_id = self.uavs[uav_id]["request"]["request_id"]
 
@@ -384,8 +362,8 @@ class Operator(omni.ext.IExt):
             self.uav_plots[uav_id] = {}
 
         self.uav_plots[uav_id][f"{client_id}_{request_id}"] = {
-            "fp": uav_flightplan, 
-            "tracked_info": tracked_info
+            "fp": uav_flightplan,
+            "tracked_info": tracked_info,
         }
 
         # Reset uav request
@@ -395,7 +373,7 @@ class Operator(omni.ext.IExt):
         if uav_id not in self.idle_uavs:
             self.idle_uavs.append(uav_id)
 
-        # If the current selected uav to see its plots is the one which finished 
+        # If the current selected uav to see its plots is the one which finished
         # the request, we update the list
         if self.ui_select_uav_to_plot.get_selection() == uav_id:
             self.update_uav_plots_frame(uav_id)
@@ -417,7 +395,7 @@ class Operator(omni.ext.IExt):
             "init_time": init_time,
             "end_time": end_time,
             "origin": origin,
-            "destination": destination
+            "destination": destination,
         }
 
         self.print_new_request(
@@ -429,48 +407,57 @@ class Operator(omni.ext.IExt):
             destination
         )
         self.process_request(client_id, request_id)
-        
+
     def process_request(self, client_id, request_id):
-        if len(self.idle_uavs) == 0:   
+        if len(self.idle_uavs) == 0:
             return
-        
+
         request = self.clients_requests[client_id][request_id]
-        request_origin = self.vertiports_from_id[request["origin"]]["position"]
-        request_destination = self.vertiports_from_id[request["destination"]]["position"]
+        request_origin = request["origin"]
+        request_destination = request["destination"]
         request_init_time = self.time_manager.real_to_sim(request["init_time"])
         request_end_time = self.time_manager.real_to_sim(request["end_time"])
         radius = 2
-        
+
         for uav_id in self.idle_uavs:
             uav = self.uavs[uav_id]
             dist_to_origin = np.linalg.norm(uav["pos"] - request_origin)
 
             if dist_to_origin <= radius:
-                fp = self.get_flightplan(
-                    request_origin, 
-                    request_destination, 
-                    request_init_time, 
-                    request_end_time
+                self.inform_operator_vertiport(
+                    TypeMessage.USPACE,
+                    request_origin,
+                    request_destination,
+                    request_init_time,
+                    request_end_time,
                 )
 
-                self.idle_uavs.remove(uav_id)
-                self.send_flightplan(uav_id, fp)
+                # fp = self.get_flightplan(
+                #     request_origin,
+                #     request_destination,
+                #     request_init_time,
+                #     request_end_time
+                # )
 
-                uav["request"] = {
-                    "client_id": client_id, 
-                    "request_id": request_id
-                }
-                self.print_uavs()
+                # self.idle_uavs.remove(uav_id)
+                # self.send_flightplan(uav_id, fp)
 
-                self.inform_client(
-                    TypeMessage.USPACE, 
-                    client_id, 
-                    request_id, 
-                    RequestState.IN_PROGRESS
-                )
+                # uav["request"] = {
+                #     "client_id": client_id,
+                #     "request_id": request_id
+                # }
+                # self.print_uavs()
+
+                # self.inform_client(
+                #     TypeMessage.USPACE,
+                #     client_id,
+                #     request_id,
+                #     RequestState.IN_PROGRESS
+                # )
 
                 return
 
+        # If no idle UAVs are close enough to the origin, cancel the request
         self.inform_client(
             TypeMessage.USPACE,
             client_id, 
@@ -510,7 +497,7 @@ class Operator(omni.ext.IExt):
         self.add_takeoff_landing_wps(fp, request_origin, request_destination)
 
         return fp
-    
+
     def add_takeoff_landing_wps(self, fp: FlightPlan, init_pos, end_pos):
         # Compute the initial and final times
         init_time_1 = fp.init_time() - 2 * self.gp.slot_time
@@ -531,8 +518,8 @@ class Operator(omni.ext.IExt):
         end_vel_3 = [0, 0, 0]
 
         # Define the initial and final headings
-        init_facing_east = ((init_pos_1[1] // self.gp.cell_side) % 2 == 0)
-        end_facing_east = ((end_pos_1[1] // self.gp.cell_side) % 2 == 0)
+        init_facing_east = (init_pos_1[1] // self.gp.cell_side) % 2 == 0
+        end_facing_east = (end_pos_1[1] // self.gp.cell_side) % 2 == 0
 
         if init_facing_east:    init_heading = [1, 0]
         else:                   init_heading = [-1, 0]
@@ -550,10 +537,10 @@ class Operator(omni.ext.IExt):
 
         # Final landing waypoints
         fp.set_waypoint(
-            time=end_time_1, 
-            pos=end_pos_1, 
-            vel=end_vel_1, 
-            heading=end_heading
+            time=end_time_1,
+            pos=end_pos_1,
+            vel=end_vel_1,
+            heading=end_heading,
         )
         fp.set_waypoint(
             time=end_time_2, 
@@ -576,7 +563,7 @@ class Operator(omni.ext.IExt):
 
     def send_flightplan(self, uav_id, fp):
         self.uavs[uav_id]["flightplan"] = fp
-        
+
     def inform_client(
         self, 
         type_message, 
@@ -600,26 +587,45 @@ class Operator(omni.ext.IExt):
 
         self.event_stream.push(self.uspace_clients_event, payload=payload)
 
+    def inform_operator_vertiport(
+        self, type_message, origin, destination, init_time, end_time
+    ):
+        payload = {"type_message": type_message}
+        msg = {"sender": TypeSender.OPERATOR_UAV}
+
+        match type_message:
+            case TypeMessage.USPACE:
+                msg["request"] = {
+                    "origin": origin,
+                    "destination": destination,
+                    "init_time": init_time,
+                    "end_time": end_time,
+                }
+
+        payload["msg"] = msg
+
+        self.event_stream.push(self.uspace_manager_event, payload=payload)
+
     # ----------------------------------
     # ---- UI BUILDING AND HANDLING ----
     # ----------------------------------
     def build_ui(self):
         self.window = ui.Window("OP: NavSim - Operator", width=300, height=300)
         self.window.deferred_dock_in("Layers")
-        self.window.frame.set_style(self.navsim_utils.Window_dark_style)
+        self.window.frame.set_style(self.extension_utils.Window_dark_style)
 
         with self.window.frame:
             with ui.ScrollingFrame(
                 horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
-                vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED
+                vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
             ):
-                with ui.VStack(spacing=self.navsim_utils.SPACING_S, height=0):
+                with ui.VStack(spacing=self.extension_utils.SPACING_S, height=0):
                     # Title
                     ui.Spacer(height=10)
                     ui.Label(
-                        "NAVSIM - OPERATOR", 
-                        alignment=ui.Alignment.CENTER, 
-                        style={"font_size": 20, "font_weight": "bold"}
+                        "NAVSIM - OPERATOR",
+                        alignment=ui.Alignment.CENTER,
+                        style={"font_size": 20, "font_weight": "bold"},
                     )
                     ui.Spacer(height=5)
 
@@ -634,69 +640,72 @@ class Operator(omni.ext.IExt):
 
                     # UAVs collapsable
                     self.ui_uavs_collapsable = ui.CollapsableFrame(
-                        "UAVs", 
+                        "UAVs",
                         collapsed=False,
-                        style=self.navsim_utils.CollapsableFrame_style
+                        style=self.extension_utils.CollapsableFrame_style,
                     )
 
                     with self.ui_uavs_collapsable:
                         self.ui_uavs_scrolling_frame = ui.ScrollingFrame(
                             horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
                             vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
-                            style={"background_color": 0xFF5b5b5b, "margin":7}, 
-                            height=150
+                            style={"background_color": 0xFF5B5B5B, "margin": 7},
+                            height=150,
                         )
-                        
+
                         with self.ui_uavs_scrolling_frame:
                             self.ui_uavs_container = ui.VStack(height=0)
 
                     # Client requests collapsable
                     self.ui_requests_collapsable = ui.CollapsableFrame(
-                        "Requests", collapsed=False,
-                        style=self.navsim_utils.CollapsableFrame_style
+                        "Requests",
+                        collapsed=False,
+                        style=self.extension_utils.CollapsableFrame_style,
                     )
 
                     with self.ui_requests_collapsable:
                         self.ui_requests_scrolling_frame = ui.ScrollingFrame(
                             horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
                             vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
-                            style={"background_color": 0xFF5b5b5b, "margin":7}, 
-                            height=150
+                            style={"background_color": 0xFF5B5B5B, "margin": 7},
+                            height=150,
                         )
 
                         with self.ui_requests_scrolling_frame:
                             self.ui_requests_container = ui.VStack(height=0)
-                        
+
                     # Vertiports collapsable
                     self.ui_vertiports_collapsable = ui.CollapsableFrame(
-                        "Vertiports", collapsed=False,
-                        style=self.navsim_utils.CollapsableFrame_style
+                        "Vertiports",
+                        collapsed=False,
+                        style=self.extension_utils.CollapsableFrame_style,
                     )
 
                     with self.ui_vertiports_collapsable:
                         self.ui_vertiports_scrolling_frame = ui.ScrollingFrame(
                             horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
                             vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
-                            style={"background_color": 0xFF5b5b5b, "margin":7}, 
-                            height=150
+                            style={"background_color": 0xFF5B5B5B, "margin": 7},
+                            height=150,
                         )
-                        
+
                         with self.ui_vertiports_scrolling_frame:
                             self.ui_vertiports_container = ui.VStack(height=0)
 
                     # UAV plots collapsable
                     self.ui_uav_plots_collapsable = ui.CollapsableFrame(
-                        "UAV plots", collapsed=False,
-                        style=self.navsim_utils.CollapsableFrame_style
+                        "UAV plots",
+                        collapsed=False,
+                        style=self.extension_utils.CollapsableFrame_style,
                     )
 
                     with self.ui_uav_plots_collapsable:
-                        with ui.VStack(height=0, style=self.navsim_utils.VStack_A):
+                        with ui.VStack(height=0, style=self.extension_utils.VStack_A):
                             # Selector
                             self.ui_select_uav_to_plot = DropDown(
-                                "Select UAV", 
+                                "Select UAV",
                                 populate_fn=self.populate_select_uav_to_plot,
-                                on_selection_fn=self.update_uav_plots_frame
+                                on_selection_fn=self.update_uav_plots_frame,
                             )
                             self.ui_select_uav_to_plot.repopulate()
 
@@ -707,19 +716,19 @@ class Operator(omni.ext.IExt):
                                 horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
                                 vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
                                 height=200,
-                                style=self.navsim_utils.ScrollingFrame_style
+                                style=self.extension_utils.ScrollingFrame_style,
                             ):
                                 with ui.ZStack():
                                     ui.Rectangle(
                                         style={
-                                            "background_color": 0xFF5b5b5b, 
-                                            "border_radius": 5, 
-                                            "corner_flag": ui.CornerFlag.ALL
+                                            "background_color": 0xFF5B5B5B,
+                                            "border_radius": 5,
+                                            "corner_flag": ui.CornerFlag.ALL,
                                         }
                                     )
 
                                     self.ui_uav_plots_frame = ui.VStack(
-                                        spacing=self.navsim_utils.SPACING_S,
+                                        spacing=self.extension_utils.SPACING_S,
                                         height=0
                                     )
 
@@ -740,11 +749,11 @@ class Operator(omni.ext.IExt):
         # Update the button style and text based on the internal state
         if internal_state:
             on = True
-            style={"background_color": ui.color("#952323")}
+            style = {"background_color": ui.color("#952323")}
             self.on_off_button.text = "OFF"
         else:
             on = False
-            style={"background_color": ui.color("#6f9523")}
+            style = {"background_color": ui.color("#6f9523")}
             self.on_off_button.text = "ON"
 
         self.switch_extension_state(on=on, is_from_event=is_from_event)
@@ -756,7 +765,7 @@ class Operator(omni.ext.IExt):
 
         if not is_from_event:
             self.inform_client(TypeMessage.EXTENSSION_ON_OFF)
-    
+
     def populate_select_uav_to_plot(self):
         return list(self.uavs.keys())
 
@@ -771,36 +780,46 @@ class Operator(omni.ext.IExt):
                 ui.Spacer(height=5)
                 ui.Label(key, alignment=ui.Alignment.CENTER)
 
-                with ui.HStack(spacing=self.navsim_utils.SPACING_S):
+                with ui.HStack(spacing=self.extension_utils.SPACING_S):
                     ui.Button(
-                        text="PLOT POS", 
-                        clicked_fn=lambda uav_id=uav_id, key=key: 
-                            self.plot_uav_pos(uav_id, key)
-                    )
-                    
-                    ui.Button(
-                        text="PLOT VEL", 
-                        clicked_fn=lambda uav_id=uav_id, key=key: 
-                            self.plot_uav_vel(uav_id, key)
-                    )
-                    
-                    ui.Button(
-                        text="PLOT ACC", 
-                        clicked_fn=lambda uav_id=uav_id, key=key: 
-                            self.plot_uav_acc(uav_id, key)
-                    )
-                
-                with ui.HStack(spacing=self.navsim_utils.SPACING_S):
-                    ui.Button(
-                        text="SAVE ACTIVE FIGURES", 
-                        clicked_fn=lambda uav_id=uav_id, key=key: 
-                            self.save_figures(uav_id, key)
+                        text="PLOT POS",
+                        clicked_fn=lambda uav_id=uav_id, key=key: self.plot_uav_pos(
+                            uav_id, 
+                            key,
+                        ),
                     )
 
                     ui.Button(
-                        text="EXPORT DATA", 
-                        clicked_fn=lambda uav_id=uav_id, key=key: 
-                            self.export_request_tracking_data(uav_id, key)
+                        text="PLOT VEL",
+                        clicked_fn=lambda uav_id=uav_id, key=key: self.plot_uav_vel(
+                            uav_id,
+                            key,
+                        ),
+                    )
+
+                    ui.Button(
+                        text="PLOT ACC",
+                        clicked_fn=lambda uav_id=uav_id, key=key: self.plot_uav_acc(
+                            uav_id,
+                            key,
+                        ),
+                    )
+
+                with ui.HStack(spacing=self.extension_utils.SPACING_S):
+                    ui.Button(
+                        text="SAVE ACTIVE FIGURES",
+                        clicked_fn=lambda uav_id=uav_id, key=key: self.save_figures(
+                            uav_id,
+                            key,
+                        ),
+                    )
+
+                    ui.Button(
+                        text="EXPORT DATA",
+                        clicked_fn=lambda uav_id=uav_id, key=key: self.export_request_tracking_data(
+                            uav_id,
+                            key,
+                        ),
                     )
 
                 ui.Line()
@@ -810,9 +829,11 @@ class Operator(omni.ext.IExt):
 
         for uav_id, value in self.uavs.items():
             request = "None"
-            if value["request"]:    
-                request = f"{value['request']['client_id']} - " \
-                          f"{value['request']['request_id']}"
+            if value["request"]:
+                request = (
+                    f"{value['request']['client_id']} - "
+                    f"{value['request']['request_id']}"
+                )
 
             self.print_new_uav(
                 uav_id, 
@@ -822,7 +843,7 @@ class Operator(omni.ext.IExt):
                 request
             )
 
-    def print_new_uav(self, uav_id, state, time, pos, request):        
+    def print_new_uav(self, uav_id, state, time, pos, request):
         id_label = ui.Label(f"ID: {uav_id}\n")
         state_label = ui.Label(f"State: {state}\n")
         time_label = ui.Label(f"Time: {time}\n")
@@ -843,15 +864,23 @@ class Operator(omni.ext.IExt):
         for client_id, requests in self.clients_requests.items():
             for request_id, request in requests.items():
                 self.print_new_request(
-                    client_id, 
-                    request_id, 
-                    self.time_manager.sim_to_real(request["init_time"]), 
-                    self.time_manager.sim_to_real(request["end_time"]), 
-                    request["origin"], 
-                    request["destination"]
+                    client_id,
+                    request_id,
+                    self.time_manager.sim_to_real(request["init_time"]),
+                    self.time_manager.sim_to_real(request["end_time"]),
+                    request["origin"],
+                    request["destination"],
                 )
 
-    def print_new_request(self, client_id, request_id, init_time, end_time, origin, destination):        
+    def print_new_request(
+        self,
+        client_id,
+        request_id,
+        init_time,
+        end_time,
+        origin,
+        destination,
+    ):
         client_id_label = ui.Label(f"Client ID: {client_id}\n")
         request_id_label = ui.Label(f"Request ID: {request_id}\n")
         init_time_label = ui.Label(f"Init time: {init_time}\n")
@@ -867,7 +896,7 @@ class Operator(omni.ext.IExt):
         self.ui_requests_container.add_child(origin_label)
         self.ui_requests_container.add_child(destination_label)
         self.ui_requests_container.add_child(spacer)
-                    
+
     def print_vertiports(self):
         self.ui_vertiports_container.clear()
 

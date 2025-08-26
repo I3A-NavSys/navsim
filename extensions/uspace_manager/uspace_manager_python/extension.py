@@ -30,6 +30,10 @@ class USpaceClients(omni.ext.IExt):
 
     def on_timeline_stop(self, event):
         self.current_time = 0
+
+    def on_timeline_play(self, event):
+        self.requests = {}
+        self.gp.clear_grid()
     
     def init_vars(self):
         self.physx_interface = omni.physx.get_physx_interface()
@@ -43,9 +47,14 @@ class USpaceClients(omni.ext.IExt):
             int(omni.timeline.TimelineEventType.STOP), 
             self.on_timeline_stop
         )
+        self.on_play_sub = timeline_stream.create_subscription_to_pop_by_type(
+            int(omni.timeline.TimelineEventType.PLAY), 
+            self.on_timeline_play
+        )
         
         self.event_stream = omni.kit.app.get_app().get_message_bus_event_stream()
-        self.operator_event = carb.events.type_from_string("NavSim.Operator")
+        self.operator_uav_event = carb.events.type_from_string("NavSim.OperatorUAV")
+        self.operator_vertiport_event = carb.events.type_from_string("NavSim.OperatorVertiport")
         self.uspace_manager_event = carb.events.type_from_string("NavSim.USpaceManager")
         self.event_sub = self.event_stream.create_subscription_to_push_by_type(
             self.uspace_manager_event, 
@@ -57,6 +66,7 @@ class USpaceClients(omni.ext.IExt):
         self.geospatial_manager = GeospatialManager()
         self.extension_utils = ExtensionUtils()
         self.gp = GridPlanner()
+        self.requests = {}
 
     def event_listener(self, event):
         payload = event.payload
@@ -71,8 +81,26 @@ class USpaceClients(omni.ext.IExt):
         match msg["sender"]:
             case TypeSender.OPERATOR_UAV:
                 self.handle_operator_uav_msg(msg)
+            case TypeSender.OPERATOR_VERTIPORT:
+                self.handle_operator_vertiport_msg(msg)
 
     def handle_operator_uav_msg(self, msg):
+        request = msg["request"]
+
+        origin = request["origin"]
+        destination = request["destination"]
+        init_time = request["init_time"]
+        end_time = request["end_time"]
+
+        self.requests[f"{origin}_{destination}"] = {
+            "origin": origin,
+            "destination": destination,
+            "init_time": init_time,
+            "end_time": end_time,
+        }
+
+
+    def handle_operator_vertiport_msg(self, msg):
         pass
 
     def build_ui(self):        
@@ -160,7 +188,7 @@ class USpaceClients(omni.ext.IExt):
         self.gp.x_height = self.ui_grid_x_level_height.model.get_value_as_int()
         self.gp.y_height = self.ui_grid_y_level_height.model.get_value_as_int()
 
-    def inform_operator(self, type_message, request=None):
+    def inform_operator_uav(self, type_message, request=None):
         payload = {"type_message": type_message}
         msg = {"sender": TypeSender.USPACE_MANAGER}
 
@@ -170,4 +198,23 @@ class USpaceClients(omni.ext.IExt):
 
         payload["msg"] = msg
 
-        self.event_stream.push(self.operator_event, payload=payload)
+        self.event_stream.push(self.operator_uav_event, payload=payload)
+
+    def inform_operator_vertiport(
+        self, 
+        type_message, 
+        origin, 
+        destination,
+    ):
+        payload = {"type_message": type_message}
+        msg = {"sender": TypeSender.USPACE_MANAGER}
+
+        match type_message:
+            case TypeMessage.USPACE:
+                msg["request"] = {
+                    "origin": origin,
+                    "destination": destination,
+                }
+
+        payload["msg"] = msg
+        self.event_stream.push(self.operator_vertiport_event, payload=payload)
