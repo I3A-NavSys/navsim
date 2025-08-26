@@ -6,6 +6,7 @@ import os
 from isaacsim.gui.components import ui
 from isaacsim.gui.components.element_wrappers import DropDown
 from omni.isaac.core.utils.stage import get_current_stage
+from isaacsim.core.utils.prims import find_matching_prim_paths, get_prim_at_path
 
 
 project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -153,14 +154,14 @@ class ExtensionUtils:
             
         return None
     
-    def get_vertiport_prims(self):
-        vertiport_prims = []
-        stage = get_current_stage()
+    def get_private_vertiport_prims(self):
+        prim_paths = find_matching_prim_paths("/World/Vertiports/Private/*/PrivPad_*")
+        prims = [get_prim_at_path(path) for path in prim_paths]
 
-        if stage is not None:
-            for prim in stage.Traverse():
-                att = prim.GetAttribute("NavSim:type")
-                if att.IsValid() and att.Get() == "vertiport":
-                    vertiport_prims.append(prim)
-            
-        return vertiport_prims
+        return prims
+    
+    def get_public_vertiport_prims(self):
+        prim_paths = find_matching_prim_paths("/World/Vertiports/Public/*/PubPad_*")
+        prims = [get_prim_at_path(path) for path in prim_paths]
+
+        return prims
