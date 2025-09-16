@@ -1,0 +1,34 @@
+# version: '3.8'
+
+services:
+  navsim-installation:
+    # build:
+    #   context: .
+    #   dockerfile: docker/navsim_installation/Dockerfile
+    image: bmvictor/navsim-installation:v1
+    container_name: navsim-installation
+    volumes:
+      - C:/:/host/c
+    environment:
+      - ISAAC_SIM_PATH=${ISAAC_SIM_PATH}
+    networks:
+      - navsim-network
+    restart: "no"
+
+  grid-planner-installation:
+    # build:
+    #   context: .
+    #   dockerfile: docker/extensions_installation/grid_planner/Dockerfile
+    image: bmvictor/grid-planner-installation:v1
+    container_name: grid-planner-installation
+    volumes:
+      - C:/:/host/c
+    environment:
+      - ISAAC_SIM_PATH=${ISAAC_SIM_PATH}
+    networks:
+      - navsim-network
+    restart: "no"
+
+networks:
+  navsim-network:
+    driver: bridge
