@@ -77,21 +77,20 @@ class NavsimInstaller:
         """Add NAVSIM extensions path to Isaac Sim user.config.json"""
         print("=== Configuring Isaac Sim to use NAVSIM extensions ===")
         
-        appdata_path = os.environ.get('USER_APPDATA_PATH')
-        self.appdata_local_path = self.convert_host_path_to_container(appdata_path)
-        self.isaac_sim_full_4_5_path = self.appdata_local_path / "ov/data/Kit/Isaac-Sim Full/4.5"
-        self.user_config_path = self.isaac_sim_full_4_5_path / "user.config.json"
-        self.extensions_path = self.convert_container_path_to_host(self.navsim_project_path / "extensions")
+        appdata_local_path = self.convert_host_path_to_container(os.environ.get('USER_APPDATA_PATH'))
+        isaac_sim_full_4_5_path = appdata_local_path / "ov/data/Kit/Isaac-Sim Full/4.5"
+        user_config_path = isaac_sim_full_4_5_path / "user.config.json"
+        extensions_path = self.convert_container_path_to_host(self.navsim_project_path / "extensions")
         
-        if not self.user_config_path.exists():
-            user_config_host_path = self.convert_container_path_to_host(self.user_config_path)
+        if not user_config_path.exists():
+            user_config_host_path = self.convert_container_path_to_host(user_config_path)
             print(f"❌ Isaac Sim config not found at: {user_config_host_path}")
             print("This might mean Isaac Sim hasn't been run yet.")
             return False
         
         # Open and modify user.config.json
         try:
-            with self.user_config_path.open('r') as f:
+            with user_config_path.open('r') as f:
                 config = json.load(f)
         except Exception as e:
             print(f"❌ Failed to read 'user.config.json': {e}")
@@ -103,24 +102,22 @@ class NavsimInstaller:
             print("❌ Needed keys were not found in 'user_config.json'")
             return False
         
-        try:
-            user_exts = exts["userFolders"]
-            last_index = list(user_exts.keys())[-1]
+        if "userFolders" in exts and exts["userFolders"]:
+            last_index = list(exts["userFolders"].keys())[-1]
             new_index = str(int(last_index) + 1)
-            user_exts[new_index] = self.extensions_path
-        except KeyError:
-            user_exts = {"0": self.extensions_path}
-            exts["userFolders"] = user_exts
+            exts["userFolders"][new_index] = extensions_path
+        else:
+            exts["userFolders"] = {"0": extensions_path}
             
         try:
-            with self.user_config_path.open('w') as f:
+            with user_config_path.open('w') as f:
                 json.dump(config, f, indent=4)
         except Exception as e:
             print(f"❌ Failed to write 'user.config.json': {e}")
             return False
             
         print("✅ Added NAVSIM extensions path to user.config.json:")
-        print(f"  - {self.extensions_path}")
+        print(f"  - {extensions_path}")
         return True
     
     def install_navsim_project(self):
@@ -156,7 +153,9 @@ class NavsimInstaller:
                 print(f"  - {item.name}")
                 
             # Add extensions path to Isaac Sim config
-            self.add_extensions_path_to_isaac_sim()
+            if not self.add_extensions_path_to_isaac_sim():
+                print("❌ Extensions path could not be added to Isaac Sim config.")
+                print("You will have to do it manually via Isaac Sim UI.")
             
             return True
             

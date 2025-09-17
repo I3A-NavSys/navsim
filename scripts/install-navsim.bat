@@ -5,7 +5,7 @@ echo === NAVSIM Installation System ===
 echo.
 
 if "%1"=="" (
-    echo ❌ Configuration name is required
+    echo ❌ Missing required arguments.
     echo.
     echo Usage: %0 ^<docker_compose_yml^> ^<isaac_sim_path^>
     echo Example: %0 docker-compose.yml C:\isaacsim
@@ -14,7 +14,7 @@ if "%1"=="" (
 )
 
 if "%2"=="" (
-    echo ❌ Isaac Sim installation path is required
+    echo ❌ Missing required arguments.
     echo.
     echo Usage: %0 ^<docker_compose_yml^> ^<isaac_sim_path^>
     echo Example: %0 docker-compose.yml C:\isaacsim

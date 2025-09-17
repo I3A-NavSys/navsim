@@ -26,6 +26,7 @@ services:
       - C:/:/host/c
     environment:
       - ISAAC_SIM_PATH=${ISAAC_SIM_PATH}
+      - USER_APPDATA_PATH=${LOCALAPPDATA}
     networks:
       - navsim-network
     restart: "no"

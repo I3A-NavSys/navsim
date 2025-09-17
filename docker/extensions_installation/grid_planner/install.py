@@ -2,12 +2,14 @@ import os
 import sys
 import shutil
 from pathlib import Path
+import json
 
 class GridPlannerInstaller:
     def __init__(self):
         self.isaac_sim_path = None
         self.navsim_project_path = None
         self.extension_source = "/app/extension"
+        self.extension_id = "grid_planner-1.0.0"
         
     def convert_host_path_to_container(self, host_path):
         """Convert Windows host path to container path"""
@@ -112,6 +114,53 @@ class GridPlannerInstaller:
             print(f"❌ Failed to install extension: {e}")
             return False
     
+    def enable_extension_in_config(self):
+        """Enable the Grid Planner extension in Isaac Sim config"""
+        print("=== Enabling Grid Planner Extension in Isaac Sim Config ===")
+        
+        appdata_local_path = self.convert_host_path_to_container(os.environ.get('USER_APPDATA_PATH'))
+        isaac_sim_full_4_5_path = appdata_local_path / "ov/data/Kit/Isaac-Sim Full/4.5"
+        user_config_path = isaac_sim_full_4_5_path / "user.config.json"
+        
+        if not user_config_path.exists():
+            user_config_host_path = self.convert_container_path_to_host(user_config_path)
+            print(f"❌ Isaac Sim config not found at: {user_config_host_path}")
+            print("This might mean Isaac Sim hasn't been run yet.")
+            return False
+        
+        # Open and modify user.config.json
+        try:
+            with user_config_path.open('r') as f:
+                config = json.load(f)
+        except Exception as e:
+            print(f"❌ Failed to read 'user.config.json': {e}")
+            return False
+            
+        try:
+            exts = config["persistent"]["app"]["exts"]
+        except KeyError:
+            print("❌ Needed keys were not found in 'user_config.json'")
+            return False
+        
+        
+        if "enabled" in exts and exts["enabled"]:
+            last_index = list(exts["enabled"].keys())[-1]
+            new_index = str(int(last_index) + 1)
+            exts["enabled"][new_index] = self.extension_id
+        else:
+            exts["enabled"] = {"0": self.extension_id}
+    
+        try:
+            with user_config_path.open('w') as f:
+                json.dump(config, f, indent=4)
+        except Exception as e:
+            print(f"❌ Failed to write 'user.config.json': {e}")
+            return False
+        
+        print("✅ Enabled Grid Planner extension in user.config.json:")
+        print(f"  - {self.extension_id}")
+        return True
+    
     def run_installation(self):
         """Main installation process"""
         print("🚀 Grid Planner Extension Installation")
@@ -124,6 +173,10 @@ class GridPlannerInstaller:
         # Install extension
         if not self.install_extension():
             return False
+        
+        if not self.enable_extension_in_config():
+            print("❌ Extension could not be enabled in Isaac Sim config.")
+            print("You will have to enable it manually via Isaac Sim UI.")
         
         print()
         print("🎉 Grid Planner extension installation completed!")
