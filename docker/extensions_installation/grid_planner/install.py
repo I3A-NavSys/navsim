@@ -71,7 +71,6 @@ class GridPlannerInstaller:
             return False
         
         print(f"✅ Isaac Sim installation found at: {isaac_path}")
-        print(f"NAVSIM will be installed at: {self.convert_container_path_to_host(self.navsim_project_path)}")
         return True
     
     def install_extension(self):
