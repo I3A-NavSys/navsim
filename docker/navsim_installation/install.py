@@ -7,8 +7,12 @@ import json
 class NavsimInstaller:
     def __init__(self):
         self.isaac_sim_path = None
+        self.isaac_sim_full_4_5_path = None
         self.navsim_project_path = None
+        self.is_already_installed = False
         self.navsim_zip = "/app/navsim.zip"
+        self.dependencies_zip = "/app/dependencies.zip"
+        
         
     def convert_host_path_to_container(self, host_path):
         """Convert Windows host path to container path"""
@@ -73,13 +77,33 @@ class NavsimInstaller:
         print(f"NAVSIM will be installed at: {self.convert_container_path_to_host(self.navsim_project_path)}")
         return True
     
+    def unzip_dependencies(self):
+        appdata_local_path = self.convert_host_path_to_container(os.environ.get('USER_APPDATA_PATH'))
+        self.isaac_sim_full_4_5_path = appdata_local_path / "ov/data/Kit/Isaac-Sim Full/4.5"
+        dependencies_path = self.isaac_sim_full_4_5_path / "pip3-envs/default"
+        host_dependencies_path = self.convert_container_path_to_host(dependencies_path)
+        
+        if not dependencies_path.exists():
+            print(f"❌ Isaac Sim python modules environment not found at: {host_dependencies_path}")
+            print("This might mean Isaac Sim hasn't been run yet.")
+            return False
+        
+        try:
+            print(f"Extracting dependencies.zip to: {host_dependencies_path}")
+            with zipfile.ZipFile(self.dependencies_zip, 'r') as zip_ref:
+                zip_ref.extractall(dependencies_path)
+        except Exception as e:
+            print(f"❌ Failed to extract dependencies: {e}")
+            return False
+        
+        print("✅ Dependencies installed successfully!")
+        return True
+
     def add_extensions_path_to_isaac_sim(self):
         """Add NAVSIM extensions path to Isaac Sim user.config.json"""
         print("=== Configuring Isaac Sim to use NAVSIM extensions ===")
         
-        appdata_local_path = self.convert_host_path_to_container(os.environ.get('USER_APPDATA_PATH'))
-        isaac_sim_full_4_5_path = appdata_local_path / "ov/data/Kit/Isaac-Sim Full/4.5"
-        user_config_path = isaac_sim_full_4_5_path / "user.config.json"
+        user_config_path = self.isaac_sim_full_4_5_path / "user.config.json"
         extensions_path = self.convert_container_path_to_host(self.navsim_project_path / "extensions")
         
         if not user_config_path.exists():
@@ -103,9 +127,10 @@ class NavsimInstaller:
             return False
         
         if "userFolders" in exts and exts["userFolders"]:
-            last_index = list(exts["userFolders"].keys())[-1]
-            new_index = str(int(last_index) + 1)
-            exts["userFolders"][new_index] = extensions_path
+            if extensions_path not in exts["userFolders"].values():
+                last_index = list(exts["userFolders"].keys())[-1]
+                new_index = str(int(last_index) + 1)
+                exts["userFolders"][new_index] = extensions_path
         else:
             exts["userFolders"] = {"0": extensions_path}
             
@@ -130,6 +155,7 @@ class NavsimInstaller:
         # Terminates if navsim already exists
         if navsim_vscode_path.exists():
             print(f"NAVSIM project already exists at: {host_install_path}")
+            self.is_already_installed = True
             return True
         
         try:
@@ -144,18 +170,13 @@ class NavsimInstaller:
             print(f"Extracting navsim.zip to: {host_install_path}")
             with zipfile.ZipFile(self.navsim_zip, 'r') as zip_ref:
                 zip_ref.extractall(self.navsim_project_path)
-            
+
             print("✅ NAVSIM project installed successfully!")
             
             # List extracted contents
             print("Extracted contents:")
             for item in self.navsim_project_path.iterdir():
                 print(f"  - {item.name}")
-                
-            # Add extensions path to Isaac Sim config
-            if not self.add_extensions_path_to_isaac_sim():
-                print("❌ Extensions path could not be added to Isaac Sim config.")
-                print("You will have to do it manually via Isaac Sim UI.")
             
             return True
             
@@ -176,6 +197,15 @@ class NavsimInstaller:
         if not self.install_navsim_project():
             return False
         
+        # Install dependencies
+        if not self.unzip_dependencies():
+            return False
+        
+        # Add extensions path to Isaac Sim config
+        if not self.add_extensions_path_to_isaac_sim():
+            print("❌ Extensions path could not be added to Isaac Sim config.")
+            print("You will have to do it manually via Isaac Sim UI.")
+    
         print()
         print("🎉 NAVSIM Project installation completed!")
         print("=" * 50)

@@ -143,9 +143,10 @@ class GridPlannerInstaller:
         
         
         if "enabled" in exts and exts["enabled"]:
-            last_index = list(exts["enabled"].keys())[-1]
-            new_index = str(int(last_index) + 1)
-            exts["enabled"][new_index] = self.extension_id
+            if self.extension_id not in exts["enabled"].values():
+                last_index = list(exts["enabled"].keys())[-1]
+                new_index = str(int(last_index) + 1)
+                exts["enabled"][new_index] = self.extension_id
         else:
             exts["enabled"] = {"0": self.extension_id}
     

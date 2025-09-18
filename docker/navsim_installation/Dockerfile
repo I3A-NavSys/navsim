@@ -8,6 +8,9 @@ WORKDIR /app
 # Copy NAVSIM project ZIP
 COPY docker/navsim_installation/navsim.zip /app/navsim.zip
 
+# Copy python dependencies file
+COPY docker/navsim_installation/dependencies.zip /app/dependencies.zip
+
 # Copy installation script
 COPY docker/navsim_installation/install.py /app/install.py
 
