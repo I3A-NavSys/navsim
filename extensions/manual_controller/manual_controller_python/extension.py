@@ -40,12 +40,12 @@ class ManualController(omni.ext.IExt):
 
     def init_vars(self):
         self.event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
-        self.operator_event = carb.events.type_from_string("NavSim.Operator")
+        self.operator_uav_event = carb.events.type_from_string("NavSim.OperatorUAV")
         
         self.ext_utils = ExtensionUtils()
         self.current_time = 0
         self.stop_update_plot = True
-        self.manual_control = ControllerLogic(self.event_stream, self.operator_event)
+        self.manual_control = ControllerLogic(self.event_stream, self.operator_uav_event)
 
         self.physx_interface = omni.physx.get_physx_interface()
         self.on_physics_step_sub = self.physx_interface.subscribe_physics_step_events(
