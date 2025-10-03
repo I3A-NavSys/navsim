@@ -48,7 +48,7 @@ class CommandGenerator(omni.ext.IExt):
         )
 
         self.event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
-        self.operator_event = carb.events.type_from_string("NavSim.Operator")
+        self.operator_uav_event = carb.events.type_from_string("NavSim.OperatorUAV")
 
     def build_ui(self):
         self._window = ui.Window("CG: NavSim - Command Generator", width=400, height=200)
@@ -189,4 +189,4 @@ class CommandGenerator(omni.ext.IExt):
 
         payload["msg"] = msg
 
-        self.event_stream.push(self.operator_event, payload=payload)
+        self.event_stream.push(self.operator_uav_event, payload=payload)
