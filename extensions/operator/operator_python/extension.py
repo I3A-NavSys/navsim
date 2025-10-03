@@ -72,8 +72,7 @@ class Operator(omni.ext.IExt):
             self.is_sim_played = True
 
     def on_timeline_pause(self, event):
-        if self.is_extension_on:
-            self.time_manager.pause()
+        self.time_manager.pause()
 
     def start_uav_control(self):
         # Start the time manager
@@ -148,7 +147,6 @@ class Operator(omni.ext.IExt):
             self.event_listener
         )
 
-        self.is_extension_on = False
         self.is_sim_played = False
         self.current_time = 0
         self.clients_requests = {}
@@ -268,18 +266,11 @@ class Operator(omni.ext.IExt):
         payload = event.payload
 
         match payload["type_message"]:
-            case TypeMessage.EXTENSSION_ON_OFF:
-                self.handle_ext_on_off_msg(payload)
-
             case TypeMessage.CMD_FP_REQUEST:
                 self.handle_cmd_fp_request_msg(payload)
 
             case TypeMessage.USPACE:
                 self.handle_uspace_msg(payload)
-
-    def handle_ext_on_off_msg(self, payload):
-        msg = payload["msg"]
-        self.switch_on_off(msg["state"], is_from_event=True)
 
     def handle_cmd_fp_request_msg(self, payload):
         if self.uav_control is None:
@@ -580,9 +571,6 @@ class Operator(omni.ext.IExt):
                 msg["request_id"] = request_id
                 msg["state"] = request_state
 
-            case TypeMessage.EXTENSSION_ON_OFF:
-                msg["state"] = self.is_extension_on
-
         payload["msg"] = msg
 
         self.event_stream.push(self.uspace_clients_event, payload=payload)
@@ -628,15 +616,6 @@ class Operator(omni.ext.IExt):
                         style={"font_size": 20, "font_weight": "bold"},
                     )
                     ui.Spacer(height=5)
-
-                    # On/Off button
-                    self.on_off_button = ui.ToolButton(
-                        text="ON", 
-                        height=30, 
-                        clicked_fn=lambda state=False, is_from_event=False: 
-                            self.switch_on_off(state, is_from_event), 
-                        style={"background_color": ui.color("#6f9523")}
-                    )
 
                     # UAVs collapsable
                     self.ui_uavs_collapsable = ui.CollapsableFrame(
@@ -733,38 +712,6 @@ class Operator(omni.ext.IExt):
                                     )
 
                             ui.Spacer(height=10)
-
-    def switch_on_off(self, state, is_from_event):
-        # Get model value
-        model = self.on_off_button.model
-        model_value = model.get_value_as_bool()
-
-        # Decide wether to use the state from the event or the model value
-        if is_from_event:
-            internal_state = state
-            model.set_value(state)
-        else:
-            internal_state = model_value
-
-        # Update the button style and text based on the internal state
-        if internal_state:
-            on = True
-            style = {"background_color": ui.color("#952323")}
-            self.on_off_button.text = "OFF"
-        else:
-            on = False
-            style = {"background_color": ui.color("#6f9523")}
-            self.on_off_button.text = "ON"
-
-        self.switch_extension_state(on=on, is_from_event=is_from_event)
-        self.on_off_button.set_style(style)
-
-    def switch_extension_state(self, on, is_from_event):
-        # Update internal state
-        self.is_extension_on = on
-
-        if not is_from_event:
-            self.inform_client(TypeMessage.EXTENSSION_ON_OFF)
 
     def populate_select_uav_to_plot(self):
         return list(self.uavs.keys())

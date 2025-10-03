@@ -127,15 +127,8 @@ class USpaceClients(omni.ext.IExt):
         payload = event.payload
 
         match payload["type_message"]:
-            case TypeMessage.EXTENSSION_ON_OFF:
-                self.handle_extension_on_off_msg(payload)
-
             case TypeMessage.USPACE:
                 self.handle_uspace_msg(payload)
-
-    def handle_extension_on_off_msg(self, payload):
-        msg = payload["msg"]
-        self.switch_on_off(msg["state"], is_from_event=True)
 
     def handle_uspace_msg(self, payload):
         msg = payload["msg"]
@@ -176,8 +169,7 @@ class USpaceClients(omni.ext.IExt):
                     self.on_off_button = ui.ToolButton(
                         text="ON", 
                         height=30, 
-                        clicked_fn=lambda state=False, is_from_event=False: 
-                            self.switch_on_off(state, is_from_event), 
+                        clicked_fn=self.switch_on_off, 
                         style={"background_color": ui.color("#6f9523")}
                     )
 
@@ -269,35 +261,21 @@ class USpaceClients(omni.ext.IExt):
                         clicked_fn=self.send_request_by_hand
                     )
 
-    def switch_on_off(self, state, is_from_event):
+    def switch_on_off(self):
         model = self.on_off_button.model
         model_value = model.get_value_as_bool()
-        
-        if is_from_event:
-            internal_state = state
-            model.set_value(state)
-        else:
-            internal_state = model_value
 
-        if internal_state:
-            on = True
+        if model_value:
+            self.is_extension_on = True
             style={"background_color": ui.color("#952323")}
             self.on_off_button.text = "OFF"
 
         else:
-            on = False
+            self.is_extension_on = False
             style={"background_color": ui.color("#6f9523")}
             self.on_off_button.text = "ON"
 
-        self.switch_extension_state(on=on, is_from_event=is_from_event)
         self.on_off_button.set_style(style)
-
-    def switch_extension_state(self, on, is_from_event):
-        # Update internal state
-        self.is_extension_on = on
-
-        if not is_from_event:
-            self.inform_operator_uav(TypeMessage.EXTENSSION_ON_OFF)
 
     def send_request_by_hand(self):
         client_id = self.ui_client_id.model.get_value_as_string()
@@ -555,9 +533,6 @@ class USpaceClients(omni.ext.IExt):
         match type_message:
             case TypeMessage.USPACE:
                 msg["request"] = request
-
-            case TypeMessage.EXTENSSION_ON_OFF:
-                msg["state"] = self.is_extension_on
 
         payload["msg"] = msg
 
