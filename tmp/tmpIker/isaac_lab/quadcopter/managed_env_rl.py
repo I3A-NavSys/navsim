@@ -66,28 +66,28 @@ class ObservationsCfg:
 
         # Linear velocity [0:3]
         lin_vel = ObservationTermCfg(
-            func=observations.lin_vel,
+            func=mdp.base_lin_vel,
             params={"asset_cfg": SceneEntityCfg("quadcopter")})
 
         # Angular velocity [3:6]
         ang_vel = ObservationTermCfg(
-            func=observations.ang_vel,
+            func=mdp.base_ang_vel,
             params={"asset_cfg": SceneEntityCfg("quadcopter")})
 
         # Roll [6]
-        roll = ObservationTermCfg(
-            func=observations.roll,
-            params={"asset_cfg": SceneEntityCfg("quadcopter")})
+        # roll = ObservationTermCfg(
+        #     func=observations.roll,
+        #     params={"asset_cfg": SceneEntityCfg("quadcopter")})
 
         # Pitch [7]
-        pitch = ObservationTermCfg(
-            func=observations.pitch,
-            params={"asset_cfg": SceneEntityCfg("quadcopter")})
+        # pitch = ObservationTermCfg(
+        #     func=observations.pitch,
+        #     params={"asset_cfg": SceneEntityCfg("quadcopter")})
 
         # Command [8:12]
-        command = ObservationTermCfg(
-            func=observations.command
-        )
+        # command = ObservationTermCfg(
+        #     func=observations.command
+        # )
 
         def __post_init__(self) -> None:
             self.enable_corruption = False
@@ -109,33 +109,56 @@ class RewardsCfg:
     alive = RewardTermCfg(func=mdp.is_alive, weight=1.0)
 
     # (2) Failure penalty
-    terminating = RewardTermCfg(func=mdp.is_terminated, weight=-100.0)
+    terminating = RewardTermCfg(func=mdp.is_terminated, weight=-3.0)
 
     # (3) Primary task: keep linear velocity close to zero
-    quadcopter_lin_vel = RewardTermCfg(
-        func=rewards.lin_vel_diff,
-        weight=1.25
+    # quadcopter_lin_vel = RewardTermCfg(
+    #     func=rewards.lin_vel_diff,
+    #     weight=1.25
+    # )
+
+    quadcopter_lin_vel_x = RewardTermCfg(
+        func = rewards.lin_vel_x_diff,
+        weight = 1.0,
+        params = {"asset_cfg": SceneEntityCfg("quadcopter"),
+                  "command_name": "command"}
+    )
+
+    quadcopter_lin_vel_y = RewardTermCfg(
+        func = rewards.lin_vel_y_diff,
+        weight = 1.0,
+        params = {"asset_cfg": SceneEntityCfg("quadcopter"),
+                  "command_name": "command"}
+    )
+
+    quadcopter_lin_vel_z = RewardTermCfg(
+        func = rewards.lin_vel_z_diff,
+        weight = 1.0,
+        params = {"asset_cfg": SceneEntityCfg("quadcopter"),
+                  "command_name": "command"}
     )
 
     # (4) Primary task: keep angular velocity close to zero
     quadcopter_ang_vel = RewardTermCfg(
         func=rewards.ang_vel_diff,
-        weight=1.25
+        weight=1.0,
+        params = {"asset_cfg": SceneEntityCfg("quadcopter"),
+                  "command_name": "command"}
     )
 
     # (5) Primary task: penalize roll
-    pen_roll_diff = RewardTermCfg(
-        func=rewards.pen_roll_diff,
-        weight=-1.25,
-        params={"target": 0.0}
-    )
+    # pen_roll_diff = RewardTermCfg(
+    #     func=rewards.pen_roll_diff,
+    #     weight=-1.25,
+    #     params={"target": 0.0}
+    # )
 
     # (6) Primary task: penalize pitch
-    pen_pitch_diff = RewardTermCfg(
-        func=rewards.pen_pitch_diff,
-        weight=-1.25,
-        params={"target": 0.0}
-    )
+    # pen_pitch_diff = RewardTermCfg(
+    #     func=rewards.pen_pitch_diff,
+    #     weight=-1.25,
+    #     params={"target": 0.0}
+    # )
 
 # |---------------------------------------------------------|
 # |--------------------- TERMINATIONS ----------------------|
@@ -147,7 +170,6 @@ class TerminationsCfg:
     """Termination terms for the MDP."""
 
     # (1) Time out
-
     time_out = TerminationTermCfg(func=mdp.time_out, time_out=True)
 
     # (2) Quadcopter too close to ground
@@ -225,9 +247,9 @@ class QuadcopterSceneCfg(InteractiveSceneCfg):
             ),
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 rigid_body_enabled = True,
-                max_linear_velocity=20.0,
-                max_angular_velocity=360.0,
-                enable_gyroscopic_forces = True
+                # max_linear_velocity=20.0,
+                # max_angular_velocity=360.0,
+                # enable_gyroscopic_forces = True
             )
         ),
         actuators={

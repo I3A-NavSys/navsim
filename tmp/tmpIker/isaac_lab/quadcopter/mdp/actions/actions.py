@@ -94,7 +94,7 @@ class QuadcopterMotorAction(ActionTerm):
         # Apply forces and torques at the position of the joints
         self._asset.root_physx_view.apply_forces_and_torques_at_position(
             force_data=self._forces,
-            torque_data=self._torques,
+            torque_data=None,
             position_data=self._positions,
             indices=self._indices,
             is_global=False
