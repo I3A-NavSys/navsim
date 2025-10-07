@@ -19,8 +19,10 @@ icon = "data/icon.png"
 "omni.kit.uiapp" = {}
 "omni.isaac.ui" = {}
 "omni.isaac.core" = {}
-# PyQt5 pipapi
-# pygame pipapi
+
+[python.pipapi]
+requirements = ["pygame"]
+use_online_index = true
 
 [[python.module]]
 name = "manual_controller_python"

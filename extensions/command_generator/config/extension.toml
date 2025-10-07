@@ -17,15 +17,10 @@ icon = "data/icon.png"
 
 [dependencies]
 "omni.kit.uiapp" = {}
-# "omni.isaac.ui" = {}
-# "omni.isaac.core" = {}
-# PyQt5 pipapi
+
+[python.pipapi]
+requirements = ["pyproj"]
+use_online_index = true
 
 [[python.module]]
 name = "command_generator_python"
-
-[[test]]
-# Extra dependencies only to be used during test run
-dependencies = [
-    "omni.kit.ui_test" # UI testing extension
-]
