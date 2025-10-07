@@ -27,29 +27,29 @@ from fleet.uav_matrix_control import UAVcontrol
 project_root_path = get_navsim_root_path()
 
 class Operator(omni.ext.IExt):
-    def on_startup(self, ext_id):
+    def on_startup(self, ext_id) -> None:
         self.init_vars()
         self.build_ui()
 
-    def on_shutdown(self):
+    def on_shutdown(self) -> None:
         self.on_physics_step_sub = None
         self.on_stop_sub = None
         self.on_play_sub = None
         self.event_sub = None
 
-    def on_physics_step(self, step_size: int):
+    def on_physics_step(self, step_size: int) -> None:
         if self.is_sim_played:
             self.current_time += step_size
             self.uav_control.update(self.current_time, self.uavs, step_size)
 
-    def on_timeline_stop(self, event):
+    def on_timeline_stop(self, event) -> None:
         self.current_time = 0
         self.is_sim_played = False
         self.rigid_prim_view = None
         self.uav_control = None
         self.time_manager.stop()
 
-    def on_timeline_play(self, event):
+    def on_timeline_play(self, event) -> None:
         # Resume simulation from pause
         if self.is_sim_played:
             self.time_manager.resume()
@@ -71,10 +71,10 @@ class Operator(omni.ext.IExt):
             # Update control flow variables
             self.is_sim_played = True
 
-    def on_timeline_pause(self, event):
+    def on_timeline_pause(self, event) -> None:
         self.time_manager.pause()
 
-    def start_uav_control(self):
+    def start_uav_control(self) -> None:
         # Start the time manager
         self.time_manager.start()
 
@@ -99,7 +99,7 @@ class Operator(omni.ext.IExt):
         self.print_uavs()
         self.ui_select_uav_to_plot.repopulate()
 
-    def set_grid_parameters(self):
+    def set_grid_parameters(self) -> None:
         self.gp.cell_side = self.ui_grid_cell_size.model.get_value_as_int()
         self.gp.slot_time = self.ui_grid_slot_time.model.get_value_as_int()
         self.gp.x_height = self.ui_grid_x_level_height.model.get_value_as_int()
@@ -108,7 +108,7 @@ class Operator(omni.ext.IExt):
     # ----------------------------------
     # -------- INITIALIZATION ----------
     # ----------------------------------
-    def init_vars(self):
+    def init_vars(self) -> None:
         self.rigid_prim_view = None
         self.uav_control = None
 
@@ -156,7 +156,7 @@ class Operator(omni.ext.IExt):
         self.uav_plots = {}
         self.idle_uavs = []  # Stores the ids of the idle UAVs
 
-    def init_uavs(self):
+    def init_uavs(self) -> None:
         pos, _ = self.rigid_prim_view.get_world_poses(
             indices=range(self.rigid_prim_view.count)
         )
@@ -183,28 +183,28 @@ class Operator(omni.ext.IExt):
     # ----------------------------------
     # ------ TRACKED INFORMATION -------
     # ----------------------------------
-    def plot_uav_pos(self, uav_id, key):
+    def plot_uav_pos(self, uav_id, key) -> None:
         fp: FlightPlan = self.uav_plots[uav_id][key]["fp"]
         tracked_info = self.uav_plots[uav_id][key]["tracked_info"]
 
         fp.position_figure(f"{key}: POSITION", self.plot_time_steps)
         fp.add_UAV_track_pos(f"{key}: POSITION", tracked_info)
 
-    def plot_uav_vel(self, uav_id, key):
+    def plot_uav_vel(self, uav_id, key) -> None:
         fp: FlightPlan = self.uav_plots[uav_id][key]["fp"]
         tracked_info = self.uav_plots[uav_id][key]["tracked_info"]
 
         fp.velocity_figure(f"{key}: VELOCITY", self.plot_time_steps)
         fp.add_UAV_track_vel(f"{key}: VELOCITY", tracked_info)
 
-    def plot_uav_acc(self, uav_id, key):
+    def plot_uav_acc(self, uav_id, key) -> None:
         fp: FlightPlan = self.uav_plots[uav_id][key]["fp"]
         tracked_info = self.uav_plots[uav_id][key]["tracked_info"]
 
         fp.acceleration_figure(f"{key}: ACCELERATION", self.plot_time_steps)
         fp.add_UAV_track_acc(f"{key}: ACCELERATION", tracked_info)
 
-    def save_figures(self, uav_id, key):
+    def save_figures(self, uav_id, key) -> None:
         pos_fig_name = f"{key}: POSITION"
         vel_fig_name = f"{key}: VELOCITY"
         acc_fig_name = f"{key}: ACCELERATION"
@@ -221,7 +221,7 @@ class Operator(omni.ext.IExt):
         if plt.fignum_exists(acc_fig_name):
             plt.figure(acc_fig_name).savefig(fname=path + "_acc.svg")
 
-    def export_request_tracking_data(self, uav_id, key):
+    def export_request_tracking_data(self, uav_id, key) -> None:
         fp: FlightPlan = self.uav_plots[uav_id][key]["fp"]
         tracked_info = self.uav_plots[uav_id][key]["tracked_info"]
         tracked_info_trace_rows = len(tracked_info)
@@ -262,7 +262,7 @@ class Operator(omni.ext.IExt):
     # ----------------------------------
     # -- EVENTS AND REQUESTS HANDLING --
     # ----------------------------------
-    def event_listener(self, event):
+    def event_listener(self, event) -> None:
         payload = event.payload
 
         match payload["type_message"]:
@@ -272,7 +272,7 @@ class Operator(omni.ext.IExt):
             case TypeMessage.USPACE:
                 self.handle_uspace_msg(payload)
 
-    def handle_cmd_fp_request_msg(self, payload):
+    def handle_cmd_fp_request_msg(self, payload) -> None:
         if self.uav_control is None:
             return
 
@@ -293,7 +293,7 @@ class Operator(omni.ext.IExt):
                 }
                 self.send_flightplan(uav_id, fp)
 
-    def handle_uspace_msg(self, payload):
+    def handle_uspace_msg(self, payload) -> None:
         msg = payload["msg"]
 
         match msg["sender"]:
@@ -302,7 +302,7 @@ class Operator(omni.ext.IExt):
             case TypeSender.USPACE_CLIENT:
                 self.process_client_message(msg)
 
-    def process_uav_message(self, msg):
+    def process_uav_message(self, msg) -> None:
         request = msg["request"]
 
         uav_id = request["id"]
@@ -329,7 +329,7 @@ class Operator(omni.ext.IExt):
 
         self.print_uavs()
 
-    def check_request_completed(self, uav_id, uav_state, uav_flightplan, tracked_info):
+    def check_request_completed(self, uav_id, uav_state, uav_flightplan, tracked_info) -> None:
         registered_state = self.uavs[uav_id]["state"]
         is_completed = registered_state == UAVState.BUSY and uav_state == UAVState.IDLE
 
@@ -369,7 +369,7 @@ class Operator(omni.ext.IExt):
         if self.ui_select_uav_to_plot.get_selection() == uav_id:
             self.update_uav_plots_frame(uav_id)
 
-    def process_client_message(self, msg):
+    def process_client_message(self, msg) -> None:
         request = msg["request"]
 
         client_id = request["client_id"]
@@ -399,7 +399,7 @@ class Operator(omni.ext.IExt):
         )
         self.process_request(client_id, request_id)
 
-    def process_request(self, client_id, request_id):
+    def process_request(self, client_id, request_id) -> None:
         if len(self.idle_uavs) == 0:
             return
 
@@ -456,12 +456,7 @@ class Operator(omni.ext.IExt):
             RequestState.CANCELLED
         )
             
-    def get_flightplan(self, 
-        request_origin, 
-        request_destination, 
-        request_init_time, 
-        request_end_time
-    ):
+    def get_flightplan(self, request_origin, request_destination, request_init_time, request_end_time) -> None:
         # Get node pos from request origin as initial node
         i = request_origin[0] // self.gp.cell_side
         j = request_origin[1] // self.gp.cell_side
@@ -489,7 +484,7 @@ class Operator(omni.ext.IExt):
 
         return fp
 
-    def add_takeoff_landing_wps(self, fp: FlightPlan, init_pos, end_pos):
+    def add_takeoff_landing_wps(self, fp: FlightPlan, init_pos, end_pos) -> None:
         # Compute the initial and final times
         init_time_1 = fp.init_time() - 2 * self.gp.slot_time
         end_time_1 = fp.finish_time() + 2 * self.gp.slot_time
@@ -548,20 +543,14 @@ class Operator(omni.ext.IExt):
 
         fp.connect_waypoints()
 
-    def send_command(self, uav_id, cmd):
+    def send_command(self, uav_id, cmd) -> None:
         self.uav_control.commands[uav_id] = cmd
         self.uav_control.cmd_exp_time[uav_id] = self.current_time + cmd.duration
 
-    def send_flightplan(self, uav_id, fp):
+    def send_flightplan(self, uav_id, fp) -> None:
         self.uavs[uav_id]["flightplan"] = fp
 
-    def inform_client(
-        self, 
-        type_message, 
-        client_id=None, 
-        request_id=None, 
-        request_state=None
-    ):
+    def inform_client(self, type_message, client_id=None, request_id=None, request_state=None) -> None:
         payload = {"type_message": type_message}
         msg = {"sender": TypeSender.OPERATOR_UAV}
 
@@ -575,9 +564,7 @@ class Operator(omni.ext.IExt):
 
         self.event_stream.push(self.uspace_clients_event, payload=payload)
 
-    def inform_operator_vertiport(
-        self, type_message, origin, destination, init_time, end_time
-    ):
+    def inform_operator_vertiport(self, type_message, origin, destination, init_time, end_time) -> None:
         payload = {"type_message": type_message}
         msg = {"sender": TypeSender.OPERATOR_UAV}
 
@@ -597,7 +584,7 @@ class Operator(omni.ext.IExt):
     # ----------------------------------
     # ---- UI BUILDING AND HANDLING ----
     # ----------------------------------
-    def build_ui(self):
+    def build_ui(self) -> None:
         self.window = ui.Window("OP: NavSim - Operator", width=300, height=300)
         self.window.deferred_dock_in("Layers")
         self.window.frame.set_style(self.extension_utils.Window_dark_style)
@@ -713,10 +700,10 @@ class Operator(omni.ext.IExt):
 
                             ui.Spacer(height=10)
 
-    def populate_select_uav_to_plot(self):
+    def populate_select_uav_to_plot(self) -> None:
         return list(self.uavs.keys())
 
-    def update_uav_plots_frame(self, uav_id):
+    def update_uav_plots_frame(self, uav_id) -> None:
         self.ui_uav_plots_frame.clear()
 
         if uav_id not in self.uav_plots:
@@ -771,7 +758,7 @@ class Operator(omni.ext.IExt):
 
                 ui.Line()
 
-    def print_uavs(self):
+    def print_uavs(self) -> None:
         self.ui_uavs_container.clear()
 
         for uav_id, value in self.uavs.items():
@@ -790,7 +777,7 @@ class Operator(omni.ext.IExt):
                 request
             )
 
-    def print_new_uav(self, uav_id, state, time, pos, request):
+    def print_new_uav(self, uav_id, state, time, pos, request) -> None:
         id_label = ui.Label(f"ID: {uav_id}\n")
         state_label = ui.Label(f"State: {state}\n")
         time_label = ui.Label(f"Time: {time}\n")
@@ -805,7 +792,7 @@ class Operator(omni.ext.IExt):
         self.ui_uavs_container.add_child(request_label)
         self.ui_uavs_container.add_child(spacer)
 
-    def print_requests(self):
+    def print_requests(self) -> None:
         self.ui_requests_container.clear()
 
         for client_id, requests in self.clients_requests.items():
@@ -819,15 +806,7 @@ class Operator(omni.ext.IExt):
                     request["destination"],
                 )
 
-    def print_new_request(
-        self,
-        client_id,
-        request_id,
-        init_time,
-        end_time,
-        origin,
-        destination,
-    ):
+    def print_new_request(self, client_id, request_id, init_time, end_time, origin, destination) -> None:
         client_id_label = ui.Label(f"Client ID: {client_id}\n")
         request_id_label = ui.Label(f"Request ID: {request_id}\n")
         init_time_label = ui.Label(f"Init time: {init_time}\n")
@@ -844,13 +823,13 @@ class Operator(omni.ext.IExt):
         self.ui_requests_container.add_child(destination_label)
         self.ui_requests_container.add_child(spacer)
 
-    def print_vertiports(self):
+    def print_vertiports(self) -> None:
         self.ui_vertiports_container.clear()
 
         for key, value in self.vertiports_from_id.items():
             self.print_new_vertiport(key, value["position"], value["model"])
 
-    def print_new_vertiport(self, id, position, model):
+    def print_new_vertiport(self, id, position, model) -> None:
         id_label = ui.Label(f"ID: {id}\n")
         position_label = ui.Label(f"Position: {position}\n")
         model_label = ui.Label(f"Model: {model}\n")
