@@ -1,14 +1,5 @@
 from datetime import datetime, timedelta
-
-try:
-    import pyproj
-except:
-    raise Exception("ERROR: 'pyproj' package is not installed. Copy and paste into " +
-                    "Script Editor the folllowing code:\n\n" + 
-                    "# -- START CODE ------------------------------\n" +
-                    "import omni.kit.pipapi\n" +
-                    "omni.kit.pipapi.install(\"pyproj\")\n" +
-                    "# -- END CODE --------------------------------\n")
+import pyproj
 
 
 class TypeSender:
