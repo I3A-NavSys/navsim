@@ -15,11 +15,11 @@ from navsim_utils.extensions_utils import ExtensionUtils
 
 
 class USpaceClients(omni.ext.IExt):
-    def on_startup(self, ext_id):
+    def on_startup(self, ext_id) -> None:
         self.init_vars()
         self.build_ui()
         
-    def on_shutdown(self):
+    def on_shutdown(self) -> None:
         self.on_physics_step_sub = None
         self.on_stop_sub = None
         self.on_play_sub = None
@@ -27,11 +27,11 @@ class USpaceClients(omni.ext.IExt):
         self.event_sub = None
         if hasattr(self, "amazon_task"):    self.amazon_task.cancel()
         
-    def on_physics_step(self, step_size:int):
+    def on_physics_step(self, step_size: int) -> None:
         if self.is_sim_played:
             self.current_time += step_size
 
-    def on_timeline_stop(self, event):
+    def on_timeline_stop(self, event) -> None:
         self.current_time = 0
         self.is_sim_played = False
         self.time_manager.stop()
@@ -41,7 +41,7 @@ class USpaceClients(omni.ext.IExt):
         self.ui_amazon_new_req.text = text
         self.vertiports_ready_async.clear()
         
-    def on_timeline_play(self, event):
+    def on_timeline_play(self, event) -> None:
         is_resume = self.is_extension_on and self.is_sim_played
         is_play = self.is_extension_on and not self.is_sim_played
 
@@ -71,12 +71,12 @@ class USpaceClients(omni.ext.IExt):
             self.is_sim_played = True
             self.amazon_task = asyncio.ensure_future(self.start_amazon())
 
-    def on_timeline_pause(self, event):
+    def on_timeline_pause(self, event) -> None:
         if self.is_extension_on:
             self.time_manager.pause()
             self.amazon_task.cancel()
     
-    def init_vars(self):
+    def init_vars(self) -> None:
         self.physx_interface = omni.physx.get_physx_interface()
         self.on_physics_step_sub = self.physx_interface.subscribe_physics_step_events(
             self.on_physics_step
@@ -123,14 +123,14 @@ class USpaceClients(omni.ext.IExt):
         self.time_manager = TimeManager()
         self.geospatial_manager = GeospatialManager()
 
-    def event_listener(self, event):
+    def event_listener(self, event) -> None:
         payload = event.payload
 
         match payload["type_message"]:
             case TypeMessage.USPACE:
                 self.handle_uspace_msg(payload)
 
-    def handle_uspace_msg(self, payload):
+    def handle_uspace_msg(self, payload) -> None:
         msg = payload["msg"]
 
         match msg["sender"]:
@@ -145,7 +145,7 @@ class USpaceClients(omni.ext.IExt):
                 self.vertiports = msg["vertiports"]
                 self.vertiports_ready_async.set()
 
-    def build_ui(self):        
+    def build_ui(self) -> None:        
         self.window = ui.Window(
             "CL: NavSim - clients", 
             width=300, 
@@ -261,7 +261,7 @@ class USpaceClients(omni.ext.IExt):
                         clicked_fn=self.send_request_by_hand
                     )
 
-    def switch_on_off(self):
+    def switch_on_off(self) -> None:
         model = self.on_off_button.model
         model_value = model.get_value_as_bool()
 
@@ -277,7 +277,7 @@ class USpaceClients(omni.ext.IExt):
 
         self.on_off_button.set_style(style)
 
-    def send_request_by_hand(self):
+    def send_request_by_hand(self) -> None:
         client_id = self.ui_client_id.model.get_value_as_string()
         request_id = self.ui_request_id.model.get_value_as_string()
         state = RequestState.PENDING
@@ -316,7 +316,7 @@ class USpaceClients(omni.ext.IExt):
 
     #     return vertiports_from_id, vertiports_from_pos
 
-    def update_request_state(self, client_id, request_id, state):
+    def update_request_state(self, client_id, request_id, state) -> None:
         is_terminated = state in (RequestState.CANCELLED, RequestState.COMPLETED)
 
         if is_terminated:
@@ -326,7 +326,7 @@ class USpaceClients(omni.ext.IExt):
         self.clients[client_id][request_id]["state"] = state
         self.print_requests(client_id)
 
-    def print_requests(self, client):
+    def print_requests(self, client) -> None:
         match client:
             case "amazon":
                 self.ui_amazon_requests_container.clear()
@@ -347,17 +347,7 @@ class USpaceClients(omni.ext.IExt):
                 value["request_finish_time"]
             )
 
-    def print_new_request(self, 
-        client, 
-        request_id, 
-        state, 
-        init_time, 
-        end_time,
-        origin, 
-        destination, 
-        request_begin_time, 
-        request_finish_time
-    ):
+    def print_new_request(self, client, request_id, state, init_time, end_time, origin, destination, request_begin_time, request_finish_time) -> None:
         match client:
             case "amazon":
                 container = self.ui_amazon_requests_container
@@ -385,7 +375,7 @@ class USpaceClients(omni.ext.IExt):
         container.add_child(request_finish_time_label)
         container.add_child(spacer)
 
-    async def start_amazon(self):
+    async def start_amazon(self) -> None:
         while self.is_sim_played:
             await self.vertiports_ready_async.wait()
             await asyncio.sleep(1)
@@ -403,7 +393,7 @@ class USpaceClients(omni.ext.IExt):
                 
                 self.reset_new_request_timer(self.amazon_id)
 
-    def create_request(self, client_id):
+    def create_request(self, client_id) -> dict[str, any]:
         self.amount_amazon_requests += 1
 
         request_id = f"request_{self.amount_amazon_requests}"
@@ -442,7 +432,7 @@ class USpaceClients(omni.ext.IExt):
         destination, 
         request_begin_time, 
         request_finish_time
-    ):
+    ) -> dict[str, any]:
         # Convert times to real time
         real_begin_time = self.time_manager.sim_to_real(request_begin_time)
         real_init_time = self.time_manager.sim_to_real(init_time)
@@ -488,7 +478,7 @@ class USpaceClients(omni.ext.IExt):
         destination, 
         request_begin_time, 
         request_finish_time
-    ):
+    ) -> None:
         if client_id not in self.clients:
             self.clients[client_id] = {}
 
@@ -514,7 +504,7 @@ class USpaceClients(omni.ext.IExt):
             request_finish_time
         )
     
-    def reset_new_request_timer(self, client):
+    def reset_new_request_timer(self, client) -> None:
         match client:
             case "amazon":
                 self.amazon_new_request_timer = self.amazon_new_request_timer_base
@@ -526,7 +516,7 @@ class USpaceClients(omni.ext.IExt):
             case _:
                 pass
 
-    def inform_operator_uav(self, type_message, request=None):
+    def inform_operator_uav(self, type_message, request=None) -> None:
         payload = {"type_message": type_message}
         msg = {"sender": TypeSender.USPACE_CLIENT}
 
@@ -538,7 +528,7 @@ class USpaceClients(omni.ext.IExt):
 
         self.event_stream.push(self.operator_uav_event, payload=payload)
         
-    def inform_operator_vertiport(self, type_message):
+    def inform_operator_vertiport(self, type_message) -> None:
         payload = {"type_message": type_message}
         msg = {"sender": TypeSender.USPACE_CLIENT}
         
