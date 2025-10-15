@@ -15,27 +15,27 @@ from navsim_utils.extensions_utils import ExtensionUtils
 from uspace.grid_planner.grid_planner import GridPlanner
 
 
-class USpaceClients(omni.ext.IExt):
-    def on_startup(self, ext_id):
+class USpaceManager(omni.ext.IExt):
+    def on_startup(self, ext_id) -> None:
         self.init_vars()
         self.build_ui()
         
-    def on_shutdown(self):
+    def on_shutdown(self) -> None:
         self.on_physics_step_sub = None
         self.on_stop_sub = None
         self.event_sub = None
         
-    def on_physics_step(self, step_size:int):
+    def on_physics_step(self, step_size:int) -> None:
         self.current_time += step_size
 
-    def on_timeline_stop(self, event):
+    def on_timeline_stop(self, event) -> None:
         self.current_time = 0
 
-    def on_timeline_play(self, event):
+    def on_timeline_play(self, event) -> None:
         self.requests = {}
         self.gp.clear_grid()
     
-    def init_vars(self):
+    def init_vars(self) -> None:
         self.physx_interface = omni.physx.get_physx_interface()
         self.on_physics_step_sub = self.physx_interface.subscribe_physics_step_events(
             self.on_physics_step
@@ -68,14 +68,14 @@ class USpaceClients(omni.ext.IExt):
         self.gp = GridPlanner()
         self.requests = {}
 
-    def event_listener(self, event):
+    def event_listener(self, event) -> None:
         payload = event.payload
 
         match payload["type_message"]:
             case TypeMessage.USPACE:
                 self.handle_uspace_msg(payload)
 
-    def handle_uspace_msg(self, payload):
+    def handle_uspace_msg(self, payload) -> None:
         msg = payload["msg"]
 
         match msg["sender"]:
@@ -84,7 +84,7 @@ class USpaceClients(omni.ext.IExt):
             case TypeSender.OPERATOR_VERTIPORT:
                 self.handle_operator_vertiport_msg(msg)
 
-    def handle_operator_uav_msg(self, msg):
+    def handle_operator_uav_msg(self, msg) -> None:
         request = msg["request"]
 
         origin = request["origin"]
@@ -99,11 +99,10 @@ class USpaceClients(omni.ext.IExt):
             "end_time": end_time,
         }
 
-
-    def handle_operator_vertiport_msg(self, msg):
+    def handle_operator_vertiport_msg(self, msg) -> None:
         pass
 
-    def build_ui(self):        
+    def build_ui(self) -> None:
         self.window = ui.Window(
             "USM: NavSim - Uspace manager", 
             width=300, 
@@ -116,7 +115,7 @@ class USpaceClients(omni.ext.IExt):
                     self.build_ui_title()
                     self.build_ui_grid_parameters()
 
-    def build_ui_title(self):
+    def build_ui_title(self) -> None:
         ui.Spacer(height=10)
         ui.Label(
             "NAVSIM - USPACE MANAGER", 
@@ -125,7 +124,7 @@ class USpaceClients(omni.ext.IExt):
         )
         ui.Spacer(height=5)
 
-    def build_ui_grid_parameters(self):
+    def build_ui_grid_parameters(self) -> None:
         with ui.CollapsableFrame(
             "Grid Parameters", 
             collapsed=False,
@@ -182,13 +181,13 @@ class USpaceClients(omni.ext.IExt):
 
                 ui.Spacer(height=10)
 
-    def set_grid_parameters(self):
+    def set_grid_parameters(self) -> None:
         self.gp.cell_side = self.ui_grid_cell_size.model.get_value_as_int()
         self.gp.slot_time = self.ui_grid_slot_time.model.get_value_as_int()
         self.gp.x_height = self.ui_grid_x_level_height.model.get_value_as_int()
         self.gp.y_height = self.ui_grid_y_level_height.model.get_value_as_int()
 
-    def inform_operator_uav(self, type_message, request=None):
+    def inform_operator_uav(self, type_message, request=None) -> None:
         payload = {"type_message": type_message}
         msg = {"sender": TypeSender.USPACE_MANAGER}
 
@@ -205,7 +204,7 @@ class USpaceClients(omni.ext.IExt):
         type_message, 
         origin, 
         destination,
-    ):
+    ) -> None:
         payload = {"type_message": type_message}
         msg = {"sender": TypeSender.USPACE_MANAGER}
 
