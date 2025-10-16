@@ -11,11 +11,11 @@ from navsim_utils.extensions_utils import ExtensionUtils
 
 
 class USpaceVertiportOperator(omni.ext.IExt):
-    def on_startup(self, ext_id):
+    def on_startup(self, ext_id) -> None:
         self.init_vars()
         self.build_ui()
 
-    def init_vars(self):
+    def init_vars(self) -> None:
         # Get event stream and initialize event variables
         self.event_stream = omni.kit.app.get_app().get_message_bus_event_stream()
         self.operator_vertiport_event = carb.events.type_from_string("NavSim.OperatorVertiport")
@@ -29,11 +29,11 @@ class USpaceVertiportOperator(omni.ext.IExt):
         self.init_pads()
         self.extension_utils = ExtensionUtils()
 
-    def on_shutdown(self):
+    def on_shutdown(self) -> None:
         # Kill event stream subscribers
         self.event_sub = None
 
-    def init_pads(self):
+    def init_pads(self) -> None:
         pad_prims = self.extension_utils.get_public_vertiport_prims()
 
         # Extract data from vertiport prims
@@ -43,10 +43,10 @@ class USpaceVertiportOperator(omni.ext.IExt):
             model = prim.GetAttribute("NavSim:model").Get()
             self.pads[id] = {"position": pos, "model": model}  
 
-    def update_pad_state(self, id, state):
+    def update_pad_state(self, id, state) -> None:
         pass
 
-    def event_listener(self, event):
+    def event_listener(self, event) -> None:
         payload = event.payload
 
         # Check payload message type
@@ -54,7 +54,7 @@ class USpaceVertiportOperator(omni.ext.IExt):
             case TypeMessage.USPACE:
                 self.handle_uspace_msg(payload)
 
-    def handle_uspace_msg(self, payload):
+    def handle_uspace_msg(self, payload) -> None:
         msg = payload["msg"]
 
         match msg["sender"]:
@@ -63,7 +63,7 @@ class USpaceVertiportOperator(omni.ext.IExt):
                     TypeMessage.USPACE
                 )
 
-    def inform_client(self, type_message):
+    def inform_client(self, type_message) -> None:
         payload = {"type_message": type_message}
         msg = {"sender": TypeSender.OPERATOR_VERTIPORT}
 
@@ -76,5 +76,5 @@ class USpaceVertiportOperator(omni.ext.IExt):
 
         self.event_stream.push(self.uspace_clients_event, payload=payload)
 
-    def build_ui(self):
+    def build_ui(self) -> None:
         pass
