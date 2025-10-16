@@ -19,7 +19,7 @@ project_root_path = get_navsim_root_path()
 class GridPlannerExt(omni.ext.IExt):
     # ext_id is current extension id. It can be used with extension manager to query additional information, like where
     # this extension is located on filesystem.
-    def on_startup(self, ext_id):
+    def on_startup(self, ext_id) -> None:
         self.init_vars()
         self.build_ui()
 
@@ -30,16 +30,16 @@ class GridPlannerExt(omni.ext.IExt):
         self.event_timer_callback = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
             int(omni.timeline.TimelineEventType.STOP), self.on_timeline_stop)
 
-    def on_shutdown(self):
+    def on_shutdown(self) -> None:
         pass
 
-    def on_physics_step(self, step_size:int):
+    def on_physics_step(self, step_size:int) -> None:
         self.current_time += step_size
 
-    def on_timeline_stop(self, event):
+    def on_timeline_stop(self, event) -> None:
         self.current_time = 0
 
-    def init_vars(self):
+    def init_vars(self) -> None:
         self.navsim_utils = ExtensionUtils()
         self.gp = GridPlanner()
         self.fp = FlightPlan()
@@ -48,7 +48,7 @@ class GridPlannerExt(omni.ext.IExt):
         self.route = None
         self.event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
 
-    def build_ui(self):
+    def build_ui(self) -> None:
         self.begin_end_info = {"Takeoff": {"pos": [], "dropdown": None}, "Landing": {"pos": [], "dropdown": None}}
         self.custom_vertiports = {"Init vertiport": [], "End vertiport": []}
         axis = ["X", "Y", "Z"]
@@ -148,10 +148,10 @@ class GridPlannerExt(omni.ext.IExt):
                     #         ui.Button("COMPUTE ROUTE", clicked_fn=self.compute_route, height=50)
                     #         ui.Button("SEND FLIGHTPLAN", clicked_fn=self.send_flightplan, height=50)
 
-    def populate_dropdown(self):
+    def populate_dropdown(self) -> None:
         return ["0", "1"]
 
-    def build_grid(self):
+    def build_grid(self) -> None:
         sphere_amount = self.spheres_amount_field.model.get_value_as_int()
         distance = self.distance_field.model.get_value_as_int()
         x_level = self.x_level_height_field.model.get_value_as_float()
@@ -163,10 +163,10 @@ class GridPlannerExt(omni.ext.IExt):
 
         build_scene(project_root_path, sphere_amount, distance, x_level, y_level, offset, amount_vertiports, amount_uavs)
 
-    def clear_grid(self):
+    def clear_grid(self) -> None:
         self.gp.clear_grid()
 
-    def compute_route(self):
+    def compute_route(self) -> None:
         x = self.begin_end_info["Takeoff"]["pos"][0].model.get_value_as_float()
         y = self.begin_end_info["Takeoff"]["pos"][1].model.get_value_as_float()
         time = self.time_to_go.model.get_value_as_int()
@@ -185,7 +185,7 @@ class GridPlannerExt(omni.ext.IExt):
             self.gp.reserve_nodes(self.route)
             self.gp.print_route(self.route)
 
-    def send_flightplan(self):
+    def send_flightplan(self) -> None:
         if self.UAV_selector_dropdown.get_selection() is None:
             raise Exception("ERROR: No drone selected")
         
