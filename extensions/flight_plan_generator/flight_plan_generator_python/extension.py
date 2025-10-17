@@ -19,25 +19,25 @@ from navsim_utils.sim_utils import *
 
 
 class FlightPlanGenerator(omni.ext.IExt):
-    def on_startup(self, ext_id):
+    def on_startup(self, ext_id) -> None:
         self.init_vars()
         self.build_ui()
                     
-    def on_shutdown(self):
+    def on_shutdown(self) -> None:
         self.on_physics_step_sub = None
         self.on_stop_sub = None
 
-    def on_physics_step(self, step_size):
+    def on_physics_step(self, step_size) -> None:
         self.current_time += step_size
 
-    def on_timeline_stop(self, event):
+    def on_timeline_stop(self, event) -> None:
         self.current_time = 0
 
-    def on_timeline_play(self, event):
+    def on_timeline_play(self, event) -> None:
         if self.flightplan.waypoints:
             self.send_flightplan()
 
-    def init_vars(self):
+    def init_vars(self) -> None:
         self.extension_utils = ExtensionUtils()
         self.current_time = 0
 
@@ -92,7 +92,7 @@ class FlightPlanGenerator(omni.ext.IExt):
             self.on_timeline_play
         )
         
-    def build_ui(self):
+    def build_ui(self) -> None:
         # Create extension main window
         self.window = ui.Window(
             "FP: NavSim - Flight Plan Generator", 
@@ -146,7 +146,7 @@ class FlightPlanGenerator(omni.ext.IExt):
                         clicked_fn=self.send_flightplan
                     )
 
-    def build_waypoint_frame(self):
+    def build_waypoint_frame(self) -> None:
         with ui.CollapsableFrame(
             title="Waypoint", 
             style=self.extension_utils.CollapsableFrame_style
@@ -304,7 +304,7 @@ class FlightPlanGenerator(omni.ext.IExt):
                         clicked_fn=self.reset_waypoints
                     )
 
-    def build_waypoint_list(self):
+    def build_waypoint_list(self) -> None:
         self.waypoint_list_collapsable_frame = ui.CollapsableFrame(
             title="Waypoint list", 
             style=self.extension_utils.CollapsableFrame_style
@@ -337,7 +337,7 @@ class FlightPlanGenerator(omni.ext.IExt):
                     )
                     self.reset_waypoints()
 
-    def import_flightplan(self):
+    def import_flightplan(self) -> None:
         """Import flight plan from a CSV file selected via file dialog"""
     
         def on_import_click(filename, dirname, selections):
@@ -388,7 +388,7 @@ class FlightPlanGenerator(omni.ext.IExt):
             file_filter_handler=None
         )
 
-    def export_flightplan(self):
+    def export_flightplan(self) -> None:
         """Export flight plan to a CSV file with name selected via file dialog"""
         
         if not self.flightplan.waypoints:
@@ -433,7 +433,7 @@ class FlightPlanGenerator(omni.ext.IExt):
             file_filter_handler=None
         )
 
-    def send_flightplan(self):
+    def send_flightplan(self) -> None:
         selected_uav = self.UAV_selector_dropdown.get_selection()
         if selected_uav is None:
             raise Exception("[FP GENERATOR ext] No drone selected")
@@ -442,7 +442,7 @@ class FlightPlanGenerator(omni.ext.IExt):
 
         self.inform_operator(TypeMessage.CMD_FP_REQUEST, selected_uav, serialized_fp)
 
-    def reset_waypoints(self):
+    def reset_waypoints(self) -> None:
         self.waypoint_list.clear()
         self.flightplan.waypoints.clear()
         with self.waypoint_list:
@@ -453,7 +453,7 @@ class FlightPlanGenerator(omni.ext.IExt):
                 alignment=ui.Alignment.CENTER_TOP
             )
                     
-    def get_field_values(self):
+    def get_field_values(self) -> tuple:
         # Time
         if self.time_check_handle.model.get_value_as_bool():
             time = self.time_handle.model.get_value_as_int()
@@ -487,7 +487,7 @@ class FlightPlanGenerator(omni.ext.IExt):
 
         return time, pos, vel, fly_over, label
 
-    def print_waypoints(self):
+    def print_waypoints(self) -> None:
         self.waypoint_list.clear()
         
         with self.waypoint_list:                        
@@ -555,7 +555,7 @@ class FlightPlanGenerator(omni.ext.IExt):
 
                 ui.Separator()
 
-    def add_waypoint(self):
+    def add_waypoint(self) -> None:
         # Update variables from UI fields
         time, pos, vel, fly_over, label = self.get_field_values()
 
@@ -565,7 +565,7 @@ class FlightPlanGenerator(omni.ext.IExt):
         
         self.print_waypoints()
 
-    def inform_operator(self, type_message, uav_id, fp):
+    def inform_operator(self, type_message, uav_id, fp) -> None:
         """Inform the operator about the flightplan to be sent to the UAV"""
         
         payload = {"type_message": type_message}
