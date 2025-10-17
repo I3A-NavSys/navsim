@@ -412,7 +412,7 @@ class FlightPlanGenerator(omni.ext.IExt):
                         time = wp.t
                         pos = wp.pos
                         vel = wp.vel
-                        heading = wp.heading if wp.heading is not None else [0, 0]
+                        heading = wp.heading if wp.heading is not None else [None, None]
                         
                         data.append([label, time, *pos, *vel, *heading])
                     
