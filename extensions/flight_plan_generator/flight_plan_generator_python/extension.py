@@ -100,7 +100,6 @@ class FlightPlanGenerator(omni.ext.IExt):
             height=800
         )
         self.window.deferred_dock_in("Layers")
-        self.window.setPosition(25, 25)
         self.window.frame.set_style(self.extension_utils.Window_dark_style)
 
         # Populate window frame
@@ -412,7 +411,7 @@ class FlightPlanGenerator(omni.ext.IExt):
                         time = wp.t
                         pos = wp.pos
                         vel = wp.vel
-                        heading = wp.heading if wp.heading is not None else [0, 0]
+                        heading = wp.heading if wp.heading is not None else [None, None]
                         
                         data.append([label, time, *pos, *vel, *heading])
                     

@@ -5,6 +5,8 @@ import carb.events
 import omni.timeline
 import omni.physx
 from omni.isaac.core.prims import RigidPrimView
+from isaacsim.util.debug_draw import _debug_draw
+from omni.ui import color
 
 
 import pickle
@@ -13,6 +15,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 import torch
+import random
 
 
 from navsim_utils.sim_utils import *
@@ -36,6 +39,7 @@ class Operator(omni.ext.IExt):
         self.on_stop_sub = None
         self.on_play_sub = None
         self.event_sub = None
+        self.debug_draw = None
 
     def on_physics_step(self, step_size: int) -> None:
         if self.is_sim_played:
@@ -60,6 +64,9 @@ class Operator(omni.ext.IExt):
             self.start_uav_control()
 
             # Reset variables
+            self.debug_draw.clear_lines()
+            self.shown_flightplans = {}
+            
             self.clients_requests = {}
             self.ui_requests_container.clear()
             self.ui_requests_scrolling_frame.style = {
@@ -111,6 +118,10 @@ class Operator(omni.ext.IExt):
     def init_vars(self) -> None:
         self.rigid_prim_view = None
         self.uav_control = None
+        
+        self.debug_draw = _debug_draw.acquire_debug_draw_interface()
+        self.shown_flightplans = {}
+        self.used_flightplan_colors = set()
 
         self.physx_interface = omni.physx.get_physx_interface()
         self.on_physics_step_sub = self.physx_interface.subscribe_physics_step_events(
@@ -367,7 +378,7 @@ class Operator(omni.ext.IExt):
         # If the current selected uav to see its plots is the one which finished
         # the request, we update the list
         if self.ui_select_uav_to_plot.get_selection() == uav_id:
-            self.update_uav_plots_frame(uav_id)
+            self.print_uav_plots(uav_id)
 
     def process_client_message(self, msg) -> None:
         request = msg["request"]
@@ -615,8 +626,8 @@ class Operator(omni.ext.IExt):
                         self.ui_uavs_scrolling_frame = ui.ScrollingFrame(
                             horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
                             vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
-                            style={"background_color": 0xFF5B5B5B, "margin": 7},
-                            height=150,
+                            style={"background_color": 0xFF5B5B5B, "margin": 5},
+                            height=300,
                         )
 
                         with self.ui_uavs_scrolling_frame:
@@ -633,7 +644,7 @@ class Operator(omni.ext.IExt):
                         self.ui_requests_scrolling_frame = ui.ScrollingFrame(
                             horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
                             vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
-                            style={"background_color": 0xFF5B5B5B, "margin": 7},
+                            style={"background_color": 0xFF5B5B5B, "margin": 5},
                             height=150,
                         )
 
@@ -651,7 +662,7 @@ class Operator(omni.ext.IExt):
                         self.ui_vertiports_scrolling_frame = ui.ScrollingFrame(
                             horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
                             vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
-                            style={"background_color": 0xFF5B5B5B, "margin": 7},
+                            style={"background_color": 0xFF5B5B5B, "margin": 5},
                             height=150,
                         )
 
@@ -671,7 +682,7 @@ class Operator(omni.ext.IExt):
                             self.ui_select_uav_to_plot = DropDown(
                                 "Select UAV",
                                 populate_fn=self.populate_select_uav_to_plot,
-                                on_selection_fn=self.update_uav_plots_frame,
+                                on_selection_fn=self.print_uav_plots,
                             )
                             self.ui_select_uav_to_plot.repopulate()
 
@@ -703,7 +714,7 @@ class Operator(omni.ext.IExt):
     def populate_select_uav_to_plot(self) -> None:
         return list(self.uavs.keys())
 
-    def update_uav_plots_frame(self, uav_id) -> None:
+    def print_uav_plots(self, uav_id) -> None:
         self.ui_uav_plots_frame.clear()
 
         if uav_id not in self.uav_plots:
@@ -758,40 +769,199 @@ class Operator(omni.ext.IExt):
 
                 ui.Line()
 
+    # -- UAV UI --
+    def get_unique_flightplan_color(self) -> tuple:
+        maximum_attempts = 100
+        
+        for _ in range(maximum_attempts):
+            # Choose a random dominant color channel
+            dominant_channel = random.randint(0, 2)
+            
+            if dominant_channel == 0:  # Red dominant
+                red = random.randint(200, 255)
+                green = random.randint(80, 200)
+                blue = random.randint(80, 200)
+            elif dominant_channel == 1:  # Green dominant
+                red = random.randint(80, 200)
+                green = random.randint(200, 255)
+                blue = random.randint(80, 200)
+            else:  # Blue dominant
+                red = random.randint(80, 200)
+                green = random.randint(80, 200)
+                blue = random.randint(200, 255)
+            
+            color = (red, green, blue)
+            
+            # Check if this exact color hasn't been used
+            if color not in self.used_flightplan_colors:
+                self.used_flightplan_colors.add(color)
+                return color
+        
+        # Fallback: if all attempts failed (very unlikely), generate any color
+        # and clear the used colors set to start fresh
+        self.used_flightplan_colors.clear()
+        
+        red = random.randint(100, 255)
+        green = random.randint(100, 255)
+        blue = random.randint(100, 255)
+        color = (red, green, blue)
+        self.used_flightplan_colors.add(color)
+        
+        return color
+        
+    def show_flightplan(self, uav_id) -> None:
+        uav_info = self.uavs[uav_id]
+        
+        if uav_info and uav_info["state"] == UAVState.BUSY:
+            fp = uav_info["flightplan"]
+            fp_trace = fp.trace(0.1)[:, 1:4]
+            
+            if uav_id in self.shown_flightplans:
+                red, green, blue = self.shown_flightplans[uav_id]["color"]
+            else:
+                red, green, blue = self.get_unique_flightplan_color()
+
+            self.debug_draw.draw_lines_spline(
+                fp_trace,
+                (red/255, green/255, blue/255, 1),
+                5,
+                False
+            )
+            
+            self.shown_flightplans[uav_id] = {
+                "is_shown": True,
+                "color": (red, green, blue)
+            }
+            
+    def hide_flightplan(self, uav_id) -> None:
+        self.debug_draw.clear_lines()
+        self.shown_flightplans[uav_id]["is_shown"] = False
+
+        for id, info in self.shown_flightplans.items():
+            if info["is_shown"]:
+                self.show_flightplan(id)
+
+    def print_uavs_parameters(self, uav_id, uav_info, request) -> None:
+        with ui.VStack(height=0):
+            with ui.HStack():
+                ui.Label("ID:", alignment=ui.Alignment.LEFT)
+                ui.Label(uav_id, alignment=ui.Alignment.RIGHT, word_wrap=True)
+            with ui.HStack():
+                ui.Label("State:", alignment=ui.Alignment.LEFT)
+                ui.Label(uav_info["state"], alignment=ui.Alignment.RIGHT, word_wrap=True)
+            with ui.HStack():
+                ui.Label("Request:", alignment=ui.Alignment.LEFT)
+                ui.Label(str(request), alignment=ui.Alignment.RIGHT, word_wrap=True)
+            with ui.HStack():
+                ui.Label("Time:", alignment=ui.Alignment.LEFT)
+                ui.Label(
+                    str(uav_info["time"].time().strftime("%H:%M:%S")), 
+                    alignment=ui.Alignment.RIGHT,
+                    word_wrap=True
+                )
+                
+    def print_uavs_position(self, uav_info) -> None:
+        with ui.VStack(height=0):
+            ui.Label("Position", alignment=ui.Alignment.CENTER)
+
+            with ui.ZStack():
+                ui.Rectangle(
+                    style={
+                        "background_color": color("#5B5B5B"), 
+                        "border_radius": 5
+                    }
+                )
+                
+                with ui.VStack(height=0):
+                    with ui.HStack():
+                        ui.Label(
+                            "X",
+                            style={"color": color("#FF3838")}
+                        )
+                        ui.Label(
+                            str(round(uav_info["pos"][0], 2)), 
+                            alignment=ui.Alignment.RIGHT,
+                            style={"color": color("#FF3838")}
+                        )
+
+                    with ui.HStack():
+                        ui.Label(
+                            "Y",
+                            style={"color": color("#77FF38")}
+                        )
+                        ui.Label(
+                            str(round(uav_info["pos"][1], 2)),
+                            alignment=ui.Alignment.RIGHT,
+                            style={"color": color("#77FF38")}
+                        )
+
+                    with ui.HStack():
+                        ui.Label(
+                            "Z",
+                            style={"color": color("#38A9FF")}
+                        )
+                        ui.Label(
+                            str(round(uav_info["pos"][2], 2)),
+                            alignment=ui.Alignment.RIGHT,
+                            style={"color": color("#38A9FF")}
+                        )
+        
+    def print_uavs_buttons(self, uav_id) -> None:
+        with ui.HStack():
+            ui.Button(
+                text="SHOW\nFLIGHTPLAN",
+                alignment=ui.Alignment.RIGHT,
+                style={
+                    "font_size": 16, 
+                    "font_weight": "bold", 
+                    "border_radius": 5,
+                    "background_color": self.extension_utils.colors["G"],
+                    ":hovered": {"background_color": color("#A3A3A3")},
+                },
+                clicked_fn=lambda uav_id=uav_id: self.show_flightplan(uav_id),
+            )
+            
+            ui.Button(
+                text="HIDE\nFLIGHTPLAN",
+                alignment=ui.Alignment.RIGHT,
+                style={
+                    "font_size": 16, 
+                    "font_weight": "bold", 
+                    "border_radius": 5,
+                    "background_color": self.extension_utils.colors["R"],
+                    ":hovered": {"background_color": color("#A3A3A3")},
+                },
+                clicked_fn=lambda uav_id=uav_id: self.hide_flightplan(uav_id),
+            )    
+    
     def print_uavs(self) -> None:
         self.ui_uavs_container.clear()
 
-        for uav_id, value in self.uavs.items():
-            request = "None"
-            if value["request"]:
-                request = (
-                    f"{value['request']['client_id']} - "
-                    f"{value['request']['request_id']}"
-                )
+        with self.ui_uavs_container:
+            for uav_id, uav_info in self.uavs.items():
+                request = "None"
+                if uav_info["request"]:
+                    request = (
+                        f"{uav_info['request']['client_id']} - "
+                        f"{uav_info['request']['request_id']}"
+                    )
+                
+                with ui.ZStack():
+                    ui.Rectangle(
+                        style={
+                            "background_color": color("#757575"), 
+                            "border_radius": 5
+                        }
+                    )
+                
+                    with ui.VStack(height=0):
+                        with ui.HStack():
+                            self.print_uavs_parameters(uav_id, uav_info, request)
+                            self.print_uavs_position(uav_info)
 
-            self.print_new_uav(
-                uav_id, 
-                value["state"], 
-                value["time"], 
-                value["pos"], 
-                request
-            )
+                        self.print_uavs_buttons(uav_id)
 
-    def print_new_uav(self, uav_id, state, time, pos, request) -> None:
-        id_label = ui.Label(f"ID: {uav_id}\n")
-        state_label = ui.Label(f"State: {state}\n")
-        time_label = ui.Label(f"Time: {time}\n")
-        pos_label = ui.Label(f"Position: {pos}\n")
-        request_label = ui.Label(f"Request: {request}\n")
-        spacer = ui.Spacer(height=10)
-
-        self.ui_uavs_container.add_child(id_label)
-        self.ui_uavs_container.add_child(state_label)
-        self.ui_uavs_container.add_child(time_label)
-        self.ui_uavs_container.add_child(pos_label)
-        self.ui_uavs_container.add_child(request_label)
-        self.ui_uavs_container.add_child(spacer)
-
+    # -- Requests UI --
     def print_requests(self) -> None:
         self.ui_requests_container.clear()
 
@@ -823,6 +993,7 @@ class Operator(omni.ext.IExt):
         self.ui_requests_container.add_child(destination_label)
         self.ui_requests_container.add_child(spacer)
 
+    # -- Vertiports UI --
     def print_vertiports(self) -> None:
         self.ui_vertiports_container.clear()
 
