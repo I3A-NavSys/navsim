@@ -116,7 +116,10 @@ class FlightPlanGenerator(omni.ext.IExt):
                 ):
                     ui.Spacer(height=self.extension_utils.MINIMAL_HEIGHT)
                     # Drone selector widget
-                    self.UAV_selector_dropdown = self.extension_utils.build_uav_selector()
+                    self.UAV_selector_dropdown = self.extension_utils.build_uav_selector(
+                        label="Select UAV",
+                        tooltip="Select the UAV to send the flight plan to",
+                    )
                     # Create transform frame
                     self.build_waypoint_frame()
                     # Create waypoint list

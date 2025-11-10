@@ -58,7 +58,10 @@ class CommandGenerator(omni.ext.IExt):
                 ui.Spacer(height=10)
 
                 # UAV selector dropdown                    
-                self.UAV_selector_dropdown = self.navsim_utils.build_uav_selector()
+                self.UAV_selector_dropdown = self.navsim_utils.build_uav_selector(
+                    label="Select UAV",
+                    tooltip="Select the UAV to send commands to",
+                )
 
                 with ui.HStack(spacing=10):
 

@@ -9,11 +9,10 @@ from omni.isaac.core.utils.stage import get_current_stage
 from isaacsim.core.utils.prims import find_matching_prim_paths, get_prim_at_path
 
 
-project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-# Add to the python list of paths to look for modules the path to the project root
-if project_root_path not in sys.path:
-    sys.path.append(project_root_path)
+from .paths_utils import get_navsim_root_path
 
+
+project_root_path = get_navsim_root_path()
 
 class ExtensionUtils:
 
@@ -115,15 +114,21 @@ class ExtensionUtils:
     #------------------------------------------------------------------------------------------------------------------
     # USER INTERFACE
 
-    def build_uav_selector(self):
+    def build_uav_selector(self, label:str, tooltip:str):
         with ui.HStack(spacing=5):
             # Dropdown selector
-            self.UAV_selector_dropdown = DropDown("Select Drone", "Select the drone you want to control", 
-                                            self.get_navsim_UAV_names)
+            self.UAV_selector_dropdown = DropDown(
+                label=label, 
+                tooltip=tooltip, 
+                populate_fn=self.get_navsim_UAV_names
+            )
             self.UAV_selector_dropdown.enabled = False
 
             # Button to refresh manipulable UAVs
-            ui.Button("REFRESH", clicked_fn=self.refresh_drone_selector, width=100)
+            ui.Button(
+                image_url=os.path.join(project_root_path, "assets/ui_icons/reload.png"),
+                clicked_fn=self.refresh_drone_selector
+            )
 
         return self.UAV_selector_dropdown
 

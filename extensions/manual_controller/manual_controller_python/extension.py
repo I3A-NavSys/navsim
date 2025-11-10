@@ -89,7 +89,10 @@ class ManualController(omni.ext.IExt):
                     ui.Spacer(height=10)
 
                     # UAV selector dropdown
-                    self.UAV_selector_dropdown: DropDown = self.ext_utils.build_uav_selector()
+                    self.UAV_selector_dropdown: DropDown = self.ext_utils.build_uav_selector(
+                        label="Select UAV",
+                        tooltip="Select the UAV to manually control",
+                    )
                     self.UAV_selector_dropdown.set_on_selection_fn(
                         self.change_uav_subject
                     )
