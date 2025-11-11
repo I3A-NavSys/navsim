@@ -53,7 +53,7 @@ class FlightPlanGenerator(omni.ext.IExt):
         self.fly_over = None
 
         # Drone selector handle
-        self.UAV_selector_dropdown = None
+        self.UAV_dropdown = None
 
         # UI field handles
         self.position_handles : list[ui.FloatDrag] = []
@@ -116,10 +116,8 @@ class FlightPlanGenerator(omni.ext.IExt):
                 ):
                     ui.Spacer(height=self.extension_utils.MINIMAL_HEIGHT)
                     # Drone selector widget
-                    self.UAV_selector_dropdown = self.extension_utils.build_uav_selector(
-                        label="Select UAV",
-                        tooltip="Select the UAV to send the flight plan to",
-                    )
+                    ui.Label("Select UAV:")
+                    self.UAV_dropdown = self.extension_utils.build_uav_selector()
                     # Create transform frame
                     self.build_waypoint_frame()
                     # Create waypoint list
@@ -436,7 +434,7 @@ class FlightPlanGenerator(omni.ext.IExt):
         )
 
     def send_flightplan(self) -> None:
-        selected_uav = self.UAV_selector_dropdown.get_selection()
+        selected_uav = self.UAV_dropdown.model.get_selection()
         if selected_uav is None:
             raise Exception("[FP GENERATOR ext] No drone selected")
 

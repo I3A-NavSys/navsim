@@ -89,11 +89,9 @@ class ManualController(omni.ext.IExt):
                     ui.Spacer(height=10)
 
                     # UAV selector dropdown
-                    self.UAV_selector_dropdown: DropDown = self.ext_utils.build_uav_selector(
-                        label="Select UAV",
-                        tooltip="Select the UAV to manually control",
-                    )
-                    self.UAV_selector_dropdown.set_on_selection_fn(
+                    ui.Label("Select UAV:")
+                    self.UAV_dropdown: ui.ComboBox = self.ext_utils.build_uav_selector()
+                    self.UAV_dropdown.model.subscribe_item_changed_fn(
                         self.change_uav_subject
                     )
 
@@ -334,7 +332,8 @@ class ManualController(omni.ext.IExt):
                 break
 
     def start_update(self):
-        if self.UAV_selector_dropdown.get_selection() is None:
+        selected_uav = self.UAV_dropdown.model.get_selection()
+        if selected_uav is None:
             # Reset start_stop_toolbutton as it changed its model state
             self.start_stop_tool_button.model.set_value(False)
 
@@ -358,9 +357,9 @@ class ManualController(omni.ext.IExt):
         self.update_ui_angular_vel_limits()
 
         # Get the selected UAV
-        uav = self.ext_utils.get_prim_by_name(self.UAV_selector_dropdown.get_selection())
+        uav = self.ext_utils.get_prim_by_name(selected_uav)
 
-        self.manual_control.start(uav, self.UAV_selector_dropdown.get_selection())
+        self.manual_control.start(uav, selected_uav)
 
         # Start the coroutine that updates the plots
         asyncio.ensure_future(self.update_plot())

@@ -32,7 +32,7 @@ class CommandGenerator(omni.ext.IExt):
         self.current_time = 0
 
     def init_vars(self):        
-        self.navsim_utils = ExtensionUtils()
+        self.extension_utils = ExtensionUtils()
         self.current_time = 0
 
         self.physx_interface = omni.physx.get_physx_interface()
@@ -57,11 +57,9 @@ class CommandGenerator(omni.ext.IExt):
             with ui.VStack(spacing=10, height=0):
                 ui.Spacer(height=10)
 
-                # UAV selector dropdown                    
-                self.UAV_selector_dropdown = self.navsim_utils.build_uav_selector(
-                    label="Select UAV",
-                    tooltip="Select the UAV to send commands to",
-                )
+                # UAV selector dropdown
+                ui.Label("Select UAV:")
+                self.UAV_dropdown = self.extension_utils.build_uav_selector()
 
                 with ui.HStack(spacing=10):
 
@@ -158,7 +156,7 @@ class CommandGenerator(omni.ext.IExt):
                         clicked_fn = self.send_command)
                     
     def send_command(self):
-        selected_uav = self.UAV_selector_dropdown.get_selection()
+        selected_uav = self.UAV_dropdown.model.get_selection()
         if selected_uav is None:
             raise Exception("[REMOTE COMMAND ext] No drone selected")
                 

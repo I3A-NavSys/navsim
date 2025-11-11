@@ -14,6 +14,43 @@ from .paths_utils import get_navsim_root_path
 
 project_root_path = get_navsim_root_path()
 
+class MinimalComboBoxItem(ui.AbstractItem):
+    def __init__(self, text):
+        super().__init__()
+        self.model = ui.SimpleStringModel(text)
+
+class MinimalComboBoxModel(ui.AbstractItemModel):
+    def __init__(self):
+        super().__init__()
+
+        self._current_index = ui.SimpleIntModel()
+        self._current_index.add_value_changed_fn(
+            lambda a: self._item_changed(None))
+
+        self._items = []
+
+    def get_item_children(self, item):
+        return self._items
+
+    def get_item_value_model(self, item, column_id):
+        if item is None:
+            return self._current_index
+        return item.model
+    
+    def remove_children(self):
+        self._items.clear()
+    
+    def append_child_item(self, value):
+        self._items.append(MinimalComboBoxItem(value))
+        self._item_changed(None)
+        
+    def get_selection(self):
+        if self._items:
+            item = self._items[self._current_index.get_value_as_int()]
+            return item.model.get_value_as_string()
+
+        return None
+
 class ExtensionUtils:
 
     def __init__(self):
@@ -114,39 +151,35 @@ class ExtensionUtils:
     #------------------------------------------------------------------------------------------------------------------
     # USER INTERFACE
 
-    def build_uav_selector(self, label:str, tooltip:str):
+    def build_uav_selector(self):
         with ui.HStack(spacing=5):
             # Dropdown selector
-            self.UAV_selector_dropdown = DropDown(
-                label=label, 
-                tooltip=tooltip, 
-                populate_fn=self.get_navsim_UAV_names
-            )
-            self.UAV_selector_dropdown.enabled = False
-
+            self.combobox_model = MinimalComboBoxModel()
+            self.UAV_dropdown = ui.ComboBox(self.combobox_model)
+            icon_path = os.path.join(project_root_path, "assets/ui_icons/reload.png")
+            
             # Button to refresh manipulable UAVs
             ui.Button(
-                image_url=os.path.join(project_root_path, "assets/ui_icons/reload.png"),
-                clicked_fn=self.refresh_drone_selector
+                image_url=icon_path,
+                image_height=15,
+                width=50,
+                style={"Button.Image": {"alignment": ui.Alignment.CENTER}},
+                clicked_fn=self.get_navsim_UAV_names
             )
 
-        return self.UAV_selector_dropdown
-
+        return self.UAV_dropdown
+    
     def get_navsim_UAV_names(self):
-        manipulable_UAV_names = []
+        from omni.isaac.core.utils.stage import get_current_stage
         stage = get_current_stage()
+        
+        self.UAV_dropdown.model.remove_children()
         
         if stage is not None:
             for prim in stage.Traverse():
                 att = prim.GetAttribute("NavSim:type")
                 if att.IsValid() and att.Get() == "UAV":
-                        manipulable_UAV_names.append(prim.GetName())
-
-        return manipulable_UAV_names
-
-    def refresh_drone_selector(self):
-            self.UAV_selector_dropdown.enabled = True
-            self.UAV_selector_dropdown.repopulate()
+                        self.UAV_dropdown.model.append_child_item(prim.GetName())
 
     #------------------------------------------------------------------------------------------------------------------
     # MISCELLANEOUS UTILS
