@@ -91,7 +91,7 @@ class ManualController(omni.ext.IExt):
                     # UAV selector dropdown
                     ui.Label("Select UAV:")
                     self.UAV_dropdown: ui.ComboBox = self.ext_utils.build_uav_selector()
-                    self.UAV_dropdown.model.subscribe_item_changed_fn(
+                    self.UAV_dropdown.model.add_item_changed_fn(
                         self.change_uav_subject
                     )
 
@@ -175,7 +175,13 @@ class ManualController(omni.ext.IExt):
                         self.plots_container = ui.VStack(height=0)
                         self.build_plot_container_content()
 
-    def change_uav_subject(self, uav_name):
+    def change_uav_subject(self, m, i):
+        # Check if custom camera exists
+        if self.ext_utils.get_prim_by_name("manual_controller_CAM") is None:
+            return
+        
+        uav_name = m.get_selection()
+        
         # Switch the camera subject target to the selected UAV
         uav = self.ext_utils.get_prim_by_name(uav_name)
         self.manual_control.change_camera_subject(uav.GetPath())
