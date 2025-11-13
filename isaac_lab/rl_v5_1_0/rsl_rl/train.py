@@ -3,13 +3,17 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-
 """Script to train RL agent with RSL-RL."""
 
 """Launch Isaac Sim Simulator first."""
 
 import argparse
 import sys
+from pathlib import Path
+
+# Agrega la carpeta "scripts" al path
+isaaclab_path = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(isaaclab_path))
 
 from isaaclab.app import AppLauncher
 
@@ -93,7 +97,8 @@ from isaaclab.utils.io import dump_yaml
 
 from isaaclab_rl.rsl_rl import RslRlBaseRunnerCfg, RslRlVecEnvWrapper
 
-from isaac_lab import aerotaxi
+import isaaclab_tasks  # noqa: F401
+import aerotaxi
 from isaaclab_tasks.utils import get_checkpoint_path
 from isaaclab_tasks.utils.hydra import hydra_task_config
 

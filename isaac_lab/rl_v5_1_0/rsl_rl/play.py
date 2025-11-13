@@ -9,6 +9,10 @@
 
 import argparse
 import sys
+from pathlib import Path
+
+isaaclab_path = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(isaaclab_path))
 
 from isaaclab.app import AppLauncher
 
@@ -73,7 +77,8 @@ from isaaclab.utils.pretrained_checkpoint import get_published_pretrained_checkp
 
 from isaaclab_rl.rsl_rl import RslRlBaseRunnerCfg, RslRlVecEnvWrapper, export_policy_as_jit, export_policy_as_onnx
 
-from isaac_lab import aerotaxi
+import isaaclab_tasks  # noqa: F401
+import aerotaxi
 from isaaclab_tasks.utils import get_checkpoint_path
 from isaaclab_tasks.utils.hydra import hydra_task_config
 
