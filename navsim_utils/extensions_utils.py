@@ -9,10 +9,8 @@ from omni.isaac.core.utils.stage import get_current_stage
 from isaacsim.core.utils.prims import find_matching_prim_paths, get_prim_at_path
 
 
-from .paths_utils import get_navsim_root_path
+from .paths_utils import project_root_path
 
-
-project_root_path = get_navsim_root_path()
 
 class MinimalComboBoxItem(ui.AbstractItem):
     def __init__(self, text):
@@ -37,13 +35,17 @@ class MinimalComboBoxModel(ui.AbstractItemModel):
             return self._current_index
         return item.model
     
-    def remove_children(self):
-        self._items.clear()
-    
     def append_child_item(self, value):
         self._items.append(MinimalComboBoxItem(value))
         self._item_changed(None)
         
+    def remove_children(self):
+        self._items.clear()
+        
+    def set_children(self, items):
+        self._items = [MinimalComboBoxItem(item) for item in items]
+        self._item_changed(None)
+    
     def get_selection(self):
         if self._items:
             item = self._items[self._current_index.get_value_as_int()]
@@ -175,11 +177,15 @@ class ExtensionUtils:
         
         self.UAV_dropdown.model.remove_children()
         
+        uavs = []
         if stage is not None:
             for prim in stage.Traverse():
                 att = prim.GetAttribute("NavSim:type")
                 if att.IsValid() and att.Get() == "UAV":
-                        self.UAV_dropdown.model.append_child_item(prim.GetName())
+                        # self.UAV_dropdown.model.append_child_item(prim.GetName())
+                        uavs.append(prim.GetName())
+                        
+        self.UAV_dropdown.model.set_children(uavs)
 
     #------------------------------------------------------------------------------------------------------------------
     # MISCELLANEOUS UTILS
