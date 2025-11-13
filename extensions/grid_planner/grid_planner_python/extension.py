@@ -7,14 +7,12 @@ import omni.physx
 import pickle
 import base64
 
-from navsim_utils.paths_utils import get_navsim_root_path
+from navsim_utils.paths_utils import project_root_path
 from navsim_utils.extensions_utils import ExtensionUtils
 from uspace.grid_planner.grid_planner import GridPlanner
 from uspace.flight_plan.flight_plan import FlightPlan
 from extensions.grid_planner.grid_planner_python.grid_scene_builder import build_scene
 
-
-project_root_path = get_navsim_root_path()
 
 class GridPlannerExt(omni.ext.IExt):
     # ext_id is current extension id. It can be used with extension manager to query additional information, like where
