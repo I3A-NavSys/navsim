@@ -23,6 +23,17 @@ gym.register(
 )
 
 gym.register(
+    id="Isaac-Hover-Aerotaxi-v2",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{env_hover.__name__}.env_2.env:UAVEnvCfg",
+        "rsl_rl_cfg_entry_point": f"{env_hover.__name__}.env_2.rsl_rl_ppo_cfg:AerotaxiPPORunnerCfg",
+    },
+)
+
+
+gym.register(
     id="Isaac-Z-Rotation-Aerotaxi-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
