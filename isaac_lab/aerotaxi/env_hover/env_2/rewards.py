@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
 
+
 def rew_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     obs = env.obs_buf
     lin_vel = obs["policy"][:, 3:6]
@@ -20,6 +21,7 @@ def rew_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
 
     return rewards
 
+
 def rew_x_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     obs = env.obs_buf
     lin_vel = obs["policy"][:, 3]
@@ -32,6 +34,7 @@ def rew_x_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     rewards[:] = torch_3 / (torch_1 + torch.exp(torch.log(diff)))
 
     return rewards
+
 
 def rew_y_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     obs = env.obs_buf
@@ -46,6 +49,7 @@ def rew_y_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
 
     return rewards
 
+
 def rew_z_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     obs = env.obs_buf
     lin_vel = obs["policy"][:, 5]
@@ -58,6 +62,7 @@ def rew_z_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     rewards[:] = torch_3 / (torch_1 + torch.exp(torch.log(diff)))
 
     return rewards
+
 
 def rew_z_ang_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     obs = env.obs_buf
@@ -72,6 +77,7 @@ def rew_z_ang_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
 
     return rewards
 
+
 def pen_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     obs = env.obs_buf
     lin_vel = obs["policy"][:, 3:6]
@@ -82,6 +88,7 @@ def pen_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
 
     return diff_norm
 
+
 def pen_x_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     obs = env.obs_buf
     lin_vel = obs["policy"][:, 3]
@@ -90,6 +97,7 @@ def pen_x_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     diff = (lin_vel - vel_command).abs()
 
     return diff
+
 
 def pen_y_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     obs = env.obs_buf
@@ -100,6 +108,7 @@ def pen_y_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
 
     return diff
 
+
 def pen_z_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     obs = env.obs_buf
     lin_vel = obs["policy"][:, 5]
@@ -108,6 +117,7 @@ def pen_z_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     diff = (lin_vel - vel_command).abs()
 
     return diff
+
 
 def pen_z_ang_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     obs = env.obs_buf
@@ -118,12 +128,14 @@ def pen_z_ang_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
 
     return diff
 
+
 def pen_roll_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
     roll = env.obs_buf["policy"][:, 9]
     target = torch.tensor(target, device=env.device)
 
     diff = (roll[:] - target).abs()
     return diff
+
 
 def pen_pitch_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
     pitch = env.obs_buf["policy"][:, 10]
@@ -132,6 +144,7 @@ def pen_pitch_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
     diff = (pitch[:] - target).abs()
 
     return diff
+
 
 def pen_roll_excess(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
     """Penalize roll excess from target limit"""
@@ -144,6 +157,7 @@ def pen_roll_excess(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
     rewards[excess_mask] = diff[excess_mask]
     
     return rewards
+
 
 def pen_pitch_excess(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
     """Penalize roll excess from target limit"""

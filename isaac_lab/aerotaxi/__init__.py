@@ -103,3 +103,13 @@ gym.register(
     },
 )
 
+for i in range(100):
+    gym.register(
+        id=f"Isaac-Hover-Aerotaxi-RANDOM-{i+1}",
+        entry_point="isaaclab.envs:ManagerBasedRLEnv",
+        disable_env_checker=True,
+        kwargs={
+            "env_cfg_entry_point": f"{env_hover.__name__}.env_2.env:UAVEnvCfg",
+            "rsl_rl_cfg_entry_point": f"{env_hover.__name__}.env_2.grid_hiperparametros.cfg_files.ppo_random_{i+1}_cfg:HoverPPORunnerCfg",
+        },
+    )
