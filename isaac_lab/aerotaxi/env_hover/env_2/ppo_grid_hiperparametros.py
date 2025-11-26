@@ -28,7 +28,7 @@ num_trials = 100  # cantidad de configuraciones
 cfg_files = []
 
 for i in range(num_trials):
-    run_name = f"ppo_random_{i+1}"
+    run_name = f"ppo_random_hover_{i+1}"
     sampled = {k: random.choice(v) for k, v in param_options.items()}
 
     # Convertir listas a string
@@ -44,7 +44,7 @@ class HoverPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
     max_iterations = 1001
     save_interval = 100
-    experiment_name = "reach"
+    experiment_name = "hover"
     run_name = "{run_name}"
     resume = False
     empirical_normalization = False
