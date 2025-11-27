@@ -40,8 +40,8 @@ class UAVactionTerm(ActionTerm):
         super().__init__(cfg, env)
         self._raw_actions = torch.zeros(env.num_envs, 4, device=self.device)
         self._processed_actions = torch.zeros(env.num_envs, 10, 3, device=self.device)
-        self.action_scale = 10
-        self.max_prim_links = 5 # 4 rotors + 1 body
+        self.action_scale = 8.0  # como mucho puede variarlo 2.5 de potencia
+        self.max_prim_links = 5  # 4 rotors + 1 body
 
         # Create all positions at once in a single tensor operation
         position_data = torch.tensor([
@@ -84,11 +84,16 @@ class UAVactionTerm(ActionTerm):
         kMDy = torch.tensor(25.8580, device=self.device)
         kMDz = torch.tensor(20.2514, device=self.device)
         
+
+        hover_action_value = 38.0 
+
         # Process raw actions (vectorized)
-        self._raw_actions = actions.abs() * self.action_scale
+        self._raw_actions = actions.abs() * self.action_scale + hover_action_value
 
         # print(f"[DEBUG]: raw_actions: {self._raw_actions[0]}")
-        
+        # Para que no haga crash
+        self._raw_actions = torch.clamp(self._raw_actions, min=0.0, max=60.0)
+
         # Get velocities (assuming these are already tensors)
         lin_vels = self._asset.data.root_com_lin_vel_b  # shape: (num_envs, 3)
         ang_vels = self._asset.data.root_com_ang_vel_b  # shape: (num_envs, 3)
@@ -306,8 +311,8 @@ class RewardsCfg:
     )
     rew_lin_vel_diff_fine_grained = RewTerm(
         func=my_rewards.rew_lin_vel_diff_fine_grained,
-        weight=1.5,
-        params={"std": 0.5},
+        weight=2,
+        params={"std": 3.0},
     )
     rew_ang_vel_z_diff = RewTerm(
         func=my_rewards.rew_ang_vel_z_diff,
