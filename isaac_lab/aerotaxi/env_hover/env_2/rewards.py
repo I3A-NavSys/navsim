@@ -21,36 +21,69 @@ if TYPE_CHECKING:
 
 #     return rewards
 
-def rew_pos_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
-    pass
-
-
-def rew_pos_diff_fine_grained(env: ManagerBasedRLEnv) -> torch.Tensor:
-    pass
 
 def rew_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
-    pass
+    obs = env.obs_buf
+    lin_vel = obs["policy"][:, 3:6]  
+    vel_command = obs["policy"][:, 12:15]
+    return torch.norm(lin_vel - vel_command, dim=1)
 
-def rew_lin_vel_diff_fine_grained(env: ManagerBasedRLEnv) -> torch.Tensor:
-    pass
 
-def rew_ang_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
-    pass
+def rew_lin_vel_diff_fine_grained(env: ManagerBasedRLEnv, std: float) -> torch.Tensor:
+    obs = env.obs_buf
+    lin_vel = obs["policy"][:, 3:6]  
+    vel_command = obs["policy"][:, 12:15]
+    distance = torch.norm(lin_vel - vel_command, dim=1)
+    return 1 - torch.tanh(distance/std)
 
-def rew_ang_vel_diff_fine_grained(env: ManagerBasedRLEnv) -> torch.Tensor:
-    pass
 
-def rew_roll_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
-    pass
+def rew_ang_vel_z_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
+    obs = env.obs_buf
+    ang_vel = obs["policy"][:, 8]  
+    ang_vel_command = obs["policy"][:, 15]
+    return torch.norm(ang_vel - ang_vel_command, dim=1)
 
-def rew_roll_diff_fine_grained(env: ManagerBasedRLEnv) -> torch.Tensor:
-    pass
 
-def rew_pitch_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
-    pass
+def rew_ang_vel_z_diff_fine_grained(env: ManagerBasedRLEnv, std: float) -> torch.Tensor:
+    obs = env.obs_buf
+    ang_vel = obs["policy"][:, 8]  
+    ang_vel_command = obs["policy"][:, 15]
+    distance = torch.norm(ang_vel - ang_vel_command, dim=1)
+    return 1 - torch.tanh(distance/std)
 
-def rew_pitch_diff_fine_grained(env: ManagerBasedRLEnv) -> torch.Tensor:
-    pass
+
+def rew_roll_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
+    obs = env.obs_buf
+    roll = obs["policy"][:, 9]  
+    roll_command = obs["policy"][:, 15]
+    roll_command = torch.tensor(target, device=env.device)
+    return torch.norm(roll - roll_command, dim=1)
+
+
+def rew_roll_diff_fine_grained(env: ManagerBasedRLEnv, target: float, std: float) -> torch.Tensor:
+    obs = env.obs_buf
+    roll = obs["policy"][:, 9]  
+    roll_command = obs["policy"][:, 15]
+    roll_command = torch.tensor(target, device=env.device)
+    distance = torch.norm(roll - roll_command, dim=1)
+    return 1 - torch.tanh(distance/std)
+
+
+def rew_pitch_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
+    obs = env.obs_buf
+    pitch = obs["policy"][:, 9]  
+    pitch_command = obs["policy"][:, 15]
+    pitch_command = torch.tensor(target, device=env.device)
+    return torch.norm(pitch - pitch_command, dim=1)
+
+
+def rew_pitch_diff_fine_grained(env: ManagerBasedRLEnv, target: float, std: float) -> torch.Tensor:
+    obs = env.obs_buf
+    pitch = obs["policy"][:, 9]  
+    pitch_command = obs["policy"][:, 15]
+    pitch_command = torch.tensor(target, device=env.device)
+    distance = torch.norm(pitch - pitch_command, dim=1)
+    return 1 - torch.tanh(distance/std)
 
 
 

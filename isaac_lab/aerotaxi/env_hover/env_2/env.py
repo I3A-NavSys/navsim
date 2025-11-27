@@ -296,53 +296,90 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    alive = RewTerm(func=mdp.is_alive, weight=2.0)
+    alive = RewTerm(func=mdp.is_alive, weight=1.0)
 
-    terminating = RewTerm(func=mdp.is_terminated, weight=-500.0)
+    terminating = RewTerm(func=mdp.is_terminated, weight=-15.0)
 
-    rew_x_lin_vel_diff = RewTerm(
-        func=my_rewards.rew_x_lin_vel_diff,
-        weight=1.0,
+    rew_lin_vel_diff = RewTerm(
+        func=my_rewards.rew_lin_vel_diff,
+        weight=-0.2,
+    )
+    rew_lin_vel_diff_fine_grained = RewTerm(
+        func=my_rewards.rew_lin_vel_diff_fine_grained,
+        weight=0.1,
+        params={"std": 0.05},
+    )
+    rew_ang_vel_z_diff = RewTerm(
+        func=my_rewards.rew_ang_vel_z_diff,
+        weight=-0.2,
+    )
+    rew_ang_vel_z_diff_fine_grained = RewTerm(
+        func=my_rewards.rew_ang_vel_z_diff_fine_grained,
+        weight=0.1,
+        params={"std": 0.05},
+    )
+    rew_roll_diff = RewTerm(
+        func=my_rewards.rew_roll_diff,
+        weight=-0.3,
+    )
+    rew_roll_diff_fine_grained = RewTerm(
+        func=my_rewards.rew_roll_diff_fine_grained,
+        weight=0.1,
+        params={"std": 0.05, "target": 0.0},
+    )
+    rew_pitch_diff = RewTerm(
+        func=my_rewards.rew_pitch_diff,
+        weight=-0.3,
+    )
+    rew_pitch_diff_fine_grained = RewTerm(
+        func=my_rewards.rew_pitch_diff_fine_grained,
+        weight=0.1,
+        params={"std": 0.05, "target": 0.0},
     )
 
-    rew_y_lin_vel_diff = RewTerm(
-        func=my_rewards.rew_y_lin_vel_diff,
-        weight=1.0,
-    )
+    # rew_x_lin_vel_diff = RewTerm(
+    #     func=my_rewards.rew_x_lin_vel_diff,
+    #     weight=1.0,
+    # )
 
-    rew_z_lin_vel_diff = RewTerm(
-        func=my_rewards.rew_z_lin_vel_diff,
-        weight=1.0,
-    )
+    # rew_y_lin_vel_diff = RewTerm(
+    #     func=my_rewards.rew_y_lin_vel_diff,
+    #     weight=1.0,
+    # )
 
-    rew_z_ang_vel_diff = RewTerm(
-        func=my_rewards.rew_z_ang_vel_diff,
-        weight=1.0,
-    )
+    # rew_z_lin_vel_diff = RewTerm(
+    #     func=my_rewards.rew_z_lin_vel_diff,
+    #     weight=1.0,
+    # )
 
-    pen_roll_diff = RewTerm(
-        func=my_rewards.pen_roll_diff,
-        weight=-10.0,
-        params={"target": 0.0},
-    )
+    # rew_z_ang_vel_diff = RewTerm(
+    #     func=my_rewards.rew_z_ang_vel_diff,
+    #     weight=1.0,
+    # )
 
-    pen_pitch_diff = RewTerm(
-        func=my_rewards.pen_pitch_diff,
-        weight=-10.0,
-        params={"target": 0.0},
-    )
+    # pen_roll_diff = RewTerm(
+    #     func=my_rewards.pen_roll_diff,
+    #     weight=-10.0,
+    #     params={"target": 0.0},
+    # )
 
-    pen_roll_excess = RewTerm(
-        func=my_rewards.pen_roll_excess,
-        weight=-100.0,
-        params={"target": torch.pi/4},
-    )
+    # pen_pitch_diff = RewTerm(
+    #     func=my_rewards.pen_pitch_diff,
+    #     weight=-10.0,
+    #     params={"target": 0.0},
+    # )
 
-    pen_pitch_excess = RewTerm(
-        func=my_rewards.pen_pitch_excess,
-        weight=-100.0,
-        params={"target": torch.pi/4},
-    )
+    # pen_roll_excess = RewTerm(
+    #     func=my_rewards.pen_roll_excess,
+    #     weight=-100.0,
+    #     params={"target": torch.pi/4},
+    # )
+
+    # pen_pitch_excess = RewTerm(
+    #     func=my_rewards.pen_pitch_excess,
+    #     weight=-100.0,
+    #     params={"target": torch.pi/4},
+    # )
 
 
 # |---------------------------------------------------------|
