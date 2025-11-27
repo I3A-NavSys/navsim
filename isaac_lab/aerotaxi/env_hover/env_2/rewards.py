@@ -41,14 +41,14 @@ def rew_ang_vel_z_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     obs = env.obs_buf
     ang_vel = obs["policy"][:, 8]  
     ang_vel_command = obs["policy"][:, 15]
-    return torch.norm(ang_vel - ang_vel_command)
+    return torch.abs(ang_vel - ang_vel_command)
 
 
 def rew_ang_vel_z_diff_fine_grained(env: ManagerBasedRLEnv, std: float) -> torch.Tensor:
     obs = env.obs_buf
     ang_vel = obs["policy"][:, 8]  
     ang_vel_command = obs["policy"][:, 15]
-    distance = torch.norm(ang_vel - ang_vel_command)
+    distance = torch.abs(ang_vel - ang_vel_command)
     return 1 - torch.tanh(distance/std)
 
 
@@ -57,7 +57,7 @@ def rew_roll_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
     roll = obs["policy"][:, 9]  
     roll_command = obs["policy"][:, 15]
     roll_command = torch.tensor(target, device=env.device)
-    return torch.norm(roll - roll_command)
+    return torch.abs(roll - roll_command)
 
 
 def rew_roll_diff_fine_grained(env: ManagerBasedRLEnv, target: float, std: float) -> torch.Tensor:
@@ -65,7 +65,7 @@ def rew_roll_diff_fine_grained(env: ManagerBasedRLEnv, target: float, std: float
     roll = obs["policy"][:, 9]  
     roll_command = obs["policy"][:, 15]
     roll_command = torch.tensor(target, device=env.device)
-    distance = torch.norm(roll - roll_command)
+    distance = torch.abs(roll - roll_command)
     return 1 - torch.tanh(distance/std)
 
 
@@ -74,7 +74,7 @@ def rew_pitch_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
     pitch = obs["policy"][:, 9]  
     pitch_command = obs["policy"][:, 15]
     pitch_command = torch.tensor(target, device=env.device)
-    return torch.norm(pitch - pitch_command)
+    return torch.abs(pitch - pitch_command)
 
 
 def rew_pitch_diff_fine_grained(env: ManagerBasedRLEnv, target: float, std: float) -> torch.Tensor:
@@ -82,7 +82,7 @@ def rew_pitch_diff_fine_grained(env: ManagerBasedRLEnv, target: float, std: floa
     pitch = obs["policy"][:, 9]  
     pitch_command = obs["policy"][:, 15]
     pitch_command = torch.tensor(target, device=env.device)
-    distance = torch.norm(pitch - pitch_command)
+    distance = torch.abs(pitch - pitch_command)
     return 1 - torch.tanh(distance/std)
 
 
