@@ -110,6 +110,6 @@ for i in range(100):
         disable_env_checker=True,
         kwargs={
             "env_cfg_entry_point": f"{env_hover.__name__}.env_2.env:UAVEnvCfg",
-            "rsl_rl_cfg_entry_point": f"{env_hover.__name__}.env_2.grid_hiperparametros.cfg_files.ppo_random_{i+1}_cfg:HoverPPORunnerCfg",
+            "rsl_rl_cfg_entry_point": f"{env_hover.__name__}.env_2.grid_hiperparametros.cfg_files.ppo_random_hover_{i+1}_cfg:HoverPPORunnerCfg",
         },
     )
