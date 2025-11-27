@@ -321,6 +321,7 @@ class RewardsCfg:
     rew_roll_diff = RewTerm(
         func=my_rewards.rew_roll_diff,
         weight=-0.3,
+        params={"target": 0.0}
     )
     rew_roll_diff_fine_grained = RewTerm(
         func=my_rewards.rew_roll_diff_fine_grained,
@@ -330,6 +331,7 @@ class RewardsCfg:
     rew_pitch_diff = RewTerm(
         func=my_rewards.rew_pitch_diff,
         weight=-0.3,
+        params={"target": 0.0},
     )
     rew_pitch_diff_fine_grained = RewTerm(
         func=my_rewards.rew_pitch_diff_fine_grained,
