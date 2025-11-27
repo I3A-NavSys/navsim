@@ -307,7 +307,7 @@ class RewardsCfg:
     rew_lin_vel_diff_fine_grained = RewTerm(
         func=my_rewards.rew_lin_vel_diff_fine_grained,
         weight=0.1,
-        params={"std": 0.05},
+        params={"std": 0.5},
     )
     rew_ang_vel_z_diff = RewTerm(
         func=my_rewards.rew_ang_vel_z_diff,
@@ -316,17 +316,17 @@ class RewardsCfg:
     rew_ang_vel_z_diff_fine_grained = RewTerm(
         func=my_rewards.rew_ang_vel_z_diff_fine_grained,
         weight=0.1,
-        params={"std": 0.05},
+        params={"std": 0.5},
     )
     rew_roll_diff = RewTerm(
         func=my_rewards.rew_roll_diff,
         weight=-0.3,
-        params={"target": 0.0}
+        params={"target": 0.0},
     )
     rew_roll_diff_fine_grained = RewTerm(
         func=my_rewards.rew_roll_diff_fine_grained,
         weight=0.1,
-        params={"std": 0.05, "target": 0.0},
+        params={"std": 0.5, "target": 0.0},
     )
     rew_pitch_diff = RewTerm(
         func=my_rewards.rew_pitch_diff,
@@ -336,7 +336,7 @@ class RewardsCfg:
     rew_pitch_diff_fine_grained = RewTerm(
         func=my_rewards.rew_pitch_diff_fine_grained,
         weight=0.1,
-        params={"std": 0.05, "target": 0.0},
+        params={"std": 0.5, "target": 0.0},
     )
 
     # rew_x_lin_vel_diff = RewTerm(
