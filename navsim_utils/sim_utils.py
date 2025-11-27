@@ -22,10 +22,10 @@ class RequestState:
     IN_PROGRESS = "In progress"
     COMPLETED = "Completed"
 
-class UAVState:
+class UAVStatus:
     IDLE = "idle"
     BUSY = "busy"
-    DEAD = "dead"
+    OUT_OF_SERVICE = "out_of_service"
 
 class TimeManager:
     def __init__(self):
