@@ -296,46 +296,46 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    alive = RewTerm(func=mdp.is_alive, weight=1.0)
+    alive = RewTerm(func=mdp.is_alive, weight=2.0)
 
-    terminating = RewTerm(func=mdp.is_terminated, weight=-15.0)
+    terminating = RewTerm(func=mdp.is_terminated, weight=-50.0)
 
     rew_lin_vel_diff = RewTerm(
         func=my_rewards.rew_lin_vel_diff,
-        weight=-0.2,
+        weight=-0.5,
     )
     rew_lin_vel_diff_fine_grained = RewTerm(
         func=my_rewards.rew_lin_vel_diff_fine_grained,
-        weight=0.1,
+        weight=1.5,
         params={"std": 0.5},
     )
     rew_ang_vel_z_diff = RewTerm(
         func=my_rewards.rew_ang_vel_z_diff,
-        weight=-0.2,
+        weight=-0.1,
     )
     rew_ang_vel_z_diff_fine_grained = RewTerm(
         func=my_rewards.rew_ang_vel_z_diff_fine_grained,
-        weight=0.1,
+        weight=0.5,
         params={"std": 0.5},
     )
     rew_roll_diff = RewTerm(
         func=my_rewards.rew_roll_diff,
-        weight=-0.3,
+        weight=-0.1,
         params={"target": 0.0},
     )
     rew_roll_diff_fine_grained = RewTerm(
         func=my_rewards.rew_roll_diff_fine_grained,
-        weight=0.1,
+        weight=0.5,
         params={"std": 0.5, "target": 0.0},
     )
     rew_pitch_diff = RewTerm(
         func=my_rewards.rew_pitch_diff,
-        weight=-0.3,
+        weight=-0.1,
         params={"target": 0.0},
     )
     rew_pitch_diff_fine_grained = RewTerm(
         func=my_rewards.rew_pitch_diff_fine_grained,
-        weight=0.1,
+        weight=0.5,
         params={"std": 0.5, "target": 0.0},
     )
 
