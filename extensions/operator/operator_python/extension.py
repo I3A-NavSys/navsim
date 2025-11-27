@@ -1,33 +1,16 @@
+import os
+
+
 import omni.ext
 from isaacsim.gui.components import ui
-from isaacsim.gui.components.element_wrappers import DropDown
-import carb.events
-import omni.timeline
-import omni.physx
-from omni.isaac.core.prims import RigidPrimView
-from isaacsim.util.debug_draw import _debug_draw
 from omni.ui import color
+import logging
 
 
-import pickle
-import base64
-import numpy as np
-import math
-import matplotlib.pyplot as plt
-import torch
-import random
+from navsim_utils.sim_utils import UAVStatus
+from navsim_utils.extensions_utils import ExtensionUtils, MinimalComboBoxModel
+from navsim_utils.paths_utils import project_root_path, ui_icons_path
 
-
-from navsim_utils.sim_utils import *
-from navsim_utils.extensions_utils import ExtensionUtils
-from navsim_utils.paths_utils import get_navsim_root_path
-from uspace.grid_planner.grid_planner import GridPlanner
-from uspace.flight_plan.flight_plan import FlightPlan
-# from fleet.uav_ia_control import UAVcontrol
-from fleet.uav_matrix_control import UAVcontrol
-
-
-project_root_path = get_navsim_root_path()
 
 class Operator(omni.ext.IExt):
     def on_startup(self, ext_id) -> None:
@@ -35,569 +18,484 @@ class Operator(omni.ext.IExt):
         self.build_ui()
 
     def on_shutdown(self) -> None:
-        self.on_physics_step_sub = None
-        self.on_stop_sub = None
-        self.on_play_sub = None
-        self.event_sub = None
-        self.debug_draw = None
-
-    def on_physics_step(self, step_size: int) -> None:
-        if self.is_sim_played:
-            self.current_time += step_size
-            self.uav_control.update(self.current_time, self.uavs, step_size)
-
-    def on_timeline_stop(self, event) -> None:
-        self.current_time = 0
-        self.is_sim_played = False
-        self.rigid_prim_view = None
-        self.uav_control = None
-        self.time_manager.stop()
-
-    def on_timeline_play(self, event) -> None:
-        # Resume simulation from pause
-        if self.is_sim_played:
-            self.time_manager.resume()
-            return
-
-        # If simulation is not played, start it
-        if not self.is_sim_played:
-            self.start_uav_control()
-
-            # Reset variables
-            self.debug_draw.clear_lines()
-            self.shown_flightplans = {}
-            
-            self.clients_requests = {}
-            self.ui_requests_container.clear()
-            self.ui_requests_scrolling_frame.style = {
-                "background_color": 0xFF5B5B5B,
-                "margin": 7,
-                "height": 150,
-            }
-
-            # Update control flow variables
-            self.is_sim_played = True
-
-    def on_timeline_pause(self, event) -> None:
-        self.time_manager.pause()
-
-    def start_uav_control(self) -> None:
-        # Start the time manager
-        self.time_manager.start()
-
-        # Start UAV control
-        self.rigid_prim_view = RigidPrimView(["/World/UAVs/UAV_*",])
-        self.rigid_prim_view.initialize()
-        self.uavs = {}
-        self.uav_plots = {}
-        self.ui_uav_plots_frame.clear()
-        self.torch_device = "cuda:0" if torch.cuda.is_available() else "cpu"
-
-        self.init_uavs()
-        self.uav_control = UAVcontrol(
-            self.rigid_prim_view,
-            self.torch_device,
-            self.uavs,
-            self.operator_uav_event,
-            self.event_stream,
-        )
-
-        # Update UI
-        self.print_uavs()
-        self.ui_select_uav_to_plot.repopulate()
-
-    def set_grid_parameters(self) -> None:
-        self.gp.cell_side = self.ui_grid_cell_size.model.get_value_as_int()
-        self.gp.slot_time = self.ui_grid_slot_time.model.get_value_as_int()
-        self.gp.x_height = self.ui_grid_x_level_height.model.get_value_as_int()
-        self.gp.y_height = self.ui_grid_y_level_height.model.get_value_as_int()
+        pass
 
     # ----------------------------------
     # -------- INITIALIZATION ----------
     # ----------------------------------
     def init_vars(self) -> None:
-        self.rigid_prim_view = None
-        self.uav_control = None
+        # Logging
+        self.logger = logging.getLogger("NavSim.Operator")
         
-        self.debug_draw = _debug_draw.acquire_debug_draw_interface()
-        self.shown_flightplans = {}
-        self.used_flightplan_colors = set()
-
-        self.physx_interface = omni.physx.get_physx_interface()
-        self.on_physics_step_sub = self.physx_interface.subscribe_physics_step_events(
-            self.on_physics_step
-        )
-
-        self.timeline = omni.timeline.get_timeline_interface()
-        timeline_stream = self.timeline.get_timeline_event_stream()
-        self.on_stop_sub = timeline_stream.create_subscription_to_pop_by_type(
-            int(omni.timeline.TimelineEventType.STOP), 
-            self.on_timeline_stop
-        )
-        self.on_play_sub = timeline_stream.create_subscription_to_pop_by_type(
-            int(omni.timeline.TimelineEventType.PLAY), 
-            self.on_timeline_play
-        )
-        self.on_pause_sub = timeline_stream.create_subscription_to_pop_by_type(
-            int(omni.timeline.TimelineEventType.PAUSE), 
-            self.on_timeline_pause
-        )
-
-        self.time_manager = TimeManager()
-        self.geospatial_manager = GeospatialManager()
+        # Utils
         self.extension_utils = ExtensionUtils()
-        self.gp = GridPlanner()
-        self.plot_time_steps = 0.01
-
-        self.event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
-        self.operator_uav_event = carb.events.type_from_string("NavSim.OperatorUAV")
-        self.uspace_clients_event = carb.events.type_from_string("NavSim.USpaceClients")
-        self.uspace_manager_event = carb.events.type_from_string("NavSim.USpaceManager")
-        self.event_sub = self.event_stream.create_subscription_to_push_by_type(
-            self.operator_uav_event,
-            self.event_listener
-        )
-
-        self.is_sim_played = False
-        self.current_time = 0
-        self.clients_requests = {}
-        self.vertiports_from_id = {}
-        self.vertiports_from_pos = {}
-        self.uavs = {}
-        self.uav_plots = {}
-        self.idle_uavs = []  # Stores the ids of the idle UAVs
-
-    def init_uavs(self) -> None:
-        pos, _ = self.rigid_prim_view.get_world_poses(
-            indices=range(self.rigid_prim_view.count)
-        )
-
-        for i in range(self.rigid_prim_view.count):
-            uav_id = f"UAV_{i}"
-            uav_state = UAVState.IDLE
-            uav_time = self.time_manager.sim_to_real(0)
-            uav_pos = pos[i]
-            uav_flightplan = None
-            request = None
-
-            self.uavs[uav_id] = {
-                "id": uav_id,
-                "state": uav_state,
-                "time": uav_time,
-                "pos": uav_pos,
-                "flightplan": uav_flightplan,
-                "request": request,
-            }
-
-            self.idle_uavs.append(uav_id)
-
-    # ----------------------------------
-    # ------ TRACKED INFORMATION -------
-    # ----------------------------------
-    def plot_uav_pos(self, uav_id, key) -> None:
-        fp: FlightPlan = self.uav_plots[uav_id][key]["fp"]
-        tracked_info = self.uav_plots[uav_id][key]["tracked_info"]
-
-        fp.position_figure(f"{key}: POSITION", self.plot_time_steps)
-        fp.add_UAV_track_pos(f"{key}: POSITION", tracked_info)
-
-    def plot_uav_vel(self, uav_id, key) -> None:
-        fp: FlightPlan = self.uav_plots[uav_id][key]["fp"]
-        tracked_info = self.uav_plots[uav_id][key]["tracked_info"]
-
-        fp.velocity_figure(f"{key}: VELOCITY", self.plot_time_steps)
-        fp.add_UAV_track_vel(f"{key}: VELOCITY", tracked_info)
-
-    def plot_uav_acc(self, uav_id, key) -> None:
-        fp: FlightPlan = self.uav_plots[uav_id][key]["fp"]
-        tracked_info = self.uav_plots[uav_id][key]["tracked_info"]
-
-        fp.acceleration_figure(f"{key}: ACCELERATION", self.plot_time_steps)
-        fp.add_UAV_track_acc(f"{key}: ACCELERATION", tracked_info)
-
-    def save_figures(self, uav_id, key) -> None:
-        pos_fig_name = f"{key}: POSITION"
-        vel_fig_name = f"{key}: VELOCITY"
-        acc_fig_name = f"{key}: ACCELERATION"
-
-        id = uav_id.replace("/", "_")
-        path = project_root_path + "/sims/figures" + f"/{id}_{key}"
-
-        if plt.fignum_exists(pos_fig_name):
-            plt.figure(pos_fig_name).savefig(fname=path + "_pos.svg")
-
-        if plt.fignum_exists(vel_fig_name):
-            plt.figure(vel_fig_name).savefig(fname=path + "_vel.svg")
-
-        if plt.fignum_exists(acc_fig_name):
-            plt.figure(acc_fig_name).savefig(fname=path + "_acc.svg")
-
-    def export_request_tracking_data(self, uav_id, key) -> None:
-        fp: FlightPlan = self.uav_plots[uav_id][key]["fp"]
-        tracked_info = self.uav_plots[uav_id][key]["tracked_info"]
-        tracked_info_trace_rows = len(tracked_info)
-        tracked_info_trace_cols = 7
-
-        waypoints = [[wp.t, wp.pos[0], wp.pos[1], wp.pos[2]] for wp in fp.waypoints]
-
-        fp_trace = fp.trace(self.plot_time_steps)
-        tracked_info_trace = np.zeros((tracked_info_trace_rows, tracked_info_trace_cols))
-        for i in range(tracked_info_trace_rows):
-            wp = tracked_info[i]
-
-            tracked_info_trace[i, 0] = wp.t
-            tracked_info_trace[i, 1] = wp.pos[0]
-            tracked_info_trace[i, 2] = wp.pos[1]
-            tracked_info_trace[i, 3] = wp.pos[2]
-            tracked_info_trace[i, 4] = wp.vel[0]
-            tracked_info_trace[i, 5] = wp.vel[1]
-            tracked_info_trace[i, 6] = wp.vel[2]
-
-        id = uav_id.replace("/", "_")
-        waypoints_path = (
-            project_root_path + "/sims/exported_data" + f"/{id}_{key}_waypoints.csv"
-        )
-
-        fp_path = (
-            project_root_path + "/sims/exported_data" + f"/{id}_{key}_flightplan.csv"
-        )
-
-        tracked_info_path = (
-            project_root_path + "/sims/exported_data" + f"/{id}_{key}_tracked_info.csv"
-        )
-
-        np.savetxt(waypoints_path, waypoints, delimiter=", ", fmt="%s")
-        np.savetxt(fp_path, fp_trace, delimiter=", ", fmt="%s")
-        np.savetxt(tracked_info_path, tracked_info_trace, delimiter=", ", fmt="%s")
-
-    # ----------------------------------
-    # -- EVENTS AND REQUESTS HANDLING --
-    # ----------------------------------
-    def event_listener(self, event) -> None:
-        payload = event.payload
-
-        match payload["type_message"]:
-            case TypeMessage.CMD_FP_REQUEST:
-                self.handle_cmd_fp_request_msg(payload)
-
-            case TypeMessage.USPACE:
-                self.handle_uspace_msg(payload)
-
-    def handle_cmd_fp_request_msg(self, payload) -> None:
-        if self.uav_control is None:
-            return
-
-        msg = payload["msg"]
-        request = msg["request"]
-        uav_id = request["uav_id"]
-
-        match msg["sender"]:
-            case TypeSender.COMMAND_GENERATOR:
-                cmd = pickle.loads(base64.b64decode(request["cmd"]))
-                self.send_command(uav_id, cmd)
-
-            case TypeSender.FLIGHTPLAN_GENERATOR:
-                fp = pickle.loads(base64.b64decode(request["fp"]))
-                self.uavs[uav_id]["request"] = {
-                    "client_id": "FP Generator",
-                    "request_id": "flightplan",
+        
+        # Main data
+        self.operators = {
+            "Operator_1": {
+                "uavs": {
+                    "UAV_1": {
+                        "type": "AEROTAXI",           # AEROTAXI / QUADCOPTER
+                        "status": UAVStatus.IDLE,         # BUSY / IDLE / OFFLINE
+                        "mission": "mission_1",        # unique mission identifier
+                        "time": "12:38:53",           # UAV update current time
+                        "battery": 100,        # not used yet
+                        "location": [150, 200, 1.75],       # current UAV location (x,y,z)
+                    },
+                    "UAV_2": {
+                        "type": "QUADCOPTER",           # AEROTAXI / QUADCOPTER
+                        "status": UAVStatus.BUSY,         # BUSY / IDLE / OFFLINE
+                        "mission": "mission_2",        # unique mission identifier
+                        "time": "13:12:27",           # UAV update current time
+                        "battery": 80,        # not used yet
+                        "location": [350, -100, 1.75],       # current UAV location (x,y,z)
+                    }
+                }, 
+                "missions": {
+                    # "Mission_1": {
+                    #     "client_id": None,      # unique client identifier
+                    #     "uav_id": None,         # assigned UAV identifier
+                    #     "flightplan": None,     # flightplan object
+                    #     "status": None,         # PENDING / IN_PROGRESS / COMPLETED / FAILED
+                    #     "start_time": None,     # mission start time
+                    #     "end_time": None        # mission end time
+                    # }
+                },
+                "statistics": {
+                    # "total_missions": 0,
+                    # "successful_missions": 0,
+                    # "failed_missions": 0,
+                    # "average_completion_time": 0.0
                 }
-                self.send_flightplan(uav_id, fp)
-
-    def handle_uspace_msg(self, payload) -> None:
-        msg = payload["msg"]
-
-        match msg["sender"]:
-            case TypeSender.SINGLE_UAV:
-                self.process_uav_message(msg)
-            case TypeSender.USPACE_CLIENT:
-                self.process_client_message(msg)
-
-    def process_uav_message(self, msg) -> None:
-        request = msg["request"]
-
-        uav_id = request["id"]
-        uav_state = request["state"]
-        uav_time = self.time_manager.sim_to_real(request["time"])
-        uav_pos = pickle.loads(base64.b64decode(request["pos"]))
-        uav_flightplan = pickle.loads(base64.b64decode(request["flightplan"]))
-        if request["tracked_info"] != "":
-            tracked_info = pickle.loads(base64.b64decode(request["tracked_info"]))
-        else:
-            tracked_info = ""
-
-        if uav_id not in self.uavs:
-            self.uavs[uav_id] = {"request": None}
-            self.ui_select_uav_to_plot.repopulate()
-
-        self.check_request_completed(uav_id, uav_state, uav_flightplan, tracked_info)
-
-        self.uavs[uav_id]["id"] = uav_id
-        self.uavs[uav_id]["state"] = uav_state
-        self.uavs[uav_id]["time"] = uav_time
-        self.uavs[uav_id]["pos"] = uav_pos
-        self.uavs[uav_id]["flightplan"] = uav_flightplan
-
-        self.print_uavs()
-
-    def check_request_completed(self, uav_id, uav_state, uav_flightplan, tracked_info) -> None:
-        registered_state = self.uavs[uav_id]["state"]
-        is_completed = registered_state == UAVState.BUSY and uav_state == UAVState.IDLE
-
-        if not is_completed:
-            return
-
-        client_id = self.uavs[uav_id]["request"]["client_id"]
-        request_id = self.uavs[uav_id]["request"]["request_id"]
-
-        # Inform the client that the request was completed
-        if client_id != "FP Generator":
-            self.inform_client(
-                TypeMessage.USPACE,
-                client_id, 
-                request_id, 
-                RequestState.COMPLETED
-            )
-
-        # Add the flightplan and tracked info to the uav plots
-        if uav_id not in self.uav_plots:
-            self.uav_plots[uav_id] = {}
-
-        self.uav_plots[uav_id][f"{client_id}_{request_id}"] = {
-            "fp": uav_flightplan,
-            "tracked_info": tracked_info,
+            },
+            "Operator_2": {
+                "uavs": {}, 
+                "missions": {}, 
+                "statistics": {}
+            },
         }
 
-        # Reset uav request
-        self.uavs[uav_id]["request"] = None
-
-        # Add this uav to idle uavs list
-        if uav_id not in self.idle_uavs:
-            self.idle_uavs.append(uav_id)
-
-        # If the current selected uav to see its plots is the one which finished
-        # the request, we update the list
-        if self.ui_select_uav_to_plot.get_selection() == uav_id:
-            self.print_uav_plots(uav_id)
-
-    def process_client_message(self, msg) -> None:
-        request = msg["request"]
-
-        client_id = request["client_id"]
-        request_id = request["request_id"]
-        init_time = pickle.loads(base64.b64decode(request["init_time"]))
-        end_time = pickle.loads(base64.b64decode(request["end_time"]))
-        origin = request["origin"]
-        destination = request["destination"]
-
-        if client_id not in self.clients_requests:
-            self.clients_requests[client_id] = {}
-
-        self.clients_requests[client_id][request_id] = {
-            "init_time": init_time,
-            "end_time": end_time,
-            "origin": origin,
-            "destination": destination,
-        }
-
-        self.print_new_request(
-            client_id, 
-            request_id, 
-            init_time, 
-            end_time, 
-            origin, 
-            destination
-        )
-        self.process_request(client_id, request_id)
-
-    def process_request(self, client_id, request_id) -> None:
-        if len(self.idle_uavs) == 0:
-            return
-
-        request = self.clients_requests[client_id][request_id]
-        request_origin = request["origin"]
-        request_destination = request["destination"]
-        request_init_time = self.time_manager.real_to_sim(request["init_time"])
-        request_end_time = self.time_manager.real_to_sim(request["end_time"])
-        radius = 2
-
-        for uav_id in self.idle_uavs:
-            uav = self.uavs[uav_id]
-            dist_to_origin = np.linalg.norm(uav["pos"] - request_origin)
-
-            if dist_to_origin <= radius:
-                self.inform_operator_vertiport(
-                    TypeMessage.USPACE,
-                    request_origin,
-                    request_destination,
-                    request_init_time,
-                    request_end_time,
-                )
-
-                # fp = self.get_flightplan(
-                #     request_origin,
-                #     request_destination,
-                #     request_init_time,
-                #     request_end_time
-                # )
-
-                # self.idle_uavs.remove(uav_id)
-                # self.send_flightplan(uav_id, fp)
-
-                # uav["request"] = {
-                #     "client_id": client_id,
-                #     "request_id": request_id
-                # }
-                # self.print_uavs()
-
-                # self.inform_client(
-                #     TypeMessage.USPACE,
-                #     client_id,
-                #     request_id,
-                #     RequestState.IN_PROGRESS
-                # )
-
-                return
-
-        # If no idle UAVs are close enough to the origin, cancel the request
-        self.inform_client(
-            TypeMessage.USPACE,
-            client_id, 
-            request_id, 
-            RequestState.CANCELLED
-        )
+    # ----------------------------------
+    # ---- UI BUILDING AND MANAGING ----
+    # ----------------------------------
+    def build_uav_info(self) -> None:
+        def toggle_flightplan_debug(
+            selected_operator: dict[str, dict], 
+            selected_uav: dict[str, any]
+        ) -> None:
+            # Inverted logic for checkbox as it does not update value until after click event
+            checked = not self.ui_show_flightplan_checkbox.model.get_value_as_bool()
             
-    def get_flightplan(self, request_origin, request_destination, request_init_time, request_end_time) -> None:
-        # Get node pos from request origin as initial node
-        i = request_origin[0] // self.gp.cell_side
-        j = request_origin[1] // self.gp.cell_side
-        # Get node pos from request destination as final node
-        i2 = request_destination[0] // self.gp.cell_side
-        j2 = request_destination[1] // self.gp.cell_side
-        # Round up the initial time
-        init_time_slot = math.ceil(request_init_time / self.gp.slot_time)
-        # Round down the end time
-        end_time_slot = math.floor(request_end_time / self.gp.slot_time)
+            # Show flightplan only if UAV is busy
+            if checked:
+                if selected_uav["status"] != UAVStatus.BUSY:
+                    self.logger.warning(f"{uav_id} is not busy. Cannot show flightplan.")
+                    return
+                
+                mission_id = selected_uav["mission"]
+                mission = selected_operator["missions"][mission_id]
+                flightplan = mission["flightplan"]
+                
+            # Hide flightplan
+            else:
+                pass
+        def toggle_uav_flight_state_debug(
+            selected_operator: dict[str, dict], 
+            selected_uav: dict[str, any]
+        ) -> None:
+            # Inverted logic for checkbox as it does not update value until after click event
+            checked = not self.ui_show_uav_flight_state_checkbox.model.get_value_as_bool()
+            
+            # Show UAV flight state only if UAV is busy
+            if checked:
+                if selected_uav["status"] != UAVStatus.BUSY:
+                    self.logger.warning(f"{uav_id} is not busy. Cannot show UAV flight state.")
+                    return
+                
+            # Hide UAV flight state
+            else:
+                pass
+        
+        def build_location(location: list[float]) -> None:
+                with ui.ZStack():
+                    # Container
+                    with ui.HStack():
+                        # Padding left
+                        ui.Frame(width=ui.Percent(20))
+                        
+                        ui.Rectangle(
+                            width=ui.Percent(60),
+                            # height=150,
+                            style={
+                                "background_color": color("#5B5B5B"),
+                                "border_radius": 5,
+                            }
+                        )
+                    
+                    # Location
+                    with ui.VStack(height=0):
+                        # Title
+                        ui.Spacer(height=1)
+                        ui.Label(
+                            "Location", 
+                            alignment=ui.Alignment.CENTER_TOP,
+                            style={"font_size": 18}
+                        )
+                        
+                        
+                        with ui.ZStack():
+                            # Container
+                            with ui.HStack():
+                                # Padding left
+                                ui.Frame(width=ui.Percent(25))
+                                        
+                                ui.Rectangle(
+                                    width=ui.Percent(50),
+                                    height=90,
+                                    style={
+                                        "background_color": color("#3A3A3A"),
+                                        "border_radius": 5,
+                                        "margin": 5,
+                                    }
+                                )
+                                
+                            # Content
+                            with ui.HStack():
+                                # Padding left
+                                ui.Frame(width=ui.Percent(27))
+                                
+                                with ui.VGrid(column_count=2):
+                                    ui.Label(
+                                        "X",
+                                        style={"color": color("#FF3838")}
+                                    )
+                                    ui.Label(
+                                        str(round(location[0], 2)),
+                                        alignment=ui.Alignment.RIGHT,
+                                        style={"color": color("#FF3838")}
+                                    )
+                                    
+                                    ui.Label(
+                                        "Y",
+                                        style={"color": color("#77FF38")}
+                                    )
+                                    ui.Label(
+                                        str(round(location[1], 2)),
+                                        alignment=ui.Alignment.RIGHT,
+                                        style={"color": color("#77FF38")}
+                                    )
+                                    
+                                    ui.Label(
+                                        "Z",
+                                        style={"color": color("#38A9FF")}
+                                    )
+                                    ui.Label(
+                                        str(round(location[2], 2)),
+                                        alignment=ui.Alignment.RIGHT,
+                                        style={"color": color("#38A9FF")}
+                                    )
+                                    
+                                # Padding right
+                                ui.Frame(width=ui.Percent(27))   
+        def build_parameters(selected_uav: dict[str, any]) -> None:
+            with ui.ZStack():
+                # Container
+                with ui.HStack():
+                    # Padding left
+                    ui.Frame(width=ui.Percent(5))
+                    
+                    ui.Rectangle(
+                        width=ui.Percent(90),
+                        # height=205,
+                        style={
+                            "background_color": color("#5B5B5B"),
+                            "border_radius": 5,
+                        }
+                    )
+                
+                # Parameters
+                with ui.VStack(height=0):
+                    # Title
+                    ui.Spacer(height=1)
+                    ui.Label(
+                        "Parameters", 
+                        alignment=ui.Alignment.CENTER_TOP,
+                        style={"font_size": 18}
+                    )
+                    
+                    # Content
+                    with ui.ZStack():
+                        # Container
+                        with ui.HStack():
+                            # Padding left
+                            ui.Frame(width=ui.Percent(10))
+                                    
+                            ui.Rectangle(
+                                width=ui.Percent(80),
+                                height=145,
+                                style={
+                                    "background_color": color("#3A3A3A"),
+                                    "border_radius": 5,
+                                }
+                            )
+                        
+                        with ui.HStack():
+                            # Padding left
+                            ui.Frame(width=ui.Percent(12))
+                            
+                            with ui.VGrid(column_count=2):
+                                ui.Label("Type:")
+                                ui.Label(
+                                    selected_uav["type"],
+                                    alignment=ui.Alignment.RIGHT
+                                )
+                                
+                                ui.Label("Status:")
+                                ui.Label(
+                                    selected_uav["status"],
+                                    alignment=ui.Alignment.RIGHT
+                                )
+                                
+                                ui.Label("Mission:")
+                                ui.Label(
+                                    selected_uav["mission"],
+                                    alignment=ui.Alignment.RIGHT
+                                )
+                                
+                                ui.Label("Time:")
+                                ui.Label(
+                                    selected_uav["time"],
+                                    alignment=ui.Alignment.RIGHT
+                                )
+                                
+                                ui.Label("Battery:")
+                                ui.Label(
+                                    str(selected_uav["battery"]) + " %",
+                                    alignment=ui.Alignment.RIGHT
+                                )
+                                
+                            # Padding right
+                            ui.Frame(width=ui.Percent(12))
+        def build_debug_buttons(
+            selected_operator: dict[str, dict], 
+            selected_uav: dict[str, any]
+        ) -> None:
+            with ui.ZStack():
+                # Container
+                with ui.HStack():
+                    # Padding left
+                    ui.Frame(width=ui.Percent(18.5))
+                    
+                    ui.Rectangle(
+                        width=ui.Percent(65),
+                        # height=205,
+                        style={
+                            "background_color": color("#5B5B5B"),
+                            "border_radius": 5,
+                        }
+                    )
+                    
+                # Buttons
+                with ui.VStack(height=0):
+                    # Title
+                    ui.Spacer(height=1)
+                    ui.Label(
+                        "Debug Options", 
+                        alignment=ui.Alignment.CENTER_TOP,
+                        style={"font_size": 18}
+                    )
+                
+                    # Show Flightplan
+                    with ui.ZStack():
+                        # Container
+                        with ui.HStack():
+                            # Padding left
+                            ui.Frame(width=ui.Percent(20))
+                            
+                            ui.Rectangle(
+                                width=ui.Percent(62.5),
+                                height=40,
+                                style={
+                                    "background_color": color("#3A3A3A"),
+                                    "border_radius": 10,
+                                }
+                            )
+                        
+                        # Checkbox
+                        with ui.HStack():
+                            # Padding left
+                            ui.Frame(width=ui.Percent(25))
+                            
+                            self.ui_show_flightplan_checkbox = ui.CheckBox(
+                                width=0,
+                                style={"margin_height": 12},
+                                mouse_pressed_fn=lambda x, y, b, m: 
+                                    toggle_flightplan_debug(
+                                        selected_operator, 
+                                        selected_uav
+                                    ),
+                            )
+                            
+                            ui.Label(
+                                "Show Flightplan", 
+                                alignment=ui.Alignment.CENTER,
+                                style={"font_size": 16}
+                            )
+                            
+                            # Padding right
+                            ui.Frame(width=ui.Percent(25))
+                        
+                    # Show UAV Flight State
+                    with ui.ZStack():
+                        # Container
+                        with ui.HStack():
+                            # Padding left
+                            ui.Frame(width=ui.Percent(20))
+                            
+                            ui.Rectangle(
+                                width=ui.Percent(62.5),
+                                height=40,
+                                style={
+                                    "background_color": color("#3A3A3A"),
+                                    "border_radius": 10,
+                                }
+                            )
+                        
+                        # Checkbox
+                        with ui.HStack():
+                            # Padding left
+                            ui.Frame(width=ui.Percent(25))
+                            
+                            self.ui_show_uav_flight_state_checkbox = ui.CheckBox(
+                                width=0,
+                                style={"margin_height": 12},
+                                mouse_pressed_fn=lambda x, y, b, m: 
+                                    toggle_uav_flight_state_debug(
+                                        selected_operator, 
+                                        selected_uav
+                                    ),
+                            )
+                            
+                            ui.Label(
+                                "Show UAV Flight State", 
+                                alignment=ui.Alignment.CENTER,
+                                style={"font_size": 16}
+                            )
+                            
+                            # Padding right
+                            ui.Frame(width=ui.Percent(25))
+                        
+                        
+        self.ui_content_frame.clear()
+        
+        # Get selected operator
+        operator_id = self.ui_operator_dropdown.model.get_selection()
+        selected_operator = self.operators[operator_id]
+        
+        # Check if it has UAVs
+        uavs_ids = list(selected_operator["uavs"].keys())
+        if not uavs_ids:    return
+        
+        # Update info dropdown with UAV ids
+        self.ui_info_dropdown.model.set_children(uavs_ids)
+        
+        # Get selected UAV
+        uav_id = self.ui_info_dropdown.model.get_selection()
+        selected_uav = selected_operator["uavs"][uav_id]
+        
+        
+        # Update content frame with selected UAV info
+        with self.ui_content_frame:
+            with ui.VStack(height=0):
+                build_location(selected_uav["location"])
+                build_parameters(selected_uav)
+                build_debug_buttons(selected_operator, selected_uav)
 
-        route, _ = self.gp.get_best_route(
-            2, 
-            (i, j), 
-            (i2, j2), 
-            init_time_slot, 
-            end_time_slot
-        )
-
-        if route:
-            self.gp.reserve_nodes(route)
-
-        fp = self.gp.get_flightplan_from_route(route)
-        self.add_takeoff_landing_wps(fp, request_origin, request_destination)
-
-        return fp
-
-    def add_takeoff_landing_wps(self, fp: FlightPlan, init_pos, end_pos) -> None:
-        # Compute the initial and final times
-        init_time_1 = fp.init_time() - 2 * self.gp.slot_time
-        end_time_1 = fp.finish_time() + 2 * self.gp.slot_time
-        end_time_2 = fp.finish_time() + 3 * self.gp.slot_time
-        end_time_3 = fp.finish_time() + 4 * self.gp.slot_time
-
-        # Define the initial and final positions
-        init_pos_1 = [init_pos[0], init_pos[1], 1.75]
-        end_pos_1 = [end_pos[0], end_pos[1], 20]
-        end_pos_2 = [end_pos[0], end_pos[1], 3]
-        end_pos_3 = [end_pos[0], end_pos[1], 1.75]
-
-        # Define the initial and final velocities
-        init_vel_1 = [0, 0, 0]
-        end_vel_1 = [0, 0, -3]
-        end_vel_2 = [0, 0, -0.2]
-        end_vel_3 = [0, 0, 0]
-
-        # Define the initial and final headings
-        init_facing_east = (init_pos_1[1] // self.gp.cell_side) % 2 == 0
-        end_facing_east = (end_pos_1[1] // self.gp.cell_side) % 2 == 0
-
-        if init_facing_east:    init_heading = [1, 0]
-        else:                   init_heading = [-1, 0]
-
-        if end_facing_east:     end_heading = [1, 0]
-        else:                   end_heading = [-1, 0]
-
-        # Initial takeoff waypoint
-        fp.set_waypoint(
-            time=init_time_1, 
-            pos=init_pos_1, 
-            vel=init_vel_1, 
-            heading=init_heading
-        )
-
-        # Final landing waypoints
-        fp.set_waypoint(
-            time=end_time_1,
-            pos=end_pos_1,
-            vel=end_vel_1,
-            heading=end_heading,
-        )
-        fp.set_waypoint(
-            time=end_time_2, 
-            pos=end_pos_2, 
-            vel=end_vel_2, 
-            heading=end_heading
-        )
-        fp.set_waypoint(
-            time=end_time_3, 
-            pos=end_pos_3, 
-            vel=end_vel_3, 
-            heading=end_heading
-        )
-
-        fp.connect_waypoints()
-
-    def send_command(self, uav_id, cmd) -> None:
-        self.uav_control.commands[uav_id] = cmd
-        self.uav_control.cmd_exp_time[uav_id] = self.current_time + cmd.duration
-
-    def send_flightplan(self, uav_id, fp) -> None:
-        self.uavs[uav_id]["flightplan"] = fp
-
-    def inform_client(self, type_message, client_id=None, request_id=None, request_state=None) -> None:
-        payload = {"type_message": type_message}
-        msg = {"sender": TypeSender.OPERATOR_UAV}
-
-        match type_message:
-            case TypeMessage.USPACE:
-                msg["client_id"] = client_id
-                msg["request_id"] = request_id
-                msg["state"] = request_state
-
-        payload["msg"] = msg
-
-        self.event_stream.push(self.uspace_clients_event, payload=payload)
-
-    def inform_operator_vertiport(self, type_message, origin, destination, init_time, end_time) -> None:
-        payload = {"type_message": type_message}
-        msg = {"sender": TypeSender.OPERATOR_UAV}
-
-        match type_message:
-            case TypeMessage.USPACE:
-                msg["request"] = {
-                    "origin": origin,
-                    "destination": destination,
-                    "init_time": init_time,
-                    "end_time": end_time,
+    def build_mission_info(self) -> None:
+        pass
+    
+    def build_statistics_info(self) -> None:
+        pass
+    
+    
+    def build_title(self) -> None:
+        ui.Spacer(height=10)
+        
+        with ui.ZStack():
+            ui.Rectangle(
+                height=60,
+                style={
+                    "background_color": color("#353535"),
+                    "border_radius": 10,
                 }
-
-        payload["msg"] = msg
-
-        self.event_stream.push(self.uspace_manager_event, payload=payload)
-
-    # ----------------------------------
-    # ---- UI BUILDING AND HANDLING ----
-    # ----------------------------------
+            )
+            ui.Label(
+                "NavSim - UAV Operator", 
+                alignment=ui.Alignment.CENTER,
+                style={"font_size": 20}
+            )
+            
+        ui.Spacer(height=10)
+        
+    def build_operator_dropdown(self) -> None:
+        ui.Label("Select UAV Operator:")
+        self.ui_operator_dropdown = ui.ComboBox(MinimalComboBoxModel())
+        self.ui_operator_dropdown.model.set_children(
+            list(self.operators.keys())
+        )
+                    
+    def build_information_buttons(self) -> None:
+        with ui.ZStack(style={"margin": 5}):
+            ui.Rectangle(
+                style={
+                    "background_color": color("#5A5A5A"),
+                    "border_radius": 5,
+                }
+            )
+            
+            with ui.VStack(height=0):
+                with ui.HStack(spacing=self.extension_utils.SPACING_S):
+                    ui.Button(
+                        text="UAVs",
+                        height=40,
+                        clicked_fn=self.build_uav_info,
+                    )
+                    
+                    ui.Button(
+                        text="Missions",
+                        height=40,
+                        clicked_fn=self.build_mission_info,
+                    )
+                    
+                    ui.Button(
+                        text="Statistics",
+                        height=40,
+                        clicked_fn=self.build_statistics_info,
+                    )
+                    
+                self.ui_info_dropdown = ui.ComboBox(MinimalComboBoxModel())
+                self.ui_info_dropdown.model.add_item_changed_fn(
+                    lambda m, i: print("yeah!")
+                )
+            
+    def build_content_frame(self) -> None:
+        with ui.ZStack(height=420):
+            with ui.HStack():
+                # Padding left
+                ui.Frame(width=ui.Percent(7.5))
+                
+                ui.Rectangle(
+                    width=ui.Percent(85),
+                    style={
+                    "background_color": color("#757575"),
+                    "border_radius": 5,
+                    }
+                )
+            self.ui_content_frame = ui.VStack(height=0, style={"margin": 5})
+            
+            
     def build_ui(self) -> None:
-        self.window = ui.Window("OP: NavSim - Operator", width=300, height=300)
-        self.window.deferred_dock_in("Layers")
+        self.window = ui.Window("UAV OP", width=300, height=300)
         self.window.frame.set_style(self.extension_utils.Window_dark_style)
 
         with self.window.frame:
@@ -605,408 +503,13 @@ class Operator(omni.ext.IExt):
                 horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
                 vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
             ):
-                with ui.VStack(spacing=self.extension_utils.SPACING_S, height=0):
-                    # Title
-                    ui.Spacer(height=10)
-                    ui.Label(
-                        "NAVSIM - OPERATOR",
-                        alignment=ui.Alignment.CENTER,
-                        style={"font_size": 20, "font_weight": "bold"},
-                    )
-                    ui.Spacer(height=5)
+                with ui.VStack(height=0, spacing=self.extension_utils.SPACING_S):
+                    self.build_title()
+                    self.build_operator_dropdown()
+                    
+                    # Separator
+                    ui.Rectangle(height=2, style={"background_color": color("#CCCCCC")})
+                    
+                    self.build_information_buttons()
+                    self.build_content_frame()
 
-                    # UAVs collapsable
-                    self.ui_uavs_collapsable = ui.CollapsableFrame(
-                        "UAVs",
-                        collapsed=False,
-                        style=self.extension_utils.CollapsableFrame_style,
-                    )
-
-                    with self.ui_uavs_collapsable:
-                        self.ui_uavs_scrolling_frame = ui.ScrollingFrame(
-                            horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
-                            vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
-                            style={"background_color": 0xFF5B5B5B, "margin": 5},
-                            height=300,
-                        )
-
-                        with self.ui_uavs_scrolling_frame:
-                            self.ui_uavs_container = ui.VStack(height=0)
-
-                    # Client requests collapsable
-                    self.ui_requests_collapsable = ui.CollapsableFrame(
-                        "Requests",
-                        collapsed=False,
-                        style=self.extension_utils.CollapsableFrame_style,
-                    )
-
-                    with self.ui_requests_collapsable:
-                        self.ui_requests_scrolling_frame = ui.ScrollingFrame(
-                            horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
-                            vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
-                            style={"background_color": 0xFF5B5B5B, "margin": 5},
-                            height=150,
-                        )
-
-                        with self.ui_requests_scrolling_frame:
-                            self.ui_requests_container = ui.VStack(height=0)
-
-                    # Vertiports collapsable
-                    self.ui_vertiports_collapsable = ui.CollapsableFrame(
-                        "Vertiports",
-                        collapsed=False,
-                        style=self.extension_utils.CollapsableFrame_style,
-                    )
-
-                    with self.ui_vertiports_collapsable:
-                        self.ui_vertiports_scrolling_frame = ui.ScrollingFrame(
-                            horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
-                            vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
-                            style={"background_color": 0xFF5B5B5B, "margin": 5},
-                            height=150,
-                        )
-
-                        with self.ui_vertiports_scrolling_frame:
-                            self.ui_vertiports_container = ui.VStack(height=0)
-
-                    # UAV plots collapsable
-                    self.ui_uav_plots_collapsable = ui.CollapsableFrame(
-                        "UAV plots",
-                        collapsed=False,
-                        style=self.extension_utils.CollapsableFrame_style,
-                    )
-
-                    with self.ui_uav_plots_collapsable:
-                        with ui.VStack(height=0, style=self.extension_utils.VStack_A):
-                            # Selector
-                            self.ui_select_uav_to_plot = DropDown(
-                                "Select UAV",
-                                populate_fn=self.populate_select_uav_to_plot,
-                                on_selection_fn=self.print_uav_plots,
-                            )
-                            self.ui_select_uav_to_plot.repopulate()
-
-                            ui.Spacer(height=20)
-
-                            # Content frame
-                            with ui.ScrollingFrame(
-                                horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
-                                vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
-                                height=200,
-                                style=self.extension_utils.ScrollingFrame_style,
-                            ):
-                                with ui.ZStack():
-                                    ui.Rectangle(
-                                        style={
-                                            "background_color": 0xFF5B5B5B,
-                                            "border_radius": 5,
-                                            "corner_flag": ui.CornerFlag.ALL,
-                                        }
-                                    )
-
-                                    self.ui_uav_plots_frame = ui.VStack(
-                                        spacing=self.extension_utils.SPACING_S,
-                                        height=0
-                                    )
-
-                            ui.Spacer(height=10)
-
-    def populate_select_uav_to_plot(self) -> None:
-        return list(self.uavs.keys())
-
-    def print_uav_plots(self, uav_id) -> None:
-        self.ui_uav_plots_frame.clear()
-
-        if uav_id not in self.uav_plots:
-            return
-
-        with self.ui_uav_plots_frame:
-            for key in self.uav_plots[uav_id].keys():
-                ui.Spacer(height=5)
-                ui.Label(key, alignment=ui.Alignment.CENTER)
-
-                with ui.HStack(spacing=self.extension_utils.SPACING_S):
-                    ui.Button(
-                        text="PLOT POS",
-                        clicked_fn=lambda uav_id=uav_id, key=key: self.plot_uav_pos(
-                            uav_id, 
-                            key,
-                        ),
-                    )
-
-                    ui.Button(
-                        text="PLOT VEL",
-                        clicked_fn=lambda uav_id=uav_id, key=key: self.plot_uav_vel(
-                            uav_id,
-                            key,
-                        ),
-                    )
-
-                    ui.Button(
-                        text="PLOT ACC",
-                        clicked_fn=lambda uav_id=uav_id, key=key: self.plot_uav_acc(
-                            uav_id,
-                            key,
-                        ),
-                    )
-
-                with ui.HStack(spacing=self.extension_utils.SPACING_S):
-                    ui.Button(
-                        text="SAVE ACTIVE FIGURES",
-                        clicked_fn=lambda uav_id=uav_id, key=key: self.save_figures(
-                            uav_id,
-                            key,
-                        ),
-                    )
-
-                    ui.Button(
-                        text="EXPORT DATA",
-                        clicked_fn=lambda uav_id=uav_id, key=key: self.export_request_tracking_data(
-                            uav_id,
-                            key,
-                        ),
-                    )
-
-                ui.Line()
-
-    # -- UAV UI --
-    def get_unique_flightplan_color(self) -> tuple:
-        maximum_attempts = 100
-        
-        for _ in range(maximum_attempts):
-            # Choose a random dominant color channel
-            dominant_channel = random.randint(0, 2)
-            
-            if dominant_channel == 0:  # Red dominant
-                red = random.randint(200, 255)
-                green = random.randint(80, 200)
-                blue = random.randint(80, 200)
-            elif dominant_channel == 1:  # Green dominant
-                red = random.randint(80, 200)
-                green = random.randint(200, 255)
-                blue = random.randint(80, 200)
-            else:  # Blue dominant
-                red = random.randint(80, 200)
-                green = random.randint(80, 200)
-                blue = random.randint(200, 255)
-            
-            color = (red, green, blue)
-            
-            # Check if this exact color hasn't been used
-            if color not in self.used_flightplan_colors:
-                self.used_flightplan_colors.add(color)
-                return color
-        
-        # Fallback: if all attempts failed (very unlikely), generate any color
-        # and clear the used colors set to start fresh
-        self.used_flightplan_colors.clear()
-        
-        red = random.randint(100, 255)
-        green = random.randint(100, 255)
-        blue = random.randint(100, 255)
-        color = (red, green, blue)
-        self.used_flightplan_colors.add(color)
-        
-        return color
-        
-    def show_flightplan(self, uav_id) -> None:
-        uav_info = self.uavs[uav_id]
-        
-        if uav_info and uav_info["state"] == UAVState.BUSY:
-            fp = uav_info["flightplan"]
-            fp_trace = fp.trace(0.1)[:, 1:4]
-            
-            if uav_id in self.shown_flightplans:
-                red, green, blue = self.shown_flightplans[uav_id]["color"]
-            else:
-                red, green, blue = self.get_unique_flightplan_color()
-
-            self.debug_draw.draw_lines_spline(
-                fp_trace,
-                (red/255, green/255, blue/255, 1),
-                5,
-                False
-            )
-            
-            self.shown_flightplans[uav_id] = {
-                "is_shown": True,
-                "color": (red, green, blue)
-            }
-            
-    def hide_flightplan(self, uav_id) -> None:
-        self.debug_draw.clear_lines()
-        self.shown_flightplans[uav_id]["is_shown"] = False
-
-        for id, info in self.shown_flightplans.items():
-            if info["is_shown"]:
-                self.show_flightplan(id)
-
-    def print_uavs_parameters(self, uav_id, uav_info, request) -> None:
-        with ui.VStack(height=0):
-            with ui.HStack():
-                ui.Label("ID:", alignment=ui.Alignment.LEFT)
-                ui.Label(uav_id, alignment=ui.Alignment.RIGHT, word_wrap=True)
-            with ui.HStack():
-                ui.Label("State:", alignment=ui.Alignment.LEFT)
-                ui.Label(uav_info["state"], alignment=ui.Alignment.RIGHT, word_wrap=True)
-            with ui.HStack():
-                ui.Label("Request:", alignment=ui.Alignment.LEFT)
-                ui.Label(str(request), alignment=ui.Alignment.RIGHT, word_wrap=True)
-            with ui.HStack():
-                ui.Label("Time:", alignment=ui.Alignment.LEFT)
-                ui.Label(
-                    str(uav_info["time"].time().strftime("%H:%M:%S")), 
-                    alignment=ui.Alignment.RIGHT,
-                    word_wrap=True
-                )
-                
-    def print_uavs_position(self, uav_info) -> None:
-        with ui.VStack(height=0):
-            ui.Label("Position", alignment=ui.Alignment.CENTER)
-
-            with ui.ZStack():
-                ui.Rectangle(
-                    style={
-                        "background_color": color("#5B5B5B"), 
-                        "border_radius": 5
-                    }
-                )
-                
-                with ui.VStack(height=0):
-                    with ui.HStack():
-                        ui.Label(
-                            "X",
-                            style={"color": color("#FF3838")}
-                        )
-                        ui.Label(
-                            str(round(uav_info["pos"][0], 2)), 
-                            alignment=ui.Alignment.RIGHT,
-                            style={"color": color("#FF3838")}
-                        )
-
-                    with ui.HStack():
-                        ui.Label(
-                            "Y",
-                            style={"color": color("#77FF38")}
-                        )
-                        ui.Label(
-                            str(round(uav_info["pos"][1], 2)),
-                            alignment=ui.Alignment.RIGHT,
-                            style={"color": color("#77FF38")}
-                        )
-
-                    with ui.HStack():
-                        ui.Label(
-                            "Z",
-                            style={"color": color("#38A9FF")}
-                        )
-                        ui.Label(
-                            str(round(uav_info["pos"][2], 2)),
-                            alignment=ui.Alignment.RIGHT,
-                            style={"color": color("#38A9FF")}
-                        )
-        
-    def print_uavs_buttons(self, uav_id) -> None:
-        with ui.HStack():
-            ui.Button(
-                text="SHOW\nFLIGHTPLAN",
-                alignment=ui.Alignment.RIGHT,
-                style={
-                    "font_size": 16, 
-                    "font_weight": "bold", 
-                    "border_radius": 5,
-                    "background_color": self.extension_utils.colors["G"],
-                    ":hovered": {"background_color": color("#A3A3A3")},
-                },
-                clicked_fn=lambda uav_id=uav_id: self.show_flightplan(uav_id),
-            )
-            
-            ui.Button(
-                text="HIDE\nFLIGHTPLAN",
-                alignment=ui.Alignment.RIGHT,
-                style={
-                    "font_size": 16, 
-                    "font_weight": "bold", 
-                    "border_radius": 5,
-                    "background_color": self.extension_utils.colors["R"],
-                    ":hovered": {"background_color": color("#A3A3A3")},
-                },
-                clicked_fn=lambda uav_id=uav_id: self.hide_flightplan(uav_id),
-            )    
-    
-    def print_uavs(self) -> None:
-        self.ui_uavs_container.clear()
-
-        with self.ui_uavs_container:
-            for uav_id, uav_info in self.uavs.items():
-                request = "None"
-                if uav_info["request"]:
-                    request = (
-                        f"{uav_info['request']['client_id']} - "
-                        f"{uav_info['request']['request_id']}"
-                    )
-                
-                with ui.ZStack():
-                    ui.Rectangle(
-                        style={
-                            "background_color": color("#757575"), 
-                            "border_radius": 5
-                        }
-                    )
-                
-                    with ui.VStack(height=0):
-                        with ui.HStack():
-                            self.print_uavs_parameters(uav_id, uav_info, request)
-                            self.print_uavs_position(uav_info)
-
-                        self.print_uavs_buttons(uav_id)
-
-    # -- Requests UI --
-    def print_requests(self) -> None:
-        self.ui_requests_container.clear()
-
-        for client_id, requests in self.clients_requests.items():
-            for request_id, request in requests.items():
-                self.print_new_request(
-                    client_id,
-                    request_id,
-                    self.time_manager.sim_to_real(request["init_time"]),
-                    self.time_manager.sim_to_real(request["end_time"]),
-                    request["origin"],
-                    request["destination"],
-                )
-
-    def print_new_request(self, client_id, request_id, init_time, end_time, origin, destination) -> None:
-        client_id_label = ui.Label(f"Client ID: {client_id}\n")
-        request_id_label = ui.Label(f"Request ID: {request_id}\n")
-        init_time_label = ui.Label(f"Init time: {init_time}\n")
-        end_time_label = ui.Label(f"End time: {end_time}\n")
-        origin_label = ui.Label(f"Origin: {origin}\n")
-        destination_label = ui.Label(f"Destination: {destination}\n")
-        spacer = ui.Spacer(height=10)
-
-        self.ui_requests_container.add_child(client_id_label)
-        self.ui_requests_container.add_child(request_id_label)
-        self.ui_requests_container.add_child(init_time_label)
-        self.ui_requests_container.add_child(end_time_label)
-        self.ui_requests_container.add_child(origin_label)
-        self.ui_requests_container.add_child(destination_label)
-        self.ui_requests_container.add_child(spacer)
-
-    # -- Vertiports UI --
-    def print_vertiports(self) -> None:
-        self.ui_vertiports_container.clear()
-
-        for key, value in self.vertiports_from_id.items():
-            self.print_new_vertiport(key, value["position"], value["model"])
-
-    def print_new_vertiport(self, id, position, model) -> None:
-        id_label = ui.Label(f"ID: {id}\n")
-        position_label = ui.Label(f"Position: {position}\n")
-        model_label = ui.Label(f"Model: {model}\n")
-        spacer = ui.Spacer(height=10)
-
-        self.ui_vertiports_container.add_child(id_label)
-        self.ui_vertiports_container.add_child(position_label)
-        self.ui_vertiports_container.add_child(model_label)
-        self.ui_vertiports_container.add_child(spacer)
