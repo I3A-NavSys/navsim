@@ -10,7 +10,7 @@
 import argparse
 import sys
 from pathlib import Path
-import MyOnPolicyRunner
+from MyOnPolicyRunner import MyOnPolicyRunner
 
 # Agrega la carpeta "scripts" al path
 isaaclab_path = Path(__file__).resolve().parent.parent.parent
