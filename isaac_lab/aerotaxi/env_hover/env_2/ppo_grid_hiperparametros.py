@@ -23,7 +23,7 @@ param_options = {
     "desired_kl": [0.005, 0.01, 0.02]
 }
 
-num_trials = 100  # cantidad de configuraciones
+num_trials = 40  # cantidad de configuraciones
 
 cfg_files = []
 

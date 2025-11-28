@@ -103,7 +103,7 @@ gym.register(
     },
 )
 
-for i in range(100):
+for i in range(40):
     gym.register(
         id=f"Isaac-Hover-Aerotaxi-RANDOM-{i+1}",
         entry_point="isaaclab.envs:ManagerBasedRLEnv",

@@ -11,22 +11,22 @@ class HoverPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     resume = False
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
-        init_noise_std=0.0,
-        actor_hidden_dims=[128, 64],
-        critic_hidden_dims=[64, 64],
+        init_noise_std=0.1,
+        actor_hidden_dims=[256, 256],
+        critic_hidden_dims=[256, 256],
         activation="gelu",
     )
     algorithm = RslRlPpoAlgorithmCfg(
-        value_loss_coef=0.5,
+        value_loss_coef=2.0,
         use_clipped_value_loss=True,
-        clip_param=0.1,
-        entropy_coef=0.01,
+        clip_param=0.3,
+        entropy_coef=0.0,
         num_learning_epochs=12,
         num_mini_batches=4,
-        learning_rate=0.001,
+        learning_rate=0.0003,
         schedule="adaptive",
-        gamma=0.98,
-        lam=0.95,
-        desired_kl=0.01,
+        gamma=0.95,
+        lam=0.9,
+        desired_kl=0.005,
         max_grad_norm=1.0,
     )
