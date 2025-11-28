@@ -85,14 +85,14 @@ class UAVactionTerm(ActionTerm):
         kMDz = torch.tensor(20.2514, device=self.device)
         
 
-        hover_action_value = 38
+        hover_action_value = 50
 
         # Process raw actions (vectorized)
         self._raw_actions = actions * self.action_scale + hover_action_value
 
         # print(f"[DEBUG]: raw_actions: {self._raw_actions[0]}")
         # Para que no haga crash
-        self._raw_actions = torch.clamp(self._raw_actions, min=0.0, max=60.0)
+        self._raw_actions = torch.clamp(self._raw_actions, min=0.0, max=200.0)
 
         # Get velocities (assuming these are already tensors)
         lin_vels = self._asset.data.root_com_lin_vel_b  # shape: (num_envs, 3)
@@ -280,8 +280,8 @@ class EventCfg:
             "pose_range": {
                 "x": (0, 0),
                 "y": (0, 0),
-                "roll": (-0.5, 0.5),
-                "pitch": (-0.5, 0.5),
+                "roll": (0, 0),
+                "pitch": (0, 0),
                 "yaw": (-3.14, 3.14)
             },
             "velocity_range": {
@@ -325,7 +325,7 @@ class RewardsCfg:
     )
     rew_roll_diff = RewTerm(
         func=my_rewards.rew_roll_diff,
-        weight=-0.1,
+        weight=-0.5,
         params={"target": 0.0},
     )
     rew_roll_diff_fine_grained = RewTerm(
@@ -404,6 +404,9 @@ class TerminationsCfg:
         params={"asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]), 
                 "min_altitude": 10.0,
         }
+    )
+    roll_pitch_termination = DoneTerm(
+        func=my_terminations.roll_pitch_termination,
     )
 
 
