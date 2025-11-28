@@ -40,7 +40,7 @@ class UAVactionTerm(ActionTerm):
         super().__init__(cfg, env)
         self._raw_actions = torch.zeros(env.num_envs, 4, device=self.device)
         self._processed_actions = torch.zeros(env.num_envs, 10, 3, device=self.device)
-        self.action_scale = 8.0  # como mucho puede variarlo 2.5 de potencia
+        self.action_scale = 10.0  # como mucho puede variarlo 2.5 de potencia
         self.max_prim_links = 5  # 4 rotors + 1 body
 
         # Create all positions at once in a single tensor operation
@@ -85,7 +85,7 @@ class UAVactionTerm(ActionTerm):
         kMDz = torch.tensor(20.2514, device=self.device)
         
 
-        hover_action_value = 38.0 
+        hover_action_value = 38
 
         # Process raw actions (vectorized)
         self._raw_actions = actions.abs() * self.action_scale + hover_action_value

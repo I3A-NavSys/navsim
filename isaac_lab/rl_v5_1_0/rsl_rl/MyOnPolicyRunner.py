@@ -167,7 +167,7 @@ class MyOnPolicyRunner:
                     mean_reward = np.mean(rewbuffer) if len(rewbuffer) > 0 else 0
                     #crear fila separada por , en csv
                     statistics_it = pd.DataFrame({f'id_run_name': [self.cfg['run_name']], 'iteration': [it], 'reward': [mean_reward]})
-                    csv_path = f"tmp/tmpTeresa/resultados_grid_{type(self.alg).__name__}.csv"
+                    csv_path = f"tmp/tmpTeresa/resultados_grid/resultados_grid_{type(self.alg).__name__}.csv"
                     if not os.path.exists(csv_path):
                         statistics_it.to_csv(csv_path, mode='w',header=True, index=False)
                     else:
@@ -183,7 +183,6 @@ class MyOnPolicyRunner:
                 if self.logger_type in ["wandb", "neptune"] and git_file_paths:
                     for path in git_file_paths:
                         self.writer.save_file(path)
-
 
         # Save the final model after training
         if self.log_dir is not None and not self.disable_logs:
