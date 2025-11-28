@@ -88,7 +88,7 @@ class UAVactionTerm(ActionTerm):
         hover_action_value = 38
 
         # Process raw actions (vectorized)
-        self._raw_actions = actions.abs() * self.action_scale + hover_action_value
+        self._raw_actions = actions * self.action_scale + hover_action_value
 
         # print(f"[DEBUG]: raw_actions: {self._raw_actions[0]}")
         # Para que no haga crash

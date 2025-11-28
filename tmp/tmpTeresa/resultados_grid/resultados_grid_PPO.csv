@@ -1,0 +1,14 @@
+id_run_name,iteration,reward
+ppo_random_hover_2,0,0.8740305742621421
+ppo_random_hover_2,100,-14.001772871017456
+ppo_random_hover_2,0,0.8860624092817306
+ppo_random_hover_2,100,-14.027129182815552
+ppo_random_hover_2,0,0.8986575791239738
+ppo_random_hover_2,0,0.8789178478717804
+ppo_random_hover_2,0,0.8730381217598915
+ppo_random_hover_2,100,-14.624001340866089
+ppo_random_hover_2,200,-16.699572067260743
+ppo_random_hover_2,300,-14.840383672714234
+ppo_random_hover_2,400,-15.815349025726318
+ppo_random_hover_2,500,-16.191895837783814
+ppo_random_hover_2,600,-15.203350954055786
