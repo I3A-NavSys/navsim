@@ -85,14 +85,10 @@ class UAVactionTerm(ActionTerm):
         kMDz = torch.tensor(20.2514, device=self.device)
         
 
-        hover_action_value = 50
-
         # Process raw actions (vectorized)
-        self._raw_actions = actions * self.action_scale + hover_action_value
+        self._raw_actions = actions.abs() * self.action_scale
 
         # print(f"[DEBUG]: raw_actions: {self._raw_actions[0]}")
-        # Para que no haga crash
-        self._raw_actions = torch.clamp(self._raw_actions, min=0.0, max=200.0)
 
         # Get velocities (assuming these are already tensors)
         lin_vels = self._asset.data.root_com_lin_vel_b  # shape: (num_envs, 3)
@@ -303,44 +299,44 @@ class RewardsCfg:
     """Reward terms for the MDP."""
     alive = RewTerm(func=mdp.is_alive, weight=2.0)
 
-    terminating = RewTerm(func=mdp.is_terminated, weight=-50.0)
+    terminating = RewTerm(func=mdp.is_terminated, weight=-500.0)
 
     rew_lin_vel_diff = RewTerm(
         func=my_rewards.rew_lin_vel_diff,
-        weight=-0.5,
+        weight=-10,
     )
     rew_lin_vel_diff_fine_grained = RewTerm(
         func=my_rewards.rew_lin_vel_diff_fine_grained,
-        weight=2,
+        weight=1,
         params={"std": 3.0},
     )
     rew_ang_vel_z_diff = RewTerm(
         func=my_rewards.rew_ang_vel_z_diff,
-        weight=-0.1,
+        weight=-10,
     )
     rew_ang_vel_z_diff_fine_grained = RewTerm(
         func=my_rewards.rew_ang_vel_z_diff_fine_grained,
-        weight=0.5,
+        weight=1,
         params={"std": 0.5},
     )
     rew_roll_diff = RewTerm(
         func=my_rewards.rew_roll_diff,
-        weight=-0.5,
+        weight=-10,
         params={"target": 0.0},
     )
     rew_roll_diff_fine_grained = RewTerm(
         func=my_rewards.rew_roll_diff_fine_grained,
-        weight=0.5,
+        weight=1,
         params={"std": 0.5, "target": 0.0},
     )
     rew_pitch_diff = RewTerm(
         func=my_rewards.rew_pitch_diff,
-        weight=-0.1,
+        weight=-10,
         params={"target": 0.0},
     )
     rew_pitch_diff_fine_grained = RewTerm(
         func=my_rewards.rew_pitch_diff_fine_grained,
-        weight=0.5,
+        weight=1,
         params={"std": 0.5, "target": 0.0},
     )
 
@@ -404,9 +400,6 @@ class TerminationsCfg:
         params={"asset_cfg": SceneEntityCfg("aerotaxi", joint_names=["NW_joint", "NE_joint", "SW_joint", "SE_joint"]), 
                 "min_altitude": 10.0,
         }
-    )
-    roll_pitch_termination = DoneTerm(
-        func=my_terminations.roll_pitch_termination,
     )
 
 

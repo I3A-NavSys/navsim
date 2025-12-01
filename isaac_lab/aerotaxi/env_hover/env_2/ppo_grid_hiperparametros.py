@@ -42,7 +42,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 @configclass
 class HoverPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
-    max_iterations = 2001
+    max_iterations = 1501
     save_interval = 100
     experiment_name = "hover"
     run_name = "{run_name}"
@@ -86,6 +86,6 @@ with open(powershell_script, "w") as f:
         # Convertir path a módulo Python (reemplazar / y .py)
         module_path = cfg_path.replace("/", ".").replace("\\", ".").replace(".py", "")
         f.write(f'Write-Host "Ejecutando {run_name}"\n')
-        f.write(f'& "{isaaclab_bat}" -p "{train_script}" --task Isaac-Hover-Aerotaxi-RANDOM-{j+1} --num_envs 4096 --headless \n\n')
+        f.write(f'& "{isaaclab_bat}" -p "{train_script}" --task Isaac-Hover-Aerotaxi-RANDOM-{j+1} --num_envs 8196 --headless \n\n')
         j += 1
 print("Archivos de configuración generados y script PowerShell listo en:", powershell_script)
