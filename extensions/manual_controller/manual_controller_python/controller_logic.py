@@ -34,7 +34,7 @@ class ControllerLogic:
         self.keyboard = KeyboardInput()
 
         self.event_stream = event_stream
-        self.operator_event = operator_event
+        self.operator_uav_event = operator_event
 
     def start(self, prim, name):
         if self._stop:
@@ -269,4 +269,4 @@ class ControllerLogic:
 
         payload["msg"] = msg
 
-        self.event_stream.push(self.operator_event, payload=payload)
+        self.event_stream.push(self.operator_uav_event, payload=payload)

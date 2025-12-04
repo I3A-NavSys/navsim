@@ -10,11 +10,9 @@ from omni.isaac.core.prims import RigidPrimView
 
 from uspace.flight_plan.waypoint import Waypoint
 from uspace.flight_plan.command import Command
-from navsim_utils.paths_utils import get_navsim_root_path
+from navsim_utils.paths_utils import project_root_path
 from navsim_utils.sim_utils import *
 
-
-project_root_path = get_navsim_root_path()
 
 class UAVState:
     IDLE = "idle"
