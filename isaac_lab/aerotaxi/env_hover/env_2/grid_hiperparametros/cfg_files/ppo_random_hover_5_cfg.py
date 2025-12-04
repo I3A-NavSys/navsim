@@ -10,6 +10,8 @@ class HoverPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     run_name = "ppo_random_hover_5"
     resume = False
     empirical_normalization = False
+    callbacks = True
+    csv_path_metrics = "tmp/tmpTeresa/resultados_grid"
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=0.5,
         actor_hidden_dims=[128, 64],

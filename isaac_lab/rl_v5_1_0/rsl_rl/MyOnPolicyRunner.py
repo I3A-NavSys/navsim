@@ -42,6 +42,21 @@ class MyOnPolicyRunner:
         self.num_steps_per_env = self.cfg["num_steps_per_env"]
         self.save_interval = self.cfg["save_interval"]
 
+
+        # ------- TERESA --------
+        # Para activar los callbacks
+        if "callbacks" in self.cfg and "csv_path_metrics" in self.cfg:
+            self.activate_callbacks = self.cfg["callbacks"]
+        elif "callbacks" in self.cfg and "csv_path_metrics" not in self.cfg:
+            raise ValueError("Config error: If 'callbacks' is set to 'True', the value of the parameter csv_path_metrics must be set also to a valid path.")
+        if "csv_path_metrics" in self.cfg:
+        # El path para guardar las métricas
+            self.csv_path_metrics = self.cfg["csv_path_metrics"]
+
+        # -------------------------
+
+
+
         # query observations from environment for algorithm construction
         obs = self.env.get_observations()
         default_sets = ["critic"]
@@ -100,6 +115,12 @@ class MyOnPolicyRunner:
         # Start training
         start_iter = self.current_learning_iteration
         tot_iter = start_iter + num_learning_iterations
+
+
+        # ------ Teresa --------
+        max_reward = None  # para el callback
+        # ----------------------
+
         for it in range(start_iter, tot_iter):
             start = time.time()
             # Rollout
@@ -164,14 +185,37 @@ class MyOnPolicyRunner:
                 # Save model
                 if it % self.save_interval == 0:
                     self.save(os.path.join(self.log_dir, f"model_{it}.pt"))
-                    mean_reward = np.mean(rewbuffer) if len(rewbuffer) > 0 else 0
-                    #crear fila separada por , en csv
-                    statistics_it = pd.DataFrame({f'id_run_name': [self.cfg['run_name']], 'iteration': [it], 'reward': [mean_reward]})
-                    csv_path = f"tmp/tmpTeresa/resultados_grid/resultados_grid_{type(self.alg).__name__}.csv"
-                    if not os.path.exists(csv_path):
-                        statistics_it.to_csv(csv_path, mode='w',header=True, index=False)
-                    else:
-                        statistics_it.to_csv(csv_path, mode='a',header=False, index=False)
+
+                    # ------- TERESA --------
+                    if (self.csv_path_metrics != None):
+                        print("dentro")
+                        mean_reward = np.mean(rewbuffer) if len(rewbuffer) > 0 else 0
+
+                        if self.activate_callbacks:
+                            # CALLBACKS
+                            if ((mean_reward != None) and (max_reward == None)):
+                                max_reward = mean_reward
+                                self.save(os.path.join(self.csv_path_metrics, f"best_model_{self.cfg['run_name']}.pt"))
+
+                                statistics_it_C = pd.DataFrame({f'id_run_name': [self.cfg['run_name']], 'iteration': [it], 'reward': [mean_reward]})
+                                csv_path_C = f"{self.csv_path_metrics}/reward_best_model_{self.cfg['run_name']}_{}.csv" # TODO
+                                statistics_it_C.to_csv(csv_path_C, mode='w',header=True, index=False)
+                            
+                            elif ((mean_reward != None) and ((max_reward != None) and (mean_reward > max_reward))):
+                                max_reward = mean_reward
+                                self.save(os.path.join(self.csv_path_metrics, f"best_model_{self.cfg['run_name']}.pt"))
+                                statistics_it_C = pd.DataFrame({f'id_run_name': [self.cfg['run_name']], 'iteration': [it], 'reward': [mean_reward]})
+                                csv_path_C = f"{self.csv_path_metrics}/reward_best_model_{type(self.alg).__name__}.csv"
+                                statistics_it_C.to_csv(csv_path_C, mode='w',header=True, index=False)
+                            
+                        # METRICAS
+                        statistics_it = pd.DataFrame({f'id_run_name': [self.cfg['run_name']], 'iteration': [it], 'reward': [mean_reward]})
+                        csv_path = f"{self.csv_path_metrics}/resultados_grid_{type(self.alg).__name__}.csv"
+                        if not os.path.exists(csv_path):
+                            statistics_it.to_csv(csv_path, mode='w',header=True, index=False)
+                        else:
+                            statistics_it.to_csv(csv_path, mode='a',header=False, index=False)
+                    # -----------------------
 
             # Clear episode infos
             ep_infos.clear()
