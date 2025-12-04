@@ -209,12 +209,13 @@ class MyOnPolicyRunner:
                                 statistics_it_C.to_csv(csv_path_C, mode='w',header=True, index=False)
                             
                         # METRICAS
-                        statistics_it = pd.DataFrame({f'id_run_name': [self.cfg['run_name']], 'iteration': [it], 'reward': [mean_reward]})
-                        csv_path = f"{self.csv_path_metrics}/resultados_grid_{type(self.alg).__name__}.csv"
-                        if not os.path.exists(csv_path):
-                            statistics_it.to_csv(csv_path, mode='w',header=True, index=False)
-                        else:
-                            statistics_it.to_csv(csv_path, mode='a',header=False, index=False)
+                        if self.csv_path_metrics:
+                            statistics_it = pd.DataFrame({f'id_run_name': [self.cfg['run_name']], 'iteration': [it], 'reward': [mean_reward]})
+                            csv_path = f"{self.csv_path_metrics}/resultados_grid_{type(self.alg).__name__}.csv"
+                            if not os.path.exists(csv_path):
+                                statistics_it.to_csv(csv_path, mode='w',header=True, index=False)
+                            else:
+                                statistics_it.to_csv(csv_path, mode='a',header=False, index=False)
                     # -----------------------
 
             # Clear episode infos
