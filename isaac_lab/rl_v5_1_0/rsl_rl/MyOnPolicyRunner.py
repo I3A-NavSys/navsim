@@ -34,7 +34,8 @@ class MyOnPolicyRunner:
         self.policy_cfg = train_cfg["policy"]
         self.device = device
         self.env = env
-
+        self.csv_path_metrics = None
+        self.activate_callbacks = None
         # check if multi-gpu is enabled
         self._configure_multi_gpu()
 

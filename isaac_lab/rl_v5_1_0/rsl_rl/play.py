@@ -15,6 +15,7 @@ isaaclab_path = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(isaaclab_path))
 
 from isaaclab.app import AppLauncher
+from MyOnPolicyRunner import MyOnPolicyRunner
 
 # local imports
 import cli_args  # isort: skip
@@ -38,6 +39,12 @@ parser.add_argument(
     help="Use the pre-trained checkpoint from Nucleus.",
 )
 parser.add_argument("--real-time", action="store_true", default=False, help="Run in real-time, if possible.")
+
+# --------- Teresa ---------------
+parser.add_argument("--eval_mode", type=bool, default=False, help="True if you want just one timestamp to be ran for evaluating the reward.")
+# --------------------------------
+
+
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
 # append AppLauncher cli args
@@ -145,7 +152,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     print(f"[INFO]: Loading model checkpoint from: {resume_path}")
     # load previously trained model
     if agent_cfg.class_name == "OnPolicyRunner":
-        runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
+        runner = MyOnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
     elif agent_cfg.class_name == "DistillationRunner":
         runner = DistillationRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
     else:
@@ -183,6 +190,10 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     obs = env.get_observations()
     timestep = 0
     # simulate environment
+
+    # ------- Teresa ---------
+    final_reward = []
+    # -------------------------
     while simulation_app.is_running():
         start_time = time.time()
         # run everything in inference mode
@@ -190,7 +201,12 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
             # agent stepping
             actions = policy(obs)
             # env stepping
-            obs, _, _, _ = env.step(actions)
+
+            # ------- Teresa ---------
+            # obs, _, _, _ = env.step(actions) # original
+            obs, rew, done, _ = env.step(actions)
+            final_reward = rew.cpu().numpy()
+            # -------------------------
         if args_cli.video:
             timestep += 1
             # Exit the play loop after recording one video
@@ -201,6 +217,26 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         sleep_time = dt - (time.time() - start_time)
         if args_cli.real_time and sleep_time > 0:
             time.sleep(sleep_time)
+
+
+        # --------- Teresa ----------------
+        if runner.csv_path_metrics != None:
+            # El path para guardar las métricas
+            average_reward = final_reward.mean()
+            print(f"[INFO] Average Reward: {average_reward}")
+
+            # You can also print the rewards per timestep if needed
+            print(f"[INFO] Rewards per timestep: {final_reward}")
+            import pandas as pd
+            statistics_it = pd.DataFrame({f'id_run_name': [runner.cfg['run_name']], 'reward': [average_reward], 'num_envs_train': [runner.env.num_envs], 'total_rewards': [final_reward]})
+            csv_path = f"{runner.csv_path_metrics}/rewards_play_{type(runner.alg).__name__}.csv"
+            if not os.path.exists(csv_path):
+                statistics_it.to_csv(csv_path, mode='w',header=True, index=False)
+            else:
+                statistics_it.to_csv(csv_path, mode='a',header=False, index=False)
+            if args_cli.eval_mode:
+                break #solo 1 timestamp
+        # ---------------------------------
 
     # close the simulator
     env.close()
