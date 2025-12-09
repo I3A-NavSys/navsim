@@ -1,1 +1,6 @@
-id_run_name,reward,num_envs_train,total_rewards
+id_run_name,reward,num_envs_test,checkpointppo_random_hover_5,11.592865493497811,1024,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid/best_model_ppo_random_hover_5_512.pt
+ppo_random_hover_5,17.11198276431969,64,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid/best_model_ppo_random_hover_5_512.pt
+ppo_random_hover_5,20.899558410681493,64,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid/best_model_ppo_random_hover_5_1024.pt
+ppo_random_hover_5,16.968834475694166,64,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid/best_model_ppo_random_hover_5_2048.pt
+ppo_random_hover_5,0.7870035598389222,64,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid/best_model_ppo_random_hover_5_4096.pt
+ppo_random_hover_5,-453.11411441264016,64,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid/best_model_ppo_random_hover_5_8196.pt

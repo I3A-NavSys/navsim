@@ -40,10 +40,6 @@ parser.add_argument(
 )
 parser.add_argument("--real-time", action="store_true", default=False, help="Run in real-time, if possible.")
 
-# --------- Teresa ---------------
-parser.add_argument("--eval_mode", type=bool, default=False, help="True if you want just one timestamp to be ran for evaluating the reward.")
-# --------------------------------
-
 
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
@@ -192,9 +188,17 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # simulate environment
 
     # ------- Teresa ---------
-    final_reward = []
+    import numpy as np
+    rewbuffer = np.zeros(env.num_envs)
+    episode_rewards = []  # Buffer para guardar las recompensas por episodio
+    episode_steps = []  # Guardará el número de pasos por episodio
+
+    # Define el número máximo de pasos por episodio
+    max_episode_steps = 1000  # o cualquier número de pasos que consideres adecuado
+    cur_episode_length = np.zeros(env.num_envs)
     # -------------------------
-    while simulation_app.is_running():
+    # while simulation_app.is_running():
+    for step in range(max_episode_steps):
         start_time = time.time()
         # run everything in inference mode
         with torch.inference_mode():
@@ -205,7 +209,29 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
             # ------- Teresa ---------
             # obs, _, _, _ = env.step(actions) # original
             obs, rew, done, _ = env.step(actions)
-            final_reward = rew.cpu().numpy()
+            rew = rew.cpu().numpy().squeeze()
+            done = done.cpu().numpy().squeeze()
+            rewbuffer += rew
+            cur_episode_length += 1
+        
+            # Termina los episodios cuando 'done' es 1 o se alcanza el máximo de pasos
+            finished_ids = np.where((done > 0) | (cur_episode_length >= max_episode_steps))[0]
+            
+            # Por cada episodio que termine
+            for idx in finished_ids:
+                # Guardar la recompensa acumulada del episodio
+                episode_rewards.append(rewbuffer[idx])  # Guardamos recompensa completa del episodio
+                episode_steps.append(cur_episode_length[idx])  # Guardamos el número de pasos del episodio
+                
+                # Reiniciar los valores para el siguiente episodio
+                rewbuffer[idx] = 0
+                cur_episode_length[idx] = 0
+                
+            # Promedio de recompensa
+            if len(episode_rewards) > 0:
+                average_reward = np.mean(episode_rewards)
+            else:
+                average_reward = 0
             # -------------------------
         if args_cli.video:
             timestep += 1
@@ -219,23 +245,19 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
             time.sleep(sleep_time)
 
 
-        # --------- Teresa ----------------
-        if runner.csv_path_metrics != None:
-            # El path para guardar las métricas
-            average_reward = final_reward.mean()
-            print(f"[INFO] Average Reward: {average_reward}")
+    # --------- Teresa ----------------
+    if runner.csv_path_metrics != None:
+        # El path para guardar las métricas
+        print(f"[INFO] Average Reward: {average_reward}")
 
-            # You can also print the rewards per timestep if needed
-            print(f"[INFO] Rewards per timestep: {final_reward}")
-            import pandas as pd
-            statistics_it = pd.DataFrame({f'id_run_name': [runner.cfg['run_name']], 'reward': [average_reward], 'num_envs_train': [runner.env.num_envs], 'total_rewards': [final_reward]})
-            csv_path = f"{runner.csv_path_metrics}/rewards_play_{type(runner.alg).__name__}.csv"
-            if not os.path.exists(csv_path):
-                statistics_it.to_csv(csv_path, mode='w',header=True, index=False)
-            else:
-                statistics_it.to_csv(csv_path, mode='a',header=False, index=False)
-            if args_cli.eval_mode:
-                break #solo 1 timestamp
+        # You can also print the rewards per timestep if needed
+        import pandas as pd
+        statistics_it = pd.DataFrame({f'id_run_name': [runner.cfg['run_name']], 'reward': [average_reward], 'num_envs_test': [runner.env.num_envs], 'checkpoint': [args_cli.checkpoint]})
+        csv_path = f"{runner.csv_path_metrics}/rewards_play_{type(runner.alg).__name__}.csv"
+        if not os.path.exists(csv_path):
+            statistics_it.to_csv(csv_path, mode='w',header=True, index=False)
+        else:
+            statistics_it.to_csv(csv_path, mode='a',header=False, index=False)
         # ---------------------------------
 
     # close the simulator
