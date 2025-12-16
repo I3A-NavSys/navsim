@@ -14,3 +14,10 @@ Write-Host "Ejecutando ppo_random_hover_5"
 
 Write-Host "Ejecutando ppo_random_hover_5"
 & "C:/Users/Teresa/Desktop/RuralData/IsaacLab/IsaacLab/isaaclab.bat" -p "C:/Users/Teresa/Documents/GitHub/navsim/isaac_lab/rl_v5_1_0/rsl_rl/play.py" --task Isaac-Hover-Aerotaxi-RANDOM-5 --num_envs 64 --headless --checkpoint "C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid/best_model_ppo_random_hover_5_8196.pt" 
+
+Write-Host "Ejecutando ppo_random_hover_34"
+& "C:/Users/Teresa/Desktop/RuralData/IsaacLab/IsaacLab/isaaclab.bat" -p "C:/Users/Teresa/Documents/GitHub/navsim/isaac_lab/rl_v5_1_0/rsl_rl/play.py" --task Isaac-Hover-Aerotaxi-RANDOM-34 --num_envs 64 --headless --checkpoint "C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/experimentos/PPO_8196/model_800.pt" 
+
+Write-Host "Ejecutando ppo_random_hover_34"
+& "C:/Users/Teresa/Desktop/RuralData/IsaacLab/IsaacLab/isaaclab.bat" -p "C:/Users/Teresa/Documents/GitHub/navsim/isaac_lab/rl_v5_1_0/rsl_rl/play.py" --task Isaac-Hover-Aerotaxi-RANDOM-34 --num_envs 8196 --headless --checkpoint "C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/experimentos/PPO_8196/model_800.pt" 
+

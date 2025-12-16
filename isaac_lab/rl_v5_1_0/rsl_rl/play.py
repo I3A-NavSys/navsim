@@ -230,8 +230,12 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
             # Promedio de recompensa
             if len(episode_rewards) > 0:
                 average_reward = np.mean(episode_rewards)
+                max_reward = np.max(episode_rewards)
+                std = np.std(episode_rewards)
             else:
                 average_reward = 0
+                max_reward = 0
+                std = 0
             # -------------------------
         if args_cli.video:
             timestep += 1
@@ -252,7 +256,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
         # You can also print the rewards per timestep if needed
         import pandas as pd
-        statistics_it = pd.DataFrame({f'id_run_name': [runner.cfg['run_name']], 'reward': [average_reward], 'num_envs_test': [runner.env.num_envs], 'checkpoint': [args_cli.checkpoint]})
+        statistics_it = pd.DataFrame({f'id_run_name': [runner.cfg['run_name']], 'reward': [average_reward], 'max_reward': [max_reward], 'std': [std], 'num_envs_test': [runner.env.num_envs], 'checkpoint': [args_cli.checkpoint]})
         csv_path = f"{runner.csv_path_metrics}/rewards_play_{type(runner.alg).__name__}.csv"
         if not os.path.exists(csv_path):
             statistics_it.to_csv(csv_path, mode='w',header=True, index=False)

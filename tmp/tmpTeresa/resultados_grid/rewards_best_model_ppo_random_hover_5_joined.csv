@@ -1,0 +1,6 @@
+id_run_name,iteration,reward,num_envs_train
+ppo_random_hover_5,1685,17.557120316028595,512
+ppo_random_hover_5,1146,9.204431149214507,1024
+ppo_random_hover_5,1755,10.145984313935042,2048
+ppo_random_hover_5,1980,-9.997974789440631,4096
+ppo_random_hover_5,0,-25.463768649101258,8196

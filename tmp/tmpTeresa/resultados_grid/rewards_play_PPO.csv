@@ -1,6 +1,8 @@
-id_run_name,reward,num_envs_test,checkpointppo_random_hover_5,11.592865493497811,1024,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid/best_model_ppo_random_hover_5_512.pt
-ppo_random_hover_5,17.11198276431969,64,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid/best_model_ppo_random_hover_5_512.pt
-ppo_random_hover_5,20.899558410681493,64,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid/best_model_ppo_random_hover_5_1024.pt
-ppo_random_hover_5,16.968834475694166,64,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid/best_model_ppo_random_hover_5_2048.pt
-ppo_random_hover_5,0.7870035598389222,64,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid/best_model_ppo_random_hover_5_4096.pt
-ppo_random_hover_5,-453.11411441264016,64,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid/best_model_ppo_random_hover_5_8196.pt
+id_run_name,reward,max_reward,std,num_envs_test,checkpoint
+ppo_random_hover_5,17.11198276431969,50.730553440749645,42.61860225044057,64,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid/best_model_ppo_random_hover_5_512.pt
+ppo_random_hover_5,20.899558410681493,42.9762970097363,12.36735206607053,64,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid/best_model_ppo_random_hover_5_1024.pt
+ppo_random_hover_5,16.968834475694166,44.400238084606826,15.261968007696721,64,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid/best_model_ppo_random_hover_5_2048.pt
+ppo_random_hover_5,0.7870035598389222,29.328971615061164,11.92668747388673,64,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid/best_model_ppo_random_hover_5_4096.pt
+ppo_random_hover_5,-453.11411441264016,-405.69927257299423,18.588428728966075,64,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid/best_model_ppo_random_hover_5_8196.pt
+ppo_random_hover_34,-15.624644624331268,41.285669999197125,105.10817983877885,64,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/experimentos/PPO_8196/model_800.pt
+ppo_random_hover_34,18.62308885605919,51.77319227904081,38.568633248124755,8196,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/experimentos/PPO_8196/model_800.pt
