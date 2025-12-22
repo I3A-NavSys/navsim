@@ -96,7 +96,6 @@ with open(powershell_script, "w") as f:
 print("Archivos de configuración generados y script PowerShell listo en:", powershell_script)
 
 # Ejecuta el entrenamiento de forma automática
-!powershell -ExecutionPolicy Bypass -File powershell_script
+!powershell -ExecutionPolicy Bypass -File "{powershell_script}"
 
 print("Experimentos ejecutados")
-
