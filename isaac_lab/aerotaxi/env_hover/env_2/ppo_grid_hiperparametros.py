@@ -3,6 +3,7 @@ import os
 
 # Carpeta donde se guardarán los cfg
 cfg_dir = "isaac_lab/aerotaxi/env_hover/env_2/grid_hiperparametros/cfg_files"
+path_resultados = "tmp/tmpTeresa/resultados_grid"
 os.makedirs(cfg_dir, exist_ok=True)
 
 # Opciones de hiperparámetros
@@ -20,7 +21,7 @@ param_options = {
     "gamma": [0.95, 0.98, 0.99],
     "lam": [0.90, 0.95, 0.97],
     "max_grad_norm": [0.5, 1.0, 2.0],
-    "desired_kl": [0.005, 0.01, 0.02]
+    "desired_kl": [0.005, 0.01, 0.02],
 }
 
 num_trials = 100  # cantidad de configuraciones
@@ -48,6 +49,7 @@ class HoverPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     run_name = "{run_name}"
     resume = False
     empirical_normalization = False
+    csv_path_metrics = {path_resultados}
     policy = RslRlPpoActorCriticCfg(
         init_noise_std={sampled['init_noise_std']},
         actor_hidden_dims={actor_dims},
@@ -79,13 +81,22 @@ powershell_script = os.path.join(cfg_dir, "run_all.ps1")
 isaaclab_bat = "C:/Users/Teresa/Desktop/RuralData/IsaacLab/IsaacLab/isaaclab.bat"
 train_script = "C:/Users/Teresa/Documents/GitHub/navsim/isaac_lab/rl_v5_1_0/rsl_rl/train.py"
 
+num_envs =  [64, 128, 512, 1024, 2048, 4096, 8196] #número de entornos para train (paralelizados)
+
 with open(powershell_script, "w") as f:
     f.write("$ErrorActionPreference = 'Stop'\n\n")
     j = 0
     for run_name, cfg_path in cfg_files:
         # Convertir path a módulo Python (reemplazar / y .py)
+        num_envs_i = random.choice(num_envs)
         module_path = cfg_path.replace("/", ".").replace("\\", ".").replace(".py", "")
         f.write(f'Write-Host "Ejecutando {run_name}"\n')
-        f.write(f'& "{isaaclab_bat}" -p "{train_script}" --task Isaac-Hover-Aerotaxi-RANDOM-{j+1} --num_envs 1024 --headless \n\n')
+        f.write(f'& "{isaaclab_bat}" -p "{train_script}" --task Isaac-Hover-Aerotaxi-RANDOM-{j+1} --num_envs {num_envs_i} --headless \n\n')
         j += 1
 print("Archivos de configuración generados y script PowerShell listo en:", powershell_script)
+
+# Ejecuta el entrenamiento de forma automática
+!powershell -ExecutionPolicy Bypass -File powershell_script
+
+print("Experimentos ejecutados")
+
