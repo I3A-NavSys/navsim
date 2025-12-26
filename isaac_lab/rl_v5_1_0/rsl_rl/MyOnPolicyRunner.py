@@ -120,6 +120,7 @@ class MyOnPolicyRunner:
 
         # ------ Teresa --------
         max_reward = None  # para el callback
+        statistics_it_C = None
         # ----------------------
 
         for it in range(start_iter, tot_iter):
@@ -194,15 +195,15 @@ class MyOnPolicyRunner:
                         self.save(os.path.join(self.csv_path_metrics, f"best_model_{self.cfg['run_name']}_{self.env.num_envs}.pt"))
 
                         statistics_it_C = pd.DataFrame({f'id_run_name': [self.cfg['run_name']], 'iteration': [it], 'reward': [mean_reward], 'max_reward': [maxi_reward], 'std_reward': [std], 'num_envs_train': [self.env.num_envs]})
-                        csv_path_C = f"{self.csv_path_metrics}/reward_best_model_{self.cfg['run_name']}_{self.env.num_envs}.csv" 
-                        statistics_it_C.to_csv(csv_path_C, mode='w',header=True, index=False)
+                        # csv_path_C = f"{self.csv_path_metrics}/reward_best_model_{self.cfg['run_name']}_{self.env.num_envs}.csv" 
+                        # statistics_it_C.to_csv(csv_path_C, mode='w',header=True, index=False)
                             
                     elif ((mean_reward != None) and ((max_reward != None) and (mean_reward > max_reward))):
                         max_reward = mean_reward
                         self.save(os.path.join(self.csv_path_metrics, f"best_model_{self.cfg['run_name']}_{self.env.num_envs}.pt"))
                         statistics_it_C = pd.DataFrame({f'id_run_name': [self.cfg['run_name']], 'iteration': [it], 'reward': [mean_reward], 'max_reward': [maxi_reward], 'std_reward': [std], 'num_envs_train': [self.env.num_envs]})
-                        csv_path_C = f"{self.csv_path_metrics}/reward_best_model_{self.cfg['run_name']}_{self.env.num_envs}.csv"
-                        statistics_it_C.to_csv(csv_path_C, mode='w',header=True, index=False)
+                        # csv_path_C = f"{self.csv_path_metrics}/reward_best_model_{self.cfg['run_name']}_{self.env.num_envs}.csv"
+                        # statistics_it_C.to_csv(csv_path_C, mode='w',header=True, index=False)
             # ---------------------
 
 
@@ -236,6 +237,12 @@ class MyOnPolicyRunner:
                 if self.logger_type in ["wandb", "neptune"] and git_file_paths:
                     for path in git_file_paths:
                         self.writer.save_file(path)
+
+        csv_path_C = f"{self.csv_path_metrics}/reward_best_models.csv" 
+        if os.path.exists(csv_path_C):
+            statistics_it_C.to_csv(csv_path_C, mode='a',header=False, index=False)
+        else:
+            statistics_it_C.to_csv(csv_path_C, mode='w',header=True, index=False)
 
         # Save the final model after training
         if self.log_dir is not None and not self.disable_logs:
