@@ -184,6 +184,8 @@ class MyOnPolicyRunner:
             # ------- TERESA -------
             if (self.csv_path_metrics != None):
                 mean_reward = np.mean(rewbuffer) if len(rewbuffer) > 0 else 0
+                maxi_reward = np.max(rewbuffer)
+                std = np.std(rewbuffer)
 
                 if self.activate_callbacks:
                     # CALLBACKS
@@ -191,14 +193,14 @@ class MyOnPolicyRunner:
                         max_reward = mean_reward
                         self.save(os.path.join(self.csv_path_metrics, f"best_model_{self.cfg['run_name']}_{self.env.num_envs}.pt"))
 
-                        statistics_it_C = pd.DataFrame({f'id_run_name': [self.cfg['run_name']], 'iteration': [it], 'reward': [mean_reward]})
-                        csv_path_C = f"{self.csv_path_metrics}/reward_best_model_{self.cfg['run_name']}_{self.env.num_envs}.csv" # TODO
+                        statistics_it_C = pd.DataFrame({f'id_run_name': [self.cfg['run_name']], 'iteration': [it], 'reward': [mean_reward], 'max_reward': [maxi_reward], 'std_reward': [std], 'num_envs_train': [self.env.num_envs]})
+                        csv_path_C = f"{self.csv_path_metrics}/reward_best_model_{self.cfg['run_name']}_{self.env.num_envs}.csv" 
                         statistics_it_C.to_csv(csv_path_C, mode='w',header=True, index=False)
                             
                     elif ((mean_reward != None) and ((max_reward != None) and (mean_reward > max_reward))):
                         max_reward = mean_reward
                         self.save(os.path.join(self.csv_path_metrics, f"best_model_{self.cfg['run_name']}_{self.env.num_envs}.pt"))
-                        statistics_it_C = pd.DataFrame({f'id_run_name': [self.cfg['run_name']], 'iteration': [it], 'reward': [mean_reward]})
+                        statistics_it_C = pd.DataFrame({f'id_run_name': [self.cfg['run_name']], 'iteration': [it], 'reward': [mean_reward], 'max_reward': [maxi_reward], 'std_reward': [std], 'num_envs_train': [self.env.num_envs]})
                         csv_path_C = f"{self.csv_path_metrics}/reward_best_model_{self.cfg['run_name']}_{self.env.num_envs}.csv"
                         statistics_it_C.to_csv(csv_path_C, mode='w',header=True, index=False)
             # ---------------------
@@ -216,7 +218,7 @@ class MyOnPolicyRunner:
                             
                         # METRICAS
                     if self.csv_path_metrics != None:
-                        statistics_it = pd.DataFrame({f'id_run_name': [self.cfg['run_name']], 'iteration': [it], 'reward': [mean_reward], 'num_envs': [self.env.num_envs]})
+                        statistics_it = pd.DataFrame({f'id_run_name': [self.cfg['run_name']], 'iteration': [it], 'reward': [mean_reward], 'max_reward': [maxi_reward], 'std_reward': [std], 'num_envs_train': [self.env.num_envs]})
                         csv_path = f"{self.csv_path_metrics}/resultados_grid_{type(self.alg).__name__}.csv"
                         if not os.path.exists(csv_path):
                             statistics_it.to_csv(csv_path, mode='w',header=True, index=False)

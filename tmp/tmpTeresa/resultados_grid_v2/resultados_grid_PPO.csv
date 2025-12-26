@@ -1,0 +1,2 @@
+id_run_name,iteration,reward,max_reward,std_reward,num_envs_train
+ppo_random_hover_1,0,-5.030612720620065,-0.037374310195446014,4.47579991197609,1024
