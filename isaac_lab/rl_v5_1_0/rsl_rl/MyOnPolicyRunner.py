@@ -121,128 +121,130 @@ class MyOnPolicyRunner:
         # ------ Teresa --------
         max_reward = None  # para el callback
         statistics_it_C = None
+        csv_path_C = f"{self.csv_path_metrics}/reward_best_models.csv"
         # ----------------------
-
         for it in range(start_iter, tot_iter):
-            start = time.time()
-            # Rollout
-            with torch.inference_mode():
-                for _ in range(self.num_steps_per_env):
-                    # Sample actions
-                    actions = self.alg.act(obs)
-                    # Step the environment
-                    obs, rewards, dones, extras = self.env.step(actions.to(self.env.device))
-                    # Move to device
-                    obs, rewards, dones = (obs.to(self.device), rewards.to(self.device), dones.to(self.device))
-                    # process the step
-                    self.alg.process_env_step(obs, rewards, dones, extras)
-                    # Extract intrinsic rewards (only for logging)
-                    intrinsic_rewards = self.alg.intrinsic_rewards if self.alg.rnd else None
-                    # book keeping
-                    if self.log_dir is not None:
-                        if "episode" in extras:
-                            ep_infos.append(extras["episode"])
-                        elif "log" in extras:
-                            ep_infos.append(extras["log"])
-                        # Update rewards
-                        if self.alg.rnd:
-                            cur_ereward_sum += rewards
-                            cur_ireward_sum += intrinsic_rewards  # type: ignore
-                            cur_reward_sum += rewards + intrinsic_rewards
-                        else:
-                            cur_reward_sum += rewards
-                        # Update episode length
-                        cur_episode_length += 1
-                        # Clear data for completed episodes
-                        # -- common
-                        new_ids = (dones > 0).nonzero(as_tuple=False)
-                        rewbuffer.extend(cur_reward_sum[new_ids][:, 0].cpu().numpy().tolist())
-                        lenbuffer.extend(cur_episode_length[new_ids][:, 0].cpu().numpy().tolist())
-                        cur_reward_sum[new_ids] = 0
-                        cur_episode_length[new_ids] = 0
-                        # -- intrinsic and extrinsic rewards
-                        if self.alg.rnd:
-                            erewbuffer.extend(cur_ereward_sum[new_ids][:, 0].cpu().numpy().tolist())
-                            irewbuffer.extend(cur_ireward_sum[new_ids][:, 0].cpu().numpy().tolist())
-                            cur_ereward_sum[new_ids] = 0
-                            cur_ireward_sum[new_ids] = 0
+                start = time.time()
+                # Rollout
+                with torch.inference_mode():
+                    for _ in range(self.num_steps_per_env):
+                        # Sample actions
+                        actions = self.alg.act(obs)
+                        # Step the environment
+                        obs, rewards, dones, extras = self.env.step(actions.to(self.env.device))
+                        # Move to device
+                        obs, rewards, dones = (obs.to(self.device), rewards.to(self.device), dones.to(self.device))
+                        # process the step
+                        self.alg.process_env_step(obs, rewards, dones, extras)
+                        # Extract intrinsic rewards (only for logging)
+                        intrinsic_rewards = self.alg.intrinsic_rewards if self.alg.rnd else None
+                        # book keeping
+                        if self.log_dir is not None:
+                            if "episode" in extras:
+                                ep_infos.append(extras["episode"])
+                            elif "log" in extras:
+                                ep_infos.append(extras["log"])
+                            # Update rewards
+                            if self.alg.rnd:
+                                cur_ereward_sum += rewards
+                                cur_ireward_sum += intrinsic_rewards  # type: ignore
+                                cur_reward_sum += rewards + intrinsic_rewards
+                            else:
+                                cur_reward_sum += rewards
+                            # Update episode length
+                            cur_episode_length += 1
+                            # Clear data for completed episodes
+                            # -- common
+                            new_ids = (dones > 0).nonzero(as_tuple=False)
+                            rewbuffer.extend(cur_reward_sum[new_ids][:, 0].cpu().numpy().tolist())
+                            lenbuffer.extend(cur_episode_length[new_ids][:, 0].cpu().numpy().tolist())
+                            cur_reward_sum[new_ids] = 0
+                            cur_episode_length[new_ids] = 0
+                            # -- intrinsic and extrinsic rewards
+                            if self.alg.rnd:
+                                erewbuffer.extend(cur_ereward_sum[new_ids][:, 0].cpu().numpy().tolist())
+                                irewbuffer.extend(cur_ireward_sum[new_ids][:, 0].cpu().numpy().tolist())
+                                cur_ereward_sum[new_ids] = 0
+                                cur_ireward_sum[new_ids] = 0
+
+                    stop = time.time()
+                    collection_time = stop - start
+                    start = stop
+
+                    # compute returns
+                    self.alg.compute_returns(obs)
+
+                # update policy
+                loss_dict = self.alg.update()
 
                 stop = time.time()
-                collection_time = stop - start
-                start = stop
+                learn_time = stop - start
+                self.current_learning_iteration = it
+                # log info
 
-                # compute returns
-                self.alg.compute_returns(obs)
+                # ------- TERESA -------
+                if (self.csv_path_metrics != None):
+                    mean_reward = np.mean(rewbuffer) if len(rewbuffer) > 0 else 0
+                    maxi_reward = np.max(rewbuffer)
+                    std = np.std(rewbuffer)
 
-            # update policy
-            loss_dict = self.alg.update()
+                    if self.activate_callbacks:
+                        # CALLBACKS
+                        if ((mean_reward != None) and (max_reward == None)):
+                            max_reward = mean_reward
+                            self.save(os.path.join(self.csv_path_metrics, f"best_model_{self.cfg['run_name']}_{self.env.num_envs}.pt"))
 
-            stop = time.time()
-            learn_time = stop - start
-            self.current_learning_iteration = it
-            # log info
-
-            # ------- TERESA -------
-            if (self.csv_path_metrics != None):
-                mean_reward = np.mean(rewbuffer) if len(rewbuffer) > 0 else 0
-                maxi_reward = np.max(rewbuffer)
-                std = np.std(rewbuffer)
-
-                if self.activate_callbacks:
-                    # CALLBACKS
-                    if ((mean_reward != None) and (max_reward == None)):
-                        max_reward = mean_reward
-                        self.save(os.path.join(self.csv_path_metrics, f"best_model_{self.cfg['run_name']}_{self.env.num_envs}.pt"))
-
-                        statistics_it_C = pd.DataFrame({f'id_run_name': [self.cfg['run_name']], 'iteration': [it], 'reward': [mean_reward], 'max_reward': [maxi_reward], 'std_reward': [std], 'num_envs_train': [self.env.num_envs]})
-                        # csv_path_C = f"{self.csv_path_metrics}/reward_best_model_{self.cfg['run_name']}_{self.env.num_envs}.csv" 
-                        # statistics_it_C.to_csv(csv_path_C, mode='w',header=True, index=False)
-                            
-                    elif ((mean_reward != None) and ((max_reward != None) and (mean_reward > max_reward))):
-                        max_reward = mean_reward
-                        self.save(os.path.join(self.csv_path_metrics, f"best_model_{self.cfg['run_name']}_{self.env.num_envs}.pt"))
-                        statistics_it_C = pd.DataFrame({f'id_run_name': [self.cfg['run_name']], 'iteration': [it], 'reward': [mean_reward], 'max_reward': [maxi_reward], 'std_reward': [std], 'num_envs_train': [self.env.num_envs]})
-                        # csv_path_C = f"{self.csv_path_metrics}/reward_best_model_{self.cfg['run_name']}_{self.env.num_envs}.csv"
-                        # statistics_it_C.to_csv(csv_path_C, mode='w',header=True, index=False)
-            # ---------------------
+                            statistics_it_C = pd.DataFrame({f'id_run_name': [self.cfg['run_name']], 'iteration': [it], 'reward': [mean_reward], 'max_reward': [maxi_reward], 'std_reward': [std], 'num_envs_train': [self.env.num_envs]})
+                            if os.path.exists(csv_path_C):
+                                # primera reward de este experimento
+                                statistics_it_C.to_csv(csv_path_C, mode='a',header=False, index=False)
+                            else:
+                                # Primer experimento de todos
+                                statistics_it_C.to_csv(csv_path_C, mode='w',header=True, index=False)
+                                
+                        elif ((mean_reward != None) and ((max_reward != None) and (mean_reward > max_reward))):
+                            max_reward = mean_reward
+                            self.save(os.path.join(self.csv_path_metrics, f"best_model_{self.cfg['run_name']}_{self.env.num_envs}.pt"))
+                            statistics_it_C = pd.DataFrame({f'id_run_name': [self.cfg['run_name']], 'iteration': [it], 'reward': [mean_reward], 'max_reward': [maxi_reward], 'std_reward': [std], 'num_envs_train': [self.env.num_envs]})
+                            df_rewards = pd.read_csv(csv_path_C)
+                            if self.cfg['run_name'] in df_rewards['id_run_name'].values:
+                                idx = df_rewards.index[df_rewards['id_run_name'] == self.cfg['run_name']][0]
+                                df_rewards.loc[idx] = statistics_it_C.iloc[0]
+                            df_rewards.to_csv(csv_path_C, mode='w',header=True,index=False)
+                # ---------------------
 
 
-            if self.log_dir is not None and not self.disable_logs:
-                # Log information
-                self.log(locals())
-                # Save model
+                if self.log_dir is not None and not self.disable_logs:
+                    # Log information
+                    self.log(locals())
+                    # Save model
 
-                if it % self.save_interval == 0:
-                    self.save(os.path.join(self.log_dir, f"model_{it}.pt"))
+                    if it % self.save_interval == 0:
+                        self.save(os.path.join(self.log_dir, f"model_{it}.pt"))
 
-                    # ------- TERESA -------
-                            
-                        # METRICAS
-                    if self.csv_path_metrics != None:
-                        statistics_it = pd.DataFrame({f'id_run_name': [self.cfg['run_name']], 'iteration': [it], 'reward': [mean_reward], 'max_reward': [maxi_reward], 'std_reward': [std], 'num_envs_train': [self.env.num_envs]})
-                        csv_path = f"{self.csv_path_metrics}/resultados_grid_{type(self.alg).__name__}.csv"
-                        if not os.path.exists(csv_path):
-                            statistics_it.to_csv(csv_path, mode='w',header=True, index=False)
-                        else:
-                            statistics_it.to_csv(csv_path, mode='a',header=False, index=False)
-                    # -----------------------
+                        # ------- TERESA -------
+                                
+                            # METRICAS
+                        if self.csv_path_metrics != None:
+                            statistics_it = pd.DataFrame({f'id_run_name': [self.cfg['run_name']], 'iteration': [it], 'reward': [mean_reward], 'max_reward': [maxi_reward], 'std_reward': [std], 'num_envs_train': [self.env.num_envs]})
+                            csv_path = f"{self.csv_path_metrics}/resultados_grid_{type(self.alg).__name__}.csv"
+                            if not os.path.exists(csv_path):
+                                statistics_it.to_csv(csv_path, mode='w',header=True, index=False)
+                            else:
+                                statistics_it.to_csv(csv_path, mode='a',header=False, index=False)
+                        # -----------------------
 
-            # Clear episode infos
-            ep_infos.clear()
-            # Save code state
-            if it == start_iter and not self.disable_logs:
-                # obtain all the diff files
-                git_file_paths = store_code_state(self.log_dir, self.git_status_repos)
-                # if possible store them to wandb
-                if self.logger_type in ["wandb", "neptune"] and git_file_paths:
-                    for path in git_file_paths:
-                        self.writer.save_file(path)
+                # Clear episode infos
+                ep_infos.clear()
+                # Save code state
+                if it == start_iter and not self.disable_logs:
+                    # obtain all the diff files
+                    git_file_paths = store_code_state(self.log_dir, self.git_status_repos)
+                    # if possible store them to wandb
+                    if self.logger_type in ["wandb", "neptune"] and git_file_paths:
+                        for path in git_file_paths:
+                            self.writer.save_file(path)
 
-        csv_path_C = f"{self.csv_path_metrics}/reward_best_models.csv" 
-        if os.path.exists(csv_path_C):
-            statistics_it_C.to_csv(csv_path_C, mode='a',header=False, index=False)
-        else:
-            statistics_it_C.to_csv(csv_path_C, mode='w',header=True, index=False)
 
         # Save the final model after training
         if self.log_dir is not None and not self.disable_logs:
