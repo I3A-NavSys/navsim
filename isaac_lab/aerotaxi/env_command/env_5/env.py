@@ -439,6 +439,17 @@ class RewardsCfg:
 
     terminating = RewTerm(func=mdp.is_terminated, weight=-500.0)
 
+    rew_pos_diff = RewTerm(
+        func=my_rewards.rew_lin_vel_diff,
+        weight=-15,
+    )
+
+    rew_pos_diff_fine_grained = RewTerm(
+        func=my_rewards.rew_lin_vel_diff_fine_grained,
+        weight=2,
+        params={"std": 0.3},
+    )
+
     rew_lin_vel_diff = RewTerm(
         func=my_rewards.rew_lin_vel_diff,
         weight=-10,
@@ -460,22 +471,22 @@ class RewardsCfg:
     rew_roll_diff = RewTerm(
         func=my_rewards.rew_roll_diff,
         weight=-10,
-        params={"target": 0.0},
+        params={"target": torch.pi/4},
     )
     rew_roll_diff_fine_grained = RewTerm(
         func=my_rewards.rew_roll_diff_fine_grained,
         weight=1,
-        params={"std": 0.5, "target": 0.0},
+        params={"std": 0.5, "target": torch.pi/4},
     )
     rew_pitch_diff = RewTerm(
         func=my_rewards.rew_pitch_diff,
         weight=-10,
-        params={"target": 0.0},
+        params={"target": torch.pi/4},
     )
     rew_pitch_diff_fine_grained = RewTerm(
         func=my_rewards.rew_pitch_diff_fine_grained,
         weight=1,
-        params={"std": 0.5, "target": 0.0},
+        params={"std": 0.5, "target": torch.pi/4},
     )
 
 
