@@ -185,8 +185,8 @@ class MyOnPolicyRunner:
                 # ------- TERESA -------
                 if (self.csv_path_metrics != None):
                     mean_reward = np.mean(rewbuffer) if len(rewbuffer) > 0 else 0
-                    maxi_reward = np.max(rewbuffer)
-                    std = np.std(rewbuffer)
+                    maxi_reward = np.max(rewbuffer) if len(rewbuffer) > 0 else 0
+                    std = np.std(rewbuffer) if len(rewbuffer) > 0 else 0
 
                     if self.activate_callbacks:
                         # CALLBACKS

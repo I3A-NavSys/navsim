@@ -1,7 +1,11 @@
 # Standard library imports
 import copy
 from typing import List, Optional
-
+import os
+import sys
+root_navsim_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../..'))
+if root_navsim_path not in sys.path:
+    sys.path.append(root_navsim_path)
 # Related third party imports
 import numpy as np
 import matplotlib.pyplot as plt
