@@ -14,21 +14,21 @@ class CommandPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     callbacks = True
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=0.1,
-        actor_hidden_dims=[64, 64],
-        critic_hidden_dims=[128, 128],
-        activation="gelu",
+        actor_hidden_dims=[128, 64],
+        critic_hidden_dims=[256, 256],
+        activation="elu",
     )
     algorithm = RslRlPpoAlgorithmCfg(
         value_loss_coef=0.5,
         use_clipped_value_loss=True,
-        clip_param=0.1,
-        entropy_coef=0.001,
+        clip_param=0.3,
+        entropy_coef=0.0,
         num_learning_epochs=8,
-        num_mini_batches=4,
+        num_mini_batches=8,
         learning_rate=0.001,
         schedule="adaptive",
-        gamma=0.95,
-        lam=0.9,
-        desired_kl=0.01,
+        gamma=0.98,
+        lam=0.95,
+        desired_kl=0.005,
         max_grad_norm=2.0,
     )
