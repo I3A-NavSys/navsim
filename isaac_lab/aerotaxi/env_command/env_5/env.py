@@ -134,7 +134,6 @@ class FlightPlanTerm:
         fp_change_lev_and_dir.connect_waypoints()
 
         return fp_change_lev_and_dir
-    
 
 # |---------------------------------------------------------|
 # |--------------------- ACTIONS ---------------------------|

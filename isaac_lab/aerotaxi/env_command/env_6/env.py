@@ -95,10 +95,10 @@ class UAVactionTerm(ActionTerm):
         # print(f"[DEBUG]: raw_actions: {self._raw_actions[0]}")
         
         # Get velocities (assuming these are already tensors)
-        # lin_vels = self._asset.data.root_com_lin_vel_b  # shape: (num_envs, 3)
-        # ang_vels = self._asset.data.root_com_ang_vel_b  # shape: (num_envs, 3)
-        lin_vels = self._env.observation_manager._obs_buffer["policy"][:, :3]  # shape: (num_envs, 3)
-        ang_vels = self._env.observation_manager._obs_buffer["policy"][:, 3:6]  # shape: (num_envs, 3)
+        lin_vels = self._asset.data.root_com_lin_vel_b  # shape: (num_envs, 3)
+        ang_vels = self._asset.data.root_com_ang_vel_b  # shape: (num_envs, 3)
+        # lin_vels = self._env.observation_manager._obs_buffer["policy"][:, :3]  # shape: (num_envs, 3)
+        # ang_vels = self._env.observation_manager._obs_buffer["policy"][:, 6:9]  # shape: (num_envs, 3)
         
         # Compute thrust forces (vectorized)
         thrust_coeffs = torch.tensor([kFT_N, kFT_N, kFT_S, kFT_S], device=self.device)
@@ -262,7 +262,7 @@ class UAVcommandTerm(CommandTerm):
         obs = self._env.observation_manager.compute_group("policy")
         uav_pos = obs[:, 0:3]       
         uav_lin_vel_b = obs[:, 3:6]  
-        uav_yaw = obs[:, 11]       
+        uav_yaw = obs[:, 11:12]       
 
         direccion_diff = self.target_pos - uav_pos
         # distancia = sqrt(x^2 + y^2 + z^2) -> esto lo hace el torch.norm
@@ -283,32 +283,30 @@ class UAVcommandTerm(CommandTerm):
         uav_lin_vel_g = math_utils.quat_apply(quat_w, uav_lin_vel_b)
         
         diff_vel = comando_vel_final - uav_lin_vel_g
-        var_vel_mag = torch.norm(diff_vel, dim=1, keepdim=True)
+        magnitud_vel = torch.norm(diff_vel, dim=1, keepdim=True)
         
-        # Aplicamos el límite max_var_lin_vel (el "maxVarLinVel" de tu código original)
-        scale = torch.where(var_vel_mag > self.max_var_lin_vel, self.max_var_lin_vel / var_vel_mag, 1.0)
-        cmd_vel_final_g = uav_lin_vel_g + (diff_vel * scale)
+        # si el cambio de velocidad es demasiado alto, lo recorta
+        scale = torch.where(magnitud_vel > self.max_var_lin_vel, self.max_var_lin_vel / magnitud_vel, 1.0)
+        comando_vel_final_recortado = uav_lin_vel_g + (diff_vel * scale)
 
-        # 5. CONVERSIÓN A COORDENADAS DE CUERPO (Body Frame)
-        # El dron necesita saber "cuánto gas dar hacia adelante" relativo a su nariz
+        # convertimos el comando a coordenadas relativas
         quat_inv = math_utils.quat_inv(quat_w)
-        cmd_rel_vel = math_utils.quat_apply(quat_inv, cmd_vel_final_g)
+        comando_vel_rel = math_utils.quat_apply(quat_inv, comando_vel_final_recortado)
 
-        # 6. CÁLCULO DE YAW (Hacia dónde mirar)
-        # Hacemos que el dron siempre mire hacia el punto al que va (target_pos)
+        # target_yaw es el ángulo en radianes hacia el que debería estar mirando el dron (mira al punto al que tiene 
+        # que moverse)
         target_yaw = torch.atan2(direccion_diff[:, 1], direccion_diff[:, 0])
         error_yaw = target_yaw - uav_yaw
-        # Normalizamos el ángulo para que no dé vueltas de 360 grados innecesarias
+        # si el ángulo de giro es de 350, lo dejamos en -10 para evitar un giro innecesario
         error_yaw = torch.atan2(torch.sin(error_yaw), torch.cos(error_yaw))
         
         current_wel = error_yaw / self.t_to_solve
         current_wel = torch.clamp(current_wel, -self.max_var_ang_vel, self.max_var_ang_vel)
 
-        # 7. ASIGNACIÓN FINAL AL BUFFER DE COMANDOS
-        self._command[:, 0:3] = cmd_rel_vel
+        self._command[:, 0:3] = comando_vel_rel
         self._command[:, 3] = current_wel
 
-        # 8. LÓGICA DE ENCADENAMIENTO (Cambio de punto si está cerca)
+        # Si estamos a menos de 3 metros del objetivo, creo uno nuevo
         reached = (distancia.squeeze() < 3.0).nonzero(as_tuple=True)[0]
         if len(reached) > 0:
             self._resample_command(reached)
@@ -343,14 +341,15 @@ class EventCfg:
             "pose_range": {
                 "x": (-5.0, 5.0), 
                 "y": (-5.0, 5.0), 
-                "roll": (1.0, 2.0),
-                "pitch": (0, 0),
+                "z": (3.0, 5.0),
+                "roll": (-0.5, 0.5),
+                "pitch": (-0.5, 0.5),
                 "yaw": (-3.14, 3.14)
             },
             "velocity_range": {
-                "x": (-0.1, 0.1),
-                "y": (-0.1, 0.1),
-                "z": (-0.1, 0.1)
+                "x": (-0.5, 0.5),
+                "y": (-0.5, 0.5),
+                "z": (-0.5, 0.5)
             },
             "asset_cfg": SceneEntityCfg(name="aerotaxi")
         }
@@ -364,58 +363,58 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    alive = RewTerm(func=mdp.is_alive, weight=2.0)
+    alive = RewTerm(func=mdp.is_alive, weight=1.0)
 
-    terminating = RewTerm(func=mdp.is_terminated, weight=-500.0)
+    terminating = RewTerm(func=mdp.is_terminated, weight=-100.0)
 
     rew_pos_diff = RewTerm(
-        func=my_rewards.rew_lin_vel_diff,
-        weight=-15,
+        func=my_rewards.rew_pos_diff,
+        weight=-2.0,
     )
 
     rew_pos_diff_fine_grained = RewTerm(
-        func=my_rewards.rew_lin_vel_diff_fine_grained,
-        weight=2,
-        params={"std": 0.3},
+        func=my_rewards.rew_pos_diff_fine_grained,
+        weight=5.0,
+        params={"std": 2.0},
     )
 
     rew_lin_vel_diff = RewTerm(
         func=my_rewards.rew_lin_vel_diff,
-        weight=-10,
+        weight=-1.0,
     )
     rew_lin_vel_diff_fine_grained = RewTerm(
         func=my_rewards.rew_lin_vel_diff_fine_grained,
-        weight=1,
-        params={"std": 3.0},
+        weight=2.0,
+        params={"std": 1.0},
     )
     rew_ang_vel_z_diff = RewTerm(
         func=my_rewards.rew_ang_vel_z_diff,
-        weight=-10,
+        weight=-1.0,
     )
     rew_ang_vel_z_diff_fine_grained = RewTerm(
         func=my_rewards.rew_ang_vel_z_diff_fine_grained,
-        weight=1,
+        weight=1.0,
         params={"std": 0.5},
     )
     rew_roll_diff = RewTerm(
         func=my_rewards.rew_roll_diff,
-        weight=-10,
-        params={"target": torch.pi/4},
+        weight=-0.5,
+        params={"target": 0.0},
     )
     rew_roll_diff_fine_grained = RewTerm(
         func=my_rewards.rew_roll_diff_fine_grained,
-        weight=1,
-        params={"std": 0.5, "target": torch.pi/4},
+        weight=1.0,
+        params={"std": 0.2, "target": 0.0},
     )
     rew_pitch_diff = RewTerm(
         func=my_rewards.rew_pitch_diff,
-        weight=-10,
-        params={"target": torch.pi/4},
+        weight=-0.5,
+        params={"target": 0.0},
     )
     rew_pitch_diff_fine_grained = RewTerm(
         func=my_rewards.rew_pitch_diff_fine_grained,
-        weight=1,
-        params={"std": 0.5, "target": torch.pi/4},
+        weight=1.0,
+        params={"std": 0.2, "target": 0.0},
     )
 
 
@@ -550,8 +549,8 @@ class UAVEnvCfg(ManagerBasedRLEnvCfg):
         self.viewer.eye = [4.5, 0.0, 6.0]
         self.viewer.lookat = [0.0, 0.0, 2.0]
         # step settings
-        self.decimation = 1  # env step every 4 sim steps: 200Hz / 4 = 50Hz
-        self.episode_length_s = 15
+        self.decimation = 2  # 50 Hz de actualización para la IA
+        self.episode_length_s = 15.0
         # simulation settings
-        self.sim.dt = 0.02  # sim step every 5ms: 200Hz
+        self.sim.dt = 0.01  # 100 Hz para las físicas
         self.sim.render_interval = self.decimation
