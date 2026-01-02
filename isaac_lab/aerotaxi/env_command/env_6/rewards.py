@@ -13,8 +13,6 @@ def rew_pos_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     target_pos = term.target_pos # El punto aleatorio actual
 
     current_pos = env.observation_manager.compute_group("policy")[:, :3]
-    print(target_pos)
-    print(current_pos)
     error = torch.norm(current_pos - target_pos, dim=1)
     return torch.clamp(error, max=10.0)
 
