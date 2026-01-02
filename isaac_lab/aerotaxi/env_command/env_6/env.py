@@ -438,6 +438,8 @@ class TerminationsCfg:
         func=my_terminations.below_min_altitude,
         params={"min_altitude": -1.0,}
     )
+    bad_attitude = DoneTerm(func=my_terminations.roll_pitch_termination)
+    safety_shutdown = DoneTerm(func=my_terminations.are_nan_or_exploded)
 
 
 # |---------------------------------------------------------|

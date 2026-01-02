@@ -24,6 +24,21 @@ def below_min_altitude(env: ManagerBasedRLEnv, min_altitude: float) -> torch.Ten
 
     return pos <= min_altitude
 
-def are_nan_values(env: ManagerBasedRLEnv) -> torch.Tensor:
+def are_nan_or_exploded(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Terminate when obs buffer has any nan value """
-    return torch.isnan(env.obs_buf["policy"][:]).any(dim=1)
+    asset = env.scene["aerotaxi"]
+    pos = asset.data.root_com_pos_w
+    lin_vel = asset.data.root_com_lin_vel_w
+
+    # 1. Detectar NaNs
+    is_nan = torch.any(torch.isnan(pos), dim=1)
+    
+    # 2. Detectar explosión por posición (si sale volando a kilómetros de distancia)
+    # Si el dron supera los 200m de altura o 200m de radio, algo va mal
+    is_too_far = torch.norm(pos[:, :2], dim=1) > 200.0
+    is_too_high = pos[:, 2] > 200.0
+    
+    # 3. Detectar explosión por velocidad
+    is_too_fast = torch.norm(lin_vel, dim=1) > 100.0
+
+    return is_nan | is_too_far | is_too_high | is_too_fast
