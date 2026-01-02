@@ -11,8 +11,10 @@ if TYPE_CHECKING:
 def rew_pos_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     term = env.command_manager.get_term("vel_command")
     target_pos = term.target_pos # El punto aleatorio actual
-    
+
     current_pos = env.observation_manager.compute_group("policy")[:, :3]
+    print(target_pos)
+    print(current_pos)
     error = torch.norm(current_pos - target_pos, dim=1)
     return torch.clamp(error, max=10.0)
 
@@ -61,30 +63,26 @@ def rew_ang_vel_z_diff_fine_grained(env: ManagerBasedRLEnv, std: float) -> torch
 def rew_roll_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
     obs = env.observation_manager.compute_group("policy")
     roll = obs[:, 9]
-    roll_command = torch.tensor(target, device=env.device)
-    error = torch.abs(roll - roll_command)
+    error = torch.abs(roll - target)
     return torch.clamp(error, max=torch.pi)
 
 
 def rew_roll_diff_fine_grained(env: ManagerBasedRLEnv, target: float, std: float) -> torch.Tensor:
     obs = env.observation_manager.compute_group("policy")
     roll = obs[:, 9]
-    roll_command = torch.tensor(target, device=env.device)
-    distance = torch.abs(roll - roll_command)
+    distance = torch.abs(roll - target)
     return 1 - torch.tanh(distance/std)
 
 
 def rew_pitch_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
     obs = env.observation_manager.compute_group("policy")
     pitch = obs[:, 10]
-    pitch_command = torch.tensor(target, device=env.device)
-    error = torch.abs(pitch - pitch_command)
+    error = torch.abs(pitch - target)
     return torch.clamp(error, max=torch.pi)
 
 
 def rew_pitch_diff_fine_grained(env: ManagerBasedRLEnv, target: float, std: float) -> torch.Tensor:
     obs = env.observation_manager.compute_group("policy")
     pitch = obs[:, 10]
-    pitch_command = torch.tensor(target, device=env.device)
-    distance = torch.abs(pitch - pitch_command)
+    distance = torch.abs(pitch - target)
     return 1 - torch.tanh(distance/std)

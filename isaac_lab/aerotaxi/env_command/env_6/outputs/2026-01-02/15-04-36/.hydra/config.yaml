@@ -574,6 +574,7 @@ env:
       - 15
       - 15
       debug_vis: false
+      asset_name: aerotaxi
 agent:
   seed: 42
   device: cuda:0
@@ -584,7 +585,7 @@ agent:
   clip_actions: null
   save_interval: 100
   experiment_name: command2
-  run_name: ppo_random_command2_2
+  run_name: ppo_random_command2_5
   logger: tensorboard
   neptune_project: isaaclab
   wandb_project: isaaclab
@@ -599,8 +600,8 @@ agent:
     actor_obs_normalization: {}
     critic_obs_normalization: {}
     actor_hidden_dims:
-    - 256
-    - 256
+    - 64
+    - 64
     critic_hidden_dims:
     - 128
     - 128
@@ -608,17 +609,17 @@ agent:
   algorithm:
     class_name: PPO
     num_learning_epochs: 8
-    num_mini_batches: 2
-    learning_rate: 0.001
+    num_mini_batches: 8
+    learning_rate: 0.0003
     schedule: adaptive
     gamma: 0.99
-    lam: 0.97
-    entropy_coef: 0.01
+    lam: 0.95
+    entropy_coef: 0.001
     desired_kl: 0.01
-    max_grad_norm: 2.0
+    max_grad_norm: 1.0
     value_loss_coef: 2.0
     use_clipped_value_loss: true
-    clip_param: 0.3
+    clip_param: 0.2
     normalize_advantage_per_mini_batch: false
     rnd_cfg: null
     symmetry_cfg: null

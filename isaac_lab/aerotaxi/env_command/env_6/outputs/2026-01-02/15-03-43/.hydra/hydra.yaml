@@ -140,7 +140,7 @@ hydra:
     - path: ''
       schema: structured
       provider: schema
-    output_dir: C:\Users\Teresa\Documents\GitHub\navsim\isaac_lab\aerotaxi\env_command\env_6\outputs\2026-01-02\14-57-03
+    output_dir: C:\Users\Teresa\Documents\GitHub\navsim\isaac_lab\aerotaxi\env_command\env_6\outputs\2026-01-02\15-03-43
     choices:
       hydra/env: default
       hydra/callbacks: null

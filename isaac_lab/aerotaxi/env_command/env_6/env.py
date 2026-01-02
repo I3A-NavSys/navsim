@@ -235,8 +235,9 @@ class UAVcommandTerm(CommandTerm):
     
     def __init__(self, cfg: UAVcommandTermCfg, env: ManagerBasedRLEnv):
         super().__init__(cfg, env)
-        self.t_to_solve = 2.0
-        self.max_var_lin_vel = 5
+        self._asset = env.scene[cfg.asset_name]
+        self.t_to_solve = 4.0 # 20/4 = 5 m/s le va a exigir como mucho
+        self.max_var_lin_vel = 5 # tope de 5 m/s
         self.max_var_ang_vel = 1 
         
         # Estado del comando: [vel_x, vel_y, vel_z, yaw_rate]
@@ -265,13 +266,13 @@ class UAVcommandTerm(CommandTerm):
         obs = self._env.observation_manager.compute_group("policy")
         uav_pos = obs[:, 0:3]       
         uav_lin_vel_b = obs[:, 3:6]  
-        uav_yaw = obs[:, 11:12]       
+        uav_yaw = obs[:, 11]       
 
         direccion_diff = self.target_pos - uav_pos
         # distancia = sqrt(x^2 + y^2 + z^2) -> esto lo hace el torch.norm
         distancia = torch.norm(direccion_diff, dim=1, keepdim=True)
         # unit_dir: vector unitario con la dirección a donde hay que mirar
-        unit_dir = direccion_diff / (distancia + 1e-6) # evito división por cero
+        unit_dir = direccion_diff / (distancia + 1e-5) # evito división por cero
         
         # al llegar a un waypoint, le digo que mantenga la velocidad de 5 m/s máxima
         vel_target = unit_dir * self.max_var_lin_vel 
@@ -291,7 +292,8 @@ class UAVcommandTerm(CommandTerm):
         # si el cambio de velocidad es demasiado alto, lo recorta
         scale = torch.where(magnitud_vel > self.max_var_lin_vel, self.max_var_lin_vel / magnitud_vel, 1.0)
         comando_vel_final_recortado = uav_lin_vel_g + (diff_vel * scale)
-
+        comando_vel_final = torch.clamp(comando_vel_final, -self.max_var_lin_vel, self.max_var_lin_vel)
+        
         # convertimos el comando a coordenadas relativas
         quat_inv = math_utils.quat_inv(quat_w)
         comando_vel_rel = math_utils.quat_apply(quat_inv, comando_vel_final_recortado)
@@ -321,12 +323,13 @@ class UAVcommandTermCfg(CommandTermCfg):
 
     class_type: type = UAVcommandTerm
     """Class type of the command term."""
+    asset_name: str = "aerotaxi"
 
 @configclass
 class CommandCfg:
     """Command specifications for the environment."""
     
-    vel_command = UAVcommandTermCfg(resampling_time_range=(15, 15)) # cada 15 segundos cambiamos
+    vel_command = UAVcommandTermCfg(asset_name="aerotaxi",resampling_time_range=(15, 15)) # cada 15 segundos cambiamos
 
 
 # |---------------------------------------------------------|
@@ -552,8 +555,8 @@ class UAVEnvCfg(ManagerBasedRLEnvCfg):
         self.viewer.eye = [4.5, 0.0, 6.0]
         self.viewer.lookat = [0.0, 0.0, 2.0]
         # step settings
-        self.decimation = 2  # 50 Hz de actualización para la IA
+        self.decimation = 1  # 50 Hz de actualización para la IA
         self.episode_length_s = 15.0
         # simulation settings
-        self.sim.dt = 0.01  # 100 Hz para las físicas
+        self.sim.dt = 0.02  # 100 Hz para las físicas
         self.sim.render_interval = self.decimation
