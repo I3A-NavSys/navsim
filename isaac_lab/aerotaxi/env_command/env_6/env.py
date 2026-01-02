@@ -250,6 +250,9 @@ class UAVcommandTerm(CommandTerm):
     @property
     def command(self) -> torch.Tensor:
         return self._command
+    
+    def _update_metrics(self):
+        pass
 
     def _resample_command(self, env_ids: torch.Tensor):
         '''Generates a random point to reach between 20 and -20 meters in X and Y, and between 5 and 15 in Z'''
