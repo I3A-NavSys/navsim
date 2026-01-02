@@ -369,7 +369,7 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    alive = RewTerm(func=mdp.is_alive, weight=1.0)
+    alive = RewTerm(func=mdp.is_alive, weight=2.0)
 
     terminating = RewTerm(func=mdp.is_terminated, weight=-100.0)
 
