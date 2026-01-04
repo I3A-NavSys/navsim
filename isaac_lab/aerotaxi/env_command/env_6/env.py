@@ -10,6 +10,7 @@ import torch
 from scipy.spatial.transform import Rotation
 
 import isaaclab.envs.mdp as mdp
+from isaaclab.markers import VisualizationMarkersCfg, VisualizationMarkers
 import isaaclab.sim as sim_utils
 from isaaclab.assets import AssetBaseCfg, Articulation, ArticulationCfg
 from isaaclab.envs import ManagerBasedRLEnv, ManagerBasedRLEnvCfg
@@ -76,6 +77,8 @@ class UAVactionTerm(ActionTerm):
         return self._processed_actions
 
     def process_actions(self, actions: torch.Tensor):
+        # Si algun dron reventó y el NaN se cuela, lo ponemos a 0
+        actions = torch.nan_to_num(actions, nan=0.0)
         # Define constants as tensors
         kFT_N = torch.tensor(4.6544, device=self.device)
         kFT_S = torch.tensor(0.9309, device=self.device)
@@ -95,20 +98,25 @@ class UAVactionTerm(ActionTerm):
         # print(f"[DEBUG]: raw_actions: {self._raw_actions[0]}")
         
         # Get velocities (assuming these are already tensors)
-        lin_vels = self._asset.data.root_com_lin_vel_b  # shape: (num_envs, 3)
-        ang_vels = self._asset.data.root_com_ang_vel_b  # shape: (num_envs, 3)
+        lin_vels = torch.nan_to_num(self._asset.data.root_com_lin_vel_b, nan=0.0, posinf=0.0, neginf=0.0)
+        ang_vels = torch.nan_to_num(self._asset.data.root_com_ang_vel_b, nan=0.0, posinf=0.0, neginf=0.0)
         # lin_vels = self._env.observation_manager._obs_buffer["policy"][:, :3]  # shape: (num_envs, 3)
         # ang_vels = self._env.observation_manager._obs_buffer["policy"][:, 6:9]  # shape: (num_envs, 3)
         
         # Compute thrust forces (vectorized)
         thrust_coeffs = torch.tensor([kFT_N, kFT_N, kFT_S, kFT_S], device=self.device)
         thrust_z = thrust_coeffs * self._raw_actions**torch_2
+        # evito que la componente z sea infinita
+        thrust_z = torch.clamp(thrust_z, max=10000.0)
         FT_all = torch.zeros(self._env.num_envs, 4, 3, device=self.device)
         FT_all[:, :, 2] = thrust_z  # Only z-component is non-zero
         
         # Compute drag forces (vectorized)
         FD = -torch.stack([kFDx, kFDy, kFDz]) * lin_vels * lin_vels.abs()
-        
+        # limito resistencia al aire
+        FD = torch.clamp(FD, -5000.0, 5000.0)
+
+
         # Compute drag moments (vectorized)
         MDR_coeffs = torch.tensor([kMDR_N, kMDR_N, kMDR_S, kMDR_S], device=self.device)
         MDR_z = MDR_coeffs * self._raw_actions**torch_2
@@ -117,9 +125,9 @@ class UAVactionTerm(ActionTerm):
         
         # Compute friction moments (vectorized)
         MD = -torch.stack([kMDx, kMDy, kMDz]) * ang_vels * ang_vels.abs()
+        # Combine moments (vectorized) and limit it
+        torque = torch.clamp(MDR + MD, -5000.0, 5000.0)
         
-        # Combine moments (vectorized)
-        torque = MDR + MD
         zero_torque = torch.zeros_like(torque)
         
         # Build processed actions tensor (vectorized)
@@ -220,7 +228,6 @@ class ObervervationCfg:
         def __post_init__(self):
             self.enable_corruption = False  # Commands should never be corrupted
             self.concatenate_terms = True
-
     policy: PolicyCfg = PolicyCfg()
 
 
@@ -235,6 +242,7 @@ class UAVcommandTerm(CommandTerm):
     
     def __init__(self, cfg: UAVcommandTermCfg, env: ManagerBasedRLEnv):
         super().__init__(cfg, env)
+        self._marker_visualizer = VisualizationMarkers(VISUAL_TARGET_CFG)
         self._asset = env.scene[cfg.asset_name]
         self.t_to_solve = 4.0 # 20/4 = 5 m/s le va a exigir como mucho
         self.max_var_lin_vel = 5 # tope de 5 m/s
@@ -256,10 +264,10 @@ class UAVcommandTerm(CommandTerm):
         pass
 
     def _resample_command(self, env_ids: torch.Tensor):
-        '''Generates a random point to reach between 20 and -20 meters in X and Y, and between 5 and 15 in Z'''
-        self.target_pos[env_ids, 0] = torch.rand(len(env_ids), device=self.device) * 40.0 - 20.0
-        self.target_pos[env_ids, 1] = torch.rand(len(env_ids), device=self.device) * 40.0 - 20.0
-        self.target_pos[env_ids, 2] = torch.rand(len(env_ids), device=self.device) * 10.0 + 5.0
+        '''Generates a random point to reach between 50 and -50 meters in X and Y, and between 10 and 20 in Z'''
+        self.target_pos[env_ids, 0] = torch.rand(len(env_ids), device=self.device) * 100.0 - 50.0
+        self.target_pos[env_ids, 1] = torch.rand(len(env_ids), device=self.device) * 100.0 - 50.0
+        self.target_pos[env_ids, 2] = torch.rand(len(env_ids), device=self.device) * 10.0 + 10.0
         # no voy a definir yaw, porque ese se calcula a partir del siguiente punto para ver hacia donde hay que mirar.
 
     def _update_command(self):
@@ -311,10 +319,17 @@ class UAVcommandTerm(CommandTerm):
         self._command[:, 0:3] = comando_vel_rel
         self._command[:, 3] = current_wel
 
+        # Visualización del punto al que queremos que vaya el dron
+        target_pos_w = self.target_pos + self._env.scene.env_origins
+        target_quat_w = torch.tensor([1.0, 0.0, 0.0, 0.0], device=self.device).repeat(self.num_envs, 1)
+        self._marker_visualizer.visualize(translations=target_pos_w, orientations=target_quat_w)
+
+
         # Si estamos a menos de 3 metros del objetivo, creo uno nuevo
         reached = (distancia.squeeze() < 3.0).nonzero(as_tuple=True)[0]
         if len(reached) > 0:
             self._resample_command(reached)
+
 
 
 @configclass
@@ -347,7 +362,7 @@ class EventCfg:
             "pose_range": {
                 "x": (-5.0, 5.0), 
                 "y": (-5.0, 5.0), 
-                "z": (3.0, 5.0),
+                "z": (8.0, 12.0),
                 "roll": (-0.5, 0.5),
                 "pitch": (-0.5, 0.5),
                 "yaw": (-3.14, 3.14)
@@ -371,7 +386,9 @@ class RewardsCfg:
     """Reward terms for the MDP."""
     alive = RewTerm(func=mdp.is_alive, weight=2.0)
 
-    terminating = RewTerm(func=mdp.is_terminated, weight=-100.0)
+    action_rate = RewTerm(func=my_rewards.rew_action_rate, weight=-0.01)
+
+    terminating = RewTerm(func=mdp.is_terminated, weight=-10.0)
 
     rew_pos_diff = RewTerm(
         func=my_rewards.rew_pos_diff,
@@ -436,7 +453,7 @@ class TerminationsCfg:
 
     below_min_altitude = DoneTerm(
         func=my_terminations.below_min_altitude,
-        params={"min_altitude": -1.0,}
+        params={"min_altitude": 5.1,} # el centro de masas del dron está a 5.06m del suelo.
     )
     bad_attitude = DoneTerm(func=my_terminations.roll_pitch_termination)
     safety_shutdown = DoneTerm(func=my_terminations.are_nan_or_exploded)
@@ -446,13 +463,23 @@ class TerminationsCfg:
 # |--------------------- SCENE -----------------------------|
 # |---------------------------------------------------------|
 
+VISUAL_TARGET_CFG = VisualizationMarkersCfg(
+    prim_path="/Visuals/target_commands",
+    markers={
+        "target": sim_utils.SphereCfg(
+            radius=0.5,
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 0.0, 0.0)), # Rojo
+        ),
+    },
+)
+
 @configclass
 class MySceneCfg(InteractiveSceneCfg):
     """Configuration for a UAV scene"""
 
     ground = AssetBaseCfg(
         prim_path="/World/ground",
-        spawn=sim_utils.GroundPlaneCfg(size=(100, 100))
+        spawn=sim_utils.GroundPlaneCfg(size=(6000, 6000))
     )
 
     aerotaxi: ArticulationCfg = ArticulationCfg(
@@ -529,6 +556,7 @@ class MySceneCfg(InteractiveSceneCfg):
     )
 
 
+
 # |---------------------------------------------------------|
 # |--------------------- ENVIRONMENT -----------------------|
 # |---------------------------------------------------------|
@@ -538,7 +566,7 @@ class UAVEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the UAV environment."""
 
     # Scene settings
-    scene: MySceneCfg = MySceneCfg(num_envs=32, env_spacing=20.0, replicate_physics=False)
+    scene: MySceneCfg = MySceneCfg(num_envs=32, env_spacing=100.0, replicate_physics=False)
     seed: int = 0
     
     # Basic settings
@@ -557,8 +585,8 @@ class UAVEnvCfg(ManagerBasedRLEnvCfg):
         self.viewer.eye = [4.5, 0.0, 6.0]
         self.viewer.lookat = [0.0, 0.0, 2.0]
         # step settings
-        self.decimation = 1  # 50 Hz de actualización para la IA
+        self.decimation = 4  # 50 Hz de actualización para la IA
         self.episode_length_s = 15.0
         # simulation settings
-        self.sim.dt = 0.02  # 100 Hz para las físicas
+        self.sim.dt = 0.005  # 100 Hz para las físicas
         self.sim.render_interval = self.decimation

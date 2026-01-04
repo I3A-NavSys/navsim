@@ -10,19 +10,30 @@ import isaaclab.utils.math as math_utils
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
 
-def roll_pitch_termination(env: ManagerBasedRLEnv) -> torch.Tensor:
+def roll_pitch_termination(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg(name="aerotaxi")) -> torch.Tensor:
     """Terminate when the asset's roll or pitch exceeds a certain threshold."""
-    roll = env.obs_buf["policy"][:, 9]
-    pitch = env.obs_buf["policy"][:, 10]
+    # roll = env.obs_buf["policy"][:, 9]
+    # pitch = env.obs_buf["policy"][:, 10]
     
-    return torch.logical_or(torch.abs(roll[:]) > torch.pi/3, torch.abs(pitch[:]) > torch.pi/3)
+    # return torch.logical_or(torch.abs(roll[:]) > torch.pi/3, torch.abs(pitch[:]) > torch.pi/3)
+    asset: Articulation = env.scene[asset_cfg.name]
+    
+    # Obtenemos la orientación (quaternions) desde los datos de la raíz
+    quat_w = asset.data.root_com_quat_w
+    
+    # Convertimos a Euler (Roll, Pitch, Yaw) usando la utilidad de Isaac Lab
+    roll, pitch, _ = math_utils.euler_xyz_from_quat(quat_w)
+    
+    # Aplicamos la lógica de terminación (60 grados = pi/3)
+    limit = torch.pi / 3
+    return torch.logical_or(torch.abs(roll) > limit, torch.abs(pitch) > limit)
 
 def below_min_altitude(env: ManagerBasedRLEnv, min_altitude: float) -> torch.Tensor:
     """Terminate when the asset's altitude is below a certain threshold."""
-    pos = env.obs_buf["policy"][:, 2]
-    min_altitude = torch.tensor(min_altitude, device=env.device)
-
-    return pos <= min_altitude
+    asset = env.scene["aerotaxi"]
+    # print(asset.data.root_com_pos_w[:, 2])
+    # root_com_pos_w[:, 2] es la coordenada Z global
+    return asset.data.root_com_pos_w[:, 2] < min_altitude + 5.06 # el centro de masa del dron está a 5.06 metros de alto
 
 def are_nan_or_exploded(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Terminate when obs buffer has any nan value """

@@ -24,7 +24,6 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-
 class MyOnPolicyRunner:
     """On-policy runner for training and evaluation of actor-critic methods."""
 
@@ -131,6 +130,7 @@ class MyOnPolicyRunner:
                         # Sample actions
                         actions = self.alg.act(obs)
                         # Step the environment
+
                         obs, rewards, dones, extras = self.env.step(actions.to(self.env.device))
                         # Move to device
                         obs, rewards, dones = (obs.to(self.device), rewards.to(self.device), dones.to(self.device))
