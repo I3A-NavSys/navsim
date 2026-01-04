@@ -171,7 +171,7 @@ class ActionsCfg:
 
 def my_obs_pos(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
     asset: Articulation = env.scene[asset_cfg.name]
-    return asset.data.root_com_pos_w 
+    return asset.data.root_com_pos_w - env.scene.env_origins # posición relativa
 
 def my_obs_lin_vel(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
     asset: Articulation = env.scene[asset_cfg.name]
@@ -272,11 +272,15 @@ class UAVcommandTerm(CommandTerm):
 
     def _update_command(self):
         obs = self._env.observation_manager.compute_group("policy")
-        uav_pos = obs[:, 0:3]       
+        uav_pos_g = self._asset.data.root_com_pos_w
+        uav_pos_local = uav_pos_g - self._env.scene.env_origins
+        uav_pos_local = uav_pos_local[:, :3] 
+
+        # distancia = sqrt(x^2 + y^2 + z^2) -> esto lo hace el torch.norm   
         uav_lin_vel_b = obs[:, 3:6]  
         uav_yaw = obs[:, 11]       
 
-        direccion_diff = self.target_pos - uav_pos
+        direccion_diff = self.target_pos - uav_pos_local
         # distancia = sqrt(x^2 + y^2 + z^2) -> esto lo hace el torch.norm
         distancia = torch.norm(direccion_diff, dim=1, keepdim=True)
         # unit_dir: vector unitario con la dirección a donde hay que mirar
@@ -285,7 +289,7 @@ class UAVcommandTerm(CommandTerm):
         # al llegar a un waypoint, le digo que mantenga la velocidad de 5 m/s máxima
         vel_target = unit_dir * self.max_var_lin_vel 
         # aumento de velocidad proporcional necesario si se ha desviado de la posición mucho
-        correccion_vel = (self.target_pos - uav_pos) / self.t_to_solve
+        correccion_vel = (self.target_pos - uav_pos_local) / self.t_to_solve
         comando_vel_final = vel_target + correccion_vel
 
         # orientación del dron actual: qw,qx,qy,qz para cada entorno-> tensor matriz de num_emvs x 4
@@ -384,7 +388,7 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    alive = RewTerm(func=mdp.is_alive, weight=2.0)
+    alive = RewTerm(func=mdp.is_alive, weight=10.0)
 
     action_rate = RewTerm(func=my_rewards.rew_action_rate, weight=-0.01)
 
@@ -392,13 +396,13 @@ class RewardsCfg:
 
     rew_pos_diff = RewTerm(
         func=my_rewards.rew_pos_diff,
-        weight=-2.0,
+        weight=-0.2,
     )
 
     rew_pos_diff_fine_grained = RewTerm(
         func=my_rewards.rew_pos_diff_fine_grained,
-        weight=5.0,
-        params={"std": 2.0},
+        weight=10.0,
+        params={"std": 5.0},
     )
 
     rew_lin_vel_diff = RewTerm(
@@ -453,7 +457,7 @@ class TerminationsCfg:
 
     below_min_altitude = DoneTerm(
         func=my_terminations.below_min_altitude,
-        params={"min_altitude": 5.1,} # el centro de masas del dron está a 5.06m del suelo.
+        params={"min_altitude": 1.0,} # el centro de masas del dron está a 5.06m del suelo.
     )
     bad_attitude = DoneTerm(func=my_terminations.roll_pitch_termination)
     safety_shutdown = DoneTerm(func=my_terminations.are_nan_or_exploded)
@@ -467,7 +471,7 @@ VISUAL_TARGET_CFG = VisualizationMarkersCfg(
     prim_path="/Visuals/target_commands",
     markers={
         "target": sim_utils.SphereCfg(
-            radius=0.5,
+            radius=1.0,
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 0.0, 0.0)), # Rojo
         ),
     },

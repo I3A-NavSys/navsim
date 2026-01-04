@@ -16,7 +16,7 @@ def rew_pos_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     target_pos = term.target_pos 
 
     current_pos_w = env.scene["aerotaxi"].data.root_com_pos_w
-    current_pos_local = current_pos_w - env.scene.env_origins
+    current_pos_local = current_pos_w[:, :3] - env.scene.env_origins[:, :3]
     
     error = torch.norm(current_pos_local - target_pos, dim=1)
     return torch.clamp(error, max=10.0)
@@ -26,7 +26,7 @@ def rew_pos_diff_fine_grained(env: ManagerBasedRLEnv, std: float) -> torch.Tenso
     target_pos = term.target_pos
     
     current_pos_w = env.scene["aerotaxi"].data.root_com_pos_w
-    current_pos_local = current_pos_w - env.scene.env_origins
+    current_pos_local = current_pos_w[:, :3] - env.scene.env_origins[:, :3]
     
     distance = torch.norm(current_pos_local - target_pos, dim=1)
     return 1.0 - torch.tanh(distance / std)
