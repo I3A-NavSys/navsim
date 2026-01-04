@@ -19,7 +19,7 @@ def rew_pos_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     current_pos_local = current_pos_w[:, :3] - env.scene.env_origins[:, :3]
     
     error = torch.norm(current_pos_local - target_pos, dim=1)
-    return torch.clamp(error, max=10.0)
+    return torch.clamp(error, max=20.0)
 
 def rew_pos_diff_fine_grained(env: ManagerBasedRLEnv, std: float) -> torch.Tensor:
     term = env.command_manager.get_term("vel_command")
@@ -68,7 +68,7 @@ def rew_roll_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
     asset = env.scene["aerotaxi"]
     roll, _, _ = math_utils.euler_xyz_from_quat(asset.data.root_com_quat_w)
     error = torch.abs(roll - target)
-    return torch.clamp(error, max=torch.pi)
+    return error
 
 
 def rew_roll_diff_fine_grained(env: ManagerBasedRLEnv, target: float, std: float) -> torch.Tensor:
@@ -82,7 +82,7 @@ def rew_pitch_diff(env: ManagerBasedRLEnv, target: float) -> torch.Tensor:
     asset = env.scene["aerotaxi"]
     _, pitch, _ = math_utils.euler_xyz_from_quat(asset.data.root_com_quat_w)
     error = torch.abs(pitch - target)
-    return torch.clamp(error, max=torch.pi)
+    return error
 
 
 def rew_pitch_diff_fine_grained(env: ManagerBasedRLEnv, target: float, std: float) -> torch.Tensor:
