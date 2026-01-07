@@ -1,7 +1,8 @@
-from uspace.vertiport.vertiport_pad import VertiportPad
+from .vertiport_pad import VertiportPad
 
-class Vertiport:
+class VertiportOperator:
     def __init__(self):
         self.id: str
+        self.name: str
         self.pads: dict[str, VertiportPad]
         
