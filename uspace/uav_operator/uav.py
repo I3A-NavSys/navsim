@@ -1,8 +1,7 @@
 from enum import Enum
 
 
-from uspace_manager.constants import MissionType
-from .uav_operator import UAVOperator
+from uspace.uspace_manager.constants import MissionType
 
 
 class Status(Enum):
@@ -15,4 +14,4 @@ class UAV:
         self.id: str
         self.type: MissionType
         self.status: Status
-        self.operator: UAVOperator
+        self.operator: str
