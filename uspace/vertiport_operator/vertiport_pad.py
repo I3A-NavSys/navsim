@@ -2,7 +2,6 @@ from enum import Enum
 
 
 from uspace_manager.constants import MissionType
-from .vertiport_operator import VertiportOperator
 
 
 class Status(Enum):
@@ -15,4 +14,4 @@ class VertiportPad:
         self.id: str
         self.type: MissionType
         self.status: Status
-        self.ownership: VertiportOperator
+        self.operator: str
