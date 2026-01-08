@@ -3,8 +3,8 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class Command2PPORunnerCfg(RslRlOnPolicyRunnerCfg):
-    num_steps_per_env = 24
-    max_iterations = 2001
+    num_steps_per_env = 100
+    max_iterations = 4001
     save_interval = 100
     experiment_name = "command2"
     run_name = "ppo_random_command2_29"
@@ -13,10 +13,10 @@ class Command2PPORunnerCfg(RslRlOnPolicyRunnerCfg):
     csv_path_metrics = "C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid_command_v2"
     callbacks = True
     policy = RslRlPpoActorCriticCfg(
-        init_noise_std=0.2,
-        actor_hidden_dims=[64, 64],
-        critic_hidden_dims=[128, 128],
-        activation="gelu",
+        init_noise_std=0.0,
+        actor_hidden_dims=[128, 64],
+        critic_hidden_dims=[64, 64],
+        activation="tanh",
     )
     algorithm = RslRlPpoAlgorithmCfg(
         value_loss_coef=2.0,
@@ -24,11 +24,11 @@ class Command2PPORunnerCfg(RslRlOnPolicyRunnerCfg):
         clip_param=0.2,
         entropy_coef=0.0,
         num_learning_epochs=8,
-        num_mini_batches=8,
+        num_mini_batches=2,
         learning_rate=0.001,
         schedule="adaptive",
-        gamma=0.99,
-        lam=0.95,
+        gamma=0.95,
+        lam=0.97,
         desired_kl=0.005,
-        max_grad_norm=0.5,
+        max_grad_norm=2.0,
     )
