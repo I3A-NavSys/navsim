@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-from uspace_manager.constants import MissionType
+from uspace.uspace_manager.constants import MissionType
 
 
 class Status(Enum):
