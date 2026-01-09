@@ -38,5 +38,11 @@ class MissionManager:
         self.mqtt_client.subscribe(topic)
         self.mqtt_subscribed_topics.add(topic)
 
-    def send_mqtt_msg(self, msg, topic):
+    def send_mqtt_msg(self, topic, msg):
         self.mqtt_client.publish(topic, msg)
+
+    def request_vertiport_operator_list(self):
+        pass
+
+    def request_uav_operator_list(self):
+        pass

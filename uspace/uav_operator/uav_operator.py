@@ -1,3 +1,6 @@
+import json
+
+from uspace.uspace_manager.constants import Topics
 from uspace.mqtt.mqtt_service import MQTTService
 from .uav import UAV
 
@@ -6,7 +9,7 @@ class UAVOperator:
     def __init__(self, id=None, name=None):
         self.id: str = id
         self.name: str = name
-        self.uavs = dict[str, UAV]
+        self.uavs: dict[str, UAV] = {}
 
         # MQTT client
         self.mqtt_client_id = "MQTT_UAV_Operator"
@@ -37,6 +40,13 @@ class UAVOperator:
         self.mqtt_client.subscribe(topic)
         self.mqtt_subscribed_topics.add(topic)
 
-    def send_mqtt_msg(self, msg, topic):
+    def send_mqtt_msg(self, topic, msg):
         self.mqtt_client.publish(topic, msg)
-        
+
+    def register_into_airspace(self):
+        topic = Topics.UAV_REGISTER.value
+        msg = {
+            "id": self.id,
+            "name": self.name
+        }
+        self.send_mqtt_msg(topic, json.dumps(msg))

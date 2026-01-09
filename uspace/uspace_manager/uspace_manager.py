@@ -1,16 +1,17 @@
+import json
 from uspace.uav_operator.uav_operator import UAVOperator
 from uspace.vertiport_operator.vertiport_operator import VertiportOperator
-from uspace.grid_planner.grid_planner import GridPlanner
+#from uspace.grid_planner.grid_planner import GridPlanner
 from uspace.mqtt.mqtt_service import MQTTService
 
 
 class USpaceManager:
-    def __init__(self):
-        self.id: str
-        self.name:str
-        self.uspace: GridPlanner
-        self.uav_operators: dict[str, UAVOperator]
-        self.vertiport_operators: dict[str, VertiportOperator]
+    def __init__(self, id=None, name=None):
+        self.id: str = id
+        self.name: str = name
+        #self.uspace: GridPlanner
+        self.uav_operators: dict[str, str] = {}
+        self.vertiport_operators: dict[str, str] = {}
 
         # MQTT client
         self.mqtt_client_id = "MQTT_USpaceManager"
@@ -18,6 +19,10 @@ class USpaceManager:
         self.mqtt_client.on_message = self.listen_mqtt
         self.mqtt_is_connected = False
         self.mqtt_subscribed_topics = set()
+
+        # MQTT Callbacks
+        self.mqtt_client.message_callback_add("airspace/operator/uav/register", self.on_uav_operator_register)
+        self.mqtt_client.message_callback_add("airspace/operator/vertiport/register", self.on_vertiport_operator_register)
 
 
     def connect_mqtt_client(self):
@@ -43,3 +48,13 @@ class USpaceManager:
 
     def send_mqtt_msg(self, msg, topic):
         self.mqtt_client.publish(topic, msg)
+
+    def on_uav_operator_register(self, client, userdata, msg):
+        data = json.loads(msg.payload.decode())
+        self.uav_operators[data["id"]] = data["name"]
+        print(self.uav_operators)
+
+    def on_vertiport_operator_register(self, client, userdata, msg):
+        data = json.loads(msg.payload.decode())
+        self.vertiport_operators[data["id"]] = data["name"]
+        print(self.vertiport_operators)
