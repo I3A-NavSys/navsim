@@ -10,9 +10,7 @@ class MissionManager:
         self.msg: MissionMsg
         
         # MQTT client
-        self.mqtt_client_id = "MQTT_MissionManager"
-        self.mqtt_client = MQTTService.build_client(self.mqtt_client_id)
-        self.mqtt_client.on_message = self.listen_mqtt
+        self.mqtt_client = MQTTService.build_client(self.id)
         self.mqtt_is_connected = False
         self.mqtt_subscribed_topics = set()
 
@@ -28,10 +26,7 @@ class MissionManager:
             self.mqtt_is_connected = False
             MQTTService.disconnect_client(self.mqtt_client)
 
-    def listen_mqtt(self, client, userdata, msg):
-        print(f"[MissionManager] - Received `{msg.payload.decode()}` from `{msg.topic}` topic")
-
-    def subcribe_mqtt_topic(self, topic):
+    def subscribe_mqtt_topic(self, topic):
         if topic in self.mqtt_subscribed_topics:
             return
         

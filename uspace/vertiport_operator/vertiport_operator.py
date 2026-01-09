@@ -12,9 +12,7 @@ class VertiportOperator:
         self.pads: dict[str, VertiportPad] = {}
 
         # MQTT client
-        self.mqtt_client_id = "MQTT_Vertiport_Operator"
-        self.mqtt_client = MQTTService.build_client(self.mqtt_client_id)
-        self.mqtt_client.on_message = self.listen_mqtt
+        self.mqtt_client = MQTTService.build_client(self.id)
         self.mqtt_is_connected = False
         self.mqtt_subscribed_topics = set()
 
@@ -30,10 +28,7 @@ class VertiportOperator:
             self.mqtt_is_connected = False
             MQTTService.disconnect_client(self.mqtt_client)
 
-    def listen_mqtt(self, client, userdata, msg):
-        print(f"[VertiportOperator] - Received `{msg.payload.decode()}` from `{msg.topic}` topic")
-
-    def subcribe_mqtt_topic(self, topic):
+    def subscribe_mqtt_topic(self, topic):
         if topic in self.mqtt_subscribed_topics:
             return
         
@@ -44,7 +39,7 @@ class VertiportOperator:
         self.mqtt_client.publish(topic, msg)
 
     def register_into_airspace(self):
-        topic = Topics.VERTIPORT_REGISTER.value
+        topic = Topics.VERTIPORT_OPERATOR_REGISTER.value
         msg = {
             "id": self.id,
             "name": self.name
