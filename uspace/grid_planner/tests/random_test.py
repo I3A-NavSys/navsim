@@ -38,8 +38,8 @@ for r in range(routes_amount):
         i2 = random.randint(start_grid // gp.cell_side, end_grid // gp.cell_side)
         j2 = random.randint(start_grid // gp.cell_side, end_grid // gp.cell_side)
 
-    init_pos.append((i, j))
-    end_pos.append((i2, j2))
+    init_pos.append((i, j, 60))
+    end_pos.append((i2, j2, 60))
 
     init_times.append(r)
     end_times.append(r + 10)
@@ -198,11 +198,11 @@ def only_cost(axes, verbose=False, plot_routes=True):
                 print(f"Destination: {end_pos[r]} - {end_times[r]}")
                 print()
 
-            route, routes = gp.get_best_route(i, init_pos[r], end_pos[r], init_times[r], end_times[r])
+            route = gp.get_best_route(i, init_pos[r], end_pos[r], init_times[r], end_times[r], reverse=False)
             
-            if route is not None:
+            if route:
                 conflicts = gp.are_there_conflicts(route)
-                length = gp.route_length(route)
+                length = len(route)
 
                 if verbose:
                     gp.print_route(route)
@@ -216,9 +216,9 @@ def only_cost(axes, verbose=False, plot_routes=True):
                     X = []
                     Y = []
 
-                    for node in route:
-                        X.append(node.i * 100 + 50 if node.L == "X" else node.i * 100)
-                        Y.append(node.j * 100 + 50 if node.L == "Y" else node.j * 100)
+                    for (i, j, l, s) in route:
+                        X.append(i * 100 + 50 if l == "X" else i * 100)
+                        Y.append(j * 100 + 50 if l == "Y" else j * 100)
 
                     line = ax.plot(X, Y, zorder=3, label=f"Route {r}: {length}")
                     sc = ax.scatter(X[0], Y[0], color="springgreen")
