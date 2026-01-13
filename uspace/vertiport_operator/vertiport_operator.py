@@ -6,9 +6,10 @@ from uspace.mqtt.mqtt_service import MQTTService
 
 
 class VertiportOperator:
-    def __init__(self, id=None, name=None):
+    def __init__(self, id=None, name=None, grid_connection=None):
         self.id: str = id
         self.name: str = name
+        self.grid_connection: tuple[float, float, float] = grid_connection
         self.pads: dict[str, VertiportPad] = {}
 
         # MQTT client

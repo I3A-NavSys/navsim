@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 
 from uspace.uav_operator.uav_operator import UAVOperator
@@ -13,8 +14,8 @@ class USpaceManager:
         self.id: str = id
         self.name: str = name
         #self.uspace: GridPlanner
-        self.uav_operators: dict[str, str] = {}
-        self.vertiport_operators: dict[str, str] = {}
+        self.uav_operators: dict[str, str] = {} # {id: name}
+        self.vertiport_operators: dict[str, dict[str, Any]] = {} # {id: {name: V0, grid_conn: [1,1,1]}}
 
         # MQTT client
         self.mqtt_client = MQTTService.build_client(self.id)
@@ -37,6 +38,14 @@ class USpaceManager:
         self.mqtt_client.message_callback_add(
             Topics.REQUEST_VERTIPORT_OPERATOR_LIST.value,
             self.on_request_vertiport_operator_list
+        )
+        self.mqtt_client.message_callback_add(
+            Topics.REQUEST_ROUTE.value,
+            self.on_request_route
+        )
+        self.mqtt_client.message_callback_add(
+            Topics.RECEIVE_ROUTE.value,
+            self.on_receive_route
         )
 
 
@@ -92,3 +101,8 @@ class USpaceManager:
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
         
+    def on_request_route(self, client, userdata, msg):
+        pass
+    
+    def on_receive_route(self, client, userdata, msg):
+        pass

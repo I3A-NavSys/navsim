@@ -4,7 +4,6 @@ from enum import Enum
 
 
 from uspace.uspace_manager.constants import MissionType
-from uspace.uav_operator.uav_operator import UAVOperator
 
 
 @dataclass
@@ -17,4 +16,4 @@ class StopOver:
 class MissionMsg:
     _mission_type: MissionType
     _stop_over: StopOver
-    _operator: UAVOperator
+    _operator_id: str
