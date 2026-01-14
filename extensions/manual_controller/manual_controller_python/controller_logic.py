@@ -31,7 +31,7 @@ class ControllerLogic:
 
         # External inputs
         self.joystick = JoystickInput()
-        self.keyboard = KeyboardInput()
+        # self.keyboard = KeyboardInput()
 
         self.event_stream = event_stream
         self.operator_uav_event = operator_event
@@ -61,7 +61,7 @@ class ControllerLogic:
             self.changed_on = False
             
             self.joystick.start()
-            self.keyboard.start()
+            # self.keyboard.start()
 
             # Start control coroutine
             asyncio.ensure_future(self.control())
@@ -71,7 +71,7 @@ class ControllerLogic:
             self._stop = True
 
             self.joystick.stop()
-            self.keyboard.stop()
+            # self.keyboard.stop()
 
     # -- FUNCTION control ---------------------------------------------------------------------------------------
     # This function simply gets the inputs from both the joystick and the keyboard, then decide which one to use
@@ -135,13 +135,14 @@ class ControllerLogic:
         # Get the corresponding inputs
         self.joystick.ask_input()
         joy_inputs = np.array(self.joystick.inputs)
-        key_inputs = np.array(self.keyboard.inputs)
+        # key_inputs = np.array(self.keyboard.inputs)
 
         # Joystick input has priority
         if self.check_inputs(joy_inputs):
             return joy_inputs
         else:
-            return key_inputs
+            # return key_inputs
+            return np.zeros_like(joy_inputs)
 
     # -- FUNCTION check_inputs ----------------------------------------------------------------------------------
     # This function just checks if we have any input from the receiving parameter (joystick as it has priority)
