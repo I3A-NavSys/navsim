@@ -64,6 +64,17 @@ class MissionManager:
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
 
+    def request_route(self, mission_type, destinations, stop_times, uav_operator_id):
+        topic = Topics.REQUEST_ROUTE.value
+        msg = {
+            "id": self.id,
+            "mission_type": mission_type,
+            "destinations": destinations,
+            "stop_times": stop_times,
+            "uav_operator_id": uav_operator_id
+        }
+        self.send_mqtt_msg(topic, json.dumps(msg))
+
     # ----------------------
     # --- MQTT Callbacks ---
     # ----------------------
