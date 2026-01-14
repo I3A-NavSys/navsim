@@ -62,7 +62,7 @@ class MissionManager:
         msg = {
             "id": self.id
         }
-        self.send_mqtt_msg(topic, msg)
+        self.send_mqtt_msg(topic, json.dumps(msg))
 
     # ----------------------
     # --- MQTT Callbacks ---
