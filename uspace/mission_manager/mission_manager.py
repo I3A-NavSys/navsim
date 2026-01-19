@@ -64,14 +64,15 @@ class MissionManager:
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
 
-    def request_route(self, mission_type, destinations, stop_times, uav_operator_id):
-        topic = Topics.REQUEST_ROUTE.value
+    def request_uav_mission(self, mission_id, mission_type, stop_list, stop_times, landing_time, uav_operator_id):
+        topic = f"{Topics.MISSION_UAV_SERVICE.value}/{uav_operator_id}"
         msg = {
             "id": self.id,
+            "mission_id": mission_id,
             "mission_type": mission_type,
-            "destinations": destinations,
+            "stop_list": stop_list,
             "stop_times": stop_times,
-            "uav_operator_id": uav_operator_id
+            "landing_time": landing_time,
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
 
