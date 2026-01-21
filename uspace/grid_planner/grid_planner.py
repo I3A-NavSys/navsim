@@ -91,18 +91,22 @@ class GridPlanner:
         Returns the grid node corresponding to the given Cartesian coordinates.
         
         :param coords: Cartesian coordinates [x, y, z]
-        :param time: Time slot
+        :param time: Time in seconds
+        :param cost: Cost to reach this node
+        :param parent: Parent node
+        :param state: State of the node
         """
 
         x, y, z = coords
-        i = int(y // self.cell_side)
-        j = int(x // self.cell_side)
+        i = int(x // self.cell_side)
+        j = int(y // self.cell_side)
         s = math.ceil(time / self.slot_time)
 
-        if z <= self.x_height:
-            l = 'X'
-        else:
-            l = 'Y'
+        # if z <= self.x_height:
+        #     l = 'X'
+        # else:
+        #     l = 'Y'
+        l = "X"
 
         return GridNode(i, j, l, s, cost, parent, state)
 
@@ -228,9 +232,9 @@ class GridPlanner:
         if not route:
             print("No route could be found. Try a different time slot")
         else:
-            for i in range(len(route)):
-                i, j, l, s = route[i]
-                print(f"{i+1}: ({i}, {j}, {l}, {s})")
+            for id, n in enumerate(route):
+                i, j, l, s = n
+                print(f"{id+1}: ({i}, {j}, {l}, {s})")
         
         print("--------------")
 
@@ -321,128 +325,154 @@ class GridPlanner:
         :param reverse: Whether to go in reverse direction
         """
 
-        direction = 1
-        if reverse:
-            direction = -1
+        revert = int(reverse)
+        s_increment = 1 - revert * 2
 
         if node.l == 'X':
             if node.j % 2 == 0:
                 # EAST course
                 if node.i % 2 == 0:
                     # EAST to SOUTH turn
-                    i = node.i + direction
-                    j = node.j - direction
+                    i = node.i + 1 - revert
+                    j = node.j - 1
                     l = 'Y'
                 
                 else:
                     # EAST to NORTH turn
-                    i = node.i + direction
+                    i = node.i + 1 - revert
                     j = node.j
                     l = 'Y'
             else:
                 # WEST course
                 if node.i % 2 == 0:
                     # WEST to NORTH turn
-                    i = node.i
+                    i = node.i + revert
                     j = node.j
                     l = 'Y'
                 else:
                     # WEST to SOUTH turn
-                    i = node.i
-                    j = node.j - direction
+                    i = node.i + revert
+                    j = node.j - 1
                     l = 'Y'
         else:
             if node.i % 2 == 0:
                 # NORTH course
                 if node.j % 2 == 0:
                     # NORTH to WEST turn
-                    i = node.i - direction
-                    j = node.j + direction
+                    i = node.i - 1
+                    j = node.j + 1 - revert
                     l = 'X'
                 else:
                     # NORTH to EAST turn
                     i = node.i
-                    j = node.j + direction
+                    j = node.j + 1 - revert
                     l = 'X'
             else:
                 # SOUTH course
                 if node.j % 2 == 0:
                     # SOUTH to EAST turn
                     i = node.i
-                    j = node.j
+                    j = node.j + revert
                     l = 'X'
                 else:
                     # SOUTH to WEST turn
-                    i = node.i - direction
-                    j = node.j
+                    i = node.i - 1
+                    j = node.j + revert
                     l = 'X'
         
-        return GridNode(i, j, l, node.s + direction, node.cost + 2, node, node.state + 90)
+        return GridNode(i, j, l, node.s + s_increment, node.cost + 2, node, node.state + 90)
 
-    def evaluate_node(self, node: GridNode, end_node: GridNode, reverse:bool):
-        if reverse:
-            temp = node
-            node = end_node
-            end_node = temp
+    def evaluate_node(self, node: GridNode, end_node: GridNode, reverse: bool):
+        """
+        Given a node and the end node, returns its f score for A* evaluation.
 
-        # Euclidean distance
-        i = node.i
-        j = node.j
+        :param node: Current grid node
+        :param end_node: Target grid node
+        :param reverse: Whether to go in reverse direction
+        """
+
+        # Set each node at its correct 3D position
+        current_i = node.i
+        current_j = node.j
         end_i = end_node.i
         end_j = end_node.j
+        offset = 0.5
 
-        if node.l == "X":       i += 0.5
-        else:                   j += 0.5
+        if node.l == "X":       current_i += offset
+        else:                   current_j += offset
 
-        if end_node.l == "X":   end_i += 0.5
-        else:                   end_j += 0.5
+        if end_node.l == "X":   end_i += offset
+        else:                   end_j += offset
 
-        i_diff = end_i - i
-        j_diff = end_j - j
-
-        distance = np.sqrt(i_diff**2 + j_diff**2)
-
-        # Heuristic based on airlines' direction
-        heuristic = self.get_heuristic(i_diff, j_diff, node, end_node)
-
-        return heuristic + distance
-
-    def get_heuristic(self, i_diff, j_diff, node: GridNode, end_node: GridNode):
-        heuristic = 0
-
-        # Penalize sharp turns and unnecessary deviations
-        if abs(i_diff) > 0 and abs(j_diff) > 0:
-            if node.parent is not None and node.l != node.parent.l:
-                heuristic += 5.263157894736842  # Slight penalty for non-optimal alignments
-
-        # if abs(i_diff) <= 1 or abs(j_diff) <= 1:
-        if abs(i_diff) <= 1 and node.parent is not None and node.l != node.parent.l:
-                heuristic += 4.7368421052631575  # Slight penalty for non-optimal alignments
-
-        # Evaluate which direction we should follow and the one we actually are following due to the aeroline we are in
-        # Going right
-        if node.j % 2 == 0 and i_diff < 0:     heuristic += 3.6842105263157894  # Incorrect direction
-        # Going left
-        elif node.j % 2 != 0 and i_diff > 0:   heuristic += 3.6842105263157894  # Incorrect direction
+        dx = end_i - current_i
+        dy = end_j - current_j
         
-        # Going up
-        if node.i % 2 == 0 and j_diff < 0:     heuristic += 3.6842105263157894  # Incorrect direction
-        # Going down
-        elif node.i % 2 != 0 and j_diff > 0:   heuristic += 3.6842105263157894  # Incorrect direction
-        
-        
-        # Penalize if we are not arriving to end node from correct direction
-        # Arrive from left, but Arriving from right
-        if end_node.j % 2 == 0 and i_diff < 0:  heuristic += 10
-        # Arrive from right, but Arriving from left
-        elif end_node.j % 2 != 0 and i_diff > 0:  heuristic += 10
+        # Compute heuristic score
+        h_score = self.get_heuristic(dx, dy, node, reverse)
+        f_score = node.cost + h_score
 
-        # Arrive from bot, but Arriving from top
-        if end_node.i % 2 == 0 and j_diff < 0:  heuristic += 10
-        # Arrive from top, but Arriving from bot
-        elif end_node.i % 2 != 0 and j_diff > 0:    heuristic += 10
+        # Multiply by 1.001 to avoid ties in the priority queue
+        f_score *= 1.001
+        
+        return f_score
 
-        return heuristic
+    def get_heuristic(self, dx, dy, node: GridNode, reverse: bool):
+        """
+        Returns the heuristic score for the given node.
+
+        :param dx: Distance in X to the goal
+        :param dy: Distance in Y to the goal
+        :param node: Current grid node
+        :param reverse: Whether to go in reverse direction
+        """
+        
+        # --- 1. Base Distance (Manhattan) ---
+        h = abs(dx) + abs(dy)
+
+        # --- 2. Penalty for layer change ---
+        # If there is distance in both X and Y, there will necessarily be a turn (+2 cost)
+        # Manhattan assumes a cost of 1 per cell
+        # The turn adds +1 extra net
+        if dx != 0 and dy != 0:
+            h += 1
+
+        # --- 3. Penalization for Direction of the Airway ---
+        # Here we determine if the current node is on an airway that takes us away from 
+        # the goal
+        wrong_direction = False
+        
+        if node.l == 'X':
+            # Normal rule: Evens go East (+1), Odds go West (-1)
+            grid_flow = 1 if node.j % 2 == 0 else -1
+            
+            # If we are in reverse mode, we navigate against the flow, 
+            # so the effective flow to reach the previous node is the opposite.
+            if reverse:
+                grid_flow *= -1
+            
+            # Evaluation:
+            # If I want to go East (dx > 0) but the flow is West (-1) -> Bad
+            if dx > 0 and grid_flow == -1: wrong_direction = True
+            elif dx < 0 and grid_flow == 1: wrong_direction = True
+
+        elif node.l == 'Y':
+            # Normal rule: Evens go North (+1), Odds go South (-1)
+            grid_flow = 1 if node.i % 2 == 0 else -1
+            
+            if reverse:
+                grid_flow *= -1
+
+            # Evaluation:
+            # If I want to go North (dy > 0) but the flow is South (-1) -> Bad
+            if dy > 0 and grid_flow == -1: wrong_direction = True
+            elif dy < 0 and grid_flow == 1: wrong_direction = True
+
+        if wrong_direction:
+            # If we go against the flow, we have to turn, move parallel, and turn again.
+            # This adds at least 2 extra steps of cost over Manhattan.
+            h += 2
+
+        return h
 
     def get_route(
             self, 
@@ -501,7 +531,8 @@ class GridPlanner:
 
             # Expand new nodes
             new_nodes = [self.get_next_node(node, reverse)]
-            is_takeoff_correct = node.parent is not None and node.parent.parent is not None
+            # is_takeoff_correct = node.parent is not None and node.parent.parent is not None
+            is_takeoff_correct = node.parent is not None
 
             if is_takeoff_correct:
                 restricted_maneuver_1 = node.state == 0 and node.parent.state == 90
@@ -518,10 +549,10 @@ class GridPlanner:
             
             # Evaluate new nodes
             for new_node in new_nodes:
-                h_new_node = self.evaluate_node(new_node, end_node, reverse)
+                f_new_node = self.evaluate_node(new_node, end_node, reverse)
                 generation += 1
 
-                prio_queue.put((h_new_node + new_node.cost, generation, new_node))
+                prio_queue.put((f_new_node, generation, new_node))
 
         return []
     
