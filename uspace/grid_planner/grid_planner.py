@@ -1,6 +1,4 @@
-import numpy as np
-from queue import PriorityQueue
-import time
+import heapq
 import matplotlib.pyplot as plt
 import math
 
@@ -17,6 +15,9 @@ class GridNode:
         self.cost = cost
         self.parent = parent
         self.state = state
+
+    def __lt__(self, other):
+        return self.cost < other.cost
 
 class GridPlanner:
 
@@ -397,6 +398,7 @@ class GridPlanner:
         end_i = end_node.i
         end_j = end_node.j
         offset = 0.5
+        h_weight = 2
 
         if node.l == "X":       current_i += offset
         else:                   current_j += offset
@@ -409,11 +411,10 @@ class GridPlanner:
         
         # Compute heuristic score
         h_score = self.get_heuristic(dx, dy, node, reverse)
-        f_score = node.cost + h_score
-
         # Multiply by 1.001 to avoid ties in the priority queue
-        f_score *= 1.001
-        
+        h_score *= 1.001
+
+        f_score = node.cost + h_score * h_weight
         return f_score
 
     def get_heuristic(self, dx, dy, node: GridNode, reverse: bool):
@@ -494,14 +495,14 @@ class GridPlanner:
         end_node = self.build_node_from_coords(destination, end_time, 0, None, 0)
         explored_nodes = []
         generation = 0
-        prio_queue = PriorityQueue()
+        open_nodes = []
         h_start_node = self.evaluate_node(start_node, end_node, reverse)
-        prio_queue.put((h_start_node, generation, start_node))
+        heapq.heappush(open_nodes, (h_start_node, generation, start_node))
 
         # Main loop
-        while not prio_queue.empty():
+        while open_nodes:
             # Get node with highest priority
-            queue_item = prio_queue.get()
+            queue_item = heapq.heappop(open_nodes)
             node_generation = queue_item[1]
             node: GridNode = queue_item[2]
 
@@ -524,7 +525,7 @@ class GridPlanner:
 
                 if is_landing_incorrect:    continue
 
-                return self.get_route_from_node(node, reverse)
+                return self.get_route_from_node(node, reverse), len(explored_nodes)
             
             # Mark node as explored
             explored_nodes.append((node.i, node.j, node.l))
@@ -552,83 +553,83 @@ class GridPlanner:
                 f_new_node = self.evaluate_node(new_node, end_node, reverse)
                 generation += 1
 
-                prio_queue.put((f_new_node, generation, new_node))
+                heapq.heappush(open_nodes, (f_new_node, generation, new_node))
 
-        return []
+        return [], len(explored_nodes)
     
-    def get_best_route(self, option, origin, destination, start_time, end_time, reverse=False):
-        """
-        Given an init and end time, return the best possible route specified by the option
+    # def get_best_route(self, option, origin, destination, start_time, end_time, reverse=False):
+    #     """
+    #     Given an init and end time, return the best possible route specified by the option
 
-        :param option: 
-            - 0 for smaller route (least nodes)
-            - 1 for the route that reaches the end first in time
-            - 2 for the route with the least cost (amount of turns)
-        :param origin: Cartesian coordinates of the origin [x, y, z]
-        :param destination: Cartesian coordinates of the destination [x, y, z]
-        :param start_time: Initial time of the route in seconds
-        :param end_time: Final time of the route in seconds
-        """
+    #     :param option: 
+    #         - 0 for smaller route (least nodes)
+    #         - 1 for the route that reaches the end first in time
+    #         - 2 for the route with the least cost (amount of turns)
+    #     :param origin: Cartesian coordinates of the origin [x, y, z]
+    #     :param destination: Cartesian coordinates of the destination [x, y, z]
+    #     :param start_time: Initial time of the route in seconds
+    #     :param end_time: Final time of the route in seconds
+    #     """
 
-        # Variables initialization
-        routes = []
-        prio_length_routes = PriorityQueue()
-        prio_time_routes = PriorityQueue()
-        prio_cost_routes = PriorityQueue()
-        generation = 0
-        time_1 = start_time
+    #     # Variables initialization
+    #     routes = []
+    #     prio_length_routes = PriorityQueue()
+    #     prio_time_routes = PriorityQueue()
+    #     prio_cost_routes = PriorityQueue()
+    #     generation = 0
+    #     time_1 = start_time
 
-        # Iterate though all the time slots
-        while time_1 <= end_time:
-            route = self.get_route(origin, destination, time_1, 0, reverse)
+    #     # Iterate though all the time slots
+    #     while time_1 <= end_time:
+    #         route = self.get_route(origin, destination, time_1, 0, reverse)
 
-            if route:
-                _, _, _, s = route[-1]
-                generation += 1
-                if option == 0:
-                    prio_length_routes.put((
-                        len(route), 
-                        s, 
-                        # route[-1].cost, 
-                        generation, 
-                        route
-                    ))
+    #         if route:
+    #             _, _, _, s = route[-1]
+    #             generation += 1
+    #             if option == 0:
+    #                 prio_length_routes.put((
+    #                     len(route), 
+    #                     s, 
+    #                     # route[-1].cost, 
+    #                     generation, 
+    #                     route
+    #                 ))
                 
-                elif option == 1:
-                    prio_time_routes.put((
-                        s, 
-                        len(route), 
-                        # route[-1].cost, 
-                        generation, 
-                        route,
-                    ))
+    #             elif option == 1:
+    #                 prio_time_routes.put((
+    #                     s, 
+    #                     len(route), 
+    #                     # route[-1].cost, 
+    #                     generation, 
+    #                     route,
+    #                 ))
 
-                # elif option == 2:
-                #     prio_cost_routes.put((
-                #         route[-1].cost, 
-                #         len(route), 
-                #         route[-1].s, 
-                #         generation, 
-                #         route,
-                #     ))
+    #             # elif option == 2:
+    #             #     prio_cost_routes.put((
+    #             #         route[-1].cost, 
+    #             #         len(route), 
+    #             #         route[-1].s, 
+    #             #         generation, 
+    #             #         route,
+    #             #     ))
 
-                routes.append(route)
+    #             routes.append(route)
 
-            # Next time slot
-            time_1 += self.slot_time
+    #         # Next time slot
+    #         time_1 += self.slot_time
 
-        if option == 0 and not prio_length_routes.empty():
-            route = prio_length_routes.get()
-            return route[3]
+    #     if option == 0 and not prio_length_routes.empty():
+    #         route = prio_length_routes.get()
+    #         return route[3]
 
-        elif option == 1 and not prio_time_routes.empty():
-            route = prio_time_routes.get()
-            return route[3]
+    #     elif option == 1 and not prio_time_routes.empty():
+    #         route = prio_time_routes.get()
+    #         return route[3]
 
-        elif option == 2 and not prio_cost_routes.empty():
-            route = prio_cost_routes.get()
-            return route[3]
+    #     elif option == 2 and not prio_cost_routes.empty():
+    #         route = prio_cost_routes.get()
+    #         return route[3]
 
-        return []
+    #     return []
 
     

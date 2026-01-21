@@ -3,6 +3,7 @@ import os
 import random
 import matplotlib.pyplot as plt
 import numpy as np
+import time
 
 #borrar consola
 # os.system('cls')
@@ -14,10 +15,11 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../.
 from uspace.grid_planner.grid_planner import GridPlanner
 
 random.seed(1)
-gp = GridPlanner(max_route_length=2000)
+gp = GridPlanner(max_route_length=1000)
 start_grid = -500
 end_grid = 500
 exploration = []
+exec_times = []
 
 def build_plot():
     grid_nodes = 10
@@ -83,18 +85,20 @@ def draw_route(axe, origin, destination, start_time, end_time, verbose=False, re
         print(f"Destination: {destination} - {end_time} -> ({dest_node.i}, {dest_node.j}, {dest_node.l})")
         print()
 
+    start_exec = time.time()
     route, explored_nodes = gp.get_route(origin, destination, start_time, end_time, reverse)
-    
+    end_exec = time.time()
+    exploration.append(explored_nodes)
+    exec_times.append(round(end_exec - start_exec, 7))
+
     if route:
         length = len(route)
-        exploration.append(explored_nodes)
 
         if verbose:
             # gp.print_route(route)
             print(f"Length: {length}")
-            print(f"Explored nodes: {explored_nodes}")
 
-        # gp.reserve_nodes(route)
+        gp.reserve_nodes(route)
 
         # Plot the route
         X = []
@@ -147,14 +151,20 @@ if __name__ == "__main__":
         gp.debug = True
         gp.debug_figure = axe
 
+    begin_exec_time = time.time()
     for i in range(routes_amount):
         if verbose:
             print(f"{i+1}º:")
-        draw_route(axe, origins[i], destinations[i], start_times, end_time, verbose=verbose, reverse=False)
-        draw_route(axe, destinations[i], origins[i], start_times, end_time, verbose=verbose, reverse=True)
+        draw_route(axe, origins[i], destinations[i], start_times[i], end_time, verbose=verbose, reverse=False)
+        # draw_route(axe, destinations[i], origins[i], start_times[i], end_time, verbose=verbose, reverse=True)
+    finish_exec_time = time.time()
 
-    print(exploration)
-    print(len(exploration))
+    print(f"Explored nodes per route: {exploration}")
+    print(f"Execution times per route: {exec_times}")
+    print(f"Total routes computed: {len(exploration)}")
+    print(f"Average route explored nodes: {np.mean(exploration)} nodes")
+    print(f"Average route execution time: {round(np.mean(exec_times), 7)} seconds")
+    print(f"Total execution time: {round(finish_exec_time - begin_exec_time, 7)} seconds")
     
     plt.grid(True)
     plt.show()    
