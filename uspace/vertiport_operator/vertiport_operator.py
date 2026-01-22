@@ -13,21 +13,30 @@ class VertiportOperator:
         self.pads: dict[str, VertiportPad] = {}
 
         # MQTT client
+        self.callback_topics = [
+
+        ]
         self.mqtt_client = MQTTService.build_client(self.id)
         self.mqtt_is_connected = False
         self.mqtt_subscribed_topics = set()
 
-
+    # ----------------------
+    # --- MQTT Methods -----
+    # ----------------------
     def connect_mqtt_client(self):
         if not self.mqtt_is_connected:
             success = MQTTService.connect_client(self.mqtt_client)
             if success:
                 self.mqtt_is_connected = True
 
+                for topic in self.callback_topics:
+                    self.subscribe_mqtt_topic(topic)
+
     def disconnect_client(self):
         if self.mqtt_is_connected:
             self.mqtt_is_connected = False
             MQTTService.disconnect_client(self.mqtt_client)
+            self.mqtt_subscribed_topics.clear()
 
     def subscribe_mqtt_topic(self, topic):
         if topic in self.mqtt_subscribed_topics:
@@ -39,11 +48,15 @@ class VertiportOperator:
     def send_mqtt_msg(self, topic, msg):
         self.mqtt_client.publish(topic, msg)
 
+    # ----------------------
+    # --- USpace Methods ---
+    # ----------------------
     def register_into_airspace(self):
         topic = Topics.VERTIPORT_OPERATOR_REGISTER.value
         msg = {
             "id": self.id,
-            "name": self.name
+            "name": self.name,
+            "grid_connection": self.grid_connection
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
         

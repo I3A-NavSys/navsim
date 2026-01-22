@@ -19,26 +19,36 @@ class MissionManager:
         self.mqtt_subscribed_topics = set()
 
         # MQTT Callbacks
+        self.callback_topics = [
+            f"{Topics.REQUEST_VERTIPORT_OPERATOR_LIST.value}/{self.id}",
+            f"{Topics.REQUEST_UAV_OPERATOR_LIST.value}/{self.id}"
+        ]
         self.mqtt_client.message_callback_add(
-            Topics.REQUEST_VERTIPORT_OPERATOR_LIST.value,
+            f"{Topics.REQUEST_VERTIPORT_OPERATOR_LIST.value}/{self.id}",
             self.on_receive_vertiport_operator_list
         )
         self.mqtt_client.message_callback_add(
-            Topics.REQUEST_UAV_OPERATOR_LIST.value,
+            f"{Topics.REQUEST_UAV_OPERATOR_LIST.value}/{self.id}",
             self.on_receive_uav_operator_list
         )
 
-
+    # ----------------------
+    # --- MQTT Methods -----
+    # ----------------------
     def connect_mqtt_client(self):
         if not self.mqtt_is_connected:
             success = MQTTService.connect_client(self.mqtt_client)
             if success:
                 self.mqtt_is_connected = True
 
+                for topic in self.callback_topics:
+                    self.subscribe_mqtt_topic(topic)
+
     def disconnect_client(self):
         if self.mqtt_is_connected:
             self.mqtt_is_connected = False
             MQTTService.disconnect_client(self.mqtt_client)
+            self.mqtt_subscribed_topics.clear()
 
     def subscribe_mqtt_topic(self, topic):
         if topic in self.mqtt_subscribed_topics:
@@ -50,6 +60,9 @@ class MissionManager:
     def send_mqtt_msg(self, topic, msg):
         self.mqtt_client.publish(topic, msg)
 
+    # ----------------------
+    # --- USpace Methods ---
+    # ----------------------
     def request_vertiport_operator_list(self):
         topic = Topics.REQUEST_VERTIPORT_OPERATOR_LIST.value
         msg = {
@@ -82,7 +95,9 @@ class MissionManager:
     def on_receive_vertiport_operator_list(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())
         self.vertiport_operators = data["vertiport_operators"]
+        print(f"[Mission Manager] - Received Vertiport operator list:\n\t{self.vertiport_operators}")
 
     def on_receive_uav_operator_list(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())
         self.uav_operators = data["uav_operators"]
+        print(f"[Mission Manager] - Received UAV operator list:\n\t{self.uav_operators}")

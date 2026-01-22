@@ -10,8 +10,9 @@ class UAVOperator:
         self.id: str = id
         self.name: str = name
         self.private_vertiport_operator_id: str = private_vertiport_operator_id
+        # Keep track of UAVs: {mission_type: {uav_id: UAV}}
         self.uavs: dict[MissionType, dict[str, UAV]] = {}
-        # Keep track of missions' processing status: 
+        # Keep track of missions' processing status (used when requesting routes): 
         # {manager_id: {mission_id: (stop_list, stop_time, current_destination_stop_index)}}
         self.missions_processing_status: dict[str, dict[str, tuple[list, list, int]]] = {}
 
@@ -21,9 +22,17 @@ class UAVOperator:
         self.mqtt_subscribed_topics = set()
 
         # MQTT Callbacks
+        self.callback_topics = [
+            f"{Topics.MISSION_UAV_SERVICE.value}/{self.id}",
+            f"{Topics.REQUEST_ROUTE.value}/{self.id}"
+        ]
         self.mqtt_client.message_callback_add(
             f"{Topics.MISSION_UAV_SERVICE.value}/{self.id}", 
             self.on_request_uav_service
+        )
+        self.mqtt_client.message_callback_add(
+            f"{Topics.REQUEST_ROUTE.value}/{self.id}", 
+            self.on_request_route_response
         )
 
     # ----------------------
@@ -34,11 +43,15 @@ class UAVOperator:
             success = MQTTService.connect_client(self.mqtt_client)
             if success:
                 self.mqtt_is_connected = True
+                
+                for topic in self.callback_topics:
+                    self.subscribe_mqtt_topic(topic)
 
     def disconnect_mqtt_client(self):
         if self.mqtt_is_connected:
             self.mqtt_is_connected = False
             MQTTService.disconnect_client(self.mqtt_client)
+            self.mqtt_subscribed_topics.clear()
 
     def subscribe_mqtt_topic(self, topic):
         if topic in self.mqtt_subscribed_topics:
@@ -49,6 +62,22 @@ class UAVOperator:
 
     def send_mqtt_msg(self, topic, msg):
         self.mqtt_client.publish(topic, msg)
+
+    # -------------------------
+    # --- Auxiliary Methods ---
+    # -------------------------
+    def get_available_uavs(self, mission_type):
+        if mission_type not in self.uavs:
+            return []
+        
+        available_uavs = [
+            uav for uav in self.uavs[mission_type].values()
+            if uav.status == UAVStatus.AVAILABLE
+        ]
+        return available_uavs
+
+    def free_resources(self):
+        pass
 
     # ----------------------
     # --- USpace Methods ---
@@ -62,7 +91,7 @@ class UAVOperator:
         self.send_mqtt_msg(topic, json.dumps(msg))
 
     def cancel_mission(self, manager_id, mission_id):
-        topic = Topics.MISSION_UAV_SERVICE.value + f"/{manager_id}"
+        topic = Topics.MISSION_STATUS_UPDATE.value + f"/{manager_id}"
         msg = {
             "id": self.id,
             "mission_id": mission_id,
@@ -72,22 +101,23 @@ class UAVOperator:
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
 
-    def get_available_uavs(self, mission_type):
-        if mission_type not in self.uavs:
-            return []
-        
-        available_uavs = [
-            uav for uav in self.uavs[mission_type].values()
-            if uav.status == UAVStatus.AVAILABLE
-        ]
-        return available_uavs
-    
-    def request_route(self, origin, destination, takeoff_time, landing_time, stop_time):
+    def request_route(
+        self, 
+        mission_manager_id, 
+        mission_id, 
+        origin_vertiport, 
+        destination_vertiport, 
+        takeoff_time, 
+        landing_time, 
+        stop_time
+    ):
         topic = Topics.REQUEST_ROUTE.value
         msg = {
             "id": self.id,
-            "origin_vertiport": origin,
-            "destination_vertiport": destination,
+            "mission_manager_id": mission_manager_id,
+            "mission_id": mission_id,
+            "origin_vertiport": origin_vertiport,
+            "destination_vertiport": destination_vertiport,
             "takeoff_time": takeoff_time,
             "landing_time": landing_time,
             "stop_time": stop_time,
@@ -100,27 +130,27 @@ class UAVOperator:
     def on_request_uav_service(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())
 
-        # Will be obtained from data
-        manager_id = None
-        mission_id = None
-        mission_type = None
-        stop_list = None
-        stop_time = None
-        landing_time = None
+        # Extract mission data
+        mission_manager_id = data["id"]
+        mission_id = data["mission_id"]
+        mission_type = data["mission_type"]
+        stop_list = data["stop_list"]
+        stop_time = data["stop_times"]
+        landing_time = data["landing_time"]
 
         # Return if this UAV Operator does not support the requested mission type
         if mission_type not in self.uavs:
-            self.cancel_mission(manager_id, mission_id)
+            self.cancel_mission(mission_manager_id, mission_id)
             return
         
         # Return if there are no available UAVs (temporal)
         available_uavs = self.get_available_uavs(mission_type)
         if not available_uavs:
-            self.cancel_mission(manager_id, mission_id)
+            self.cancel_mission(mission_manager_id, mission_id)
             return
         
         # Initialize mission processing status
-        self.missions_processing_status[manager_id][mission_id] = (stop_list, stop_time, 0)
+        self.missions_processing_status[mission_manager_id][mission_id] = (stop_list, stop_time, 0)
         
         # Ask for first route (from private vertiport to first stop)
         assigned_uav = available_uavs[0]
@@ -133,6 +163,24 @@ class UAVOperator:
             stop_time=stop_time[0]
         )
 
+    def on_request_route_response(self, client, userdata, msg):
+        data = json.loads(msg.payload.decode())
 
+        # Extract route response data
+        uspace_manager_id = data["id"]
+        mission_manager_id = data["mission_manager_id"]
+        mission_id = data["mission_id"]
+        route = data["route"]
+
+        print(f"[UAV Operator] - Received route for mission {mission_id}:\n\t{route}")
+
+        # Cancel mission if no route is found
+        if not route:
+            self.cancel_mission(mission_manager_id, mission_id)
+            return
+        
+        
+
+        
 
 
