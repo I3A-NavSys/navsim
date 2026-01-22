@@ -488,6 +488,9 @@ class GridPlanner:
 
         :param origin: Cartesian coordinates of the origin [x, y, z]
         :param destination: Cartesian coordinates of the destination [x, y, z]
+        :param start_time: Start time in seconds
+        :param end_time: End time in seconds
+        :param reverse: Whether to compute the route in reverse direction
         """
 
         # Variables initialization
@@ -525,7 +528,7 @@ class GridPlanner:
 
                 if is_landing_incorrect:    continue
 
-                return self.get_route_from_node(node, reverse), len(explored_nodes)
+                return self.get_route_from_node(node, reverse)
             
             # Mark node as explored
             explored_nodes.append((node.i, node.j, node.l))
@@ -555,5 +558,5 @@ class GridPlanner:
 
                 heapq.heappush(open_nodes, (f_new_node, generation, new_node))
 
-        return [], len(explored_nodes)
+        return []
     
