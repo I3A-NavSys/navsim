@@ -1,19 +1,21 @@
 import numpy as np
+import pickle
+import base64
 
 
 import omni.physx
 
 
 from uspace.flight_plan.command import Command
-from navsim_utils.extensions_utils import ExtensionUtils
+from navsim_utils.sim_utils import *
 from .joysticks import Joysticks
 
 class Controller:
     def __init__(self):
         self.current_time = 0
         self.is_running = False
-        self.linear_vel_limit = 3.5
-        self.ang_vel_limit = 1
+        self.linear_vel_limit = 6.0
+        self.ang_vel_limit = 0.7
         self.joysticks = Joysticks()
         self.physics_sub = None
         
@@ -104,11 +106,30 @@ class Controller:
                             duration = 0.1)
 
             uav_i = int(uav_name.removeprefix("UAV_"))
-            self.uav_control.commands[uav_name] = command
+            self.uav_control.commands[uav_i] = command
             self.uav_control.cmd_exp_time[uav_i] = self.current_time + command.duration
+            # serialized_cmd = base64.b64encode(pickle.dumps(command)).decode('utf-8')
+            # self.inform_operator(TypeMessage.CMD_FP_REQUEST, uav_i, serialized_cmd)
 
-            # print(self.uav_control.commands["UAV_0"].print_command())
+            # print(self.uav_control.commands[uav_i].print_command())
 
     def check_joysticks(self):
         _, joysticks_inputs = self.joysticks.get_inputs()
         return joysticks_inputs
+    
+    def inform_operator(self, type_message, uav_id, cmd):
+        """Inform the operator about the command to be sent to the UAV"""
+        
+        payload = {"type_message": type_message}
+        msg = {"sender": TypeSender.COMMAND_GENERATOR}
+
+        match type_message:
+            case TypeMessage.CMD_FP_REQUEST:
+                msg["request"] = {
+                    "uav_id": uav_id,
+                    "cmd": cmd
+                }
+
+        payload["msg"] = msg
+
+        self.event_stream.push(self.operator_uav_event, payload=payload)

@@ -12,7 +12,8 @@ import omni.kit.app
 
     
 from .controller import Controller
-from fleet.uav_matrix_control_quadcopter import UAVcontrol
+# from fleet.uav_matrix_control_quadcopter import UAVcontrol
+from fleet.uav_matrix_control import UAVcontrol
 
 project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
 if project_root_path not in sys.path:
@@ -47,7 +48,7 @@ class MultiManualController(omni.ext.IExt):
             self.torch_device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
             try:
-                self.rigid_prim_view = RigidPrimView(["/World/*/UAV_*",])
+                self.rigid_prim_view = RigidPrimView(["/World/UAVs/UAV_*",])
                 self.rigid_prim_view.initialize()
             except Exception as e:
                 carb.log_warn(f"[REMOTE COMMAND ext] Error initializing RigidPrimView: {e}")
