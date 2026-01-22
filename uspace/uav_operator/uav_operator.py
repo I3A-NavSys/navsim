@@ -90,8 +90,8 @@ class UAVOperator:
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
 
-    def cancel_mission(self, manager_id, mission_id):
-        topic = Topics.MISSION_STATUS_UPDATE.value + f"/{manager_id}"
+    def cancel_mission(self, mission_manager_id, mission_id):
+        topic = f"{Topics.MISSION_STATUS_UPDATE.value}/{mission_manager_id}"
         msg = {
             "id": self.id,
             "mission_id": mission_id,
@@ -103,10 +103,12 @@ class UAVOperator:
 
     def request_route(
         self, 
+        uav_pad_id,
         mission_manager_id, 
         mission_id, 
-        origin_vertiport, 
-        destination_vertiport, 
+        mission_type,
+        origin_vertiport_id, 
+        destination_vertiport_id, 
         takeoff_time, 
         landing_time, 
         stop_time
@@ -114,10 +116,12 @@ class UAVOperator:
         topic = Topics.REQUEST_ROUTE.value
         msg = {
             "id": self.id,
+            "uav_pad_id": uav_pad_id,
             "mission_manager_id": mission_manager_id,
             "mission_id": mission_id,
-            "origin_vertiport": origin_vertiport,
-            "destination_vertiport": destination_vertiport,
+            "mission_type": mission_type,
+            "origin_vertiport_id": origin_vertiport_id,
+            "destination_vertiport_id": destination_vertiport_id,
             "takeoff_time": takeoff_time,
             "landing_time": landing_time,
             "stop_time": stop_time,
@@ -156,11 +160,15 @@ class UAVOperator:
         assigned_uav = available_uavs[0]
         assigned_uav.status = UAVStatus.OCCUPIED    # Reserve UAV
         self.request_route(
-            origin=self.private_vertiport_operator_id,
-            destination=stop_list[0],
+            uav_pad_id=assigned_uav.pad_id,
+            mission_manager_id=mission_manager_id,
+            mission_id=mission_id,
+            mission_type=mission_type,
+            origin_vertiport_id=self.private_vertiport_operator_id,
+            destination_vertiport_id=stop_list[0],
             takeoff_time=None,   # None as we don't know when to start to arrive on time
             landing_time=landing_time,
-            stop_time=stop_time[0]
+            stop_time=stop_time[0],
         )
 
     def on_request_route_response(self, client, userdata, msg):

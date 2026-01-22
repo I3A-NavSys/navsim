@@ -21,7 +21,8 @@ class MissionManager:
         # MQTT Callbacks
         self.callback_topics = [
             f"{Topics.REQUEST_VERTIPORT_OPERATOR_LIST.value}/{self.id}",
-            f"{Topics.REQUEST_UAV_OPERATOR_LIST.value}/{self.id}"
+            f"{Topics.REQUEST_UAV_OPERATOR_LIST.value}/{self.id}",
+            f"{Topics.MISSION_STATUS_UPDATE.value}/{self.id}"
         ]
         self.mqtt_client.message_callback_add(
             f"{Topics.REQUEST_VERTIPORT_OPERATOR_LIST.value}/{self.id}",
@@ -30,6 +31,10 @@ class MissionManager:
         self.mqtt_client.message_callback_add(
             f"{Topics.REQUEST_UAV_OPERATOR_LIST.value}/{self.id}",
             self.on_receive_uav_operator_list
+        )
+        self.mqtt_client.message_callback_add(
+            f"{Topics.MISSION_STATUS_UPDATE.value}/{self.id}",
+            self.on_receive_uav_mission_update
         )
 
     # ----------------------
@@ -101,3 +106,6 @@ class MissionManager:
         data = json.loads(msg.payload.decode())
         self.uav_operators = data["uav_operators"]
         print(f"[Mission Manager] - Received UAV operator list:\n\t{self.uav_operators}")
+
+    def on_receive_uav_mission_update(self, client, userdata, msg):
+        pass

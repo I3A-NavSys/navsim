@@ -18,6 +18,17 @@ class USpaceManager:
         self.uav_operators: dict[str, str] = {}
         # Dictionary of vertiport operators: {id: {name: V0, grid_conn: [1,1,1]}}
         self.vertiport_operators: dict[str, dict[str, Any]] = {}
+        # Dictionary of missions' processing status (used when requesting routes):
+        # {uav_operator_id: {
+        #   manager_id: {
+        #       mission_id: {
+        #           "takeoff_flightplan": FP, 
+        #           "landing_flightplan": FP, 
+        #           "grid_flightplan": FP}
+        #       }
+        #   }
+        # }
+        self.missions_processing_status: dict[str, dict[str, tuple[list, list, int]]] = {}
 
         # MQTT client
         self.mqtt_client = MQTTService.build_client(self.id)
@@ -89,7 +100,15 @@ class USpaceManager:
     # ----------------------
     # --- USpace Methods ---
     # ----------------------
-    def request_vertiport_route(self, vertiport_operator_id, time):
+    def request_vertiport_flightplan(
+        self, 
+        vertiport_operator_id, 
+        pad_id,
+        is_landing, 
+        mission_type, 
+        time, 
+        stop_time
+    ):
         pass
 
     # ----------------------
@@ -153,10 +172,12 @@ class USpaceManager:
 
         # Extract route request data
         uav_operator_id = data["id"]
+        uav_pad_id = data["uav_pad_id"]
         mission_manager_id = data["mission_manager_id"]
         mission_id = data["mission_id"]
-        origin_vertiport = data["origin_vertiport"]
-        destination_vertiport = data["destination_vertiport"]
+        mission_type = data["mission_type"]
+        origin_vertiport_id = data["origin_vertiport_id"]
+        destination_vertiport_id = data["destination_vertiport_id"]
         takeoff_time = data["takeoff_time"]
         landing_time = data["landing_time"]
         stop_time = data["stop_time"]
@@ -165,14 +186,14 @@ class USpaceManager:
         is_reversed = landing_time != None
 
         # Get origin and destination grid connections
-        origin = self.vertiport_operators[origin_vertiport]["grid_connection"]
-        destination = self.vertiport_operators[destination_vertiport]["grid_connection"]
+        origin_grid_connection = self.vertiport_operators[origin_vertiport_id]["grid_connection"]
+        destination_grid_connection = self.vertiport_operators[destination_vertiport_id]["grid_connection"]
 
         # Compute the route
         if is_reversed:
             route = self.airspace.get_route(
-                origin=destination, 
-                destination=origin,
+                origin=destination_grid_connection["landing"], 
+                destination=origin_grid_connection["takeoff"],
                 start_time=landing_time,
                 end_time=0,
                 reverse=True
@@ -180,21 +201,59 @@ class USpaceManager:
 
         else:
             route = self.airspace.get_route(
-                origin=origin, 
-                destination=destination,
+                origin=origin_grid_connection["takeoff"], 
+                destination=destination_grid_connection["landing"],
                 start_time=takeoff_time,
                 end_time=0,
                 reverse=False
             )
 
-        topic = f"{Topics.REQUEST_ROUTE.value}/{uav_operator_id}"
-        msg = {
-            "id": self.id,
-            "mission_manager_id": mission_manager_id,
-            "mission_id": mission_id,
-            "route": route
+        # Cancel mission if no route was found
+        if not route:
+            topic = f"{Topics.REQUEST_ROUTE.value}/{uav_operator_id}"
+            msg = {
+                "id": self.id,
+                "mission_manager_id": mission_manager_id,
+                "mission_id": mission_id,
+                "route": None
+            }
+            self.send_mqtt_msg(topic, json.dumps(msg))
+            return
+
+        grid_flightplan = self.airspace.get_flightplan_from_route(route)
+        
+        grid_flightplan_init_time = grid_flightplan.init_time()
+        grid_flightplan_finish_time = grid_flightplan.finish_time()
+        #TODO: Check begin time is in the past
+
+        # Store mission processing status
+        self.missions_processing_status[uav_operator_id] = {}
+        self.missions_processing_status[uav_operator_id][mission_manager_id] = {}
+        self.missions_processing_status[uav_operator_id][mission_manager_id][mission_id] = {
+            "takeoff_flightplan": None,
+            "landing_flightplan": None,
+            "grid_flightplan": grid_flightplan
         }
-        self.send_mqtt_msg(topic, json.dumps(msg))
+
+        # Request takeoff flightplan 
+        self.request_vertiport_flightplan(
+            vertiport_operator_id=origin_vertiport_id,
+            pad_id=uav_pad_id,
+            is_landing=False,
+            mission_type=mission_type,
+            time=grid_flightplan_init_time,
+            stop_time=0
+        )
+
+        # Request landing flightplan
+        self.request_vertiport_flightplan(
+            vertiport_operator_id=destination_vertiport_id,
+            pad_id=None,
+            is_landing=True,
+            mission_type=mission_type,
+            time=grid_flightplan_finish_time,
+            stop_time=stop_time
+        )
     
     def on_receive_route(self, client, userdata, msg):
         pass

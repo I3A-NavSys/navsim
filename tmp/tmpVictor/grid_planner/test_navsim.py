@@ -16,16 +16,20 @@ from uspace.uspace_manager.uspace_manager import USpaceManager
 
 mission_mgr = MissionManager()
 uspace_mgr = USpaceManager()
-uav_op1 = UAVOperator(id="UAV_OP_001", name="UAV Operator 1")
+uav_op1 = UAVOperator(
+    id="UAV_OP_001", 
+    name="UAV Operator 1",
+    private_vertiport_operator_id="VERT_OP_001"
+)
 vert_op1 = VertiportOperator(
     id="VERT_OP_001", 
     name="Vertiport Operator 1",
-    grid_connection=[0, 0, 0]
+    grid_connection={"takeoff": [0, 0, 0], "landing": [-100, 0, 0]}
 )
 vert_op2 = VertiportOperator(
     id="VERT_OP_002",
     name="Vertiport Operator 2",
-    grid_connection=[300, 400, 0]
+    grid_connection={"takeoff": [400, 400, 0], "landing": [300, 400, 0]}
 )
 
 mission_mgr.connect_mqtt_client()

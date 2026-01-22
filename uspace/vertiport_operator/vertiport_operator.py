@@ -9,16 +9,22 @@ class VertiportOperator:
     def __init__(self, id=None, name=None, grid_connection=None):
         self.id: str = id
         self.name: str = name
-        self.grid_connection: tuple[float, float, float] = grid_connection
+        self.grid_connection: dict[str, tuple[float, float, float]] = grid_connection
         self.pads: dict[str, VertiportPad] = {}
 
         # MQTT client
-        self.callback_topics = [
-
-        ]
         self.mqtt_client = MQTTService.build_client(self.id)
         self.mqtt_is_connected = False
         self.mqtt_subscribed_topics = set()
+
+        # MQTT Callbacks
+        self.callback_topics = [
+            f"{Topics.MISSION_VERTIPORT_SERVICE.value}/{self.id}"
+        ]
+        self.mqtt_client.message_callback_add(
+            f"{Topics.MISSION_VERTIPORT_SERVICE.value}/{self.id}",
+            self.on_request_vertiport_service
+        )
 
     # ----------------------
     # --- MQTT Methods -----
@@ -60,3 +66,9 @@ class VertiportOperator:
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
         
+    # ----------------------
+    # --- MQTT Callbacks ---
+    # ----------------------
+    def on_request_vertiport_service(self, client, userdata, msg):
+        pass
+
