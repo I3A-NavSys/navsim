@@ -1,0 +1,16 @@
+id_run_name,reward,max_reward,std,num_envs_test,checkpoint
+ppo_random_command2_11,141.5472813397646,141.5472813397646,0.0,1,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid_command_v2/best_model_ppo_random_command2_11_8196.pt
+ppo_random_command2_25,224.2644363641739,224.2644363641739,0.0,1,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid_command_v2/best_model_ppo_random_command2_25_2048.pt
+ppo_random_command2_19,191.27174484729767,191.27174484729767,0.0,1,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid_command_v2/best_model_ppo_random_command2_19_2048.pt
+ppo_random_command2_24,185.66741965711117,185.66741965711117,0.0,1,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid_command_v2/best_model_ppo_random_command2_24_8196.pt
+ppo_random_command2_10,192.78187857568264,192.78187857568264,0.0,1,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid_command_v2/best_model_ppo_random_command2_10_4096.pt
+ppo_random_command2_11,211.83406201165457,246.46056051552296,39.085139269162056,64,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid_command_v2/best_model_ppo_random_command2_11_8196.pt
+ppo_random_command2_25,224.87139874787042,259.8391460478306,39.909847003010015,64,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid_command_v2/best_model_ppo_random_command2_25_2048.pt
+ppo_random_command2_19,194.8740119591821,265.4403636455536,18.135123865202132,64,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid_command_v2/best_model_ppo_random_command2_19_2048.pt
+ppo_random_command2_24,188.69384683505632,240.25185590982437,16.26979464627719,64,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid_command_v2/best_model_ppo_random_command2_24_8196.pt
+ppo_random_command2_10,188.80850167828612,221.8137617111206,7.824722475235731,64,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid_command_v2/best_model_ppo_random_command2_10_4096.pt
+ppo_random_command2_11,211.76270771280483,251.12527000904083,50.53140519779792,256,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid_command_v2/best_model_ppo_random_command2_11_8196.pt
+ppo_random_command2_25,219.8930634431317,260.41659493744373,45.476781102969326,256,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid_command_v2/best_model_ppo_random_command2_25_2048.pt
+ppo_random_command2_19,194.4971274791169,296.6932526230812,17.245664539462247,256,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid_command_v2/best_model_ppo_random_command2_19_2048.pt
+ppo_random_command2_24,190.19236445100978,264.7579936981201,13.676966287126548,256,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid_command_v2/best_model_ppo_random_command2_24_8196.pt
+ppo_random_command2_10,189.50929991109297,247.28583326935768,10.340523843701893,256,C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid_command_v2/best_model_ppo_random_command2_10_4096.pt
