@@ -1,5 +1,6 @@
 import json
 
+from uspace.flight_plan.flight_plan import FlightPlan
 from uspace.uspace_manager.constants import Topics, MissionStatus, UAVStatus, MissionType
 from uspace.mqtt.mqtt_service import MQTTService
 from .uav import UAV
@@ -178,12 +179,17 @@ class UAVOperator:
         uspace_manager_id = data["id"]
         mission_manager_id = data["mission_manager_id"]
         mission_id = data["mission_id"]
-        route = data["route"]
+        raw_flightplan = data["flightplan"]
 
-        print(f"[UAV Operator] - Received route for mission {mission_id}:\n\t{route}")
+        # Construct FlightPlan object from raw data
+        flightplan = FlightPlan()
+        flightplan.from_dict(raw_flightplan)
+
+        print(f"[UAV Operator] - Received flightplan for mission {mission_id}:")
+        flightplan.print_waypoints()
 
         # Cancel mission if no route is found
-        if not route:
+        if not flightplan:
             self.cancel_mission(mission_manager_id, mission_id)
             return
         

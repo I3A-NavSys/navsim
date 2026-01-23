@@ -215,7 +215,7 @@ class USpaceManager:
                 "id": self.id,
                 "mission_manager_id": mission_manager_id,
                 "mission_id": mission_id,
-                "route": None
+                "flightplan": None
             }
             self.send_mqtt_msg(topic, json.dumps(msg))
             return

@@ -168,12 +168,12 @@ class GridPlanner:
 
                 is_180_turn = (
                     last_node_index - node_index >= 2   and 
-                    route[node_index + 2].i == i        and 
-                    route[node_index + 2].l == "X"
+                    route[node_index + 2][0] == i        and 
+                    route[node_index + 2][2] == "X"
                 )
                 is_90_turn = (
                     last_node_index - node_index >= 1   and 
-                    route[node_index + 1].l == "Y"
+                    route[node_index + 1][2] == "Y"
                 )
                 
                 if is_180_turn:
@@ -200,12 +200,12 @@ class GridPlanner:
 
                 is_180_turn = (
                     last_node_index - node_index >= 2   and 
-                    route[node_index + 2].j == j        and 
-                    route[node_index + 2].l == "Y"
+                    route[node_index + 2][1] == j        and 
+                    route[node_index + 2][2] == "Y"
                 )
                 is_90_turn = (
                     last_node_index - node_index >= 1   and 
-                    route[node_index + 1].l == "X"
+                    route[node_index + 1][2] == "X"
                 )
 
                 if is_180_turn:

@@ -1,3 +1,4 @@
+from tabulate import tabulate
 import copy
 from typing import List, Optional
 import numpy as np
@@ -22,10 +23,10 @@ class FlightPlan:
         self.id: int = 0
         self.priority: int = 0
         self.radius: float = 1
-        self.maxVarLinVel = 5        # maximum variation in linear  velocity   [  m/s]
-        self.maxVarAngVel = 1        # maximum variation in angular velocity   [rad/s]
+        self.max_var_lin_vel = 5        # maximum variation in linear  velocity   [  m/s]
+        self.max_var_ang_vel = 1        # maximum variation in angular velocity   [rad/s]
+        self.target_yaw = None
         self.waypoints: List[Waypoint] = []
-        self.targetYaw = None
 
     def set_waypoint(self, wp=None, label="", time=None, pos=None, vel=None, heading=None):
         numWPs = len(self.waypoints)
@@ -106,6 +107,54 @@ class FlightPlan:
         fp = FlightPlan()
         fp.waypoints = copy.deepcopy(self.waypoints)
         return fp
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "priority": self.priority,
+            "radius": self.radius,
+            "max_var_lin_vel": self.max_var_lin_vel,
+            "max_var_ang_vel": self.max_var_ang_vel,
+            "target_yaw": self.target_yaw,
+            "waypoints": [
+                {
+                    "label": wp.label,
+                    "t": wp.t,
+                    "pos": wp.pos.tolist(),
+                    "vel": wp.vel.tolist(),
+                    "acel": wp.acel.tolist(),
+                    "jerk": wp.jerk.tolist(),
+                    "snap": wp.snap.tolist(),
+                    "crakle": wp.crakle.tolist(),
+                    "fly_over": wp.fly_over,
+                    "heading": wp.heading if wp.heading is not None else None
+                }
+                for wp in self.waypoints
+            ]
+        }
+    
+    def from_dict(self, data: dict):
+        self.id = data.get("id", 0)
+        self.priority = data.get("priority", 0)
+        self.radius = data.get("radius", 1)
+        self.max_var_lin_vel = data.get("max_var_lin_vel", 5)
+        self.max_var_ang_vel = data.get("max_var_ang_vel", 1)
+        self.target_yaw = data.get("target_yaw", None)
+        self.waypoints = []
+        for wp_data in data.get("waypoints", []):
+            wp = Waypoint(
+                label=wp_data.get("label", ""),
+                t=wp_data.get("t", 0),
+                pos=wp_data.get("pos", [0, 0, 0]),
+                vel=wp_data.get("vel", [0, 0, 0]),
+                acel=wp_data.get("acel", [0, 0, 0]),
+                jerk=wp_data.get("jerk", [0, 0, 0]),
+                snap=wp_data.get("snap", [0, 0, 0]),
+                crakle=wp_data.get("crakle", [0, 0, 0]),
+                fly_over=wp_data.get("fly_over", False),
+                heading=wp_data.get("heading", None)
+            )
+            self.waypoints.append(wp)
 
     #------------------------------------------------------------------------------------------------------------------
     # TIME MANAGEMENT
@@ -419,9 +468,9 @@ class FlightPlan:
         # SMOOTHING COMMANDED VELOCITY
         varVel = cmdVel - UAVvel
         # varVelMagnitude = np.linalg.norm(varVel)
-        # if varVelMagnitude > self.maxVarLinVel:
+        # if varVelMagnitude > self.max_var_lin_vel:
         #     varVel /= varVelMagnitude # Normalize
-        #     varVel *= self.maxVarLinVel
+        #     varVel *= self.max_var_lin_vel
         # print("varVel:", varVel)
 
         cmdVel = UAVvel + varVel
@@ -440,11 +489,11 @@ class FlightPlan:
             targetDir = WPheading
 
         if np.linalg.norm(targetDir) > 0:
-            self.targetYaw = np.arctan2(targetDir[1], targetDir[0])
-        elif self.targetYaw is None:
-            self.targetYaw = UAVyaw
+            self.target_yaw = np.arctan2(targetDir[1], targetDir[0])
+        elif self.target_yaw is None:
+            self.target_yaw = UAVyaw
 
-        errorYaw = self.targetYaw - UAVyaw
+        errorYaw = self.target_yaw - UAVyaw
         while errorYaw < -np.pi:
             errorYaw += 2*np.pi
 
@@ -454,11 +503,11 @@ class FlightPlan:
         # COMPUTING TARGET ANGULAR VELOCITY
         currentWel = errorYaw / tToSolve
         
-        # if currentWel < -self.maxVarAngVel:
-        #     currentWel = -self.maxVarAngVel
+        # if currentWel < -self.max_var_ang_vel:
+        #     currentWel = -self.max_var_ang_vel
         
-        # if self.maxVarAngVel < currentWel:
-        #     currentWel = self.maxVarAngVel
+        # if self.max_var_ang_vel < currentWel:
+        #     currentWel = self.max_var_ang_vel
 
         # CREATING COMMANDED RELATIVE VELOCITY VECTOR
         cmd = Command(
@@ -507,8 +556,23 @@ class FlightPlan:
 
     def print_waypoints(self) -> None:
         """Prints all waypoints in the flight plan with their time, position, and velocity."""
-        for wp in self.waypoints:
-            print(f"{wp.label} \t  {wp.t} pos{wp.pos} vel{wp.vel}")
+        table = [
+            [wp.label, wp.t, wp.pos, wp.vel, wp.acel, wp.jerk, wp.snap, wp.crakle] 
+            for wp in self.waypoints
+        ]
+        print(tabulate(
+            table, 
+            headers=[
+                "Label", 
+                "Time", 
+                "Position", 
+                "Velocity", 
+                "Acceleration", 
+                "Jerk", 
+                "Snap", 
+                "Crakle"
+            ]
+        ))
 
     def attach_cursor_annotations(self, cursor, waypoints):
         @cursor.connect("add")

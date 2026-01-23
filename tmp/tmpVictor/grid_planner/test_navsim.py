@@ -48,11 +48,13 @@ mission_mgr.request_uav_operator_list()
 mission_mgr.request_vertiport_operator_list()
 
 uav_op1.request_route(
+    uav_pad_id="PAD_001",
     mission_manager_id=mission_mgr.id,
     mission_id="MISSION_001",
-    origin_vertiport="VERT_OP_001",
-    destination_vertiport="VERT_OP_002",
-    takeoff_time=-2,
+    mission_type="DELIVERY",
+    origin_vertiport_id="VERT_OP_001",
+    destination_vertiport_id="VERT_OP_002",
+    takeoff_time=0,
     landing_time=None,
     stop_time=30
 )
