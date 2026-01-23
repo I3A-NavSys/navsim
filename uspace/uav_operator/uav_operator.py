@@ -191,7 +191,7 @@ class UAVOperator:
         mission_id = data["mission_id"]
         raw_flightplan = data["flightplan"]
 
-        # Construct FlightPlan object from raw data
+        # Construct flightPlan object from raw data
         flightplan = FlightPlan()
         flightplan.from_dict(raw_flightplan)
 
