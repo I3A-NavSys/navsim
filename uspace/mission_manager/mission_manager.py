@@ -1,4 +1,6 @@
+from tabulate import tabulate
 import json
+
 from uspace.mqtt.mqtt_service import MQTTService
 from msgs.mission_manager_msgs import MissionMsg
 from uspace.uspace_manager.constants import Topics
@@ -65,6 +67,18 @@ class MissionManager:
     def send_mqtt_msg(self, topic, msg):
         self.mqtt_client.publish(topic, msg)
 
+    # -------------------------
+    # --- Auxiliary Methods ---
+    # -------------------------
+    def log_dict_table(self, data, headers):
+        formatted_data = [
+            [key, json.dumps(value, indent=2)] 
+            for key, value in data.items()
+        ]
+
+        print(tabulate(formatted_data, headers=headers, tablefmt="grid"))
+        print()
+
     # ----------------------
     # --- USpace Methods ---
     # ----------------------
@@ -100,12 +114,18 @@ class MissionManager:
     def on_receive_vertiport_operator_list(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())
         self.vertiport_operators = data["vertiport_operators"]
-        print(f"[Mission Manager] - Received Vertiport operator list:\n\t{self.vertiport_operators}")
+
+        # Logging
+        print("[Mission Manager] - Received Vertiport operator list:")
+        self.log_dict_table(self.vertiport_operators, ["ID", "Data"])
 
     def on_receive_uav_operator_list(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())
         self.uav_operators = data["uav_operators"]
-        print(f"[Mission Manager] - Received UAV operator list:\n\t{self.uav_operators}")
+
+        # Logging
+        print("[Mission Manager] - Received UAV operator list:")
+        self.log_dict_table(self.uav_operators, ["ID", "Data"])
 
     def on_receive_uav_mission_update(self, client, userdata, msg):
         pass

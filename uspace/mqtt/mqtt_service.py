@@ -14,13 +14,13 @@ class MQTTService:
         result = client.connect(MQTTService.broker_address, MQTTService.broker_port)
 
         if result == 0:
-            print("Connected to MQTT Broker!")
+            # print("Connected to MQTT Broker!")
             client.loop_start()
             return True
         
         return False
 
     def disconnect_client(self, client):
-            print("Disconnected from MQTT Broker!")
+            # print("Disconnected from MQTT Broker!")
             client.loop_stop()
             client.disconnect()

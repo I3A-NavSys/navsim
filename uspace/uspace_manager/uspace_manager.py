@@ -1,6 +1,6 @@
+from tabulate import tabulate
 import json
 from typing import Any
-
 
 from uspace.uav_operator.uav_operator import UAVOperator
 from uspace.vertiport_operator.vertiport_operator import VertiportOperator
@@ -109,7 +109,16 @@ class USpaceManager:
         time, 
         stop_time
     ):
-        pass
+        topic = f"{Topics.MISSION_VERTIPORT_SERVICE.value}/{vertiport_operator_id}"
+        msg = {
+            "id": self.id,
+            "pad_id": pad_id,
+            "is_landing": is_landing,
+            "mission_type": mission_type,
+            "time": time,
+            "stop_time": stop_time
+        }
+        self.send_mqtt_msg(topic, json.dumps(msg))
 
     # ----------------------
     # --- MQTT Callbacks ---
@@ -123,7 +132,11 @@ class USpaceManager:
 
         # Store UAV operator data
         self.uav_operators[operator_id] = operator_name
-        print(f"[USpace Manager] - UAV Operator registered: {operator_id} - {operator_name}")
+
+        # Logging
+        print("[USpace Manager] - UAV Operator registered:")
+        print(tabulate([[operator_id, operator_name]], headers=["ID", "Name"]))
+        print()
 
     def on_vertiport_operator_register(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())
@@ -137,7 +150,11 @@ class USpaceManager:
         self.vertiport_operators[operator_id] = {}
         self.vertiport_operators[operator_id]["name"] = operator_name
         self.vertiport_operators[operator_id]["grid_connection"] = grid_connection
-        print(f"[USpace Manager] - Vertiport Operator registered: {operator_id} - {operator_name}")
+
+        # Logging
+        print("[USpace Manager] - Vertiport Operator registered:")
+        print(tabulate([[operator_id, operator_name]], headers=["ID", "Name"], showindex=True))
+        print()
 
     def on_request_uav_operator_list(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())
@@ -242,7 +259,7 @@ class USpaceManager:
             is_landing=False,
             mission_type=mission_type,
             time=grid_flightplan_init_time,
-            stop_time=0
+            stop_time=None
         )
 
         # Request landing flightplan

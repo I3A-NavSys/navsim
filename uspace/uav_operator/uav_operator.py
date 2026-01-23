@@ -1,3 +1,4 @@
+from tabulate import tabulate
 import json
 
 from uspace.flight_plan.flight_plan import FlightPlan
@@ -79,6 +80,15 @@ class UAVOperator:
 
     def free_resources(self):
         pass
+
+    def log_dict_table(self, data, headers):
+        formatted_data = [
+            [key, json.dumps(value, indent=2)] 
+            for key, value in data.items()
+        ]
+
+        print(tabulate(formatted_data, headers=headers, tablefmt="grid"))
+        print()
 
     # ----------------------
     # --- USpace Methods ---
@@ -185,8 +195,10 @@ class UAVOperator:
         flightplan = FlightPlan()
         flightplan.from_dict(raw_flightplan)
 
+        # Logging
         print(f"[UAV Operator] - Received flightplan for mission {mission_id}:")
         flightplan.print_waypoints()
+        print()
 
         # Cancel mission if no route is found
         if not flightplan:
