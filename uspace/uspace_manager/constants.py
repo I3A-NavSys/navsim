@@ -1,22 +1,24 @@
-from enum import Enum
-
-
-class MissionType(Enum):
+class MissionType:
     DELIVERY = "DELIVERY"
     PASSENGER_TRANSPORT = "PASSENGER_TRANSPORT"
 
-class MissionStatus(Enum):
+class MissionStatus:
     PENDING = "PENDING"
     IN_PROGRESS = "IN_PROGRESS"
     COMPLETED = "COMPLETED"
     CANCELLED = "CANCELLED"
 
-class UAVStatus(Enum):
+class UAVStatus:
     AVAILABLE = "AVAILABLE"
     OCCUPIED = "OCCUPIED"
     OUT_OF_SERVICE = "OUT_OF_SERVICE"
 
-class Topics(Enum):
+class PadStatus:
+    AVAILABLE = "AVAILABLE"
+    OCCUPIED = "OCCUPIED"
+    OUT_OF_SERVICE = "OUT_OF_SERVICE"
+
+class Topics:
     # USpace Manager Topics
     UAV_OPERATOR_REGISTER = "airspace/operators/register/uav"
     VERTIPORT_OPERATOR_REGISTER = "airspace/operators/register/vertiport"

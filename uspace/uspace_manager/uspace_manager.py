@@ -20,13 +20,16 @@ class USpaceManager:
         # Dictionary of vertiport operators: {id: {name: V0, grid_conn: [1,1,1]}}
         self.vertiport_operators: dict[str, dict[str, Any]] = {}
         # Dictionary of missions' processing status (used when requesting routes):
-        # {uav_operator_id: {
-        #   manager_id: {
+        # {
+        #   uav_operator_id: {
+        #     manager_id: {
         #       mission_id: {
-        #           "takeoff_flightplan": FP, 
-        #           "landing_flightplan": FP, 
-        #           "grid_flightplan": FP}
+        #         "takeoff_flightplan": FP, 
+        #         "landing_flightplan": FP, 
+        #         "grid_flightplan": FP,
+        #         "landing_pad_id": str
         #       }
+        #     }
         #   }
         # }
         self.missions_processing_status: dict[str, dict[str, tuple[list, list, int]]] = {}
@@ -38,35 +41,35 @@ class USpaceManager:
 
         # MQTT Callbacks
         self.callback_topics = [
-            Topics.UAV_OPERATOR_REGISTER.value,
-            Topics.VERTIPORT_OPERATOR_REGISTER.value,
-            Topics.REQUEST_ROUTE.value,
-            Topics.RECEIVE_ROUTE.value,
-            Topics.REQUEST_UAV_OPERATOR_LIST.value,
-            Topics.REQUEST_VERTIPORT_OPERATOR_LIST.value
+            Topics.UAV_OPERATOR_REGISTER,
+            Topics.VERTIPORT_OPERATOR_REGISTER,
+            Topics.REQUEST_ROUTE,
+            Topics.RECEIVE_ROUTE,
+            Topics.REQUEST_UAV_OPERATOR_LIST,
+            Topics.REQUEST_VERTIPORT_OPERATOR_LIST
         ]
         self.mqtt_client.message_callback_add(
-            Topics.UAV_OPERATOR_REGISTER.value, 
+            Topics.UAV_OPERATOR_REGISTER, 
             self.on_uav_operator_register
         )
         self.mqtt_client.message_callback_add(
-            Topics.VERTIPORT_OPERATOR_REGISTER.value, 
+            Topics.VERTIPORT_OPERATOR_REGISTER, 
             self.on_vertiport_operator_register
         )
         self.mqtt_client.message_callback_add(
-            Topics.REQUEST_ROUTE.value,
+            Topics.REQUEST_ROUTE,
             self.on_request_route
         )
         self.mqtt_client.message_callback_add(
-            Topics.RECEIVE_ROUTE.value,
+            Topics.RECEIVE_ROUTE,
             self.on_receive_route
         )
         self.mqtt_client.message_callback_add(
-            Topics.REQUEST_UAV_OPERATOR_LIST.value,
+            Topics.REQUEST_UAV_OPERATOR_LIST,
             self.on_request_uav_operator_list
         )
         self.mqtt_client.message_callback_add(
-            Topics.REQUEST_VERTIPORT_OPERATOR_LIST.value,
+            Topics.REQUEST_VERTIPORT_OPERATOR_LIST,
             self.on_request_vertiport_operator_list
         )
 
@@ -102,14 +105,13 @@ class USpaceManager:
     # --- USpace Methods ---
     # ----------------------
     def cancel_mission(self, uav_operator_id, mission_manager_id, mission_id):
-        topic = f"{Topics.REQUEST_ROUTE.value}/{uav_operator_id}"
-        msg = {
-            "id": self.id,
-            "mission_manager_id": mission_manager_id,
-            "mission_id": mission_id,
-            "flightplan": None
-        }
-        self.send_mqtt_msg(topic, json.dumps(msg))
+        self.send_mission_flightplan(
+            uav_operator_id,
+            mission_manager_id,
+            mission_id,
+            FlightPlan(),
+            None
+        )
 
     def request_vertiport_flightplan(
         self, 
@@ -123,7 +125,7 @@ class USpaceManager:
         time, 
         stop_time
     ):
-        topic = f"{Topics.MISSION_VERTIPORT_SERVICE.value}/{vertiport_operator_id}"
+        topic = f"{Topics.MISSION_VERTIPORT_SERVICE}/{vertiport_operator_id}"
         msg = {
             "id": self.id,
             "uav_operator_id": uav_operator_id,
@@ -137,8 +139,23 @@ class USpaceManager:
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
 
-    def send_mission_flightplan(self):
-        pass
+    def send_mission_flightplan(
+        self, 
+        uav_operator_id, 
+        mission_manager_id, 
+        mission_id, 
+        flightplan,
+        landing_pad_id
+    ):
+        topic = f"{Topics.REQUEST_ROUTE}/{uav_operator_id}"
+        msg = {
+            "id": self.id,
+            "mission_manager_id": mission_manager_id,
+            "mission_id": mission_id,
+            "flightplan": flightplan.to_dict(),
+            "landing_pad_id": landing_pad_id
+        }
+        self.send_mqtt_msg(topic, json.dumps(msg))
 
     # ----------------------
     # --- MQTT Callbacks ---
@@ -154,7 +171,7 @@ class USpaceManager:
         self.uav_operators[operator_id] = operator_name
 
         # Logging
-        print("[USpace Manager] - UAV Operator registered:")
+        print(f"[{self.id}] - UAV Operator registered:")
         print(tabulate([[operator_id, operator_name]], headers=["ID", "Name"]))
         print()
 
@@ -172,18 +189,18 @@ class USpaceManager:
         self.vertiport_operators[operator_id]["grid_connection"] = grid_connection
 
         # Logging
-        print("[USpace Manager] - Vertiport Operator registered:")
-        print(tabulate([[operator_id, operator_name]], headers=["ID", "Name"], showindex=True))
+        print(f"[{self.id}] - Vertiport Operator registered:")
+        print(tabulate([[operator_id, operator_name]], headers=["ID", "Name"]))
         print()
 
     def on_request_uav_operator_list(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())
 
         # Extract mission manager data
-        manager_id = data["id"]
+        mission_manager_id = data["id"]
 
         # Send UAV Operator list
-        topic = Topics.REQUEST_UAV_OPERATOR_LIST.value + f"/{manager_id}"
+        topic = f"{Topics.REQUEST_UAV_OPERATOR_LIST}/{mission_manager_id}"
         msg = {
             "id": self.id,
             "uav_operators": self.uav_operators
@@ -194,10 +211,10 @@ class USpaceManager:
         data = json.loads(msg.payload.decode())
 
         # Extract mission manager data
-        manager_id = data["id"]
+        mission_manager_id = data["id"]
 
         # Send Vertiport Operator list
-        topic = Topics.REQUEST_VERTIPORT_OPERATOR_LIST.value + f"/{manager_id}"
+        topic = f"{Topics.REQUEST_VERTIPORT_OPERATOR_LIST}/{mission_manager_id}"
         msg = {
             "id": self.id,
             "vertiport_operators": self.vertiport_operators
@@ -249,12 +266,20 @@ class USpaceManager:
         if not route:
             self.cancel_mission(uav_operator_id, mission_manager_id, mission_id)
             return
+        
+        # Logging
+        print(f"[{self.id}] - Computed route:")
+        print(f"  UAV Operator ID: {uav_operator_id}")
+        print(f"  Mission ID: {mission_id}")
+        print(f"  Origin Vertiport ID: {origin_vertiport_id}")
+        print(f"  Destination Vertiport ID: {destination_vertiport_id}")
+        print()
 
         grid_flightplan = self.airspace.get_flightplan_from_route(route)
         
         grid_flightplan_init_time = grid_flightplan.init_time()
         grid_flightplan_finish_time = grid_flightplan.finish_time()
-        #TODO: Check begin time is in the past
+        #TODO: Check begin time is not in the past
 
         # Store mission processing status
         self.missions_processing_status[uav_operator_id] = {}
@@ -262,7 +287,8 @@ class USpaceManager:
         self.missions_processing_status[uav_operator_id][mission_manager_id][mission_id] = {
             "takeoff_flightplan": None,
             "landing_flightplan": None,
-            "grid_flightplan": grid_flightplan
+            "grid_flightplan": grid_flightplan,
+            "landing_pad_id": None
         }
 
         # Request takeoff flightplan 
@@ -290,15 +316,6 @@ class USpaceManager:
             time=grid_flightplan_finish_time,
             stop_time=stop_time
         )
-
-        topic = f"{Topics.REQUEST_ROUTE.value}/{uav_operator_id}"
-        msg = {
-            "id": self.id,
-            "mission_manager_id": mission_manager_id,
-            "mission_id": mission_id,
-            "flightplan": grid_flightplan.to_dict()
-        }
-        self.send_mqtt_msg(topic, json.dumps(msg))
     
     def on_receive_route(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())
@@ -310,18 +327,25 @@ class USpaceManager:
         mission_id = data["mission_id"]
         is_landing = data["is_landing"]
         raw_flightplan = data["flightplan"]
+        pad_id = data["pad_id"]
 
-        # Constructu flightplan object from raw data
+        # Build flightplan object from raw data
         flightplan = FlightPlan()
         flightplan.from_dict(raw_flightplan)
 
         # Logging
-        print(f"[USpace Manager] - Received flightplan for mission {mission_id}:")
+        print(f"[{self.id}] - Received flightplan:")
+        print(f"  Vertiport Operator ID: {vertiport_operator_id}")
+        print(f"  UAV Operator ID: {uav_operator_id}")
+        print(f"  Mission Manager ID: {mission_manager_id}")
+        print(f"  Mission ID: {mission_id}")
+        print(f"  Is Landing: {is_landing}")
+        print("  Flightplan waypoints:")
         flightplan.print_waypoints()
         print()
 
         # Cancel mission if no route was found
-        if not flightplan:
+        if not flightplan.waypoints:
             self.cancel_mission(uav_operator_id, mission_manager_id, mission_id)
             return
         
@@ -329,18 +353,40 @@ class USpaceManager:
         mission = self.missions_processing_status[uav_operator_id][mission_manager_id][mission_id]
         if is_landing:
             mission["landing_flightplan"] = flightplan
+            mission["landing_pad_id"] = pad_id
         else:
             mission["takeoff_flightplan"] = flightplan
 
         # Check if all flightplans have been computed
-        takeoff_fp_exists = mission["takeoff_flightplan"] is not None
-        landing_fp_exists = mission["landing_flightplan"] is not None
-        grid_fp_exists = mission["grid_flightplan"] is not None
+        takeoff_flightplan = mission["takeoff_flightplan"]
+        landing_flightplan = mission["landing_flightplan"]
+        grid_flightplan = mission["grid_flightplan"]
+
+        takeoff_fp_exists = takeoff_flightplan is not None
+        landing_fp_exists = landing_flightplan is not None
+        grid_fp_exists = grid_flightplan is not None
         
+        # Return complete flightplan if all parts are ready
         if takeoff_fp_exists and landing_fp_exists and grid_fp_exists:
-            pass
-            #TODO: All flightplans computed, join them into a single flightplan
+            # Remove first and last waypoint of grid flightplan to avoid duplicates
+            grid_flightplan.waypoints.pop(0)
+            grid_flightplan.waypoints.pop(-1)
 
+            # Build complete flightplan
+            complete_flightplan = FlightPlan()
+            complete_flightplan.waypoints = (
+                takeoff_flightplan.waypoints + 
+                grid_flightplan.waypoints + 
+                landing_flightplan.waypoints
+            )
 
-            # self.send_mission_flightplan(uav_operator_id, mission_manager_id, mission_id, FlightPlan)
+            # Send complete flightplan to UAV Operator
+            self.send_mission_flightplan(
+                uav_operator_id,
+                mission_manager_id,
+                mission_id,
+                complete_flightplan,
+                mission["landing_pad_id"]
+            )
+
 

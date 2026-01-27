@@ -9,54 +9,72 @@ if project_root_path not in sys.path:
     sys.path.append(project_root_path)
 
 from uspace.uav_operator.uav_operator import UAVOperator
+from uspace.uav_operator.uav import UAV
 from uspace.mission_manager.mission_manager import MissionManager
 from uspace.vertiport_operator.vertiport_operator import VertiportOperator
 from uspace.uspace_manager.uspace_manager import USpaceManager
+from uspace.uspace_manager.constants import MissionType, UAVStatus
 
 
-mission_mgr = MissionManager()
-uspace_mgr = USpaceManager()
+mission_mgr = MissionManager(id="MISSION_MGR_0", name="Mission Manager 0")
+uspace_mgr = USpaceManager(id="USPACE_MGR_0", name="USpace Manager 0")
 uav_op1 = UAVOperator(
-    id="UAV_OP_001", 
-    name="UAV Operator 1",
-    private_vertiport_operator_id="VERT_OP_001"
+    id="UAV_OP_0", 
+    name="UAV Operator 0",
+    private_vertiport_operator_id="VERT_OP_0"
 )
-vert_op1 = VertiportOperator(
-    id="VERT_OP_001", 
-    name="Vertiport Operator 1",
-    grid_connection={"takeoff": [0, 0, 0], "landing": [-100, 0, 0]}
-)
-vert_op2 = VertiportOperator(
-    id="VERT_OP_002",
-    name="Vertiport Operator 2",
-    grid_connection={"takeoff": [400, 400, 0], "landing": [300, 400, 0]}
-)
+uav_op1.uavs = {
+    MissionType.DELIVERY: {
+        "UAV_1": UAV(
+            id="UAV_1",
+            operator_id=uav_op1.id,
+            type=MissionType.DELIVERY,
+            status=UAVStatus.AVAILABLE,
+            battery_level=100.0,
+            location=(0.0, 0.0, 0.0),
+            pad_id="PAD_1"
+        )
+    },
+    MissionType.PASSENGER_TRANSPORT: {
+        "UAV_2": UAV(
+            id="UAV_2",
+            operator_id=uav_op1.id,
+            type=MissionType.PASSENGER_TRANSPORT,
+            status=UAVStatus.AVAILABLE,
+            battery_level=100.0,
+            location=(0.0, 50.0, 0.0),
+            pad_id="PAD_2",
+        )
+    }
+}
+
+veriport_operators = []
+for i in range(-5, 6, 1):
+    direction = 1 if i % 2 == 0 else -1
+    vert_op = VertiportOperator(
+        id=f"VERT_OP_{i}",
+        name=f"Vertiport Operator {i}",
+        grid_connection={
+            "takeoff": [50 * direction + i * 100, i * 100, 0],
+            "landing": [i * 100 - 50 * direction, i * 100, 0]
+        }
+    )
+    veriport_operators.append(vert_op)
 
 mission_mgr.connect_mqtt_client()
 uspace_mgr.connect_mqtt_client()
 
-
 uav_op1.connect_mqtt_client()
-vert_op1.connect_mqtt_client()
-vert_op2.connect_mqtt_client()
-
 uav_op1.register_into_airspace()
-vert_op1.register_into_airspace()
-vert_op2.register_into_airspace()
+
+for vert_op in veriport_operators:
+    vert_op.connect_mqtt_client()
+    vert_op.register_into_airspace()
 
 mission_mgr.request_uav_operator_list()
 mission_mgr.request_vertiport_operator_list()
 
-uav_op1.request_route(
-    uav_pad_id="PAD_001",
-    mission_manager_id=mission_mgr.id,
-    mission_id="MISSION_001",
-    mission_type="DELIVERY",
-    origin_vertiport_id="VERT_OP_001",
-    destination_vertiport_id="VERT_OP_002",
-    takeoff_time=0,
-    landing_time=None,
-    stop_time=30
-)
-
-time.sleep(5)
+# while True:
+time.sleep(2)
+mission_mgr.request_uav_mission()
+time.sleep(10)

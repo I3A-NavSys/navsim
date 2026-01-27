@@ -1,17 +1,21 @@
 from tabulate import tabulate
 import json
+import random
 
 from uspace.mqtt.mqtt_service import MQTTService
-from msgs.mission_manager_msgs import MissionMsg
-from uspace.uspace_manager.constants import Topics
+from uspace.uspace_manager.constants import Topics, MissionStatus, MissionType
+from .mission import Mission
 
 
 class MissionManager:
     def __init__(self, id=None, name=None):
+        # Test
+        random.seed(1)
+
         self.id: str = id
         self.name: str = name
-        self.missions = []
-        self.msg: MissionMsg
+        self.missions: list[Mission] = []
+        self.last_mission_id: int = 0
         self.uav_operators: dict[str, str] = {}
         self.vertiport_operators: dict[str, str] = {}
 
@@ -22,20 +26,20 @@ class MissionManager:
 
         # MQTT Callbacks
         self.callback_topics = [
-            f"{Topics.REQUEST_VERTIPORT_OPERATOR_LIST.value}/{self.id}",
-            f"{Topics.REQUEST_UAV_OPERATOR_LIST.value}/{self.id}",
-            f"{Topics.MISSION_STATUS_UPDATE.value}/{self.id}"
+            f"{Topics.REQUEST_VERTIPORT_OPERATOR_LIST}/{self.id}",
+            f"{Topics.REQUEST_UAV_OPERATOR_LIST}/{self.id}",
+            f"{Topics.MISSION_STATUS_UPDATE}/{self.id}"
         ]
         self.mqtt_client.message_callback_add(
-            f"{Topics.REQUEST_VERTIPORT_OPERATOR_LIST.value}/{self.id}",
+            f"{Topics.REQUEST_VERTIPORT_OPERATOR_LIST}/{self.id}",
             self.on_receive_vertiport_operator_list
         )
         self.mqtt_client.message_callback_add(
-            f"{Topics.REQUEST_UAV_OPERATOR_LIST.value}/{self.id}",
+            f"{Topics.REQUEST_UAV_OPERATOR_LIST}/{self.id}",
             self.on_receive_uav_operator_list
         )
         self.mqtt_client.message_callback_add(
-            f"{Topics.MISSION_STATUS_UPDATE.value}/{self.id}",
+            f"{Topics.MISSION_STATUS_UPDATE}/{self.id}",
             self.on_receive_uav_mission_update
         )
 
@@ -83,21 +87,50 @@ class MissionManager:
     # --- USpace Methods ---
     # ----------------------
     def request_vertiport_operator_list(self):
-        topic = Topics.REQUEST_VERTIPORT_OPERATOR_LIST.value
+        topic = Topics.REQUEST_VERTIPORT_OPERATOR_LIST
         msg = {
             "id": self.id
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
 
     def request_uav_operator_list(self):
-        topic = Topics.REQUEST_UAV_OPERATOR_LIST.value
+        topic = Topics.REQUEST_UAV_OPERATOR_LIST
         msg = {
             "id": self.id
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
 
-    def request_uav_mission(self, mission_id, mission_type, stop_list, stop_times, landing_time, uav_operator_id):
-        topic = f"{Topics.MISSION_UAV_SERVICE.value}/{uav_operator_id}"
+    def request_uav_mission(self):
+        self.last_mission_id += 1
+        amount_stops = random.randint(2, 5)
+
+        mission_id = f"MISSION_{self.last_mission_id}"
+        mission_type = random.choice([MissionType.DELIVERY, MissionType.PASSENGER_TRANSPORT])
+        stop_list = random.sample(list(self.vertiport_operators.keys()), amount_stops)
+        stop_times = [random.randint(10, 60) for _ in range(amount_stops)]
+        uav_operator_id = random.choice(list(self.uav_operators.keys()))
+        landing_time = random.randint(100, 1000)
+
+        self.missions.append(Mission(
+            id=mission_id,
+            mission_type=mission_type,
+            stop_list=stop_list,
+            stop_times=stop_times,
+            uav_operator_id=uav_operator_id,
+            landing_time=landing_time
+        ))
+
+        # Logging
+        print(f"[{self.id}] - Requesting new UAV mission:")
+        print(f"  Mission ID: {mission_id}")
+        print(f"  Mission Type: {mission_type}")
+        print(f"  UAV Operator ID: {uav_operator_id}")
+        print(f"  Stop List: {stop_list}")
+        print(f"  Stop Times: {stop_times}")
+        print(f"  Landing Time: {landing_time}")
+        print()
+        
+        topic = f"{Topics.MISSION_UAV_SERVICE}/{uav_operator_id}"
         msg = {
             "id": self.id,
             "mission_id": mission_id,
@@ -116,7 +149,7 @@ class MissionManager:
         self.vertiport_operators = data["vertiport_operators"]
 
         # Logging
-        print("[Mission Manager] - Received Vertiport operator list:")
+        print(f"[{self.id}] - Received Vertiport operator list:")
         self.log_dict_table(self.vertiport_operators, ["ID", "Data"])
 
     def on_receive_uav_operator_list(self, client, userdata, msg):
@@ -124,8 +157,21 @@ class MissionManager:
         self.uav_operators = data["uav_operators"]
 
         # Logging
-        print("[Mission Manager] - Received UAV operator list:")
+        print(f"[{self.id}] - Received UAV operator list:")
         self.log_dict_table(self.uav_operators, ["ID", "Data"])
 
     def on_receive_uav_mission_update(self, client, userdata, msg):
-        pass
+        data = json.loads(msg.payload.decode())
+
+        uav_operator_id = data["id"]
+        mission_id = data["mission_id"]
+        mission_status = data["mission_status"]
+
+        # TODO: Update mission status in self.missions
+
+        # Logging
+        print(f"[{self.id}] - Received mission status update:")
+        print(f"  UAV Operator ID: {uav_operator_id}")
+        print(f"  Mission ID: {mission_id}")
+        print(f"  Mission Status: {mission_status}")
+        print()

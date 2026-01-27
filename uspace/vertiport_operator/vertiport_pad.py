@@ -1,17 +1,6 @@
-from enum import Enum
-
-
-from uspace.uspace_manager.constants import MissionType
-
-
-class Status(Enum):
-    AVAILABLE = "AVAILABLE"
-    OCCUPIED = "OCCUPIED"
-    OUT_OF_SERVICE = "OUT_OF_SERVICE"
-
-class VertiportPad:
+class Pad:
     def __init__(self):
         self.id: str
-        self.type: MissionType
-        self.status: Status
+        self.type: str
+        self.status: str
         self.operator: str
