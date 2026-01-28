@@ -55,8 +55,14 @@ for i in range(-5, 6, 1):
         id=f"VERT_OP_{i}",
         name=f"Vertiport Operator {i}",
         grid_connection={
-            "takeoff": [50 * direction + i * 100, i * 100, 0],
-            "landing": [i * 100 - 50 * direction, i * 100, 0]
+            "takeoff": {
+                "heading": [0, 0],
+                "position": [50 * direction + i * 100, i * 100, 0]
+            },
+            "landing": {
+                "heading": [0, 0],
+                "position": [i * 100 - 50 * direction, i * 100, 0]
+            }
         }
     )
     veriport_operators.append(vert_op)

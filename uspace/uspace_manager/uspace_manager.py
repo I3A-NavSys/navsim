@@ -246,8 +246,8 @@ class USpaceManager:
         # Compute the route
         if is_reversed:
             route = self.airspace.get_route(
-                origin=destination_grid_connection["landing"], 
-                destination=origin_grid_connection["takeoff"],
+                origin=destination_grid_connection["landing"]["position"], 
+                destination=origin_grid_connection["takeoff"]["position"],
                 start_time=landing_time,
                 end_time=0,
                 reverse=True
@@ -255,8 +255,8 @@ class USpaceManager:
 
         else:
             route = self.airspace.get_route(
-                origin=origin_grid_connection["takeoff"], 
-                destination=destination_grid_connection["landing"],
+                origin=origin_grid_connection["takeoff"]["position"], 
+                destination=destination_grid_connection["landing"]["position"],
                 start_time=takeoff_time,
                 end_time=0,
                 reverse=False

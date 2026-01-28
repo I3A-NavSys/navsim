@@ -10,7 +10,19 @@ class VertiportOperator:
     def __init__(self, id=None, name=None, grid_connection=None):
         self.id: str = id
         self.name: str = name
-        self.grid_connection: dict[str, tuple[float, float, float]] = grid_connection
+        # Connection points in the grid for takeoff and landing
+        # {
+        #   "takeoff": {
+        #     "heading": [x, y],
+        #     "position": [x, y, z]
+        #   }
+        #   "landing": {
+        #     "heading": [x, y],
+        #     "position": [x, y, z]
+        #   }
+        # }
+        self.grid_connection: dict[str, dict[str, tuple]] = grid_connection
+        self.main_pad: Pad = None
         self.pads: dict[str, Pad] = {}
 
         # MQTT client
@@ -68,22 +80,54 @@ class VertiportOperator:
         self.send_mqtt_msg(topic, json.dumps(msg))
         
     def build_takeoff_flightplan(self, pad_id, time):
+        # Initialize flightplan
         flightplan = FlightPlan()
 
-        takeoff_grid_pos = self.grid_connection["takeoff"]
-        start_pos = (takeoff_grid_pos[0], takeoff_grid_pos[1], 0.0)
-        direction = 1 if (takeoff_grid_pos[1] // 100) % 2 == 0 else -1
+        # Get parameters' information
+        pad_pos = self.pads[pad_id].location
+        takeoff_grid_pos = self.grid_connection["takeoff"]["position"]
+        takeoff_grid_heading = self.grid_connection["takeoff"]["heading"]
+        x_direction = takeoff_grid_heading[0]
+        y_direction = takeoff_grid_heading[1]
 
-        flightplan.set_waypoint(time=time - 20, pos=start_pos, vel=[0, 0, 2])
-        flightplan.set_waypoint(time=time, pos=takeoff_grid_pos, vel=[direction * 10, 0, 0])
+        # Set waypoints
+        # UAV_pad -> main pad
+        flightplan.set_waypoint(
+            time=time - 35, 
+            pos=pad_pos, 
+            vel=[0, 0, 0]
+        )
+        # Wait 5 seconds at main pad to be properly oriented
+        flightplan.set_waypoint(
+            time=time - 25, 
+            pos=self.main_pad.location, 
+            vel=[0, 0, 0],
+            heading=takeoff_grid_heading
+        )
+        # main pad -> grid connection point
+        flightplan.set_waypoint(
+            time=time - 20, 
+            pos=self.main_pad.location, 
+            vel=[0, 0, 0],
+            heading=takeoff_grid_heading
+        )
+        # UAV in the grid
+        flightplan.set_waypoint(
+            time=time, 
+            pos=takeoff_grid_pos, 
+            vel=[x_direction * 10, y_direction * 10, 0])
+        
         flightplan.connect_waypoints()
 
         return flightplan
 
     def build_landing_flightplan(self, pad_id, time):
+        # Initialize flightplan
         flightplan = FlightPlan()
         
-        landing_grid_pos = self.grid_connection["landing"]
+        # Get parameters' information
+
+        landing_grid_pos = self.grid_connection["landing"]["position"]
         end_pos = (landing_grid_pos[0], landing_grid_pos[1], 0.0)
         
         flightplan.set_waypoint(time=time, pos=landing_grid_pos, vel=[0, 0, -2])
@@ -142,6 +186,8 @@ class VertiportOperator:
         print()
 
         if is_landing:
+            # TODO: Check pads availability
+            
             flightplan = self.build_landing_flightplan(pad_id, time)
         else:
             flightplan = self.build_takeoff_flightplan(pad_id, time)
