@@ -14,7 +14,7 @@ class MissionManager:
 
         self.id: str = id
         self.name: str = name
-        self.missions: list[Mission] = []
+        self.missions: dict[str, Mission] = {}
         self.last_mission_id: int = 0
         self.uav_operators: dict[str, str] = {}
         self.vertiport_operators: dict[str, str] = {}
@@ -111,14 +111,15 @@ class MissionManager:
         uav_operator_id = random.choice(list(self.uav_operators.keys()))
         landing_time = random.randint(100, 1000)
 
-        self.missions.append(Mission(
+        self.missions[mission_id] = Mission(
             id=mission_id,
             mission_type=mission_type,
             stop_list=stop_list,
             stop_times=stop_times,
             uav_operator_id=uav_operator_id,
-            landing_time=landing_time
-        ))
+            landing_time=landing_time,
+            status=MissionStatus.PENDING
+        )
 
         # Logging
         print(f"[{self.id}] - Requesting new UAV mission:")
@@ -167,7 +168,9 @@ class MissionManager:
         mission_id = data["mission_id"]
         mission_status = data["mission_status"]
 
-        # TODO: Update mission status in self.missions
+        # Update mission status
+        mission = self.missions[mission_id]
+        mission.status = mission_status
 
         # Logging
         print(f"[{self.id}] - Received mission status update:")
