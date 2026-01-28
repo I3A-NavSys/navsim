@@ -41,7 +41,7 @@ icon = "data/icon.png"
 "omni.kit.uiapp" = {}
 
 [python.pipapi]
-requirements = ["matplotlib", "PyQt5", "mplcursors"]
+requirements = ["matplotlib", "PyQt5", "mplcursors", "tabulate"]
 use_online_index = true
 
 # Main python module this extension provides, it will be publicly available as "import grid_planner".

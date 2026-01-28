@@ -19,7 +19,7 @@ icon = "data/icon.png"
 "omni.kit.uiapp" = {}
 
 [python.pipapi]
-requirements = ["matplotlib", "PyQt5", "mplcursors", "pyproj"]
+requirements = ["matplotlib", "PyQt5", "mplcursors", "pyproj", "tabulate"]
 use_online_index = true
 
 [[python.module]]
