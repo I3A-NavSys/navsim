@@ -211,6 +211,7 @@ class UAVOperator:
         ]
         
         # Ask for first route (from private vertiport to first stop)
+        # TODO: Uncomment UAV reservation
         # assigned_uav.status = UAVStatus.OCCUPIED    # Reserve UAV
         self.request_route(
             uav_pad_id=assigned_uav.pad_id,

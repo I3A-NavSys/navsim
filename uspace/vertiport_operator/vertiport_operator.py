@@ -1,13 +1,21 @@
 import json
 
 from uspace.flight_plan.flight_plan import FlightPlan
-from uspace.uspace_manager.constants import Topics
+from uspace.uspace_manager.constants import Topics, PadStatus
 from .vertiport_pad import Pad
 from uspace.mqtt.mqtt_service import MQTTService
 
 
 class VertiportOperator:
-    def __init__(self, id=None, name=None, grid_connection=None):
+    def __init__(
+        self, 
+        id=None, 
+        name=None, 
+        grid_connection=None, 
+        main_pad=None, 
+        pads=None,
+        security_pad_booking_buffer=40
+    ):
         self.id: str = id
         self.name: str = name
         # Connection points in the grid for takeoff and landing
@@ -22,8 +30,9 @@ class VertiportOperator:
         #   }
         # }
         self.grid_connection: dict[str, dict[str, tuple]] = grid_connection
-        self.main_pad: Pad = None
-        self.pads: dict[str, Pad] = {}
+        self.main_pad: Pad = main_pad
+        self.pads: dict[str, Pad] = pads
+        self.security_pad_booking_buffer: float = security_pad_booking_buffer  # in seconds
 
         # MQTT client
         self.mqtt_client = MQTTService.build_client(self.id)
@@ -67,6 +76,48 @@ class VertiportOperator:
     def send_mqtt_msg(self, topic, msg):
         self.mqtt_client.publish(topic, msg)
 
+    # -------------------------
+    # --- Auxiliary Methods ---
+    # -------------------------
+    def get_pads_by_status(self, status, pads=None):
+        # If no pads specified, check all pads
+        if pads is None:
+            pads = self.pads.values()
+
+        # Filter operative pads
+        operative_pads = [
+            pad for pad in pads
+            if pad.status == status
+        ]
+
+        return operative_pads
+
+    def get_pads_by_type(self, type, pads=None):
+        # If no pads specified, check all pads
+        if pads is None:
+            pads = self.pads.values()
+
+        # Filter pads by type
+        type_pads = [
+            pad for pad in pads
+            if pad.type == type
+        ]
+
+        return type_pads
+
+    def get_available_pads(self, start_time, end_time, pads=None):
+        # If no pads specified, check all pads
+        if pads is None:
+            pads = self.pads.values()
+
+        # Filter available pads
+        available_pads = [
+            pad for pad in pads
+            if pad.is_available(start_time, end_time, self.security_pad_booking_buffer)
+        ]
+
+        return available_pads        
+
     # ----------------------
     # --- USpace Methods ---
     # ----------------------
@@ -79,6 +130,16 @@ class VertiportOperator:
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
         
+    def cancel_mission(self, uav_operator_id, mission_manager_id, mission_id, is_landing):
+        self.send_flightplan(
+            uav_operator_id,
+            mission_manager_id,
+            mission_id,
+            is_landing,
+            FlightPlan(),
+            None
+        )
+
     def build_takeoff_flightplan(self, pad_id, time):
         # Initialize flightplan
         flightplan = FlightPlan()
@@ -117,21 +178,56 @@ class VertiportOperator:
             pos=takeoff_grid_pos, 
             vel=[x_direction * 10, y_direction * 10, 0])
         
+        # Smooth waypoints
         flightplan.connect_waypoints()
 
         return flightplan
 
-    def build_landing_flightplan(self, pad_id, time):
+    def build_landing_flightplan(self, pad, time):
         # Initialize flightplan
         flightplan = FlightPlan()
         
         # Get parameters' information
-
+        pad_pos = pad.location
         landing_grid_pos = self.grid_connection["landing"]["position"]
-        end_pos = (landing_grid_pos[0], landing_grid_pos[1], 0.0)
+        landing_grid_heading = self.grid_connection["landing"]["heading"]
+        x_direction = landing_grid_heading[0]
+        y_direction = landing_grid_heading[1]
+        counter_pad_heading = [
+            self.main_pad.location[0] - pad_pos[0],
+            self.main_pad.location[1] - pad_pos[1]
+        ]
         
-        flightplan.set_waypoint(time=time, pos=landing_grid_pos, vel=[0, 0, -2])
-        flightplan.set_waypoint(time=time + 20, pos=end_pos, vel=[0, 0, 0])
+        # Set waypoints
+        # UAV in the grid -> main pad
+        flightplan.set_waypoint(
+            time=time, 
+            pos=landing_grid_pos, 
+            vel=[x_direction * 5, y_direction * 5, 0],
+            heading=landing_grid_heading
+        )
+        # main pad
+        flightplan.set_waypoint(
+            time=time + 20,
+            pos=self.main_pad.location,
+            vel=[0, 0, -1],
+        )
+        # wait 5 seconds at main pad to be properly oriented
+        flightplan.set_waypoint(
+            time=time + 25,
+            pos=self.main_pad.location,
+            vel=[0, 0, 0],
+            heading=counter_pad_heading
+        )
+        # main pad -> assigned pad
+        flightplan.set_waypoint(
+            time=time + 35,
+            pos=pad.location,
+            vel=[0, 0, 0],
+            heading=counter_pad_heading
+        )
+
+        # Smooth waypoints
         flightplan.connect_waypoints()
 
         return flightplan
@@ -186,10 +282,46 @@ class VertiportOperator:
         print()
 
         if is_landing:
-            # TODO: Check pads availability
+            # Get operative and correct type pads
+            operative_pads = self.get_pads_by_status(status=PadStatus.OPERATIVE)
+            operative_correct_type_pads = self.get_pads_by_type(
+                type=mission_type,
+                pads=operative_pads
+            )
+
+            # Cancel mission if no operative pads of the correct type are available
+            if not operative_correct_type_pads:
+                self.cancel_mission(
+                    uav_operator_id,
+                    mission_manager_id,
+                    mission_id,
+                    is_landing
+                )
+                return
             
-            flightplan = self.build_landing_flightplan(pad_id, time)
+            # Get available pads in the requested time window
+            start_time = time + 35
+            end_time = time + 35 + stop_time
+
+            available_pads = self.get_available_pads(
+                start_time=start_time,
+                end_time=end_time,
+                pads=operative_correct_type_pads
+            )
+
+            # Assign the first available pad
+            assigned_pad = available_pads[0]
+            assigned_pad.book(
+                start_time=start_time,
+                end_time=end_time,
+                buffer=self.security_pad_booking_buffer,
+                availability_checked=True
+            )
+
+            # Build landing flightplan
+            flightplan = self.build_landing_flightplan(assigned_pad, time)
         else:
+            # Build takeoff flightplan
             flightplan = self.build_takeoff_flightplan(pad_id, time)
 
         self.send_flightplan(

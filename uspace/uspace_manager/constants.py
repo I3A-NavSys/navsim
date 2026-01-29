@@ -14,8 +14,7 @@ class UAVStatus:
     OUT_OF_SERVICE = "OUT_OF_SERVICE"
 
 class PadStatus:
-    AVAILABLE = "AVAILABLE"
-    OCCUPIED = "OCCUPIED"
+    OPERATIVE = "OPERATIVE"
     OUT_OF_SERVICE = "OUT_OF_SERVICE"
 
 class Topics:
