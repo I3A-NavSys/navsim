@@ -244,6 +244,7 @@ class UAVOperator:
         print(f"  USpace Manager ID: {uspace_manager_id}")
         print(f"  Mission Manager ID: {mission_manager_id}")
         print(f"  Mission ID: {mission_id}")
+        print(f"  Landing Pad ID: {landing_pad_id}")
         print("  Flightplan waypoints:")
         flightplan.print_waypoints()
         print()

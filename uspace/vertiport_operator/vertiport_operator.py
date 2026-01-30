@@ -276,9 +276,11 @@ class VertiportOperator:
         print(f"  UAV Operator ID: {uav_operator_id}")
         print(f"  Mission Manager ID: {mission_manager_id}")
         print(f"  Mission ID: {mission_id}")
+        print(f"  Pad ID: {pad_id}")
         print(f"  Is Landing: {is_landing}")
         print(f"  Mission Type: {mission_type}")
         print(f"  Time: {time}")
+        print(f"  Stop Time: {stop_time}")
         print()
 
         if is_landing:
@@ -317,6 +319,7 @@ class VertiportOperator:
                 buffer=self.security_pad_booking_buffer,
                 availability_checked=True
             )
+            pad_id = assigned_pad.id
 
             # Build landing flightplan
             flightplan = self.build_landing_flightplan(assigned_pad, time)
