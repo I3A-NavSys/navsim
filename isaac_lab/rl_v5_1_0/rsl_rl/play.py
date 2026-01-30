@@ -40,6 +40,10 @@ parser.add_argument(
 )
 parser.add_argument("--real-time", action="store_true", default=False, help="Run in real-time, if possible.")
 
+# ---- Teresa -----
+parser.add_argument("--see", action="store_true", default=False, help="Disable the option of stopping at the first episodes of evaluation")
+# -----------------
+
 
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
@@ -197,72 +201,124 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     max_episode_steps = 1000  # o cualquier número de pasos que consideres adecuado
     cur_episode_length = np.zeros(env.num_envs)
     # -------------------------
-    # while simulation_app.is_running():
-    for step in range(max_episode_steps):
-        start_time = time.time()
-        # run everything in inference mode
-        with torch.inference_mode():
-            # agent stepping
-            actions = policy(obs)
-            # env stepping
 
-            # ------- Teresa ---------
-            # obs, _, _, _ = env.step(actions) # original
-            obs, rew, done, _ = env.step(actions)
-            rew = rew.cpu().numpy().squeeze()
-            done = done.cpu().numpy().squeeze()
-            rewbuffer += rew
-            cur_episode_length += 1
-        
-            # Termina los episodios cuando 'done' es 1 o se alcanza el máximo de pasos
-            finished_ids = np.where((done > 0) | (cur_episode_length >= max_episode_steps))[0]
+    if args_cli.see:
+        while simulation_app.is_running():
+            start_time = time.time()
+            # run everything in inference mode
+            with torch.inference_mode():
+                # agent stepping
+                actions = policy(obs)
+                # env stepping
+
+                # ------- Teresa ---------
+                # obs, _, _, _ = env.step(actions) # original
+                obs, rew, done, _ = env.step(actions)
+                rew = rew.cpu().numpy().squeeze()
+                done = done.cpu().numpy().squeeze()
+                rewbuffer += rew
+                cur_episode_length += 1
             
-            # Por cada episodio que termine
-            for idx in finished_ids:
-                # Guardar la recompensa acumulada del episodio
-                episode_rewards.append(rewbuffer[idx])  # Guardamos recompensa completa del episodio
-                episode_steps.append(cur_episode_length[idx])  # Guardamos el número de pasos del episodio
+                # Termina los episodios cuando 'done' es 1 o se alcanza el máximo de pasos
+                finished_ids = np.where((done > 0) | (cur_episode_length >= max_episode_steps))[0]
                 
-                # Reiniciar los valores para el siguiente episodio
-                rewbuffer[idx] = 0
-                cur_episode_length[idx] = 0
+                # Por cada episodio que termine
+                for idx in finished_ids:
+                    # Guardar la recompensa acumulada del episodio
+                    episode_rewards.append(rewbuffer[idx])  # Guardamos recompensa completa del episodio
+                    episode_steps.append(cur_episode_length[idx])  # Guardamos el número de pasos del episodio
+                    
+                    # Reiniciar los valores para el siguiente episodio
+                    rewbuffer[idx] = 0
+                    cur_episode_length[idx] = 0
+                    
+                # Promedio de recompensa
+                if len(episode_rewards) > 0:
+                    average_reward = np.mean(episode_rewards)
+                    max_reward = np.max(episode_rewards)
+                    std = np.std(episode_rewards)
+                else:
+                    average_reward = 0
+                    max_reward = 0
+                    std = 0
+                # -------------------------
+            if args_cli.video:
+                timestep += 1
+                # Exit the play loop after recording one video
+                if timestep == args_cli.video_length:
+                    break
+
+            # time delay for real-time evaluation
+            sleep_time = dt - (time.time() - start_time)
+            if args_cli.real_time and sleep_time > 0:
+                time.sleep(sleep_time)
+    else:
+   
+        for step in range(max_episode_steps):
+            start_time = time.time()
+            # run everything in inference mode
+            with torch.inference_mode():
+                # agent stepping
+                actions = policy(obs)
+                # env stepping
+
+                # ------- Teresa ---------
+                # obs, _, _, _ = env.step(actions) # original
+                obs, rew, done, _ = env.step(actions)
+                rew = rew.cpu().numpy().squeeze()
+                done = done.cpu().numpy().squeeze()
+                rewbuffer += rew
+                cur_episode_length += 1
+            
+                # Termina los episodios cuando 'done' es 1 o se alcanza el máximo de pasos
+                finished_ids = np.where((done > 0) | (cur_episode_length >= max_episode_steps))[0]
                 
-            # Promedio de recompensa
-            if len(episode_rewards) > 0:
-                average_reward = np.mean(episode_rewards)
-                max_reward = np.max(episode_rewards)
-                std = np.std(episode_rewards)
+                # Por cada episodio que termine
+                for idx in finished_ids:
+                    # Guardar la recompensa acumulada del episodio
+                    episode_rewards.append(rewbuffer[idx])  # Guardamos recompensa completa del episodio
+                    episode_steps.append(cur_episode_length[idx])  # Guardamos el número de pasos del episodio
+                    
+                    # Reiniciar los valores para el siguiente episodio
+                    rewbuffer[idx] = 0
+                    cur_episode_length[idx] = 0
+                    
+                # Promedio de recompensa
+                if len(episode_rewards) > 0:
+                    average_reward = np.mean(episode_rewards)
+                    max_reward = np.max(episode_rewards)
+                    std = np.std(episode_rewards)
+                else:
+                    average_reward = 0
+                    max_reward = 0
+                    std = 0
+                # -------------------------
+            if args_cli.video:
+                timestep += 1
+                # Exit the play loop after recording one video
+                if timestep == args_cli.video_length:
+                    break
+
+            # time delay for real-time evaluation
+            sleep_time = dt - (time.time() - start_time)
+            if args_cli.real_time and sleep_time > 0:
+                time.sleep(sleep_time)
+
+
+        # --------- Teresa ----------------
+        if runner.csv_path_metrics != None:
+            # El path para guardar las métricas
+            print(f"[INFO] Average Reward: {average_reward}")
+
+            # You can also print the rewards per timestep if needed
+            import pandas as pd
+            statistics_it = pd.DataFrame({f'id_run_name': [runner.cfg['run_name']], 'reward': [average_reward], 'max_reward': [max_reward], 'std': [std], 'num_envs_test': [runner.env.num_envs], 'checkpoint': [args_cli.checkpoint]})
+            csv_path = f"{runner.csv_path_metrics}/rewards_play_{type(runner.alg).__name__}.csv"
+            if not os.path.exists(csv_path):
+                statistics_it.to_csv(csv_path, mode='w',header=True, index=False)
             else:
-                average_reward = 0
-                max_reward = 0
-                std = 0
-            # -------------------------
-        if args_cli.video:
-            timestep += 1
-            # Exit the play loop after recording one video
-            if timestep == args_cli.video_length:
-                break
-
-        # time delay for real-time evaluation
-        sleep_time = dt - (time.time() - start_time)
-        if args_cli.real_time and sleep_time > 0:
-            time.sleep(sleep_time)
-
-
-    # --------- Teresa ----------------
-    if runner.csv_path_metrics != None:
-        # El path para guardar las métricas
-        print(f"[INFO] Average Reward: {average_reward}")
-
-        # You can also print the rewards per timestep if needed
-        import pandas as pd
-        statistics_it = pd.DataFrame({f'id_run_name': [runner.cfg['run_name']], 'reward': [average_reward], 'max_reward': [max_reward], 'std': [std], 'num_envs_test': [runner.env.num_envs], 'checkpoint': [args_cli.checkpoint]})
-        csv_path = f"{runner.csv_path_metrics}/rewards_play_{type(runner.alg).__name__}.csv"
-        if not os.path.exists(csv_path):
-            statistics_it.to_csv(csv_path, mode='w',header=True, index=False)
-        else:
-            statistics_it.to_csv(csv_path, mode='a',header=False, index=False)
-        # ---------------------------------
+                statistics_it.to_csv(csv_path, mode='a',header=False, index=False)
+            # ---------------------------------
 
     # close the simulator
     env.close()
