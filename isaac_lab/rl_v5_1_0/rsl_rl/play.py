@@ -326,16 +326,6 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         # --------- Teresa ----------------
         if runner.csv_path_metrics != None:
             import pandas as pd
-
-            print(f"[INFO] Average Reward: {average_reward}")
-            checkpoint_path = args_cli.checkpoint.lower()
-            if "curriculum" in checkpoint_path:
-                model_type = "curriculum"
-            elif "final" in checkpoint_path:
-                model_type = "final"
-            else:
-                model_type = "unknown"
-
             reward_terms_dict = {}
             if 'ep_infos' in locals() and len(ep_infos) > 0:
                 keys = ep_infos[0].keys()
@@ -350,7 +340,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
             # 3. Preparar el DataFrame con toda la información
             base_data = {
-                'id_run_name': [runner.cfg['run_name']+"_"+model_type],
+                'id_run_name': [runner.cfg['run_name']],
                 'reward': [average_reward],
                 'max_reward': [max_reward],
                 'std': [std],

@@ -127,7 +127,6 @@ class MyOnPolicyRunner:
         patience_counter = 0   # Contador de iteraciones malas
         early_stopping = False
         mejora_minima = 1.0
-        curriculum = True
         # ----------------------
         for it in range(start_iter, tot_iter):
                 start = time.time()
@@ -195,12 +194,6 @@ class MyOnPolicyRunner:
                     maxi_reward = np.max(rewbuffer) if len(rewbuffer) > 0 else 0
                     std = np.std(rewbuffer) if len(rewbuffer) > 0 else 0
 
-
-                    if it == 1500 and not hasattr(self, 'fase_final_iniciada'):
-                        max_reward = None  # Reseteamos la reward para la fase final del currículum
-                        patience_counter = 0
-                        self.fase_final_iniciada = True
-
                     # Extraemos el resto de recompensas medias
                     reward_terms_dict = {}
                     if len(ep_infos) > 0:
@@ -211,13 +204,8 @@ class MyOnPolicyRunner:
                             reward_terms_dict[f"mean_{key}"] = [np.mean(reward_values)]
 
                     if self.activate_callbacks:
-                        if curriculum:
-                            stri = '_curriculum'
-                        else:
-                            stri = '_final'
                         base_data = {
                             'id_run_name': [self.cfg['run_name']],
-                            'model_type': stri, 
                             'iteration': [it], 
                             'reward': [mean_reward], 
                             'max_reward': [maxi_reward if maxi_reward is not None else mean_reward], 
@@ -234,8 +222,7 @@ class MyOnPolicyRunner:
                             patience_counter = 0
                             max_reward = mean_reward
                             # Guardamos con un nombre que indique si es del curriculum o el final
-                            suffix = "curriculum" if it < 1500 else "final"
-                            self.save(os.path.join(self.csv_path_metrics, f"best_model_{suffix}_{self.cfg['run_name']}_{self.env.num_envs}.pt"))
+                            self.save(os.path.join(self.csv_path_metrics, f"best_model_{self.cfg['run_name']}_{self.env.num_envs}.pt"))
 
                             if os.path.exists(csv_path_C):
                                 statistics_it_C.to_csv(csv_path_C, mode='a', header=False, index=False)
@@ -246,9 +233,7 @@ class MyOnPolicyRunner:
                         elif (mean_reward > max_reward + mejora_minima):
                             patience_counter = 0
                             max_reward = mean_reward
-                            
-                            suffix = "curriculum" if it < 1500 else "final"
-                            self.save(os.path.join(self.csv_path_metrics, f"best_model_{suffix}_{self.cfg['run_name']}_{self.env.num_envs}.pt"))
+                            self.save(os.path.join(self.csv_path_metrics, f"best_model_{self.cfg['run_name']}_{self.env.num_envs}.pt"))
                             
                             df_rewards = pd.read_csv(csv_path_C)
                             if self.cfg['run_name'] in df_rewards['id_run_name'].values:
