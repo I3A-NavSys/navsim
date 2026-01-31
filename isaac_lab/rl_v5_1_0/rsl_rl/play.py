@@ -126,7 +126,9 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
     # set the log directory for the environment (works for all environment types)
     env_cfg.log_dir = log_dir
-
+    # ---- Teresa ------
+    env_cfg.is_test_mode = True
+    # ------------------
     # create isaac environment
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
 
@@ -253,7 +255,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
             if args_cli.real_time and sleep_time > 0:
                 time.sleep(sleep_time)
     else:
-   
+        ep_infos = []
         for step in range(max_episode_steps):
             start_time = time.time()
             # run everything in inference mode
@@ -264,7 +266,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
                 # ------- Teresa ---------
                 # obs, _, _, _ = env.step(actions) # original
-                obs, rew, done, _ = env.step(actions)
+                obs, rew, done, info = env.step(actions)
                 rew = rew.cpu().numpy().squeeze()
                 done = done.cpu().numpy().squeeze()
                 rewbuffer += rew
@@ -276,13 +278,29 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
                 # Por cada episodio que termine
                 for idx in finished_ids:
                     # Guardar la recompensa acumulada del episodio
-                    episode_rewards.append(rewbuffer[idx])  # Guardamos recompensa completa del episodio
-                    episode_steps.append(cur_episode_length[idx])  # Guardamos el número de pasos del episodio
-                    
-                    # Reiniciar los valores para el siguiente episodio
-                    rewbuffer[idx] = 0
-                    cur_episode_length[idx] = 0
-                    
+                    episode_rewards.append(rewbuffer[idx])
+                    episode_steps.append(cur_episode_length[idx])
+
+                    if "log" in info:
+                        individual_rewards = {}
+                        for key, value in info["log"].items():
+                            if torch.is_tensor(value):
+                                # Si el tensor tiene dimensiones (es un vector), indexamos por idx
+                                if value.dim() > 0:
+                                    val = value[idx].item()
+                                # Si es un escalar (0-dim), tomamos el valor directamente
+                                else:
+                                    val = value.item()
+                            else:
+                                # Si es una lista o array de numpy con dimensiones
+                                try:
+                                    val = value[idx]
+                                except (IndexError, TypeError):
+                                    val = value
+                            
+                            individual_rewards[key] = val
+                        ep_infos.append(individual_rewards)
+                        
                 # Promedio de recompensa
                 if len(episode_rewards) > 0:
                     average_reward = np.mean(episode_rewards)
@@ -307,17 +325,54 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
         # --------- Teresa ----------------
         if runner.csv_path_metrics != None:
-            # El path para guardar las métricas
-            print(f"[INFO] Average Reward: {average_reward}")
-
-            # You can also print the rewards per timestep if needed
             import pandas as pd
-            statistics_it = pd.DataFrame({f'id_run_name': [runner.cfg['run_name']], 'reward': [average_reward], 'max_reward': [max_reward], 'std': [std], 'num_envs_test': [runner.env.num_envs], 'checkpoint': [args_cli.checkpoint]})
-            csv_path = f"{runner.csv_path_metrics}/rewards_play_{type(runner.alg).__name__}.csv"
-            if not os.path.exists(csv_path):
-                statistics_it.to_csv(csv_path, mode='w',header=True, index=False)
+
+            print(f"[INFO] Average Reward: {average_reward}")
+            checkpoint_path = args_cli.checkpoint.lower()
+            if "curriculum" in checkpoint_path:
+                model_type = "curriculum"
+            elif "final" in checkpoint_path:
+                model_type = "final"
             else:
-                statistics_it.to_csv(csv_path, mode='a',header=False, index=False)
+                model_type = "unknown"
+
+            reward_terms_dict = {}
+            if 'ep_infos' in locals() and len(ep_infos) > 0:
+                keys = ep_infos[0].keys()
+                for key in keys:
+                    # Procesamos cada término asegurando que pase a CPU
+                    reward_values = [
+                        info[key].cpu().item() if torch.is_tensor(info[key]) else info[key] 
+                        for info in ep_infos if key in info
+                    ]
+                    if reward_values:
+                        reward_terms_dict[f"mean_{key}"] = [np.mean(reward_values)]
+
+            # 3. Preparar el DataFrame con toda la información
+            base_data = {
+                'id_run_name': [runner.cfg['run_name']+"_"+model_type],
+                'reward': [average_reward],
+                'max_reward': [max_reward],
+                'std': [std],
+                'num_envs_test': [runner.env.num_envs],
+                'checkpoint': [args_cli.checkpoint]
+            }
+            
+            # Combinamos con los términos individuales (alive, pos_diff, etc.)
+            base_data.update(reward_terms_dict)
+            statistics_it = pd.DataFrame(base_data)
+
+            # 4. Guardado en CSV
+            csv_path = os.path.join(runner.csv_path_metrics, f"rewards_play_{type(runner.alg).__name__}.csv")
+            
+            if not os.path.exists(csv_path):
+                statistics_it.to_csv(csv_path, mode='w', header=True, index=False)
+            else:
+                # Si el archivo existe, lo leemos para asegurar que las columnas coincidan 
+                # (por si un modelo tiene más términos que otro)
+                existing_df = pd.read_csv(csv_path)
+                combined_df = pd.concat([existing_df, statistics_it], ignore_index=True)
+                combined_df.to_csv(csv_path, index=False)
             # ---------------------------------
 
     # close the simulator

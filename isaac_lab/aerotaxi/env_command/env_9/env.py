@@ -272,7 +272,12 @@ class UAVcommandTerm(CommandTerm):
         
         # al llegar a la iteración 1500, el dron se enfrentará al problema completo de puntos hasta a 50 metros.
         max_iter_curriculum = 1500 
-        alpha = min(1.0, current_iter / max_iter_curriculum)
+
+        if getattr(self._env.cfg, "is_test_mode", False):
+            alpha = 1.0
+        else:
+            # En entrenamiento, alpha crece linealmente de 0 a 1
+            alpha = min(1.0, current_iter / max_iter_curriculum)
         
         # Currículum learning de 7 a 50 metros
         range_min, range_max = 7.0, 50.0
@@ -637,6 +642,7 @@ class UAVEnvCfg(ManagerBasedRLEnvCfg):
     # MDP settings
     rewards: RewardsCfg = RewardsCfg()
     terminations: TerminationsCfg = TerminationsCfg()
+    is_test_mode: bool = False
 
     def __post_init__(self):
         """Post initialization"""
@@ -654,3 +660,4 @@ class UAVEnvCfg(ManagerBasedRLEnvCfg):
         # simulation settings
         self.sim.dt = 0.005  # 100 Hz para las físicas
         self.sim.render_interval = self.decimation
+        
