@@ -197,12 +197,21 @@ class MyOnPolicyRunner:
                     # extraemos el resto de recompensas medias como alive, la de posición, velocidad, etc
                     reward_terms_dict = {}
                     if len(ep_infos) > 0:
-                        # Buscamos todas las claves que empiezan por 'rew_' o nombres específicos
                         keys = ep_infos[0].keys()
                         for key in keys:
-                            # Filtramos para obtener solo términos de recompensa
-                            reward_terms_dict[f"mean_{key}"] = [np.mean([info[key] for info in ep_infos if key in info])]
-
+                            # Convertimos cada valor a CPU y luego a un item de Python (float/int)
+                            # Usamos .item() si es un tensor escalar o .cpu().numpy() si fuera un array
+                            reward_values = []
+                            for info in ep_infos:
+                                if key in info:
+                                    value = info[key]
+                                    # Si es un tensor de PyTorch, lo movemos a CPU y extraemos el valor
+                                    if torch.is_tensor(value):
+                                        reward_values.append(value.cpu().item())
+                                    else:
+                                        reward_values.append(value)
+                            
+                            reward_terms_dict[f"mean_{key}"] = [np.mean(reward_values)]
                     if self.activate_callbacks:
                         # CALLBACKS
 
