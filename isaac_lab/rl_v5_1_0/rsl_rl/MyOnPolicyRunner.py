@@ -121,6 +121,12 @@ class MyOnPolicyRunner:
         max_reward = None  # para el callback
         statistics_it_C = None
         csv_path_C = f"{self.csv_path_metrics}/reward_best_models.csv"
+
+        # variables para el early stopping
+        patience = 500         # Número de iteraciones a esperar sin mejora
+        patience_counter = 0   # Contador de iteraciones malas
+        early_stopping = False
+        mejora_minima = 1.0
         # ----------------------
         for it in range(start_iter, tot_iter):
                 start = time.time()
@@ -188,13 +194,33 @@ class MyOnPolicyRunner:
                     maxi_reward = np.max(rewbuffer) if len(rewbuffer) > 0 else 0
                     std = np.std(rewbuffer) if len(rewbuffer) > 0 else 0
 
+                    # extraemos el resto de recompensas medias como alive, la de posición, velocidad, etc
+                    reward_terms_dict = {}
+                    if len(ep_infos) > 0:
+                        # Buscamos todas las claves que empiezan por 'rew_' o nombres específicos
+                        keys = ep_infos[0].keys()
+                        for key in keys:
+                            # Filtramos para obtener solo términos de recompensa
+                            reward_terms_dict[f"mean_{key}"] = [np.mean([info[key] for info in ep_infos if key in info])]
+
                     if self.activate_callbacks:
                         # CALLBACKS
+
+                        base_data = {
+                            'id_run_name': [self.cfg['run_name']], 
+                            'iteration': [it], 
+                            'reward': [mean_reward], 
+                            'max_reward': [maxi_reward], 
+                            'std_reward': [std], 
+                            'num_envs_train': [self.env.num_envs]
+                        }
+                        # Combinar con los términos de recompensa individuales
+                        base_data.update(reward_terms_dict)
+                        statistics_it_C = pd.DataFrame(base_data)
                         if ((mean_reward != None) and (max_reward == None)):
+                            patience_counter = 0
                             max_reward = mean_reward
                             self.save(os.path.join(self.csv_path_metrics, f"best_model_{self.cfg['run_name']}_{self.env.num_envs}.pt"))
-
-                            statistics_it_C = pd.DataFrame({f'id_run_name': [self.cfg['run_name']], 'iteration': [it], 'reward': [mean_reward], 'max_reward': [maxi_reward], 'std_reward': [std], 'num_envs_train': [self.env.num_envs]})
                             if os.path.exists(csv_path_C):
                                 # primera reward de este experimento
                                 statistics_it_C.to_csv(csv_path_C, mode='a',header=False, index=False)
@@ -202,15 +228,20 @@ class MyOnPolicyRunner:
                                 # Primer experimento de todos
                                 statistics_it_C.to_csv(csv_path_C, mode='w',header=True, index=False)
                                 
-                        elif ((mean_reward != None) and ((max_reward != None) and (mean_reward > max_reward))):
+                        elif ((mean_reward != None) and ((max_reward != None) and (mean_reward > max_reward + mejora_minima))):
+                            patience_counter = 0
                             max_reward = mean_reward
                             self.save(os.path.join(self.csv_path_metrics, f"best_model_{self.cfg['run_name']}_{self.env.num_envs}.pt"))
-                            statistics_it_C = pd.DataFrame({f'id_run_name': [self.cfg['run_name']], 'iteration': [it], 'reward': [mean_reward], 'max_reward': [maxi_reward], 'std_reward': [std], 'num_envs_train': [self.env.num_envs]})
                             df_rewards = pd.read_csv(csv_path_C)
                             if self.cfg['run_name'] in df_rewards['id_run_name'].values:
                                 idx = df_rewards.index[df_rewards['id_run_name'] == self.cfg['run_name']][0]
                                 df_rewards.loc[idx] = statistics_it_C.iloc[0]
                             df_rewards.to_csv(csv_path_C, mode='w',header=True,index=False)
+                        else:
+                            # si no tenemos ninguna mejora en n iteraciones, activamos early stopping
+                            patience_counter += 1
+                            if patience_counter >= patience:
+                                early_stopping = True
                 # ---------------------
 
 
@@ -245,6 +276,13 @@ class MyOnPolicyRunner:
                         for path in git_file_paths:
                             self.writer.save_file(path)
 
+                
+                # ------ Teresa --------
+                # early stopping
+                if early_stopping:
+                    print(f"\n[Early Stopping] No ha habido mejora en {patience} iteraciones. Deteniendo entrenamiento en iteración {it}...")
+                    break
+                # ------ Teresa --------
 
         # Save the final model after training
         if self.log_dir is not None and not self.disable_logs:

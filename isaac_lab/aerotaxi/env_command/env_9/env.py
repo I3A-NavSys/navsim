@@ -29,7 +29,9 @@ import isaaclab.utils.math as math_utils
 from . import rewards as my_rewards
 from . import terminations as my_terminations
 from .flight_plan import FlightPlan
-    
+# ruido gaussiano para la regularización -- Teresa ---
+from isaaclab.utils.noise import GaussianNoiseCfg
+# ---------------------------------------------------
 
 # |---------------------------------------------------------|
 # |--------------------- ACTIONS ---------------------------|
@@ -216,17 +218,17 @@ class ObervervationCfg:
     @configclass
     class PolicyCfg(ObsGroup):
         """Observation group for the policy."""
-        pos = ObsTerm(func=my_obs_pos, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
-        lin_vel = ObsTerm(func=my_obs_lin_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
-        ang_vel = ObsTerm(func=my_obs_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
-        roll = ObsTerm(func=my_obs_roll, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
-        pitch = ObsTerm(func=my_obs_pitch, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
-        yaw = ObsTerm(func=my_obs_yaw, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        pos = ObsTerm(func=my_obs_pos, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.02))
+        lin_vel = ObsTerm(func=my_obs_lin_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.05))
+        ang_vel = ObsTerm(func=my_obs_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
+        roll = ObsTerm(func=my_obs_roll, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.005))
+        pitch = ObsTerm(func=my_obs_pitch, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.005))
+        yaw = ObsTerm(func=my_obs_yaw, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.005))
         current_command = ObsTerm(func=my_obs_command)
         
         
         def __post_init__(self):
-            self.enable_corruption = False  # Commands should never be corrupted
+            self.enable_corruption = True  # Regularización con ruido en las observaciones
             self.concatenate_terms = True
     policy: PolicyCfg = PolicyCfg()
 
@@ -373,6 +375,7 @@ class CommandCfg:
 class EventCfg:
     """Event specifications for the environment."""
 
+    # DOMAIN RANDOMIZATION: posición, velocidad, roll, pitch, yaw, masa y velocidad del viento
     reset_pos = EventTerm(
         func=mdp.reset_root_state_uniform, 
         mode="reset",
@@ -394,6 +397,30 @@ class EventCfg:
         }
     )
 
+    # Masa: 0.9 su masa y 1.1 su masa (con pasajeros, o por si alguno es especialmente menos pesado)
+    randomize_mass = EventTerm(
+        func=mdp.randomize_rigid_body_mass,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg(name="aerotaxi"),
+            "mass_distribution_params": (0.9, 1.1), 
+            "operation": "scale"
+        }
+    )
+    # Viento: el dron recibirá una corriente de aire en diversas direcciones de forma aleatoria.
+    randomize_wind = EventTerm(
+        func=mdp.push_by_setting_velocity,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg(name="aerotaxi"),
+            "velocity_range": {
+                "x": (-1.0, 1.0), 
+                "y": (-1.0, 1.0),
+                "z": (-0.5, 0.5)
+            }
+        }
+    )
+
 
 # |---------------------------------------------------------|
 # |--------------------- REWARDS ---------------------------|
@@ -410,22 +437,22 @@ class RewardsCfg:
 
     rew_pos_diff = RewTerm(
         func=my_rewards.rew_pos_diff,
-        weight=-0.02,
+        weight=-0.5,
     )
 
     rew_pos_diff_fine_grained = RewTerm(
         func=my_rewards.rew_pos_diff_fine_grained,
-        weight=10.0,
+        weight=50.0,
         params={"std": 15.0},
     )
 
     rew_lin_vel_diff = RewTerm(
         func=my_rewards.rew_lin_vel_diff,
-        weight=-1.0,
+        weight=-0.15,
     )
     rew_lin_vel_diff_fine_grained = RewTerm(
         func=my_rewards.rew_lin_vel_diff_fine_grained,
-        weight=2.0,
+        weight=3.0,
         params={"std": 1.0},
     )
     rew_ang_vel_z_diff = RewTerm(
@@ -604,7 +631,7 @@ class UAVEnvCfg(ManagerBasedRLEnvCfg):
         self.viewer.lookat = [0.0, 0.0, 2.0]
         # step settings
         self.decimation = 4  # 50 Hz de actualización para la IA
-        self.episode_length_s = 15.0
+        self.episode_length_s = 50.0 # encadena 2 puntos en su nivel máximo de duración (25s máximo/punto)
         # simulation settings
         self.sim.dt = 0.005  # 100 Hz para las físicas
         self.sim.render_interval = self.decimation
