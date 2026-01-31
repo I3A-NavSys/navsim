@@ -194,63 +194,69 @@ class MyOnPolicyRunner:
                     maxi_reward = np.max(rewbuffer) if len(rewbuffer) > 0 else 0
                     std = np.std(rewbuffer) if len(rewbuffer) > 0 else 0
 
-                    # extraemos el resto de recompensas medias como alive, la de posición, velocidad, etc
+                    # 1. RESET DE RÉCORD: Al llegar a la máxima dificultad (it 1500)
+                    # Ignoramos los récords "fáciles" del pasado para empezar de cero en lo difícil.
+                    if it == 1500:
+                        max_reward = None 
+                        patience_counter = 0
+                        print(f"\n[Curriculum] Máxima complejidad alcanzada. Reiniciando récords para guardar el mejor modelo real...")
+
+                    # Extraemos el resto de recompensas medias
                     reward_terms_dict = {}
                     if len(ep_infos) > 0:
                         keys = ep_infos[0].keys()
                         for key in keys:
-                            # Convertimos cada valor a CPU y luego a un item de Python (float/int)
-                            # Usamos .item() si es un tensor escalar o .cpu().numpy() si fuera un array
-                            reward_values = []
-                            for info in ep_infos:
-                                if key in info:
-                                    value = info[key]
-                                    # Si es un tensor de PyTorch, lo movemos a CPU y extraemos el valor
-                                    if torch.is_tensor(value):
-                                        reward_values.append(value.cpu().item())
-                                    else:
-                                        reward_values.append(value)
-                            
+                            reward_values = [info[key].cpu().item() if torch.is_tensor(info[key]) else info[key] 
+                                            for info in ep_infos if key in info]
                             reward_terms_dict[f"mean_{key}"] = [np.mean(reward_values)]
-                    if self.activate_callbacks:
-                        # CALLBACKS
 
+                    if self.activate_callbacks:
                         base_data = {
                             'id_run_name': [self.cfg['run_name']], 
                             'iteration': [it], 
                             'reward': [mean_reward], 
-                            'max_reward': [maxi_reward], 
+                            'max_reward': [maxi_reward if maxi_reward is not None else mean_reward], 
                             'std_reward': [std], 
                             'num_envs_train': [self.env.num_envs]
                         }
-                        # Combinar con los términos de recompensa individuales
                         base_data.update(reward_terms_dict)
                         statistics_it_C = pd.DataFrame(base_data)
-                        if ((mean_reward != None) and (max_reward == None)):
+
+                        # CASO A: Primer registro O Primer registro tras el reset de la it 1500
+                        if (max_reward == None):
                             patience_counter = 0
                             max_reward = mean_reward
-                            self.save(os.path.join(self.csv_path_metrics, f"best_model_{self.cfg['run_name']}_{self.env.num_envs}.pt"))
+                            # Guardamos con un nombre que indique si es del curriculum o el final
+                            suffix = "curriculum" if it < 1500 else "final"
+                            self.save(os.path.join(self.csv_path_metrics, f"best_model_{suffix}_{self.cfg['run_name']}.pt"))
+
                             if os.path.exists(csv_path_C):
-                                # primera reward de este experimento
-                                statistics_it_C.to_csv(csv_path_C, mode='a',header=False, index=False)
+                                statistics_it_C.to_csv(csv_path_C, mode='a', header=False, index=False)
                             else:
-                                # Primer experimento de todos
-                                statistics_it_C.to_csv(csv_path_C, mode='w',header=True, index=False)
-                                
-                        elif ((mean_reward != None) and ((max_reward != None) and (mean_reward > max_reward + mejora_minima))):
+                                statistics_it_C.to_csv(csv_path_C, mode='w', header=True, index=False)
+                                                
+                        # CASO B: Mejora el récord (ya sea en fase fácil o en fase difícil)
+                        elif (mean_reward > max_reward + mejora_minima):
                             patience_counter = 0
                             max_reward = mean_reward
-                            self.save(os.path.join(self.csv_path_metrics, f"best_model_{self.cfg['run_name']}_{self.env.num_envs}.pt"))
+                            
+                            suffix = "curriculum" if it < 1500 else "final"
+                            self.save(os.path.join(self.csv_path_metrics, f"best_model_{suffix}_{self.cfg['run_name']}.pt"))
+                            
                             df_rewards = pd.read_csv(csv_path_C)
                             if self.cfg['run_name'] in df_rewards['id_run_name'].values:
                                 idx = df_rewards.index[df_rewards['id_run_name'] == self.cfg['run_name']][0]
                                 df_rewards.loc[idx] = statistics_it_C.iloc[0]
-                            df_rewards.to_csv(csv_path_C, mode='w',header=True,index=False)
+                            df_rewards.to_csv(csv_path_C, mode='w', header=True, index=False)
+                            
+                        # CASO C: No hay mejora
                         else:
-                            # si no tenemos ninguna mejora en n iteraciones, activamos early stopping
-                            patience_counter += 1
-                            if patience_counter >= patience:
-                                early_stopping = True
+                            # Solo empezamos a contar la paciencia para el Early Stopping
+                            # una vez que el entorno ya no cambia (it >= 1500)
+                            if (it >= 1500):
+                                patience_counter += 1
+                                if (patience_counter >= patience): 
+                                    early_stopping = True
                 # ---------------------
 
 

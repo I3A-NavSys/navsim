@@ -265,24 +265,38 @@ class UAVcommandTerm(CommandTerm):
     def _update_metrics(self):
         pass
 
+
     def _resample_command(self, env_ids: torch.Tensor):
-        '''Generates a random point to reach between 50 and -50 meters in X and Y, and between 10 and 20 in Z'''
-        self.target_pos[env_ids, 0] = torch.rand(len(env_ids), device=self.device) * 100.0 - 50.0
-        self.target_pos[env_ids, 1] = torch.rand(len(env_ids), device=self.device) * 100.0 - 50.0
-        self.target_pos[env_ids, 2] = torch.rand(len(env_ids), device=self.device) * 10.0 + 10.0
+        steps_per_iteration = self._env.cfg.num_steps_per_env * self._env.cfg.decimation
+        current_iter = self._env.common_step_counter / steps_per_iteration
+        
+        # al llegar a la iteración 1500, el dron se enfrentará al problema completo de puntos hasta a 50 metros.
+        max_iter_curriculum = 1500 
+        alpha = min(1.0, current_iter / max_iter_curriculum)
+        
+        # Currículum learning de 7 a 50 metros
+        range_min, range_max = 7.0, 50.0
+        current_range = range_min + alpha * (range_max - range_min)
+        
+        # currículum learning de 10 a 20 grados 
+        z_min = 10.0
+        z_max = 10.0 + (alpha * 10.0) # Crece de 10 a 20 gradualmente
+
+        self.target_pos[env_ids, 0] = (torch.rand(len(env_ids), device=self.device) * 2.0 - 1.0) * current_range
+        self.target_pos[env_ids, 1] = (torch.rand(len(env_ids), device=self.device) * 2.0 - 1.0) * current_range
+        self.target_pos[env_ids, 2] = torch.rand(len(env_ids), device=self.device) * (z_max - z_min) + z_min
 
 
         uav_pos_local = self._asset.data.root_com_pos_w[env_ids] - self._env.scene.env_origins[env_ids]
         distancias = torch.norm(self.target_pos[env_ids] - uav_pos_local[:, :3], dim=1)
 
-        # La velocidad será entre 3 y 6 m/s
-        v_media_exigida = torch.rand(len(env_ids), device=self.device) * (6.0 - 3.0) + 3.0
+        # currículum learning de velocidad de 2 a 6 m/s
+        v_exigida_base = 2.0 + (alpha * 4.0)
+        v_media_exigida = torch.rand(len(env_ids), device=self.device) * 1.0 + v_exigida_base
 
         # t = (distancia / velocidad) + buffer de aceleracion
-        # El buffer de 2s permite tiempo para rotar y ganar inercia
         tiempos_calculados = (distancias / v_media_exigida) + 2.0
-        self.t_to_solve[env_ids] = torch.clamp(tiempos_calculados, min=4.0, max=25.0) # para evitar tiempos imposibles
-        # no voy a definir yaw, porque ese se calcula a partir del siguiente punto para ver hacia donde hay que mirar.
+        self.t_to_solve[env_ids] = torch.clamp(tiempos_calculados, min=4.0, max=25.0)
 
     def _update_command(self):
         obs = self._env.observation_manager.compute_group("policy")
@@ -429,7 +443,7 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    alive = RewTerm(func=mdp.is_alive, weight=2.0)
+    alive = RewTerm(func=mdp.is_alive, weight=5.0)
 
     action_rate = RewTerm(func=my_rewards.rew_action_rate, weight=-0.1)
 
@@ -437,13 +451,13 @@ class RewardsCfg:
 
     rew_pos_diff = RewTerm(
         func=my_rewards.rew_pos_diff,
-        weight=-2.0,
+        weight=-0.5,
     )
 
     rew_pos_diff_fine_grained = RewTerm(
         func=my_rewards.rew_pos_diff_fine_grained,
-        weight=25.0,
-        params={"std": 4.0},
+        weight=30.0,
+        params={"std": 10.0},
     )
 
     rew_lin_vel_diff = RewTerm(
@@ -626,6 +640,11 @@ class UAVEnvCfg(ManagerBasedRLEnvCfg):
 
     def __post_init__(self):
         """Post initialization"""
+        # ----- Teresa -------
+        # pasos que se usan en la red de PPO
+        self.num_steps_per_env = 100
+        # ----- Teresa -------
+
         # viewer settings
         self.viewer.eye = [4.5, 0.0, 6.0]
         self.viewer.lookat = [0.0, 0.0, 2.0]
