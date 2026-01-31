@@ -429,30 +429,30 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    alive = RewTerm(func=mdp.is_alive, weight=15.0)
+    alive = RewTerm(func=mdp.is_alive, weight=2.0)
 
-    action_rate = RewTerm(func=my_rewards.rew_action_rate, weight=-0.01)
+    action_rate = RewTerm(func=my_rewards.rew_action_rate, weight=-0.1)
 
-    terminating = RewTerm(func=mdp.is_terminated, weight=-10.0)
+    terminating = RewTerm(func=mdp.is_terminated, weight=-50.0)
 
     rew_pos_diff = RewTerm(
         func=my_rewards.rew_pos_diff,
-        weight=-0.5,
+        weight=-2.0,
     )
 
     rew_pos_diff_fine_grained = RewTerm(
         func=my_rewards.rew_pos_diff_fine_grained,
-        weight=50.0,
-        params={"std": 15.0},
+        weight=25.0,
+        params={"std": 4.0},
     )
 
     rew_lin_vel_diff = RewTerm(
         func=my_rewards.rew_lin_vel_diff,
-        weight=-0.15,
+        weight=-0.1,
     )
     rew_lin_vel_diff_fine_grained = RewTerm(
         func=my_rewards.rew_lin_vel_diff_fine_grained,
-        weight=3.0,
+        weight=2.0,
         params={"std": 1.0},
     )
     rew_ang_vel_z_diff = RewTerm(
