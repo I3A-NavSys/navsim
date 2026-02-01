@@ -576,7 +576,7 @@ env:
     alive:
       func: isaaclab.envs.mdp.rewards:is_alive
       params: {}
-      weight: 5.0
+      weight: 15.0
     action_rate:
       func: aerotaxi.env_command.env_9.rewards:rew_action_rate
       params: {}
@@ -592,7 +592,7 @@ env:
     rew_pos_diff_fine_grained:
       func: aerotaxi.env_command.env_9.rewards:rew_pos_diff_fine_grained
       params:
-        std: 10.0
+        std: 20.0
       weight: 30.0
     rew_lin_vel_diff:
       func: aerotaxi.env_command.env_9.rewards:rew_lin_vel_diff
@@ -697,13 +697,13 @@ agent:
   algorithm:
     class_name: PPO
     num_learning_epochs: 8
-    num_mini_batches: 4
-    learning_rate: 5.0e-05
+    num_mini_batches: 8
+    learning_rate: 3.0e-05
     schedule: adaptive
     gamma: 0.99
-    lam: 0.9
-    entropy_coef: 0.01
-    desired_kl: 0.008
+    lam: 0.95
+    entropy_coef: 0.005
+    desired_kl: 0.01
     max_grad_norm: 0.5
     value_loss_coef: 1.0
     use_clipped_value_loss: true
