@@ -175,13 +175,16 @@ class ActionsCfg:
 #     asset: Articulation = env.scene[asset_cfg.name]
 #     return asset.data.root_com_pos_w - env.scene.env_origins # posición relativa
 
+# ----- Teresa -------
 def my_obs_pos(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
     asset: Articulation = env.scene[asset_cfg.name]
     command_term = env.command_manager.get_term("vel_command")
     
     uav_pos_local = asset.data.root_com_pos_w - env.scene.env_origins
-    relative_pos = command_term.target_pos - uav_pos_local[:, :3]
+    relative_pos = command_term.target_pos - uav_pos_local[:, :3] # que coja no dónde está con respecto al centro, si
+    # a cuánto está del punto, si no sobreajusta
     return relative_pos
+# ------------------------------
 
 def my_obs_lin_vel(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
     asset: Articulation = env.scene[asset_cfg.name]
@@ -233,7 +236,7 @@ class ObervervationCfg:
         pitch = ObsTerm(func=my_obs_pitch, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
         yaw = ObsTerm(func=my_obs_yaw, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
         # current_command = ObsTerm(func=my_obs_command) # habría fuga de datos si no
-        
+        # GaussianNoiseCFG: simula el ruido de los sensores, así es como si fuera Regularización
         
         def __post_init__(self):
             self.enable_corruption = True  # Regularización con ruido en las observaciones
