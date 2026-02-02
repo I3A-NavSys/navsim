@@ -3,7 +3,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class Command5PPORunnerCfg(RslRlOnPolicyRunnerCfg):
-    num_steps_per_env = 100
+    num_steps_per_env = 500
     max_iterations = 4001
     save_interval = 100
     experiment_name = "command5"
