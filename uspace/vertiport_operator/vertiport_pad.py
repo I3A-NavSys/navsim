@@ -1,17 +1,17 @@
-import bisect
+from sortedcontainers import SortedList
 
 class Pad:
     def __init__(self, id, type, status, operator_id, location):
         self.id: str = id
         self.type: str = type
         self.status: str = status
-        self.bookings: list[tuple[float, float]] = []
+        self.bookings: SortedList[tuple[float, float]] = SortedList()
         self.operator_id: str = operator_id
         self.location: tuple[float, float, float] = location
 
     def is_available(self, start_time: float, end_time: float, buffer: float):
         # Find the insertion point to maintain sorted order
-        index = bisect.bisect_right(self.bookings, (start_time, end_time))
+        index = self.bookings.bisect_right((start_time, end_time))
 
         # Check for overlap with the previous booking
         if index > 0:
@@ -41,7 +41,7 @@ class Pad:
             return False
         
         # Insert the new booking while maintaining sorted order
-        bisect.insort(self.bookings, (start_time, end_time))
+        self.bookings.add((start_time, end_time))
         return True
     
     def get_bookings(self):
