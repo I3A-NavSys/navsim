@@ -183,7 +183,12 @@ def my_obs_pos(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
     uav_pos_local = asset.data.root_com_pos_w - env.scene.env_origins
     relative_pos = command_term.target_pos - uav_pos_local[:, :3] # que coja no dónde está con respecto al centro, si
     # a cuánto está del punto, si no sobreajusta
-    return relative_pos
+
+    # que el dron conozca la orientación a la que está ese punto
+    rotacion_z_dron = asset.data.root_com_quat_w 
+    invertir_z = math_utils.quat_inv(rotacion_z_dron)
+    rel_pos_b = math_utils.quat_apply(invertir_z, relative_pos)
+    return rel_pos_b
 # ------------------------------
 
 def my_obs_lin_vel(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
