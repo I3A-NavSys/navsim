@@ -314,7 +314,8 @@ class UAVcommandTerm(CommandTerm):
 
         # distancia = sqrt(x^2 + y^2 + z^2) -> esto lo hace el torch.norm   
         uav_lin_vel_b = obs[:, 3:6]  
-        uav_yaw = obs[:, 11]       
+        # uav_yaw = obs[:, 11]       
+        _, _, uav_yaw = math_utils.euler_xyz_from_quat(self._asset.data.root_com_quat_w)
 
         direccion_diff = self.target_pos - uav_pos_local
         # distancia = sqrt(x^2 + y^2 + z^2) -> esto lo hace el torch.norm
