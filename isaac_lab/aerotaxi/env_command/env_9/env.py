@@ -215,13 +215,14 @@ def my_obs_pitch(env:ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
 
     return pitch
 
-def my_obs_yaw(env:ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
-    asset: Articulation = env.scene[asset_cfg.name]
-    _, _, yaw = math_utils.euler_xyz_from_quat(asset.data.root_com_quat_w)
-    yaw = torch.atan2(torch.sin(yaw), torch.cos(yaw)) # normalize angle to [-pi, pi]
-    yaw = yaw.unsqueeze(1)  # Add a dimension to match the expected shape
+# Hay fuga de datos: aprende dónde están los ejes de coordenadas, y no generaliza
+# def my_obs_yaw(env:ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
+#     asset: Articulation = env.scene[asset_cfg.name]
+#     _, _, yaw = math_utils.euler_xyz_from_quat(asset.data.root_com_quat_w)
+#     yaw = torch.atan2(torch.sin(yaw), torch.cos(yaw)) # normalize angle to [-pi, pi]
+#     yaw = yaw.unsqueeze(1)  # Add a dimension to match the expected shape
 
-    return yaw
+#     return yaw
 
 def my_obs_command(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Get current velocity commands."""
@@ -239,7 +240,7 @@ class ObervervationCfg:
         ang_vel = ObsTerm(func=my_obs_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.1))
         roll = ObsTerm(func=my_obs_roll, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
         pitch = ObsTerm(func=my_obs_pitch, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
-        yaw = ObsTerm(func=my_obs_yaw, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
+        # yaw = ObsTerm(func=my_obs_yaw, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
         # current_command = ObsTerm(func=my_obs_command) # habría fuga de datos si no
         # GaussianNoiseCFG: simula el ruido de los sensores, así es como si fuera Regularización
         
@@ -504,6 +505,11 @@ class RewardsCfg:
         func=my_rewards.rew_pitch_diff_fine_grained,
         weight=1.0,
         params={"std": 0.2, "target": 0.0},
+    )
+    rew_heading_alignment_fine_grained = RewTerm(
+        func=my_rewards.rew_heading_alignment_fine_grained,
+        weight=5.0,
+        params={"std": 0.5}
     )
 
 
