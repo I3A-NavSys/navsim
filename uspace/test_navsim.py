@@ -3,18 +3,18 @@ from os import path
 import time
  
 current_file_path = path.dirname(__file__)
-project_root_path = path.abspath(path.join(current_file_path, "../../.."))
+project_root_path = path.abspath(path.join(current_file_path, ".."))
  
 if project_root_path not in sys.path:
     sys.path.append(project_root_path)
 
-from uspace.uav_operator.uav_operator import UAVOperator
-from uspace.uav_operator.uav import UAV
-from uspace.mission_manager.mission_manager import MissionManager
-from uspace.vertiport_operator.vertiport_operator import VertiportOperator
-from uspace.vertiport_operator.vertiport_pad import Pad
-from uspace.uspace_manager.uspace_manager import USpaceManager
-from uspace.uspace_manager.constants import MissionType, UAVStatus, PadStatus
+from uav_operator.uav_operator import UAVOperator
+from uav_operator.uav import UAV
+from mission_manager.mission_manager import MissionManager
+from vertiport_operator.vertiport_operator import VertiportOperator
+from vertiport_operator.vertiport_pad import Pad
+from uspace_manager.uspace_manager import USpaceManager
+from uspace_manager.constants import MissionType, UAVStatus, PadStatus
 
 
 mission_mgr = MissionManager(id="MISSION_MGR_0", name="Mission Manager 0")
@@ -49,7 +49,7 @@ uav_op1.uavs = {
     }
 }
 
-veriport_operators = []
+vertiport_operators = []
 for j in range(-5, 6, 1):
     direction = 1 if j % 2 == 0 else -1
     vert_id = f"VERT_OP_{j}"
@@ -99,7 +99,7 @@ for j in range(-5, 6, 1):
         security_pad_booking_buffer=40
     )
 
-    veriport_operators.append(vert_op)
+    vertiport_operators.append(vert_op)
 
 mission_mgr.connect_mqtt_client()
 uspace_mgr.connect_mqtt_client()
@@ -107,7 +107,7 @@ uspace_mgr.connect_mqtt_client()
 uav_op1.connect_mqtt_client()
 uav_op1.register_into_airspace()
 
-for vert_op in veriport_operators:
+for vert_op in vertiport_operators:
     vert_op.connect_mqtt_client()
     vert_op.register_into_airspace()
 
