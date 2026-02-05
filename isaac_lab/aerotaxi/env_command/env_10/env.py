@@ -357,11 +357,15 @@ class UAVcommandTerm(CommandTerm):
         uav_pos_local = self._asset.data.root_com_pos_w[:, :3] - self._env.scene.env_origins[:, :3]
         rel_pos_w = self.target_pos - uav_pos_local
         quat_inv = math_utils.quat_inv(self._asset.data.root_com_quat_w)
-        self._command = math_utils.quat_apply(quat_inv, rel_pos_w)
-
-        # Visualización
-        self._marker_visualizer.visualize(translations=self.target_pos + self._env.scene.env_origins)
-
+        self._command[:, :3] = math_utils.quat_apply(quat_inv, rel_pos_w)
+        
+        # 2. Guardamos la velocidad de giro del fantasma en la 4ª columna
+        # Esto es lo que la recompensa rew_ang_vel_z_diff está buscando
+        self._command[:, 3] = self.target_yaw 
+        # ---------------------------
+        # Visualización dinámica
+        target_pos_w = self.target_pos + self._env.scene.env_origins
+        self._marker_visualizer.visualize(translations=target_pos_w)
 @configclass
 class UAVcommandTermCfg(CommandTermCfg):
     """Command term configuration for the UAV."""
