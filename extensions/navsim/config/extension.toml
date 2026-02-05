@@ -3,11 +3,11 @@ reloadable = true
 order = 0
 
 [package]
-version = "1.0.1"
+version = "0.1.0"
 category = "Simulation"
-title = "navsim - vertiport operator"
+title = "navsim"
 description = ""
-authors = ["Iker Nebot Amoriza"]
+authors = ["Víctor Blázquez Milara", "Iker Nebot Amoriza", "Rafael Casado González", "Aurelio Bermúdez Marín"]
 repository = ""
 keywords = []
 changelog = "docs/CHANGELOG.md"

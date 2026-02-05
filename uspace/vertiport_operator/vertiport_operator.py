@@ -60,7 +60,7 @@ class VertiportOperator:
                 for topic in self.callback_topics:
                     self.subscribe_mqtt_topic(topic)
 
-    def disconnect_client(self):
+    def disconnect_mqtt_client(self):
         if self.mqtt_is_connected:
             self.mqtt_is_connected = False
             MQTTService.disconnect_client(self.mqtt_client)
