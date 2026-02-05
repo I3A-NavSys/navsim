@@ -80,7 +80,7 @@ env:
   seed: 0
   decimation: 4
   scene:
-    num_envs: 32
+    num_envs: {}
     env_spacing: 100.0
     lazy_sensor_update: true
     replicate_physics: false
@@ -543,11 +543,11 @@ env:
     alive:
       func: isaaclab.envs.mdp.rewards:is_alive
       params: {}
-      weight: 15.0
+      weight: 2.0
     action_rate:
       func: aerotaxi.env_command.env_9.rewards:rew_action_rate
       params: {}
-      weight: -0.1
+      weight: -1.0
     terminating:
       func: isaaclab.envs.mdp.rewards:is_terminated
       params: {}
@@ -560,7 +560,7 @@ env:
       func: aerotaxi.env_command.env_9.rewards:rew_pos_diff_fine_grained
       params:
         std: 20.0
-      weight: 30.0
+      weight: 15.0
     rew_lin_vel_diff:
       func: aerotaxi.env_command.env_9.rewards:rew_lin_vel_diff
       params: {}
@@ -583,29 +583,33 @@ env:
       func: aerotaxi.env_command.env_9.rewards:rew_roll_diff
       params:
         target: 0.0
-      weight: -0.5
+      weight: -2.0
     rew_roll_diff_fine_grained:
       func: aerotaxi.env_command.env_9.rewards:rew_roll_diff_fine_grained
       params:
-        std: 0.2
+        std: 0.5
         target: 0.0
-      weight: 1.0
+      weight: 5.0
     rew_pitch_diff:
       func: aerotaxi.env_command.env_9.rewards:rew_pitch_diff
       params:
         target: 0.0
-      weight: -0.5
+      weight: -2.0
     rew_pitch_diff_fine_grained:
       func: aerotaxi.env_command.env_9.rewards:rew_pitch_diff_fine_grained
       params:
-        std: 0.2
+        std: 0.5
         target: 0.0
-      weight: 1.0
+      weight: 5.0
     rew_heading_alignment_fine_grained:
       func: aerotaxi.env_command.env_9.rewards:rew_heading_alignment_fine_grained
       params:
         std: 0.5
       weight: 5.0
+    rew_ang_vel_xy_penalty:
+      func: aerotaxi.env_command.env_9.rewards:rew_ang_vel_xy_penalty
+      params: {}
+      weight: -2.0
   terminations:
     time_out:
       func: isaaclab.envs.mdp.terminations:time_out
@@ -634,7 +638,7 @@ env:
       debug_vis: false
       asset_name: aerotaxi
   is_test_mode: false
-  num_steps_per_env: 100
+  num_steps_per_env: 500
 agent:
   seed: 42
   device: cuda:0

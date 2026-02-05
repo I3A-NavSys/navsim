@@ -273,17 +273,19 @@ class UAVcommandTerm(CommandTerm):
         super().__init__(cfg, env)
         self._marker_visualizer = VisualizationMarkers(VISUAL_TARGET_CFG)
         self._asset = env.scene[cfg.asset_name]
-        self.t_to_solve = torch.zeros(self.num_envs, device=self.device)
-        self.max_var_lin_vel = 5 # tope de 5 m/s
-        self.max_var_ang_vel = 1 
         
-        # Estado del comando: [vel_x, vel_y, vel_z, yaw_rate]
-        self._command = torch.zeros(self.num_envs, 4, device=self.device)
-        
-        # Puntos de destino aleatorios para cada entorno
+        # ponemos la velocidad y giro al que deberá ir nuestro punto guía
+        # velocidad en x,y,z (tamaño 3)
+        self.target_vel = torch.zeros(self.num_envs, 3, device=self.device)
+        self.target_yaw = torch.zeros(self.num_envs,device=self.device)
+
+        # estado del punto guía en t (vel_x,vel_y,vel_z, yaw_rate)
+        self._command = torch.zeros(self.num_envs,4,device=self.device)
+
+        # posición del punto guía (x,y,z, tamaño 3)
         self.target_pos = torch.zeros(self.num_envs, 3, device=self.device)
-        # posición a la que mirar aleatoria
-        self.target_yaw = torch.zeros(self.num_envs, device=self.device)
+        # t actual
+        self.dt = env.step_dt 
 
     @property
     def command(self) -> torch.Tensor:
@@ -294,96 +296,71 @@ class UAVcommandTerm(CommandTerm):
 
 
     def _resample_command(self, env_ids: torch.Tensor):
-        if getattr(self._env.cfg, "is_test_mode", False):
-            pass
-        else:
-            pass
+        # primer frame de tiempo
+        # if getattr(self._env.cfg, "is_test_mode", False):
+        #     pass
+        # else:
+        #     pass
         
-        '''Generates a random point to reach between 50 and -50 meters in X and Y, and between 10 and 20 in Z'''
-        self.target_pos[env_ids, 0] = torch.rand(len(env_ids), device=self.device) * 100.0 - 50.0
-        self.target_pos[env_ids, 1] = torch.rand(len(env_ids), device=self.device) * 100.0 - 50.0
-        self.target_pos[env_ids, 2] = torch.rand(len(env_ids), device=self.device) * 10.0 + 10.0
+        # El objetivo empieza en la posición actual del dron para un despegue suave
+        uav_pos_w = self._asset.data.root_com_pos_w[env_ids] - self._env.scene.env_origins[env_ids]
+        self.target_pos[env_ids] = uav_pos_w[:, :3]
 
-        uav_pos_local = self._asset.data.root_com_pos_w[env_ids] - self._env.scene.env_origins[env_ids]
-        distancias = torch.norm(self.target_pos[env_ids] - uav_pos_local[:, :3], dim=1)
+        # Definimos velocidad aleatoria del fantasma (3 a 6 m/s)
+        speed = torch.rand(len(env_ids), device=self.device) * 3.0 + 3.0
+        
+        # Dirección inicial aleatoria en el plano XY
+        angle = torch.rand(len(env_ids), device=self.device) * 2 * math.pi
+        self.target_vel[env_ids, 0] = torch.cos(angle) * speed
+        self.target_vel[env_ids, 1] = torch.sin(angle) * speed
+        self.target_vel[env_ids, 2] = torch.rand(len(env_ids), device=self.device) * 0.5 + 0.2
+        # Curvatura aleatoria (Yaw rate del camino: -1.0 a 1.0 rad/s)
+        # Esto genera círculos, curvas en S o rectas aleatorias
+        self.target_yaw[env_ids] = (torch.rand(len(env_ids), device=self.device) - 0.5) * 2.0
 
-        # La velocidad será entre 3 y 6 m/s
-        v_media_exigida = torch.rand(len(env_ids), device=self.device) * (6.0 - 3.0) + 3.0
 
-        # t = (distancia / velocidad) + buffer de aceleracion
-        # El buffer de 2s permite tiempo para rotar y ganar inercia
-        tiempos_calculados = (distancias / v_media_exigida) + 2.0
-        self.t_to_solve[env_ids] = torch.clamp(tiempos_calculados, min=4.0, max=25.0) # para evitar tiempos imposibles
-        # no voy a definir yaw, porque ese se calcula a partir del siguiente punto para ver hacia donde hay que mirar.
 
     def _update_command(self):
-        obs = self._env.observation_manager.compute_group("policy")
-        uav_pos_g = self._asset.data.root_com_pos_w
-        uav_pos_local = uav_pos_g - self._env.scene.env_origins
-        uav_pos_local = uav_pos_local[:, :3] 
+        # segundo o más frame de tiempo
+        """Mueve el fantasma en cada paso de física."""
+        # 1. Variación de altura dinámica durante el vuelo (cada ~2 seg)
+        change_z = torch.rand(self.num_envs, device=self.device) < 0.01
+        if change_z.any():
+            self.target_vel[change_z, 2] = (torch.rand(change_z.sum(), device=self.device) - 0.5) * 2.5
 
-        # distancia = sqrt(x^2 + y^2 + z^2) -> esto lo hace el torch.norm   
-        uav_lin_vel_b = obs[:, 3:6]  
-        # uav_yaw = obs[:, 11]       
-        _, _, uav_yaw = math_utils.euler_xyz_from_quat(self._asset.data.root_com_quat_w)
+        # 2. Rotación horizontal (curvas)
+        cos_theta = torch.cos(self.target_yaw * self.dt)
+        sin_theta = torch.sin(self.target_yaw * self.dt)
+        vx, vy = self.target_vel[:, 0].clone(), self.target_vel[:, 1].clone()
+        self.target_vel[:, 0] = vx * cos_theta - vy * sin_theta
+        self.target_vel[:, 1] = vx * sin_theta + vy * cos_theta
 
-        direccion_diff = self.target_pos - uav_pos_local
-        # distancia = sqrt(x^2 + y^2 + z^2) -> esto lo hace el torch.norm
-        distancia = torch.norm(direccion_diff, dim=1, keepdim=True)
-        # unit_dir: vector unitario con la dirección a donde hay que mirar
-        unit_dir = direccion_diff / (distancia + 1e-5) # evito división por cero
+        # 3. Valla Virtual (Límite 100m spacing -> 50m radio)
+        limite_xy = 45.0
+        limite_z = (1.25, 25.0)
         
-        # al llegar a un waypoint, le digo que mantenga la velocidad de 5 m/s máxima
-        vel_target = unit_dir * self.max_var_lin_vel 
-        # aumento de velocidad proporcional necesario si se ha desviado de la posición mucho, en función de su tiempo 
-        # particular
-        tiempos = self.t_to_solve.unsqueeze(1)
-        correccion_vel = (self.target_pos - uav_pos_local) / tiempos
-        comando_vel_final = vel_target + correccion_vel
+        # Rebote XY
+        out_x = (self.target_pos[:, 0].abs() > limite_xy)
+        self.target_vel[out_x, 0] *= -1.1 # Rebote con un poco de impulso hacia adentro
+        out_y = (self.target_pos[:, 1].abs() > limite_xy)
+        self.target_vel[out_y, 1] *= -1.1
 
-        # orientación del dron actual: qw,qx,qy,qz para cada entorno-> tensor matriz de num_emvs x 4
-        quat_w = self._asset.data.root_com_quat_w 
-        # le aplicamos las rotaciones a la velocidad actual del dron en x,y,z y vemos cuál es la dirección de la 
-        # velocidad real
-        uav_lin_vel_g = math_utils.quat_apply(quat_w, uav_lin_vel_b)
-        
-        diff_vel = comando_vel_final - uav_lin_vel_g
-        magnitud_vel = torch.norm(diff_vel, dim=1, keepdim=True)
-        
-        # si el cambio de velocidad es demasiado alto, lo recorta
-        scale = torch.where(magnitud_vel > self.max_var_lin_vel, self.max_var_lin_vel / magnitud_vel, 1.0)
-        comando_vel_final_recortado = uav_lin_vel_g + (diff_vel * scale)
-        comando_vel_final = torch.clamp(comando_vel_final, -self.max_var_lin_vel, self.max_var_lin_vel)
-        
-        # convertimos el comando a coordenadas relativas
-        quat_inv = math_utils.quat_inv(quat_w)
-        comando_vel_rel = math_utils.quat_apply(quat_inv, comando_vel_final_recortado)
+        # Rebote Z
+        at_top = (self.target_pos[:, 2] > limite_z[1]) & (self.target_vel[:, 2] > 0)
+        at_bot = (self.target_pos[:, 2] < limite_z[0]) & (self.target_vel[:, 2] < 0)
+        self.target_vel[at_top | at_bot, 2] *= -1.0
 
-        # target_yaw es el ángulo en radianes hacia el que debería estar mirando el dron (mira al punto al que tiene 
-        # que moverse)
-        target_yaw = torch.atan2(direccion_diff[:, 1], direccion_diff[:, 0])
-        error_yaw = target_yaw - uav_yaw
-        # si el ángulo de giro es de 350, lo dejamos en -10 para evitar un giro innecesario
-        error_yaw = torch.atan2(torch.sin(error_yaw), torch.cos(error_yaw))
-        
-        current_wel = error_yaw / self.t_to_solve
-        current_wel = torch.clamp(current_wel, -self.max_var_ang_vel, self.max_var_ang_vel)
+        # 4. Actualizar posición del punto guía
+        self.target_pos += self.target_vel * self.dt
 
-        self._command[:, 0:3] = comando_vel_rel
-        self._command[:, 3] = current_wel
+        # 5. Comando para la red (Posición relativa en Body Frame)
+        uav_pos_local = self._asset.data.root_com_pos_w[:, :3] - self._env.scene.env_origins[:, :3]
+        rel_pos_w = self.target_pos - uav_pos_local
+        quat_inv = math_utils.quat_inv(self._asset.data.root_com_quat_w)
+        self._command = math_utils.quat_apply(quat_inv, rel_pos_w)
 
-        # Visualización del punto al que queremos que vaya el dron
-        target_pos_w = self.target_pos + self._env.scene.env_origins
-        target_quat_w = torch.tensor([1.0, 0.0, 0.0, 0.0], device=self.device).repeat(self.num_envs, 1)
-        self._marker_visualizer.visualize(translations=target_pos_w, orientations=target_quat_w)
-
-
-        # Si estamos a menos de 3 metros del objetivo, creo uno nuevo
-        reached = (distancia.squeeze() < 3.0).nonzero(as_tuple=True)[0]
-        if len(reached) > 0:
-            self._resample_command(reached)
-
-
+        # Visualización
+        self._marker_visualizer.visualize(translations=self.target_pos + self._env.scene.env_origins)
 
 @configclass
 class UAVcommandTermCfg(CommandTermCfg):
@@ -416,15 +393,15 @@ class EventCfg:
             "pose_range": {
                 "x": (-5.0, 5.0), 
                 "y": (-5.0, 5.0), 
-                "z": (8.0, 12.0),
-                "roll": (-0.5, 0.5),
-                "pitch": (-0.5, 0.5),
+                "z": (0.0, 0.0),
+                "roll": (0.0, 0.0),
+                "pitch": (0.0, 0.0),
                 "yaw": (-3.14, 3.14)
             },
             "velocity_range": {
-                "x": (-0.5, 0.5),
-                "y": (-0.5, 0.5),
-                "z": (-0.5, 0.5)
+                "x": (0.0, 0.0),
+                "y": (0.0, 0.0),
+                "z": (0.0, 0.0)
             },
             "asset_cfg": SceneEntityCfg(name="aerotaxi")
         }
@@ -476,16 +453,16 @@ class RewardsCfg:
     rew_pos_diff_fine_grained = RewTerm(
         func=my_rewards.rew_pos_diff_fine_grained,
         weight=15.0,
-        params={"std": 20.0},
+        params={"std": 10.0},
     )
 
     rew_lin_vel_diff = RewTerm(
         func=my_rewards.rew_lin_vel_diff,
-        weight=-0.1,
+        weight=-1.0,
     )
     rew_lin_vel_diff_fine_grained = RewTerm(
         func=my_rewards.rew_lin_vel_diff_fine_grained,
-        weight=2.0,
+        weight=5.0,
         params={"std": 1.0},
     )
     rew_ang_vel_z_diff = RewTerm(
@@ -537,10 +514,10 @@ class TerminationsCfg:
 
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
 
-    below_min_altitude = DoneTerm(
-        func=my_terminations.below_min_altitude,
-        params={"min_altitude": 1.0,} # el centro de masas del dron está a 5.06m del suelo.
-    )
+    # below_min_altitude = DoneTerm(
+    #     func=my_terminations.below_min_altitude,
+    #     params={"min_altitude": 1.0,} # el centro de masas del dron está a 5.06m del suelo.
+    # )
     bad_attitude = DoneTerm(func=my_terminations.roll_pitch_termination)
     safety_shutdown = DoneTerm(func=my_terminations.are_nan_or_exploded)
 
@@ -652,7 +629,7 @@ class UAVEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the UAV environment."""
 
     # Scene settings
-    scene: MySceneCfg = MySceneCfg(env_spacing=100.0, replicate_physics=False)
+    scene: MySceneCfg = MySceneCfg(env_spacing=200.0, replicate_physics=False)
     seed: int = 0
     
     # Basic settings
@@ -670,7 +647,7 @@ class UAVEnvCfg(ManagerBasedRLEnvCfg):
         """Post initialization"""
         # ----- Teresa -------
         # pasos que se usan en la red de PPO
-        self.num_steps_per_env = 500
+        self.num_steps_per_env = 625
         # ----- Teresa -------
 
         # viewer settings
@@ -678,7 +655,7 @@ class UAVEnvCfg(ManagerBasedRLEnvCfg):
         self.viewer.lookat = [0.0, 0.0, 2.0]
         # step settings
         self.decimation = 4  # 50 Hz de actualización para la IA
-        self.episode_length_s = 50.0 # encadena 2 puntos en su nivel máximo de duración (25s máximo/punto)
+        self.episode_length_s = 25.0 # al ser punto cambiante no debe ser tan largo
         # simulation settings
         self.sim.dt = 0.005  # 100 Hz para las físicas
         self.sim.render_interval = self.decimation
