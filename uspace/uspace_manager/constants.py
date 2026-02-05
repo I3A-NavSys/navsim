@@ -22,7 +22,8 @@ class Topics:
     UAV_OPERATOR_REGISTER = "airspace/operators/register/uav"
     VERTIPORT_OPERATOR_REGISTER = "airspace/operators/register/vertiport"
     REQUEST_ROUTE = "airspace/operators/routes/request"
-    RECEIVE_ROUTE = "airspace/operators/routes/reception"
+    RECEIVE_TAKEOFF_FLIGHTPLAN = "airspace/operators/routes/reception/takeoff"
+    RECEIVE_LANDING_FLIGHTPLAN = "airspace/operators/routes/reception/landing"
     REQUEST_VERTIPORT_OPERATOR_LIST = "airspace/mission_managers/request/vertiport_operator_list"
     REQUEST_UAV_OPERATOR_LIST = "airspace/mission_managers/request/uav_operator_list"
 

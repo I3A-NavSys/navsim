@@ -16,7 +16,7 @@ class UAVOperator:
         self.uavs: dict[str, dict[str, UAV]] = {}
         # Keep track of missions' processing status (used when requesting routes): 
         # {
-        #   manager_id: {
+        #   mission_manager_id: {
         #     mission_id: [
         #       mission_type,
         #       stop_list, 
@@ -89,8 +89,14 @@ class UAVOperator:
         ]
         return available_uavs
 
-    def free_resources(self):
-        pass
+    def free_resources(self, mission_manager_id, mission_id):
+        mission = self.missions_processing_status[mission_manager_id][mission_id]
+        uav_id = mission[5]
+        mission_type = mission[0]
+
+        # Free UAV
+        if mission_type in self.uavs and uav_id in self.uavs[mission_type]:
+            self.uavs[mission_type][uav_id].status = UAVStatus.AVAILABLE
 
     def log_dict_table(self, data, headers):
         formatted_data = [
@@ -124,7 +130,7 @@ class UAVOperator:
             mission_id, 
             MissionStatus.CANCELLED
         )
-        self.free_resources()
+        self.free_resources(mission_manager_id, mission_id)
 
     def request_route(
         self, 
@@ -284,7 +290,7 @@ class UAVOperator:
         origin_vertiport_id = stop_list[current_stop]
         destination_vertiport_id = stop_list[current_stop + 1]
         destination_stop_time = stop_time[current_stop + 1]
-        takeoff_time = flightplan.finish_time() + destination_stop_time
+        takeoff_time = flightplan.finish_time() + stop_time[current_stop]  # Earliest takeoff time is when UAV finishes current leg plus stop time
 
         self.request_route(
             uav_pad_id=landing_pad_id,

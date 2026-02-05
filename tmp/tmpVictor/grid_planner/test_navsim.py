@@ -33,7 +33,7 @@ uav_op1.uavs = {
             status=UAVStatus.AVAILABLE,
             battery_level=100.0,
             location=(0.0, 0.0, 0.0),
-            pad_id="PAD_1"
+            pad_id="VERT_OP_0_PAD_1"
         )
     },
     MissionType.PASSENGER_TRANSPORT: {
@@ -44,7 +44,7 @@ uav_op1.uavs = {
             status=UAVStatus.AVAILABLE,
             battery_level=100.0,
             location=(0.0, 50.0, 0.0),
-            pad_id="PAD_2",
+            pad_id="VERT_OP_0_PAD_2",
         )
     }
 }
@@ -52,8 +52,9 @@ uav_op1.uavs = {
 veriport_operators = []
 for j in range(-5, 6, 1):
     direction = 1 if j % 2 == 0 else -1
+    vert_id = f"VERT_OP_{j}"
     vert_op = VertiportOperator(
-        id=f"VERT_OP_{j}",
+        id=vert_id,
         name=f"Vertiport Operator {j}",
         grid_connection={
             "takeoff": {
@@ -69,29 +70,29 @@ for j in range(-5, 6, 1):
             id=f"MAIN_PAD_{j}",
             type=MissionType.PASSENGER_TRANSPORT,
             status=PadStatus.OPERATIVE,
-            operator_id=f"VERT_OP_{j}",
+            operator_id=vert_id,
             location=(j * 100, j * 100, 0)
         ),
         pads={
-            "PAD_1": Pad(
-                id="PAD_1",
+            f"{vert_id}_PAD_1": Pad(
+                id=f"{vert_id}_PAD_1",
                 type=MissionType.DELIVERY,
                 status=PadStatus.OPERATIVE,
-                operator_id=f"VERT_OP_{j}",
+                operator_id=vert_id,
                 location=(j * 100, j * 100 - 30, 0)
             ),
-            "PAD_2": Pad(
-                id="PAD_2",
+            f"{vert_id}_PAD_2": Pad(
+                id=f"{vert_id}_PAD_2",
                 type=MissionType.PASSENGER_TRANSPORT,
                 status=PadStatus.OPERATIVE,
-                operator_id=f"VERT_OP_{j}",
+                operator_id=vert_id,
                 location=(j * 100 + 15, j * 100 - 30, 0)
             ),
-            "PAD_3": Pad(
-                id="PAD_3",
+            f"{vert_id}_PAD_3": Pad(
+                id=f"{vert_id}_PAD_3",
                 type=MissionType.PASSENGER_TRANSPORT,
                 status=PadStatus.OPERATIVE,
-                operator_id=f"VERT_OP_{j}",
+                operator_id=vert_id,
                 location=(j * 100 - 15, j * 100 - 30, 0)
             ),
         },

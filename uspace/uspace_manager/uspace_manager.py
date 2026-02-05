@@ -44,7 +44,8 @@ class USpaceManager:
             Topics.UAV_OPERATOR_REGISTER,
             Topics.VERTIPORT_OPERATOR_REGISTER,
             Topics.REQUEST_ROUTE,
-            Topics.RECEIVE_ROUTE,
+            Topics.RECEIVE_TAKEOFF_FLIGHTPLAN,
+            Topics.RECEIVE_LANDING_FLIGHTPLAN,
             Topics.REQUEST_UAV_OPERATOR_LIST,
             Topics.REQUEST_VERTIPORT_OPERATOR_LIST
         ]
@@ -61,8 +62,12 @@ class USpaceManager:
             self.on_request_route
         )
         self.mqtt_client.message_callback_add(
-            Topics.RECEIVE_ROUTE,
-            self.on_receive_route
+            Topics.RECEIVE_TAKEOFF_FLIGHTPLAN,
+            self.on_receive_takeoff_flightplan
+        )
+        self.mqtt_client.message_callback_add(
+            Topics.RECEIVE_LANDING_FLIGHTPLAN,
+            self.on_receive_landing_flightplan
         )
         self.mqtt_client.message_callback_add(
             Topics.REQUEST_UAV_OPERATOR_LIST,
@@ -101,6 +106,12 @@ class USpaceManager:
     def send_mqtt_msg(self, topic, msg):
         self.mqtt_client.publish(topic, msg)
 
+    # -------------------------
+    # --- Auxiliary Methods ---
+    # -------------------------
+    def adjust_time_to_slot(self, time):
+        return time + (-time % self.airspace.slot_time)
+
     # ----------------------
     # --- USpace Methods ---
     # ----------------------
@@ -121,6 +132,7 @@ class USpaceManager:
         vertiport_operator_id, 
         pad_id,
         is_landing, 
+        is_reversed, 
         mission_type, 
         time, 
         stop_time
@@ -133,11 +145,50 @@ class USpaceManager:
             "mission_id": mission_id,
             "pad_id": pad_id,
             "is_landing": is_landing,
+            "is_reversed": is_reversed,
             "mission_type": mission_type,
             "time": time,
             "stop_time": stop_time
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
+
+    def check_and_send_complete_flightplan(
+        self, 
+        uav_operator_id, 
+        mission_manager_id, 
+        mission_id,
+        takeoff_flightplan,
+        landing_flightplan,
+        grid_flightplan,
+        landing_pad_id,
+    ):
+        # Check if all flightplans have been computed
+        takeoff_fp_exists = takeoff_flightplan is not None
+        landing_fp_exists = landing_flightplan is not None
+        grid_fp_exists = grid_flightplan is not None
+        
+        # Return complete flightplan if all parts are ready
+        if takeoff_fp_exists and landing_fp_exists and grid_fp_exists:
+            # Remove first and last waypoint of grid flightplan to avoid duplicates
+            grid_flightplan.waypoints.pop(0)
+            grid_flightplan.waypoints.pop(-1)
+
+            # Build complete flightplan
+            complete_flightplan = FlightPlan()
+            complete_flightplan.waypoints = (
+                takeoff_flightplan.waypoints + 
+                grid_flightplan.waypoints + 
+                landing_flightplan.waypoints
+            )
+
+            # Send complete flightplan to UAV Operator
+            self.send_mission_flightplan(
+                uav_operator_id,
+                mission_manager_id,
+                mission_id,
+                complete_flightplan,
+                landing_pad_id
+            )
 
     def send_mission_flightplan(
         self, 
@@ -236,86 +287,65 @@ class USpaceManager:
         landing_time = data["landing_time"]
         stop_time = data["stop_time"]
 
-        # Determine if the route computing is reversed
-        is_reversed = landing_time != None
-
-        # Get origin and destination grid connections
-        origin_grid_connection = self.vertiport_operators[origin_vertiport_id]["grid_connection"]
-        destination_grid_connection = self.vertiport_operators[destination_vertiport_id]["grid_connection"]
-
-        # Compute the route
-        if is_reversed:
-            route = self.airspace.get_route(
-                origin=destination_grid_connection["landing"]["position"], 
-                destination=origin_grid_connection["takeoff"]["position"],
-                start_time=landing_time,
-                end_time=0,
-                reverse=True
-            )
-
-        else:
-            route = self.airspace.get_route(
-                origin=origin_grid_connection["takeoff"]["position"], 
-                destination=destination_grid_connection["landing"]["position"],
-                start_time=takeoff_time,
-                end_time=0,
-                reverse=False
-            )
-
-        # Cancel mission if no route was found
-        if not route:
-            self.cancel_mission(uav_operator_id, mission_manager_id, mission_id)
-            return
-        
         # Logging
-        print(f"[{self.id}] - Computed route:")
+        print(f"[{self.id}] - Request received:")
         print(f"  UAV Operator ID: {uav_operator_id}")
         print(f"  Mission ID: {mission_id}")
         print(f"  Origin Vertiport ID: {origin_vertiport_id}")
         print(f"  Destination Vertiport ID: {destination_vertiport_id}")
         print()
 
-        grid_flightplan = self.airspace.get_flightplan_from_route(route)
+        # Initialize mission processing status
+        if uav_operator_id not in self.missions_processing_status:
+            self.missions_processing_status[uav_operator_id] = {}
         
-        grid_flightplan_init_time = grid_flightplan.init_time()
-        grid_flightplan_finish_time = grid_flightplan.finish_time()
-        #TODO: Check begin time is not in the past
+        if mission_manager_id not in self.missions_processing_status[uav_operator_id]:
+            self.missions_processing_status[uav_operator_id][mission_manager_id] = {}
 
-        # Store mission processing status
-        self.missions_processing_status[uav_operator_id] = {}
-        self.missions_processing_status[uav_operator_id][mission_manager_id] = {}
         self.missions_processing_status[uav_operator_id][mission_manager_id][mission_id] = {
+            "origin_vertiport_id": origin_vertiport_id,
+            "destination_vertiport_id": destination_vertiport_id,
+            "takeoff_pad_id": uav_pad_id,
+            "mission_type": mission_type,
+            "stop_time": stop_time,
             "takeoff_flightplan": None,
             "landing_flightplan": None,
-            "grid_flightplan": grid_flightplan,
+            "grid_flightplan": None,
             "landing_pad_id": None
         }
 
-        # Request takeoff flightplan 
-        self.request_vertiport_flightplan(
-            uav_operator_id=uav_operator_id,
-            mission_manager_id=mission_manager_id,
-            mission_id=mission_id,
-            vertiport_operator_id=origin_vertiport_id,
-            pad_id=uav_pad_id,
-            is_landing=False,
-            mission_type=mission_type,
-            time=grid_flightplan_init_time,
-            stop_time=None
-        )
+        # Determine if the route computing is reversed
+        is_reversed = landing_time != None
 
-        # Request landing flightplan
-        self.request_vertiport_flightplan(
-            uav_operator_id=uav_operator_id,
-            mission_manager_id=mission_manager_id,
-            mission_id=mission_id,
-            vertiport_operator_id=destination_vertiport_id,
-            pad_id=None,
-            is_landing=True,
-            mission_type=mission_type,
-            time=grid_flightplan_finish_time,
-            stop_time=stop_time
-        )
+        if is_reversed:
+            # Ask first for landing flightplan
+            self.request_vertiport_flightplan(
+                uav_operator_id=uav_operator_id,
+                mission_manager_id=mission_manager_id,
+                mission_id=mission_id,
+                vertiport_operator_id=destination_vertiport_id,
+                pad_id=None,
+                is_landing=True,
+                is_reversed=True,
+                mission_type=mission_type,
+                time=self.adjust_time_to_slot(landing_time),
+                stop_time=stop_time
+            )
+
+        else:
+            # Ask first for takeoff flightplan
+            self.request_vertiport_flightplan(
+                uav_operator_id=uav_operator_id,
+                mission_manager_id=mission_manager_id,
+                mission_id=mission_id,
+                vertiport_operator_id=origin_vertiport_id,
+                pad_id=uav_pad_id,
+                is_landing=False,
+                is_reversed=False,
+                mission_type=mission_type,
+                time=self.adjust_time_to_slot(takeoff_time),
+                stop_time=None
+            )
     
     def on_receive_route(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())
@@ -389,4 +419,221 @@ class USpaceManager:
                 mission["landing_pad_id"]
             )
 
+    def on_receive_takeoff_flightplan(self, client, userdata, msg):
+        data = json.loads(msg.payload.decode())
 
+        # Extract response data
+        vertiport_operator_id = data["id"]
+        uav_operator_id = data["uav_operator_id"]
+        mission_manager_id = data["mission_manager_id"]
+        mission_id = data["mission_id"]
+        is_landing = data["is_landing"]
+        is_reversed = data["is_reversed"]
+        raw_flightplan = data["flightplan"]
+        pad_id = data["pad_id"]
+
+        # Build flightplan object from raw data
+        flightplan = FlightPlan()
+        flightplan.from_dict(raw_flightplan)
+
+        # Logging
+        print(f"[{self.id}] - Received takeofff flightplan:")
+        print(f"  Vertiport Operator ID: {vertiport_operator_id}")
+        print(f"  UAV Operator ID: {uav_operator_id}")
+        print(f"  Mission Manager ID: {mission_manager_id}")
+        print(f"  Mission ID: {mission_id}")
+        print(f"  Is Landing: {is_landing}")
+        print(f"  Is Reversed: {is_reversed}")
+        print(f"  Pad ID: {pad_id}")
+        print("  Flightplan waypoints:")
+        flightplan.print_waypoints()
+        print()
+
+        # Cancel mission if no route was found
+        if not flightplan.waypoints:
+            self.cancel_mission(uav_operator_id, mission_manager_id, mission_id)
+            return
+        
+        # Store flightplan in mission processing status
+        mission = self.missions_processing_status[uav_operator_id][mission_manager_id][mission_id]
+        mission["takeoff_flightplan"] = flightplan
+
+        # If the route computing is reversed, the grid and landing flightplan should have 
+        # been already computed and stored, so we can check if all flightplans are 
+        # ready to be sent to the UAV Operator
+        if is_reversed:
+            self.check_and_send_complete_flightplan(
+                uav_operator_id,
+                mission_manager_id,
+                mission_id,
+                mission["takeoff_flightplan"],
+                mission["landing_flightplan"],
+                mission["grid_flightplan"],
+                mission["landing_pad_id"]
+            )
+
+        # If the route computing is not reversed, request now the grid flightplan
+        else:
+            # Get origin and destination grid connections
+            origin_vertiport_id = mission["origin_vertiport_id"]
+            destination_vertiport_id = mission["destination_vertiport_id"]
+
+            origin_grid_connection = self.vertiport_operators[origin_vertiport_id]["grid_connection"]
+            destination_grid_connection = self.vertiport_operators[destination_vertiport_id]["grid_connection"]
+
+            # Compute the route
+            route = self.airspace.get_route(
+                origin=origin_grid_connection["takeoff"]["position"], 
+                destination=destination_grid_connection["landing"]["position"],
+                start_time=flightplan.finish_time(),
+                end_time=0,
+                reverse=False
+            )
+
+            # Cancel mission if no route was found
+            if not route:
+                self.cancel_mission(uav_operator_id, mission_manager_id, mission_id)
+                return
+
+            # Build grid flightplan from route
+            grid_flightplan = self.airspace.get_flightplan_from_route(route)
+        
+            grid_flightplan_finish_time = grid_flightplan.finish_time()
+            # TODO: Check begin time is not in the past
+
+            # Logging
+            print(f"[{self.id}] - Computed route:")
+            print(f"  UAV Operator ID: {uav_operator_id}")
+            print(f"  Mission ID: {mission_id}")
+            print(f"  Origin Vertiport ID: {origin_vertiport_id}")
+            print(f"  Destination Vertiport ID: {destination_vertiport_id}")
+            print("  Flightplan waypoints:")
+            grid_flightplan.print_waypoints()
+            print()
+            
+            # Store grid flightplan in mission processing status
+            mission["grid_flightplan"] = grid_flightplan
+
+            # Request landing flightplan 
+            self.request_vertiport_flightplan(
+                uav_operator_id=uav_operator_id,
+                mission_manager_id=mission_manager_id,
+                mission_id=mission_id,
+                vertiport_operator_id=destination_vertiport_id,
+                pad_id=None,
+                is_landing=True,
+                is_reversed=False,
+                mission_type=mission["mission_type"],
+                time=grid_flightplan_finish_time,
+                stop_time=mission["stop_time"]
+            )
+
+    def on_receive_landing_flightplan(self, client, userdata, msg):
+        data = json.loads(msg.payload.decode())
+
+        # Extract response data
+        vertiport_operator_id = data["id"]
+        uav_operator_id = data["uav_operator_id"]
+        mission_manager_id = data["mission_manager_id"]
+        mission_id = data["mission_id"]
+        is_landing = data["is_landing"]
+        is_reversed = data["is_reversed"]
+        raw_flightplan = data["flightplan"]
+        pad_id = data["pad_id"]
+
+        # Build flightplan object from raw data
+        flightplan = FlightPlan()
+        flightplan.from_dict(raw_flightplan)
+
+        # Logging
+        print(f"[{self.id}] - Received landing flightplan:")
+        print(f"  Vertiport Operator ID: {vertiport_operator_id}")
+        print(f"  UAV Operator ID: {uav_operator_id}")
+        print(f"  Mission Manager ID: {mission_manager_id}")
+        print(f"  Mission ID: {mission_id}")
+        print(f"  Is Landing: {is_landing}")
+        print(f"  Is Reversed: {is_reversed}")
+        print(f"  Pad ID: {pad_id}")
+        print("  Flightplan waypoints:")
+        flightplan.print_waypoints()
+        print()
+
+        # Cancel mission if no route was found
+        if not flightplan.waypoints:
+            self.cancel_mission(uav_operator_id, mission_manager_id, mission_id)
+            return
+        
+        # Store flightplan in mission processing status
+        mission = self.missions_processing_status[uav_operator_id][mission_manager_id][mission_id]
+        mission["landing_flightplan"] = flightplan
+        mission["landing_pad_id"] = pad_id
+
+        # If the route computing is reversed, request now the grid flightplan
+        if is_reversed:
+            # Get origin and destination grid connections
+            origin_vertiport_id = mission["origin_vertiport_id"]
+            destination_vertiport_id = mission["destination_vertiport_id"]
+
+            origin_grid_connection = self.vertiport_operators[origin_vertiport_id]["grid_connection"]
+            destination_grid_connection = self.vertiport_operators[destination_vertiport_id]["grid_connection"]
+
+            # Compute the route
+            route = self.airspace.get_route(
+                origin=destination_grid_connection["landing"]["position"], 
+                destination=origin_grid_connection["takeoff"]["position"],
+                start_time=flightplan.init_time(),
+                end_time=0,
+                reverse=True
+            )
+
+            # Cancel mission if no route was found
+            if not route:
+                self.cancel_mission(uav_operator_id, mission_manager_id, mission_id)
+                return
+
+            # Build grid flightplan from route
+            grid_flightplan = self.airspace.get_flightplan_from_route(route)
+        
+            grid_flightplan_init_time = grid_flightplan.init_time()
+            # TODO: Check begin time is not in the past
+
+            # Logging
+            print(f"[{self.id}] - Computed route:")
+            print(f"  UAV Operator ID: {uav_operator_id}")
+            print(f"  Mission ID: {mission_id}")
+            print(f"  Origin Vertiport ID: {origin_vertiport_id}")
+            print(f"  Destination Vertiport ID: {destination_vertiport_id}")
+            print("  Flightplan waypoints:")
+            grid_flightplan.print_waypoints()
+            print()
+            
+            # Store grid flightplan in mission processing status
+            mission["grid_flightplan"] = grid_flightplan
+
+            # Request takeoff flightplan 
+            self.request_vertiport_flightplan(
+                uav_operator_id=uav_operator_id,
+                mission_manager_id=mission_manager_id,
+                mission_id=mission_id,
+                vertiport_operator_id=origin_vertiport_id,
+                pad_id=mission["takeoff_pad_id"],
+                is_landing=False,
+                is_reversed=True,
+                mission_type=mission["mission_type"],
+                time=grid_flightplan_init_time,
+                stop_time=None
+            )
+
+        # If the route computing is not reversed, the grid and takeoff flightplans should 
+        # have been already computed and stored, so we can check if all flightplans are 
+        # ready to be sent to the UAV Operator
+        else:
+            self.check_and_send_complete_flightplan(
+                uav_operator_id,
+                mission_manager_id,
+                mission_id,
+                mission["takeoff_flightplan"],
+                mission["landing_flightplan"],
+                mission["grid_flightplan"],
+                mission["landing_pad_id"]
+            )
