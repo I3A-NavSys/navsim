@@ -126,5 +126,5 @@ def rew_heading_alignment_fine_grained(env: ManagerBasedRLEnv, std: float) -> to
 
 def rew_ang_vel_xy_penalty(env: ManagerBasedRLEnv) -> torch.Tensor:
     asset = env.scene["aerotaxi"]
-    ang_vel_xy = asset.data.root_com_ang_vel_b[:, :2] #se penaliza la rotación de roll y pitch
-    return torch.norm(ang_vel_xy, dim=1)
+    penalty = -torch.sum(torch.square(asset.data.root_com_ang_vel_b[:, :2]), dim=1)
+    return torch.clamp(penalty, min=-50.0)

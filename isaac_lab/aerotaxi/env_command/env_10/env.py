@@ -445,13 +445,13 @@ class RewardsCfg:
     """Reward terms for the MDP."""
     alive = RewTerm(func=mdp.is_alive, weight=2.0)
 
-    action_rate = RewTerm(func=my_rewards.rew_action_rate, weight=-1.0)
+    action_rate = RewTerm(func=my_rewards.rew_action_rate, weight=-0.01)
 
     terminating = RewTerm(func=mdp.is_terminated, weight=-50.0)
 
     rew_pos_diff = RewTerm(
         func=my_rewards.rew_pos_diff,
-        weight=-0.5,
+        weight=-5.0,
     )
 
     rew_pos_diff_fine_grained = RewTerm(
@@ -485,7 +485,7 @@ class RewardsCfg:
     )
     rew_roll_diff_fine_grained = RewTerm(
         func=my_rewards.rew_roll_diff_fine_grained,
-        weight=5.0,
+        weight=1.0,
         params={"std": 0.5, "target": 0.0}, # 0.5 para que pueda girarse un poco el ángulo y siga obteniendo reward
     )
     rew_pitch_diff = RewTerm(
@@ -495,7 +495,7 @@ class RewardsCfg:
     )
     rew_pitch_diff_fine_grained = RewTerm(
         func=my_rewards.rew_pitch_diff_fine_grained,
-        weight=5.0,
+        weight=1.0,
         params={"std": 0.5, "target": 0.0}, # 0.5 para que pueda girarse un poco el ángulo y siga obteniendo reward
     )
     rew_heading_alignment_fine_grained = RewTerm(
