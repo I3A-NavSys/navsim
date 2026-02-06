@@ -100,7 +100,7 @@ class MissionManager:
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
 
-    def request_uav_mission(self):
+    def request_uav_mission(self, current_time=0):
         self.last_mission_id += 1
         amount_stops = random.randint(2, 5)
 
@@ -109,7 +109,7 @@ class MissionManager:
         stop_list = random.sample(list(self.vertiport_operators.keys()), amount_stops)
         stop_times = [random.randint(10, 60) for _ in range(amount_stops)]
         uav_operator_id = random.choice(list(self.uav_operators.keys()))
-        landing_time = random.randint(100, 1000)
+        landing_time = random.randint(current_time + 200, current_time + 600)
 
         self.missions[mission_id] = Mission(
             id=mission_id,

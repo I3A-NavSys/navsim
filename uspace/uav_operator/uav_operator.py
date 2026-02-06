@@ -8,12 +8,12 @@ from .uav import UAV
 
 
 class UAVOperator:
-    def __init__(self, id=None, name=None, private_vertiport_operator_id=None, uavs=None):
+    def __init__(self, id=None, name=None, private_vertiport_operator_id=None, uavs={}):
         self.id: str = id
         self.name: str = name
         self.private_vertiport_operator_id: str = private_vertiport_operator_id
         # Keep track of UAVs: {mission_type: {uav_id: UAV}}
-        self.uavs: dict[str, dict[str, UAV]] = {}
+        self.uavs: dict[str, dict[str, UAV]] = uavs
         # Keep track of missions' processing status (used when requesting routes): 
         # {
         #   mission_manager_id: {
@@ -118,11 +118,12 @@ class UAVOperator:
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
 
-    def cancel_mission(self, mission_manager_id, mission_id):
+    def cancel_mission(self, mission_manager_id, mission_id, was_status_processed, reason=""):
         # Logging
         print(f"[{self.id}] - Cancelling mission:")
         print(f"  Mission Manager ID: {mission_manager_id}")
         print(f"  Mission ID: {mission_id}")
+        print(f"  Reason: {reason}")
         print()
 
         self.send_mission_status_update(
@@ -130,7 +131,9 @@ class UAVOperator:
             mission_id, 
             MissionStatus.CANCELLED
         )
-        self.free_resources(mission_manager_id, mission_id)
+        
+        if was_status_processed:
+            self.free_resources(mission_manager_id, mission_id)
 
     def request_route(
         self, 
@@ -193,13 +196,23 @@ class UAVOperator:
 
         # Return if mission type is not supported
         if mission_type not in self.uavs:
-            self.cancel_mission(mission_manager_id, mission_id)
+            self.cancel_mission(
+                mission_manager_id, 
+                mission_id, 
+                False, 
+                reason="Mission type not supported"
+            )
             return
         
         # Return if there are no available UAVs (temporal)
         available_uavs = self.get_available_uavs(mission_type)
         if not available_uavs:
-            self.cancel_mission(mission_manager_id, mission_id)
+            self.cancel_mission(
+                mission_manager_id, 
+                mission_id, 
+                False, 
+                reason="No available UAVs"
+            )
             return
         assigned_uav = available_uavs[0]
         
