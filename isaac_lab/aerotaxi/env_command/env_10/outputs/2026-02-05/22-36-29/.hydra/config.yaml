@@ -564,7 +564,7 @@ env:
     rew_lin_vel_diff:
       func: aerotaxi.env_command.env_10.rewards:rew_lin_vel_diff
       params: {}
-      weight: -1.0
+      weight: -0.1
     rew_lin_vel_diff_fine_grained:
       func: aerotaxi.env_command.env_10.rewards:rew_lin_vel_diff_fine_grained
       params:
@@ -609,7 +609,7 @@ env:
     rew_ang_vel_xy_penalty:
       func: aerotaxi.env_command.env_10.rewards:rew_ang_vel_xy_penalty
       params: {}
-      weight: -2.0
+      weight: -0.05
   terminations:
     time_out:
       func: isaaclab.envs.mdp.terminations:time_out
@@ -669,7 +669,7 @@ agent:
     class_name: PPO
     num_learning_epochs: 5
     num_mini_batches: 80
-    learning_rate: 0.0001
+    learning_rate: 5.0e-05
     schedule: adaptive
     gamma: 0.99
     lam: 0.95

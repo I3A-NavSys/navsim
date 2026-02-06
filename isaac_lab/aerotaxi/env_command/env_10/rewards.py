@@ -9,7 +9,8 @@ if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
 def rew_action_rate(env: ManagerBasedRLEnv) -> torch.Tensor:
     # Penaliza la diferencia entre la acción actual y la anterior
-    return torch.norm(env.action_manager.action - env.action_manager.prev_action, dim=1)
+    diff = torch.norm(env.action_manager.action - env.action_manager.prev_action, dim=1)
+    return torch.clamp(diff, max=5.0)
 
 def rew_pos_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     term = env.command_manager.get_term("vel_command")
@@ -19,7 +20,7 @@ def rew_pos_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     current_pos_local = current_pos_w[:, :3] - env.scene.env_origins[:, :3]
     
     error = torch.norm(current_pos_local - target_pos, dim=1)
-    return error
+    return torch.clamp(error, max=100.0)
 
 def rew_pos_diff_fine_grained(env: ManagerBasedRLEnv, std: float) -> torch.Tensor:
     term = env.command_manager.get_term("vel_command")
@@ -49,7 +50,7 @@ def rew_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     # if "metrics" not in env.extras: 
     #     env.extras["metrics"] = {}
     # env.extras["metrics"]["flight_plan_error_mps"] = error.mean()
-    return error
+    return torch.clamp(error, max=50.0)
 
 def rew_lin_vel_diff_fine_grained(env: ManagerBasedRLEnv, std: float) -> torch.Tensor:
     asset = env.scene["aerotaxi"]

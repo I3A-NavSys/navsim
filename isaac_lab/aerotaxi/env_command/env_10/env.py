@@ -80,6 +80,7 @@ class UAVactionTerm(ActionTerm):
 
     def process_actions(self, actions: torch.Tensor):
         # Si algun dron reventó y el NaN se cuela, lo ponemos a 0
+        actions = torch.clamp(actions, -2.0, 2.0)
         actions = torch.nan_to_num(actions, nan=0.0)
         # Define constants as tensors
         kFT_N = torch.tensor(4.6544, device=self.device)
@@ -109,7 +110,7 @@ class UAVactionTerm(ActionTerm):
         thrust_coeffs = torch.tensor([kFT_N, kFT_N, kFT_S, kFT_S], device=self.device)
         thrust_z = thrust_coeffs * self._raw_actions**torch_2
         # evito que la componente z sea infinita
-        thrust_z = torch.clamp(thrust_z, max=10000.0)
+        thrust_z = torch.clamp(thrust_z, max=5000.0)
         FT_all = torch.zeros(self._env.num_envs, 4, 3, device=self.device)
         FT_all[:, :, 2] = thrust_z  # Only z-component is non-zero
         
@@ -337,7 +338,7 @@ class UAVcommandTerm(CommandTerm):
 
         # 3. Valla Virtual (Límite 100m spacing -> 50m radio)
         limite_xy = 45.0
-        limite_z = (1.25, 25.0)
+        limite_z = (8, 20.0)
         
         # Rebote XY
         out_x = (self.target_pos[:, 0].abs() > limite_xy)
@@ -397,15 +398,15 @@ class EventCfg:
             "pose_range": {
                 "x": (-5.0, 5.0), 
                 "y": (-5.0, 5.0), 
-                "z": (0.0, 0.0),
-                "roll": (0.0, 0.0),
-                "pitch": (0.0, 0.0),
+                "z": (8.0, 12.0),
+                "roll": (-0.5, 0.5),
+                "pitch": (-0.5, 0.5),
                 "yaw": (-3.14, 3.14)
             },
             "velocity_range": {
-                "x": (0.0, 0.0),
-                "y": (0.0, 0.0),
-                "z": (0.0, 0.0)
+                "x": (-0.5, 0.5),
+                "y": (-0.5, 0.5),
+                "z": (-0.5, 0.5)
             },
             "asset_cfg": SceneEntityCfg(name="aerotaxi")
         }
@@ -462,7 +463,7 @@ class RewardsCfg:
 
     rew_lin_vel_diff = RewTerm(
         func=my_rewards.rew_lin_vel_diff,
-        weight=-1.0,
+        weight=-0.1,
     )
     rew_lin_vel_diff_fine_grained = RewTerm(
         func=my_rewards.rew_lin_vel_diff_fine_grained,
@@ -505,7 +506,7 @@ class RewardsCfg:
     )
     rew_ang_vel_xy_penalty = RewTerm(
         func=my_rewards.rew_ang_vel_xy_penalty, 
-        weight=-2.0 
+        weight=-0.05 
     )
 
 # |---------------------------------------------------------|
@@ -518,10 +519,10 @@ class TerminationsCfg:
 
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
 
-    # below_min_altitude = DoneTerm(
-    #     func=my_terminations.below_min_altitude,
-    #     params={"min_altitude": 1.0,} # el centro de masas del dron está a 5.06m del suelo.
-    # )
+    below_min_altitude = DoneTerm(
+        func=my_terminations.below_min_altitude,
+        params={"min_altitude": 1.0,} # el centro de masas del dron está a 5.06m del suelo.
+    )
     bad_attitude = DoneTerm(func=my_terminations.roll_pitch_termination)
     safety_shutdown = DoneTerm(func=my_terminations.are_nan_or_exploded)
 

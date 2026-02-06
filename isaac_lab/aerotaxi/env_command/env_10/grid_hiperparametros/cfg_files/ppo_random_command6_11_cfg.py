@@ -25,7 +25,7 @@ class Command6PPORunnerCfg(RslRlOnPolicyRunnerCfg):
         entropy_coef=0.01,           
         num_learning_epochs=5,       
         num_mini_batches=80,         
-        learning_rate=1e-4,         
+        learning_rate=5e-5,         
         schedule="adaptive",         
         gamma=0.99,                  
         lam=0.95,                    
