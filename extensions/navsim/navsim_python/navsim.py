@@ -1,3 +1,7 @@
+import asyncio
+
+import omni.timeline
+
 from uspace.uav_operator.uav_operator import UAVOperator
 from uspace.uav_operator.uav import UAV
 from uspace.mission_manager.mission_manager import MissionManager
@@ -10,8 +14,8 @@ class NavSimManager:
     def __init__(self):
         # Control
         self.is_simulation_running = False
-        self.operators_list_requested = False
-        self.mqtt_buffer_time = 1
+        self.back_counter_time_max = 10
+        self.back_counter_time = self.back_counter_time_max
 
         # Parameters
         self.mission_manager_amount = 1
@@ -24,7 +28,14 @@ class NavSimManager:
         self.vertiport_operators = []
         self.uspace_managers = []
 
+        self.mission_generation_task = None
 
+        # IsaacSim parameters
+        self.timeline = omni.timeline.get_timeline_interface()
+
+    # ---------------------------
+    # -- System Initialization --
+    # ---------------------------
     def startup(self):
         self.temporal_scan_scene()
         self.connect_entities_to_mqtt()
@@ -34,16 +45,44 @@ class NavSimManager:
         self.disconnect_entities_from_mqtt()
         self.stop_simulation()
 
+    # ------------------------
+    # -- Simulation Control --
+    # ------------------------
+    def start_simulation(self):
+        # Recover from pause
+        if self.is_simulation_running:
+            self.mission_generation_task = asyncio.ensure_future(self.mission_generation_loop())
+            return
 
-    def start_simulation(self, current_time):
-        self.request_missions(current_time)
+        self.is_simulation_running = True
+        self.mission_generation_task = asyncio.ensure_future(self.mission_generation_loop())
     
     def stop_simulation(self):
-        self.operators_list_requested = False
-        for uspace_manager in self.uspace_managers:
-            uspace_manager.airspace.clear_grid()
+        if self.is_simulation_running:
+            self.is_simulation_running = False
+            self.back_counter_time = self.back_counter_time_max
+            self.mission_generation_task.cancel()
 
+            for uspace_manager in self.uspace_managers:
+                uspace_manager.airspace.clear_grid()
 
+    def pause_simulation(self):
+        self.mission_generation_task.cancel()
+
+    async def mission_generation_loop(self):
+        while self.is_simulation_running:
+            print(f"Back counter time: {self.back_counter_time}")
+            await asyncio.sleep(1)
+
+            self.back_counter_time -= 1
+
+            if self.back_counter_time == 0:
+                self.request_missions()
+                self.back_counter_time = self.back_counter_time_max
+
+    # --------------------------
+    # -- Simulation Functions --
+    # --------------------------
     def connect_entities_to_mqtt(self):
         for mission_mgr in self.mission_managers:
             mission_mgr.connect_mqtt_client()
@@ -77,7 +116,8 @@ class NavSimManager:
             mission_mgr.request_uav_operator_list()
             mission_mgr.request_vertiport_operator_list()
 
-    def request_missions(self, current_time):
+    def request_missions(self):
+        current_time = int(self.timeline.get_current_time())
         for mission_mgr in self.mission_managers:
             mission_mgr.request_uav_mission(current_time)
 

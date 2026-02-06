@@ -7,7 +7,6 @@ from pxr import Tf, Usd
 from navsim_utils.sim_utils import *
 from .ui_builder import UIBuilder
 from .navsim import NavSimManager
-import time
 
 class NavSim(omni.ext.IExt):
     def on_startup(self, ext_id):
@@ -21,9 +20,10 @@ class NavSim(omni.ext.IExt):
         self.navsim_manager.shutdown()
 
     def on_timeline_play(self, event):
-        # Resume time manager from pause
+        # Recover from pause
         if self.is_simulation_running:
             self.time_manager.resume()
+            self.navsim_manager.start_simulation()
             return
         
         if self.has_stage_been_modified:
@@ -31,12 +31,8 @@ class NavSim(omni.ext.IExt):
             self.navsim_manager.startup()
             self.has_stage_been_modified = False
 
-        # time.sleep(1)
-
         # Start NavSim simulation
-        current_time = self.timeline.get_current_time()
-        self.trigger_request_missions_time = self.navsim_manager.start_simulation(current_time)
-        
+        self.navsim_manager.start_simulation()
 
         # Set simulation as running
         self.is_simulation_running = True
@@ -50,6 +46,7 @@ class NavSim(omni.ext.IExt):
         
     def on_timeline_pause(self, event):
         self.time_manager.pause()
+        self.navsim_manager.pause_simulation()
 
     def on_stage_event(self, event):
         # If a new stage is opened while the simulation is running, 
@@ -63,6 +60,7 @@ class NavSim(omni.ext.IExt):
         # Check addition/removal of prims in the stage to update NavSim entities lists
         if notice.GetResyncedPaths():
             self.has_stage_been_modified = True
+
 
     def initialize_variables(self):
         # UI Builder
@@ -110,7 +108,6 @@ class NavSim(omni.ext.IExt):
             self.on_stage_modification, 
             None
         )
-
 
     def build_ui(self) -> None:
         self.ui_builder.build_ui()
