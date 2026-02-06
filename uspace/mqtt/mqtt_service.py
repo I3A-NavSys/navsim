@@ -20,7 +20,7 @@ class MQTTService:
         
         return False
 
-    def disconnect_client(self, client):
+    def disconnect_client(client):
             # print("Disconnected from MQTT Broker!")
             client.loop_stop()
             client.disconnect()
