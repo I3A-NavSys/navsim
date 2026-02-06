@@ -270,7 +270,12 @@ class UAVOperator:
 
         # Cancel mission if no route is found
         if not flightplan.waypoints:
-            self.cancel_mission(mission_manager_id, mission_id)
+            self.cancel_mission(
+                mission_manager_id, 
+                mission_id,
+                True,
+                reason="No route found for next leg"
+            )
             return
         
         # Check if it is the last leg of the mission
