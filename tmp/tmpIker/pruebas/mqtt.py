@@ -14,20 +14,53 @@ from uspace.uav_operator.uav_operator import UAVOperator
 from uspace.mission_manager.mission_manager import MissionManager
 from uspace.vertiport_operator.vertiport_operator import VertiportOperator
 from uspace.uspace_manager.uspace_manager import USpaceManager
- 
-uav_op = UAVOperator(id="UAV_OP_001", name="Main UAV Operator")
-vert_op = VertiportOperator(id="VERT_OP_001", name="Main Vertiport Operator")
+
+
 mission_mgr = MissionManager()
 uspace_mgr = USpaceManager()
- 
-uspace_mgr.connect_mqtt_client()
-uspace_mgr.subscribe_mqtt_topic("airspace/operators/register/uav")
-uspace_mgr.subscribe_mqtt_topic("airspace/operators/register/vertiport")
-uav_op.connect_mqtt_client()
-uav_op.register_into_airspace()
-vert_op.connect_mqtt_client()
-vert_op.register_into_airspace()
+uav_op1 = UAVOperator(
+    id="UAV_OP_001", 
+    name="UAV Operator 1",
+    private_vertiport_operator_id="VERT_OP_001"
+)
+vert_op1 = VertiportOperator(
+    id="VERT_OP_001", 
+    name="Vertiport Operator 1",
+    grid_connection={"takeoff": [0, 0, 0], "landing": [-100, 0, 0]}
+)
+vert_op2 = VertiportOperator(
+    id="VERT_OP_002",
+    name="Vertiport Operator 2",
+    grid_connection={"takeoff": [400, 400, 0], "landing": [300, 400, 0]}
+)
+
 mission_mgr.connect_mqtt_client()
+uspace_mgr.connect_mqtt_client()
+
+
+uav_op1.connect_mqtt_client()
+vert_op1.connect_mqtt_client()
+vert_op2.connect_mqtt_client()
+
+uav_op1.register_into_airspace()
+vert_op1.register_into_airspace()
+vert_op2.register_into_airspace()
+
 mission_mgr.request_uav_operator_list()
+mission_mgr.request_vertiport_operator_list()
+
+uav_op1.request_route(
+    uav_pad_id="PAD_001",
+    mission_manager_id=mission_mgr.id,
+    mission_id="MISSION_001",
+    mission_type="DELIVERY",
+    origin_vertiport_id="VERT_OP_001",
+    destination_vertiport_id="VERT_OP_002",
+    takeoff_time=0,
+    landing_time=None,
+    stop_time=30
+)
+
+
 
 time.sleep(5)
