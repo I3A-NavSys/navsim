@@ -24,15 +24,27 @@ class USpaceManager:
         #   uav_operator_id: {
         #     manager_id: {
         #       mission_id: {
-        #         "takeoff_flightplan": FP, 
-        #         "landing_flightplan": FP, 
-        #         "grid_flightplan": FP,
-        #         "landing_pad_id": str
+        #         takeoff_flightplan: FlightPlan, 
+        #         landing_flightplan: FlightPlan, 
+        #         grid_flightplan: FlightPlan,
+        #         landing_pad_id: str
         #       }
         #     }
         #   }
         # }
         self.missions_processing_status: dict[str, dict[str, tuple[list, list, int]]] = {}
+        # Keep track of missions, specially for cancellation purposes
+        # {
+        #   uav_operator_id: {
+        #     mission_manager_id: {
+        #       mission_id: {
+        #         routes: [grid_route]
+        #         cancellation_reason: CancellationReason (None if not cancelled)
+        #       }
+        #     }
+        #   }
+        # }
+        self.missions: dict[str, dict[str, dict[str, dict[str, Any]]]] = {}
 
         # MQTT client
         self.mqtt_client = MQTTService.build_client(self.id)
@@ -47,35 +59,48 @@ class USpaceManager:
             Topics.RECEIVE_TAKEOFF_FLIGHTPLAN,
             Topics.RECEIVE_LANDING_FLIGHTPLAN,
             Topics.REQUEST_UAV_OPERATOR_LIST,
-            Topics.REQUEST_VERTIPORT_OPERATOR_LIST
+            Topics.REQUEST_VERTIPORT_OPERATOR_LIST,
+            Topics.CANCEL_MISSION,
         ]
+
         self.mqtt_client.message_callback_add(
             Topics.UAV_OPERATOR_REGISTER, 
             self.on_uav_operator_register
         )
+        
         self.mqtt_client.message_callback_add(
             Topics.VERTIPORT_OPERATOR_REGISTER, 
             self.on_vertiport_operator_register
         )
+        
         self.mqtt_client.message_callback_add(
             Topics.REQUEST_ROUTE,
             self.on_request_route
         )
+        
         self.mqtt_client.message_callback_add(
             Topics.RECEIVE_TAKEOFF_FLIGHTPLAN,
             self.on_receive_takeoff_flightplan
         )
+        
         self.mqtt_client.message_callback_add(
             Topics.RECEIVE_LANDING_FLIGHTPLAN,
             self.on_receive_landing_flightplan
         )
+        
         self.mqtt_client.message_callback_add(
             Topics.REQUEST_UAV_OPERATOR_LIST,
             self.on_request_uav_operator_list
         )
+        
         self.mqtt_client.message_callback_add(
             Topics.REQUEST_VERTIPORT_OPERATOR_LIST,
             self.on_request_vertiport_operator_list
+        )
+
+        self.mqtt_client.message_callback_add(
+            Topics.CANCEL_MISSION,
+            self.on_cancel_mission
         )
 
     # ----------------------
@@ -109,20 +134,69 @@ class USpaceManager:
     # -------------------------
     # --- Auxiliary Methods ---
     # -------------------------
+    def free_resources(
+        self, 
+        uav_operator_id, 
+        mission_manager_id, 
+        mission_id, 
+        cancellation_reason
+    ):
+        # Get mission entry
+        mission = self.missions[uav_operator_id][mission_manager_id][mission_id]
+
+        # Update cancellation reason
+        mission["cancellation_reason"] = cancellation_reason
+
+        # Free reserved routes in the airspace
+        for route in mission["routes"]:
+            self.airspace.free_route(route)
+        
+    def track_mission_route(self, uav_operator_id, mission_manager_id, mission_id, route):
+        # Initialize mission entry in missions dictionary for cancellation purposes
+        if uav_operator_id not in self.missions:
+            self.missions[uav_operator_id] = {}
+
+        if mission_manager_id not in self.missions[uav_operator_id]:
+            self.missions[uav_operator_id][mission_manager_id] = {}
+
+        if mission_id not in self.missions[uav_operator_id][mission_manager_id]:
+            self.missions[uav_operator_id][mission_manager_id][mission_id] = {
+                "routes": [],
+                "cancellation_reason": None
+            }
+
+        # Store reserved route for cancellation purposes
+        mission = self.missions[uav_operator_id][mission_manager_id][mission_id]
+        mission["routes"].append(route)
+
     def adjust_time_to_slot(self, time):
         return time + (-time % self.airspace.slot_time)
 
     # ----------------------
     # --- USpace Methods ---
     # ----------------------
-    def cancel_mission(self, uav_operator_id, mission_manager_id, mission_id):
-        self.send_mission_flightplan(
-            uav_operator_id,
-            mission_manager_id,
-            mission_id,
-            FlightPlan(),
-            None
-        )
+    def cancel_mission(
+        self, 
+        uav_operator_id, 
+        mission_manager_id, 
+        mission_id,
+        cancellation_reason
+    ):
+        # Logging
+        print(f"[{self.id}] - Cancelling mission:")
+        print(f"  Mission Manager ID: {mission_manager_id}")
+        print(f"  Mission ID: {mission_id}")
+        print(f"  Cancellation Reason: {cancellation_reason}")
+        print()
+
+        topic = Topics.CANCEL_MISSION
+        msg = {
+            "uav_operator_id": uav_operator_id,
+            "mission_manager_id": mission_manager_id,
+            "mission_id": mission_id,
+            "cancellation_reason": cancellation_reason
+        }
+        self.send_mqtt_msg(topic, json.dumps(msg))
 
     def request_vertiport_flightplan(
         self, 
@@ -211,6 +285,35 @@ class USpaceManager:
     # ----------------------
     # --- MQTT Callbacks ---
     # ----------------------
+    def on_cancel_mission(self, client, userdata, msg):
+        data = json.loads(msg.payload.decode())
+
+        # Extract cancellation data
+        uav_operator_id = data.get("uav_operator_id", "")
+        mission_manager_id = data["mission_manager_id"]
+        mission_id = data["mission_id"]
+        cancellation_reason = data["cancellation_reason"]
+
+        # Only process cancellation if it comes from a Vertiport Operator
+        if uav_operator_id == "":
+            return
+        
+        # Logging
+        print(f"[{self.id}] - Received mission cancellation:")
+        print(f"  UAV Operator ID: {uav_operator_id}")
+        print(f"  Mission Manager ID: {mission_manager_id}")
+        print(f"  Mission ID: {mission_id}")
+        print(f"  Cancellation Reason: {cancellation_reason}")
+        print()
+
+        # Free resources and update cancellation reason
+        self.free_resources(
+            uav_operator_id, 
+            mission_manager_id, 
+            mission_id, 
+            cancellation_reason
+        )
+
     def on_uav_operator_register(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())
 
@@ -494,6 +597,12 @@ class USpaceManager:
             if not route:
                 self.cancel_mission(uav_operator_id, mission_manager_id, mission_id)
                 return
+            
+            # Reserve route in the airspace
+            self.airspace.reserve_route(route)
+
+            # Track reserved route for cancellation purposes
+            self.track_mission_route(uav_operator_id, mission_manager_id, mission_id, route)
 
             # Build grid flightplan from route
             grid_flightplan = self.airspace.get_flightplan_from_route(route)
@@ -590,6 +699,12 @@ class USpaceManager:
             if not route:
                 self.cancel_mission(uav_operator_id, mission_manager_id, mission_id)
                 return
+            
+            # Reserve route in the airspace
+            self.airspace.reserve_route(route)
+
+            # Track reserved route for cancellation purposes
+            self.track_mission_route(uav_operator_id, mission_manager_id, mission_id, route)
 
             # Build grid flightplan from route
             grid_flightplan = self.airspace.get_flightplan_from_route(route)

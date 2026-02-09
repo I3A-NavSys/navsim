@@ -46,3 +46,6 @@ class Pad:
     
     def get_bookings(self):
         return self.bookings
+        
+    def cancel_booking(self, start_time: float, end_time: float):
+        self.bookings.discard((start_time, end_time))

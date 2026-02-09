@@ -7,7 +7,8 @@ class Mission:
         stop_times, 
         uav_operator_id, 
         landing_time,
-        status
+        status,
+        cancellation_reason=None
     ):
         self.uav_operator_id = uav_operator_id
         self.id = id
@@ -16,3 +17,4 @@ class Mission:
         self.stop_times = stop_times
         self.landing_time = landing_time
         self.status = status
+        self.cancellation_reason = cancellation_reason

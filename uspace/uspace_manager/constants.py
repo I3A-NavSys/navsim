@@ -24,6 +24,9 @@ class CancellationReason:
     NO_AVAILABLE_ROUTE = "NO_AVAILABLE_ROUTE"
 
 class Topics:
+    # General Topics
+    CANCEL_MISSION = "general/missions/cancellation"
+
     # USpace Manager Topics
     UAV_OPERATOR_REGISTER = "airspace/operators/register/uav"
     VERTIPORT_OPERATOR_REGISTER = "airspace/operators/register/vertiport"
@@ -32,7 +35,6 @@ class Topics:
     RECEIVE_LANDING_FLIGHTPLAN = "airspace/operators/routes/reception/landing"
     REQUEST_VERTIPORT_OPERATOR_LIST = "airspace/mission_managers/request/vertiport_operator_list"
     REQUEST_UAV_OPERATOR_LIST = "airspace/mission_managers/request/uav_operator_list"
-
 
     # UAV Operator Topics
     MISSION_UAV_SERVICE = "uav_operators/missions/request"

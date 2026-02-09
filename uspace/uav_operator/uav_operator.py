@@ -1,9 +1,11 @@
 from tabulate import tabulate
 import json
+from typing import Any
 
 from uspace.flight_plan.flight_plan import FlightPlan
-from uspace.uspace_manager.constants import Topics, MissionStatus, UAVStatus
+from uspace.uspace_manager.constants import Topics, MissionStatus, UAVStatus, CancellationReason
 from uspace.mqtt.mqtt_service import MQTTService
+from uspace.mission_manager.mission import Mission
 from .uav import UAV
 
 
@@ -28,6 +30,17 @@ class UAVOperator:
         #   }
         # }
         self.missions_processing_status: dict[str, dict[str, tuple[list, list, int]]] = {}
+        # Keep track of missions, specially for cancellation purposes:
+        # {
+        #   mission_manager_id: {
+        #     mission_id: {
+        #       mission: Mission,
+        #       assigned_uav_id: uav_id,
+        #       flightplans: [FlightPlan]
+        #     }
+        #   }
+        # }
+        self.missions: dict[str, dict[str, dict[str, Any]]] = {}
 
         # MQTT client
         self.mqtt_client = MQTTService.build_client(self.id)
@@ -37,15 +50,23 @@ class UAVOperator:
         # MQTT Callbacks
         self.callback_topics = [
             f"{Topics.MISSION_UAV_SERVICE}/{self.id}",
-            f"{Topics.REQUEST_ROUTE}/{self.id}"
+            f"{Topics.REQUEST_ROUTE}/{self.id}",
+            Topics.CANCEL_MISSION,
         ]
+
         self.mqtt_client.message_callback_add(
             f"{Topics.MISSION_UAV_SERVICE}/{self.id}", 
             self.on_request_uav_service
         )
+        
         self.mqtt_client.message_callback_add(
             f"{Topics.REQUEST_ROUTE}/{self.id}", 
             self.on_request_route_response
+        )
+
+        self.mqtt_client.message_callback_add(
+            Topics.CANCEL_MISSION,
+            self.on_cancel_mission
         )
 
     # ----------------------
@@ -89,14 +110,22 @@ class UAVOperator:
         ]
         return available_uavs
 
-    def free_resources(self, mission_manager_id, mission_id):
-        mission = self.missions_processing_status[mission_manager_id][mission_id]
-        uav_id = mission[5]
-        mission_type = mission[0]
+    def free_resources(
+        self, 
+        mission_manager_id, 
+        mission_id, 
+        mission_type, 
+        cancellation_reason
+    ):
+        mission_dict = self.missions[mission_manager_id][mission_id]
+        
+        mission = mission_dict["mission"]
+        uav_id = mission_dict["assigned_uav_id"]
 
-        # Free UAV
-        if mission_type in self.uavs and uav_id in self.uavs[mission_type]:
-            self.uavs[mission_type][uav_id].status = UAVStatus.AVAILABLE
+        mission.status = MissionStatus.CANCELLED
+        mission.cancellation_reason = cancellation_reason
+        self.uavs[mission_type][uav_id].status = UAVStatus.AVAILABLE
+        mission_dict["flightplans"] = []
 
     def log_dict_table(self, data, headers):
         formatted_data = [
@@ -118,19 +147,21 @@ class UAVOperator:
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
 
-    def cancel_mission(self, mission_manager_id, mission_id):
+    def cancel_mission(self, mission_manager_id, mission_id, cancellation_reason):
         # Logging
         print(f"[{self.id}] - Cancelling mission:")
         print(f"  Mission Manager ID: {mission_manager_id}")
         print(f"  Mission ID: {mission_id}")
+        print(f"  Cancellation Reason: {cancellation_reason}")
         print()
 
-        self.send_mission_status_update(
-            mission_manager_id, 
-            mission_id, 
-            MissionStatus.CANCELLED
-        )
-        self.free_resources(mission_manager_id, mission_id)
+        topic = Topics.CANCEL_MISSION
+        msg = {
+            "mission_manager_id": mission_manager_id,
+            "mission_id": mission_id,
+            "cancellation_reason": cancellation_reason
+        }
+        self.send_mqtt_msg(topic, json.dumps(msg))
 
     def request_route(
         self, 
@@ -171,6 +202,35 @@ class UAVOperator:
     # ----------------------
     # --- MQTT Callbacks ---
     # ----------------------
+    def on_cancel_mission(self, client, userdata, msg):
+        data = json.loads(msg.payload.decode())
+
+        # Extract cancellation data
+        uav_operator_id = data.get("uav_operator_id", "")
+        mission_manager_id = data["mission_manager_id"]
+        mission_id = data["mission_id"]
+        mission_type = data["mission_type"]
+        cancellation_reason = data["cancellation_reason"]
+
+        # Only process cancellation if it is for this UAV operator
+        if uav_operator_id != self.id:
+            return
+        
+        # Logging
+        print(f"[{self.id}] - Received mission cancellation:")
+        print(f"  Mission Manager ID: {mission_manager_id}")
+        print(f"  Mission ID: {mission_id}")
+        print(f"  Cancellation Reason: {cancellation_reason}")
+        print()
+
+        # Free resources and update mission cancellation reason
+        self.free_resources(
+            mission_manager_id, 
+            mission_id, 
+            mission_type, 
+            cancellation_reason
+        )
+
     def on_request_uav_service(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())
 
@@ -193,19 +253,31 @@ class UAVOperator:
 
         # Return if mission type is not supported
         if mission_type not in self.uavs:
-            self.cancel_mission(mission_manager_id, mission_id)
+            self.cancel_mission(
+                mission_manager_id, 
+                mission_id, 
+                CancellationReason.UNSUPPORTED_MISSION_TYPE
+            )
             return
         
         # Return if there are no available UAVs (temporal)
         available_uavs = self.get_available_uavs(mission_type)
+
         if not available_uavs:
-            self.cancel_mission(mission_manager_id, mission_id)
+            self.cancel_mission(
+                mission_manager_id, 
+                mission_id, 
+                CancellationReason.NO_AVAILABLE_UAV
+            )
             return
+        
+        # Assign first available UAV
         assigned_uav = available_uavs[0]
         
-        # Initialize mission processing status
+        # Initialize missions and missions processing status
         if mission_manager_id not in self.missions_processing_status:
             self.missions_processing_status[mission_manager_id] = {}
+            self.missions[mission_manager_id] = {}
 
         self.missions_processing_status[mission_manager_id][mission_id] = [
             mission_type,
@@ -215,10 +287,25 @@ class UAVOperator:
             len(stop_list) - 1,
             assigned_uav.id
         ]
-        
+
+        self.missions[mission_manager_id][mission_id] = {
+            "mission": Mission(
+                id=mission_id,
+                mission_type=mission_type,
+                stop_list=stop_list,
+                stop_times=stop_time,
+                uav_operator_id=self.id,
+                landing_time=landing_time,
+                status=MissionStatus.PENDING
+            ),
+            "assigned_uav_id": assigned_uav.id,
+            "flightplans": []
+        }
+
+        # Mark UAV as occupied
+        assigned_uav.status = UAVStatus.OCCUPIED
+
         # Ask for first route (from private vertiport to first stop)
-        assigned_uav.status = UAVStatus.OCCUPIED    # Reserve UAV
-        
         self.request_route(
             uav_pad_id=assigned_uav.pad_id,
             mission_manager_id=mission_manager_id,
@@ -260,6 +347,9 @@ class UAVOperator:
             self.cancel_mission(mission_manager_id, mission_id)
             return
         
+        # Store flightplan
+        self.missions[mission_manager_id][mission_id]["flightplans"].append(flightplan)
+
         # Check if it is the last leg of the mission
         mission = self.missions_processing_status[mission_manager_id][mission_id]
         mission_type = mission[0]
@@ -290,7 +380,7 @@ class UAVOperator:
         origin_vertiport_id = stop_list[current_stop]
         destination_vertiport_id = stop_list[current_stop + 1]
         destination_stop_time = stop_time[current_stop + 1]
-        takeoff_time = flightplan.finish_time() + stop_time[current_stop]  # Earliest takeoff time is when UAV finishes current leg plus stop time
+        takeoff_time = flightplan.finish_time() + stop_time[current_stop]
 
         self.request_route(
             uav_pad_id=landing_pad_id,

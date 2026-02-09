@@ -28,19 +28,28 @@ class MissionManager:
         self.callback_topics = [
             f"{Topics.REQUEST_VERTIPORT_OPERATOR_LIST}/{self.id}",
             f"{Topics.REQUEST_UAV_OPERATOR_LIST}/{self.id}",
-            f"{Topics.MISSION_STATUS_UPDATE}/{self.id}"
+            f"{Topics.MISSION_STATUS_UPDATE}/{self.id}",
+            Topics.CANCEL_MISSION,
         ]
+
         self.mqtt_client.message_callback_add(
             f"{Topics.REQUEST_VERTIPORT_OPERATOR_LIST}/{self.id}",
             self.on_receive_vertiport_operator_list
         )
+
         self.mqtt_client.message_callback_add(
             f"{Topics.REQUEST_UAV_OPERATOR_LIST}/{self.id}",
             self.on_receive_uav_operator_list
         )
+
         self.mqtt_client.message_callback_add(
             f"{Topics.MISSION_STATUS_UPDATE}/{self.id}",
             self.on_receive_uav_mission_update
+        )
+
+        self.mqtt_client.message_callback_add(
+            Topics.CANCEL_MISSION,
+            self.on_cancel_mission
         )
 
     # ----------------------
@@ -145,6 +154,28 @@ class MissionManager:
     # ----------------------
     # --- MQTT Callbacks ---
     # ----------------------
+    def on_cancel_mission(self, client, userdata, msg):
+        data = json.loads(msg.payload.decode())
+
+        # Extract cancellation data
+        mission_manager_id = data.get("mission_manager_id", "")
+        mission_id = data["mission_id"]
+        cancellation_reason = data["cancellation_reason"]
+
+        # Only process cancellation if it is for this mission manager
+        if mission_manager_id != self.id:
+            return
+        
+        # Logging
+        print(f"[{self.id}] - Received mission cancellation:")
+        print(f"  Mission ID: {mission_id}")
+        print(f"  Cancellation Reason: {cancellation_reason}")
+        print()
+
+        # Update mission status and cancellation reason
+        self.missions[mission_id].status = MissionStatus.CANCELLED
+        self.missions[mission_id].cancellation_reason = cancellation_reason
+
     def on_receive_vertiport_operator_list(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())
         self.vertiport_operators = data["vertiport_operators"]
