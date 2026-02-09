@@ -182,33 +182,22 @@ def my_obs_pos(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
     command_term = env.command_manager.get_term("vel_command")
     
     uav_pos_local = asset.data.root_com_pos_w - env.scene.env_origins
-    relative_pos = command_term.target_pos - uav_pos_local[:, :3] # que coja no dónde está con respecto al centro, si
+    relative_pos = command_term.target_pos - uav_pos_local[:, :3] # que coja no dónde está con respecto al centro, si no
     # a cuánto está del punto, si no sobreajusta
 
     # que el dron conozca la orientación a la que está ese punto
-    rotacion_z_dron = asset.data.root_com_quat_w 
-    invertir_z = math_utils.quat_inv(rotacion_z_dron)
+    invertir_z = math_utils.quat_inv(asset.data.root_com_quat_w)
     rel_pos_b = math_utils.quat_apply(invertir_z, relative_pos)
     return rel_pos_b
 # ------------------------------
 
 def my_obs_lin_vel(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
     asset: Articulation = env.scene[asset_cfg.name]
-    lin_vel_w_b = asset.data.root_com_lin_vel_b.view(-1, 3) # base frame es gloabl tmb
-    quat_w = asset.data.root_com_quat_w.view(-1, 4)
-    quat_inv = math_utils.quat_inv(quat_w)
-    lin_vel_b = math_utils.quat_apply(quat_inv,lin_vel_w_b)
-    return lin_vel_b
-
+    return asset.data.root_com_lin_vel_b
 
 def my_obs_ang_vel(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
     asset: Articulation = env.scene[asset_cfg.name]
-    ang_vel_w_b = asset.data.root_com_ang_vel_b.view(-1, 3) # pone que es la velocidad angular base global
-    # hay que rotar al sistema local
-    quat_w = asset.data.root_com_quat_w.view(-1, 4)
-    quat_inv = math_utils.quat_inv(quat_w)
-    ang_vel_b = math_utils.quat_apply(quat_inv,ang_vel_w_b)
-    return ang_vel_b
+    return asset.data.root_com_ang_vel_b
 
 def my_obs_roll(env:ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
     asset: Articulation = env.scene[asset_cfg.name]
@@ -226,14 +215,6 @@ def my_obs_pitch(env:ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
 
     return pitch
 
-# Hay fuga de datos: aprende dónde están los ejes de coordenadas, y no generaliza
-# def my_obs_yaw(env:ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
-#     asset: Articulation = env.scene[asset_cfg.name]
-#     _, _, yaw = math_utils.euler_xyz_from_quat(asset.data.root_com_quat_w)
-#     yaw = torch.atan2(torch.sin(yaw), torch.cos(yaw)) # normalize angle to [-pi, pi]
-#     yaw = yaw.unsqueeze(1)  # Add a dimension to match the expected shape
-
-#     return yaw
 
 def my_obs_command(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Get current velocity commands."""
@@ -444,7 +425,7 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    alive = RewTerm(func=mdp.is_alive, weight=2.0)
+    alive = RewTerm(func=mdp.is_alive, weight=15.0)
 
     action_rate = RewTerm(func=my_rewards.rew_action_rate, weight=-0.01)
 
@@ -452,23 +433,23 @@ class RewardsCfg:
 
     rew_pos_diff = RewTerm(
         func=my_rewards.rew_pos_diff,
-        weight=-5.0,
+        weight=-0.02,
     )
 
     rew_pos_diff_fine_grained = RewTerm(
         func=my_rewards.rew_pos_diff_fine_grained,
-        weight=15.0,
-        params={"std": 10.0},
+        weight=10.0,
+        params={"std": 15.0},
     )
 
     rew_lin_vel_diff = RewTerm(
         func=my_rewards.rew_lin_vel_diff,
-        weight=-0.1,
+        weight=-1.0,
     )
     rew_lin_vel_diff_fine_grained = RewTerm(
         func=my_rewards.rew_lin_vel_diff_fine_grained,
-        weight=5.0,
-        params={"std": 1.0},
+        weight=2.0,
+        params={"std": 5.0},
     )
     rew_ang_vel_z_diff = RewTerm(
         func=my_rewards.rew_ang_vel_z_diff,
@@ -481,7 +462,7 @@ class RewardsCfg:
     )
     rew_roll_diff = RewTerm(
         func=my_rewards.rew_roll_diff,
-        weight=-2.0,
+        weight=-0.5,
         params={"target": 0.0},
     )
     rew_roll_diff_fine_grained = RewTerm(
@@ -491,7 +472,7 @@ class RewardsCfg:
     )
     rew_pitch_diff = RewTerm(
         func=my_rewards.rew_pitch_diff,
-        weight=-2.0,
+        weight=-0.5,
         params={"target": 0.0},
     )
     rew_pitch_diff_fine_grained = RewTerm(
