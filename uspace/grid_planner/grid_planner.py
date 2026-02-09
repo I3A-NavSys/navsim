@@ -239,7 +239,7 @@ class GridPlanner:
         
         print("--------------")
 
-    def reserve_nodes(self, route: list[(int, int, str, int)]):
+    def reserve_route(self, route: list[(int, int, str, int)]):
         """
         Reserve the nodes that composed the specified route.
 
