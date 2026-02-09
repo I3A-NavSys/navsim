@@ -35,31 +35,17 @@ def rew_pos_diff_fine_grained(env: ManagerBasedRLEnv, std: float) -> torch.Tenso
 
 def rew_lin_vel_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
     asset = env.scene["aerotaxi"]
-    vel_real = asset.data.root_com_lin_vel_b 
+    lin_vel_b = asset.data.root_com_lin_vel_b
+    vel_command = env.command_manager.get_command("vel_command")[:, :3]
     
-    # Obtenemos la velocidad del "fantasma"
-    command_term = env.command_manager.get_term("vel_command")
-    vel_plan_g = command_term.target_vel # World Frame
-    
-    # Transformamos plan a Body Frame
-    quat_inv = math_utils.quat_inv(asset.data.root_com_quat_w)
-    vel_plan_b = math_utils.quat_apply(quat_inv, vel_plan_g)
-
-    # Error Euclidiano: sqrt((vx-vpx)^2 + (vy-vpy)^2 + (vz-vpz)^2)
-    error = torch.norm(vel_real - vel_plan_b, dim=1)
-    # if "metrics" not in env.extras: 
-    #     env.extras["metrics"] = {}
-    # env.extras["metrics"]["flight_plan_error_mps"] = error.mean()
-    return torch.clamp(error, max=50.0)
+    error = torch.norm(lin_vel_b - vel_command, dim=1)
+    return torch.clamp(error, max=10.0)
 
 def rew_lin_vel_diff_fine_grained(env: ManagerBasedRLEnv, std: float) -> torch.Tensor:
     asset = env.scene["aerotaxi"]
     lin_vel_b = asset.data.root_com_lin_vel_b
-    command_term = env.command_manager.get_term("vel_command")
-    vel_plan_g = command_term.target_vel 
-    quat_inv = math_utils.quat_inv(asset.data.root_com_quat_w)
-    vel_plan_b = math_utils.quat_apply(quat_inv, vel_plan_g)
-    distance = torch.norm(lin_vel_b - vel_plan_b, dim=1)
+    vel_command = env.command_manager.get_command("vel_command")[:, :3]
+    distance = torch.norm(lin_vel_b - vel_command, dim=1)
     return 1.0 - torch.tanh(distance / std)
 
 
