@@ -17,6 +17,12 @@ class PadStatus:
     OPERATIVE = "OPERATIVE"
     OUT_OF_SERVICE = "OUT_OF_SERVICE"
 
+class CancellationReason:
+    UNSUPPORTED_MISSION_TYPE = "UNSUPPORTED_MISSION_TYPE"
+    NO_AVAILABLE_UAV = "NO_AVAILABLE_UAV"
+    NO_AVAILABLE_PAD = "NO_AVAILABLE_PAD"
+    NO_AVAILABLE_ROUTE = "NO_AVAILABLE_ROUTE"
+
 class Topics:
     # USpace Manager Topics
     UAV_OPERATOR_REGISTER = "airspace/operators/register/uav"
@@ -26,6 +32,7 @@ class Topics:
     RECEIVE_LANDING_FLIGHTPLAN = "airspace/operators/routes/reception/landing"
     REQUEST_VERTIPORT_OPERATOR_LIST = "airspace/mission_managers/request/vertiport_operator_list"
     REQUEST_UAV_OPERATOR_LIST = "airspace/mission_managers/request/uav_operator_list"
+
 
     # UAV Operator Topics
     MISSION_UAV_SERVICE = "uav_operators/missions/request"
