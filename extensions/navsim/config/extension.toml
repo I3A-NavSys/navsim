@@ -21,5 +21,18 @@ icon = "data/icon.png"
 "isaacsim.gui.components" = {}
 "isaacsim.core.api" = {}
 
+[python.pipapi]
+requirements = [
+    "matplotlib", 
+    "PyQt5", 
+    "mplcursors", 
+    "pyproj", 
+    "GPUtil", 
+    "tabulate", 
+    "paho-mqtt",
+    "sortedcontainers"
+]
+use_online_index = true
+
 [[python.module]]
-name = "uspace_vertiports_python"
+name = "navsim_python"

@@ -10,12 +10,12 @@ from .uav import UAV
 
 
 class UAVOperator:
-    def __init__(self, id=None, name=None, private_vertiport_operator_id=None, uavs=None):
+    def __init__(self, id=None, name=None, private_vertiport_operator_id=None, uavs={}):
         self.id: str = id
         self.name: str = name
         self.private_vertiport_operator_id: str = private_vertiport_operator_id
         # Keep track of UAVs: {mission_type: {uav_id: UAV}}
-        self.uavs: dict[str, dict[str, UAV]] = {}
+        self.uavs: dict[str, dict[str, UAV]] = uavs
         # Keep track of missions' processing status (used when requesting routes): 
         # {
         #   mission_manager_id: {
@@ -344,7 +344,12 @@ class UAVOperator:
 
         # Cancel mission if no route is found
         if not flightplan.waypoints:
-            self.cancel_mission(mission_manager_id, mission_id)
+            self.cancel_mission(
+                mission_manager_id, 
+                mission_id,
+                True,
+                reason="No route found for next leg"
+            )
             return
         
         # Store flightplan
