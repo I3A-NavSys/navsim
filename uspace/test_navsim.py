@@ -114,7 +114,7 @@ for vert_op in vertiport_operators:
 mission_mgr.request_uav_operator_list()
 mission_mgr.request_vertiport_operator_list()
 
-# while True:
-time.sleep(2)
-mission_mgr.request_uav_mission()
-time.sleep(10)
+while True:
+    time.sleep(2)
+    mission_mgr.request_uav_mission()
+# time.sleep(2)

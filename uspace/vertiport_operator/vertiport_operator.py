@@ -349,19 +349,18 @@ class VertiportOperator:
         data = json.loads(msg.payload.decode())
 
         # Extract cancellation data
-        vertiport_operator_id = data.get("vertiport_operator_id", "")
+        vertiport_operator_ids = data.get("vertiport_operator_ids", set())
         uav_operator_id = data["uav_operator_id"]
         mission_manager_id = data["mission_manager_id"]
         mission_id = data["mission_id"]
         cancellation_reason = data["cancellation_reason"]
 
         # Only process cancellation if it is for this vertiport operator
-        if vertiport_operator_id != self.id:
+        if self.id not in vertiport_operator_ids:
             return
         
         # Logging
         print(f"[{self.id}] - Received mission cancellation:")
-        print(f"  UAV Operator ID: {uav_operator_id}")
         print(f"  Mission Manager ID: {mission_manager_id}")
         print(f"  Mission ID: {mission_id}")
         print(f"  Cancellation Reason: {cancellation_reason}")

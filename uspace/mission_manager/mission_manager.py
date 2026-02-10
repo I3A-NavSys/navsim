@@ -131,6 +131,7 @@ class MissionManager:
         )
 
         # Logging
+        print("----------------------------------------------")
         print(f"[{self.id}] - Requesting new UAV mission:")
         print(f"  Mission ID: {mission_id}")
         print(f"  Mission Type: {mission_type}")
@@ -208,4 +209,5 @@ class MissionManager:
         print(f"  UAV Operator ID: {uav_operator_id}")
         print(f"  Mission ID: {mission_id}")
         print(f"  Mission Status: {mission_status}")
+        print("----------------------------------------------")
         print()

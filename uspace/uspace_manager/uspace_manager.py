@@ -7,7 +7,7 @@ from uspace.uav_operator.uav_operator import UAVOperator
 from uspace.vertiport_operator.vertiport_operator import VertiportOperator
 from uspace.grid_planner.grid_planner import GridPlanner
 from uspace.mqtt.mqtt_service import MQTTService
-from .constants import Topics
+from .constants import Topics, CancellationReason
 
 
 class USpaceManager:
@@ -38,6 +38,8 @@ class USpaceManager:
         #   uav_operator_id: {
         #     mission_manager_id: {
         #       mission_id: {
+        #         mission_type: MissionType,
+        #         vertiport_operator_ids: set(str),
         #         routes: [grid_route]
         #         cancellation_reason: CancellationReason (None if not cancelled)
         #       }
@@ -147,11 +149,22 @@ class USpaceManager:
         # Update cancellation reason
         mission["cancellation_reason"] = cancellation_reason
 
+        # Clear vertiport operators ids involved in the mission for memory optimization
+        mission["vertiport_operator_ids"] = []
+
         # Free reserved routes in the airspace
         for route in mission["routes"]:
             self.airspace.free_route(route)
         
-    def track_mission_route(self, uav_operator_id, mission_manager_id, mission_id, route):
+    def track_mission_route(
+        self, 
+        vertiport_operator_id, 
+        uav_operator_id, 
+        mission_manager_id, 
+        mission_id, 
+        mission_type, 
+        route
+    ):
         # Initialize mission entry in missions dictionary for cancellation purposes
         if uav_operator_id not in self.missions:
             self.missions[uav_operator_id] = {}
@@ -161,12 +174,15 @@ class USpaceManager:
 
         if mission_id not in self.missions[uav_operator_id][mission_manager_id]:
             self.missions[uav_operator_id][mission_manager_id][mission_id] = {
+                "mission_type": mission_type,
+                "vertiport_operator_ids": set(),
                 "routes": [],
                 "cancellation_reason": None
             }
 
         # Store reserved route for cancellation purposes
         mission = self.missions[uav_operator_id][mission_manager_id][mission_id]
+        mission["vertiport_operator_ids"].add(vertiport_operator_id)
         mission["routes"].append(route)
 
     def adjust_time_to_slot(self, time):
@@ -189,11 +205,16 @@ class USpaceManager:
         print(f"  Cancellation Reason: {cancellation_reason}")
         print()
 
+        # Get mission entry
+        mission = self.missions[uav_operator_id][mission_manager_id][mission_id]
+
         topic = Topics.CANCEL_MISSION
         msg = {
+            "vertiport_operator_ids": list(mission["vertiport_operator_ids"]),
             "uav_operator_id": uav_operator_id,
             "mission_manager_id": mission_manager_id,
             "mission_id": mission_id,
+            "mission_type": mission["mission_type"],
             "cancellation_reason": cancellation_reason
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
@@ -289,13 +310,14 @@ class USpaceManager:
         data = json.loads(msg.payload.decode())
 
         # Extract cancellation data
+        uspace_manager_id = data.get("uspace_manager_id", "")
         uav_operator_id = data.get("uav_operator_id", "")
         mission_manager_id = data["mission_manager_id"]
         mission_id = data["mission_id"]
         cancellation_reason = data["cancellation_reason"]
 
         # Only process cancellation if it comes from a Vertiport Operator
-        if uav_operator_id == "":
+        if uav_operator_id == "" or uspace_manager_id != self.id:
             return
         
         # Logging
@@ -450,78 +472,6 @@ class USpaceManager:
                 stop_time=None
             )
     
-    def on_receive_route(self, client, userdata, msg):
-        data = json.loads(msg.payload.decode())
-
-        # Extract response data
-        vertiport_operator_id = data["id"]
-        uav_operator_id = data["uav_operator_id"]
-        mission_manager_id = data["mission_manager_id"]
-        mission_id = data["mission_id"]
-        is_landing = data["is_landing"]
-        raw_flightplan = data["flightplan"]
-        pad_id = data["pad_id"]
-
-        # Build flightplan object from raw data
-        flightplan = FlightPlan()
-        flightplan.from_dict(raw_flightplan)
-
-        # Logging
-        print(f"[{self.id}] - Received flightplan:")
-        print(f"  Vertiport Operator ID: {vertiport_operator_id}")
-        print(f"  UAV Operator ID: {uav_operator_id}")
-        print(f"  Mission Manager ID: {mission_manager_id}")
-        print(f"  Mission ID: {mission_id}")
-        print(f"  Is Landing: {is_landing}")
-        print("  Flightplan waypoints:")
-        flightplan.print_waypoints()
-        print()
-
-        # Cancel mission if no route was found
-        if not flightplan.waypoints:
-            self.cancel_mission(uav_operator_id, mission_manager_id, mission_id)
-            return
-        
-        # Store flightplan in mission processing status
-        mission = self.missions_processing_status[uav_operator_id][mission_manager_id][mission_id]
-        if is_landing:
-            mission["landing_flightplan"] = flightplan
-            mission["landing_pad_id"] = pad_id
-        else:
-            mission["takeoff_flightplan"] = flightplan
-
-        # Check if all flightplans have been computed
-        takeoff_flightplan = mission["takeoff_flightplan"]
-        landing_flightplan = mission["landing_flightplan"]
-        grid_flightplan = mission["grid_flightplan"]
-
-        takeoff_fp_exists = takeoff_flightplan is not None
-        landing_fp_exists = landing_flightplan is not None
-        grid_fp_exists = grid_flightplan is not None
-        
-        # Return complete flightplan if all parts are ready
-        if takeoff_fp_exists and landing_fp_exists and grid_fp_exists:
-            # Remove first and last waypoint of grid flightplan to avoid duplicates
-            grid_flightplan.waypoints.pop(0)
-            grid_flightplan.waypoints.pop(-1)
-
-            # Build complete flightplan
-            complete_flightplan = FlightPlan()
-            complete_flightplan.waypoints = (
-                takeoff_flightplan.waypoints + 
-                grid_flightplan.waypoints + 
-                landing_flightplan.waypoints
-            )
-
-            # Send complete flightplan to UAV Operator
-            self.send_mission_flightplan(
-                uav_operator_id,
-                mission_manager_id,
-                mission_id,
-                complete_flightplan,
-                mission["landing_pad_id"]
-            )
-
     def on_receive_takeoff_flightplan(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())
 
@@ -551,11 +501,6 @@ class USpaceManager:
         print("  Flightplan waypoints:")
         flightplan.print_waypoints()
         print()
-
-        # Cancel mission if no route was found
-        if not flightplan.waypoints:
-            self.cancel_mission(uav_operator_id, mission_manager_id, mission_id)
-            return
         
         # Store flightplan in mission processing status
         mission = self.missions_processing_status[uav_operator_id][mission_manager_id][mission_id]
@@ -593,16 +538,28 @@ class USpaceManager:
                 reverse=False
             )
 
+            # Track reserved route for cancellation purposes
+            self.track_mission_route(
+                vertiport_operator_id,
+                uav_operator_id, 
+                mission_manager_id, 
+                mission_id, 
+                mission["mission_type"],
+                route
+            )
+
             # Cancel mission if no route was found
             if not route:
-                self.cancel_mission(uav_operator_id, mission_manager_id, mission_id)
+                self.cancel_mission(
+                    uav_operator_id, 
+                    mission_manager_id, 
+                    mission_id,
+                    CancellationReason.NO_AVAILABLE_ROUTE
+                )
                 return
             
             # Reserve route in the airspace
             self.airspace.reserve_route(route)
-
-            # Track reserved route for cancellation purposes
-            self.track_mission_route(uav_operator_id, mission_manager_id, mission_id, route)
 
             # Build grid flightplan from route
             grid_flightplan = self.airspace.get_flightplan_from_route(route)
@@ -667,11 +624,6 @@ class USpaceManager:
         flightplan.print_waypoints()
         print()
 
-        # Cancel mission if no route was found
-        if not flightplan.waypoints:
-            self.cancel_mission(uav_operator_id, mission_manager_id, mission_id)
-            return
-        
         # Store flightplan in mission processing status
         mission = self.missions_processing_status[uav_operator_id][mission_manager_id][mission_id]
         mission["landing_flightplan"] = flightplan
@@ -695,16 +647,28 @@ class USpaceManager:
                 reverse=True
             )
 
+            # Track reserved route for cancellation purposes
+            self.track_mission_route(
+                vertiport_operator_id,
+                uav_operator_id, 
+                mission_manager_id, 
+                mission_id, 
+                mission["mission_type"],
+                route
+            )
+
             # Cancel mission if no route was found
             if not route:
-                self.cancel_mission(uav_operator_id, mission_manager_id, mission_id)
+                self.cancel_mission(
+                    uav_operator_id, 
+                    mission_manager_id, 
+                    mission_id,
+                    CancellationReason.NO_AVAILABLE_ROUTE
+                )
                 return
             
             # Reserve route in the airspace
             self.airspace.reserve_route(route)
-
-            # Track reserved route for cancellation purposes
-            self.track_mission_route(uav_operator_id, mission_manager_id, mission_id, route)
 
             # Build grid flightplan from route
             grid_flightplan = self.airspace.get_flightplan_from_route(route)

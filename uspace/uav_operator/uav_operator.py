@@ -341,16 +341,6 @@ class UAVOperator:
         print("  Flightplan waypoints:")
         flightplan.print_waypoints()
         print()
-
-        # Cancel mission if no route is found
-        if not flightplan.waypoints:
-            self.cancel_mission(
-                mission_manager_id, 
-                mission_id,
-                True,
-                reason="No route found for next leg"
-            )
-            return
         
         # Store flightplan
         self.missions[mission_manager_id][mission_id]["flightplans"].append(flightplan)
