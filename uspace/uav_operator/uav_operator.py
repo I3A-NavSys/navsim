@@ -19,14 +19,14 @@ class UAVOperator:
         # Keep track of missions' processing status (used when requesting routes): 
         # {
         #   mission_manager_id: {
-        #     mission_id: [
-        #       mission_type,
-        #       stop_list, 
-        #       stop_time, 
-        #       current_destination_stop_index,
-        #       last_destination_stop_index,
-        #       uav_id
-        #     ]
+        #     mission_id: {
+        #       mission_type: MissionType,
+        #       stop_list: [str], 
+        #       stop_time: [int], 
+        #       current_destination_stop_index: int,
+        #       last_destination_stop_index: int,
+        #       uav_id: str
+        #     }
         #   }
         # }
         self.missions_processing_status: dict[str, dict[str, tuple[list, list, int]]] = {}
@@ -279,15 +279,21 @@ class UAVOperator:
             self.missions_processing_status[mission_manager_id] = {}
             self.missions[mission_manager_id] = {}
 
-        self.missions_processing_status[mission_manager_id][mission_id] = [
-            mission_type,
-            stop_list, 
-            stop_time, 
-            0,
-            len(stop_list) - 1,
-            assigned_uav.id
-        ]
+        # Build new stop_list with private vertiport included at the beginning and end
+        stop_list = stop_list + [self.private_vertiport_operator_id]
+        stop_time = stop_time + [0]
 
+        # Store mission processing status information
+        self.missions_processing_status[mission_manager_id][mission_id] = {
+            "mission_type": mission_type,
+            "stop_list": stop_list, 
+            "stop_time": stop_time, 
+            "current_destination_stop_index": 0,
+            "last_destination_stop_index": len(stop_list) - 1,
+            "uav_id": assigned_uav.id
+        }
+
+        # Store mission information for cancellation purposes
         self.missions[mission_manager_id][mission_id] = {
             "mission": Mission(
                 id=mission_id,
@@ -317,7 +323,7 @@ class UAVOperator:
             landing_time=landing_time,
             stop_time=stop_time[0],
         )
-
+        
     def on_request_route_response(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())
 
@@ -347,11 +353,11 @@ class UAVOperator:
 
         # Check if it is the last leg of the mission
         mission = self.missions_processing_status[mission_manager_id][mission_id]
-        mission_type = mission[0]
-        stop_list = mission[1]
-        stop_time = mission[2]
-        current_stop = mission[3]
-        last_stop = mission[4]
+        mission_type = mission["mission_type"]
+        stop_list = mission["stop_list"]
+        stop_time = mission["stop_time"]
+        current_stop = mission["current_destination_stop_index"]
+        last_stop = mission["last_destination_stop_index"]
 
         if current_stop == last_stop:
             # Logging
@@ -390,7 +396,7 @@ class UAVOperator:
         )
 
         # Update mission processing status by incrementing current_destination_stop_index
-        mission[3] += 1
+        mission["current_destination_stop_index"] += 1
         
 
 
