@@ -188,7 +188,9 @@ def my_obs_pos(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
     # que el dron conozca la orientación a la que está ese punto
     invertir_z = math_utils.quat_inv(asset.data.root_com_quat_w)
     rel_pos_b = math_utils.quat_apply(invertir_z, relative_pos)
-    return rel_pos_b
+    altura_z = uav_pos_local[:, 2:3] 
+
+    return torch.cat([rel_pos_b,altura_z], dim=1) # es [dist_x,dist_y,dist_z,z_dron_relativa]
 # ------------------------------
 
 def my_obs_lin_vel(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
@@ -250,6 +252,7 @@ class ObervervationCfg:
         def __post_init__(self):
             self.enable_corruption = True  # Regularización con ruido en las observaciones
             self.concatenate_terms = True
+            self.history_length = 5 # como no queremos pasarle la velocidad directamente, que la infiera si no
 
 
     # Crítico: la corrección que se hará sobre lo que ve el dron en train. En test no hay crítico

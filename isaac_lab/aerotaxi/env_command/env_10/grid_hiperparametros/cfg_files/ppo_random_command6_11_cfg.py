@@ -3,7 +3,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class Command6PPORunnerCfg(RslRlOnPolicyRunnerCfg):
-    num_steps_per_env = 512
+    num_steps_per_env = 128
     max_iterations = 4001
     save_interval = 100
     experiment_name = "command6"
@@ -22,13 +22,13 @@ class Command6PPORunnerCfg(RslRlOnPolicyRunnerCfg):
         value_loss_coef=1.0,
         use_clipped_value_loss=True,
         clip_param=0.2,
-        entropy_coef=0.001,
+        entropy_coef=0.01,
         num_learning_epochs=4,
-        num_mini_batches=32,
-        learning_rate=2e-05,
+        num_mini_batches=8,
+        learning_rate=0.0001,
         schedule="adaptive",
         gamma=0.99,
-        lam=0.95,
-        desired_kl=0.01,
+        lam=0.9,
+        desired_kl=0.005,
         max_grad_norm=0.5,
     )
