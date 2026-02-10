@@ -312,9 +312,9 @@ class USpaceManager:
         # Extract cancellation data
         uspace_manager_id = data.get("uspace_manager_id", "")
         uav_operator_id = data.get("uav_operator_id", "")
-        mission_manager_id = data["mission_manager_id"]
-        mission_id = data["mission_id"]
-        cancellation_reason = data["cancellation_reason"]
+        mission_manager_id = data.get("mission_manager_id", "")
+        mission_id = data.get("mission_id", "")
+        cancellation_reason = data.get("cancellation_reason", "")
 
         # Only process cancellation if it comes from a Vertiport Operator
         if uav_operator_id == "" or uspace_manager_id != self.id:

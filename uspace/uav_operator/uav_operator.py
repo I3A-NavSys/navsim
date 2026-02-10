@@ -207,10 +207,10 @@ class UAVOperator:
 
         # Extract cancellation data
         uav_operator_id = data.get("uav_operator_id", "")
-        mission_manager_id = data["mission_manager_id"]
-        mission_id = data["mission_id"]
-        mission_type = data["mission_type"]
-        cancellation_reason = data["cancellation_reason"]
+        mission_manager_id = data.get("mission_manager_id", "")
+        mission_id = data.get("mission_id", "")
+        mission_type = data.get("mission_type", "")
+        cancellation_reason = data.get("cancellation_reason", "")
 
         # Only process cancellation if it is for this UAV operator
         if uav_operator_id != self.id:

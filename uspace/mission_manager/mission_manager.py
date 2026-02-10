@@ -160,8 +160,8 @@ class MissionManager:
 
         # Extract cancellation data
         mission_manager_id = data.get("mission_manager_id", "")
-        mission_id = data["mission_id"]
-        cancellation_reason = data["cancellation_reason"]
+        mission_id = data.get("mission_id", "")
+        cancellation_reason = data.get("cancellation_reason", "")
 
         # Only process cancellation if it is for this mission manager
         if mission_manager_id != self.id:

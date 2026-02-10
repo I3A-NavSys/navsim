@@ -350,10 +350,10 @@ class VertiportOperator:
 
         # Extract cancellation data
         vertiport_operator_ids = data.get("vertiport_operator_ids", set())
-        uav_operator_id = data["uav_operator_id"]
-        mission_manager_id = data["mission_manager_id"]
-        mission_id = data["mission_id"]
-        cancellation_reason = data["cancellation_reason"]
+        uav_operator_id = data.get("uav_operator_id", "")
+        mission_manager_id = data.get("mission_manager_id", "")
+        mission_id = data.get("mission_id", "")
+        cancellation_reason = data.get("cancellation_reason", "")
 
         # Only process cancellation if it is for this vertiport operator
         if self.id not in vertiport_operator_ids:
