@@ -13,7 +13,7 @@ import warnings
 from collections import deque
 
 import rsl_rl
-from MyOnPolicyRunner import MyPPO
+from MyPPO import MyPPO
 from rsl_rl.env import VecEnv
 from rsl_rl.modules import ActorCritic, ActorCriticRecurrent, resolve_rnd_config, resolve_symmetry_config
 from rsl_rl.utils import resolve_obs_groups, store_code_state
