@@ -13,7 +13,7 @@ import warnings
 from collections import deque
 
 import rsl_rl
-from rl_v5_1_0.rsl_rl.PPO import PPO
+from PPO import PPO
 from rsl_rl.env import VecEnv
 from rsl_rl.modules import ActorCritic, ActorCriticRecurrent, resolve_rnd_config, resolve_symmetry_config
 from rsl_rl.utils import resolve_obs_groups, store_code_state
@@ -41,6 +41,7 @@ class MyOnPolicyRunner:
         # store training configuration
         self.num_steps_per_env = self.cfg["num_steps_per_env"]
         self.save_interval = self.cfg["save_interval"]
+        self.total_iterations = self.cfg["max_iterations"]
 
 
         # ------- TERESA --------
@@ -541,7 +542,7 @@ class MyOnPolicyRunner:
 
         # initialize the algorithm
         alg_class = eval(self.alg_cfg.pop("class_name"))
-        alg: MyPPO = alg_class(actor_critic, device=self.device, **self.alg_cfg, multi_gpu_cfg=self.multi_gpu_cfg)
+        alg: PPO = alg_class(actor_critic, device=self.device, **self.alg_cfg, multi_gpu_cfg=self.multi_gpu_cfg)
 
         # initialize the storage
         alg.init_storage(
@@ -550,6 +551,7 @@ class MyOnPolicyRunner:
             self.num_steps_per_env,
             obs,
             [self.env.num_actions],
+            self.total_iterations
         )
 
         return alg
