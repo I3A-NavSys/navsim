@@ -102,6 +102,7 @@ class MyPPO:
 
         # PPO parameters
         self.clip_param = clip_param
+        self.initial_clip_param = clip_param
         self.num_learning_epochs = num_learning_epochs
         self.num_mini_batches = num_mini_batches
         self.value_loss_coef = value_loss_coef
@@ -134,11 +135,16 @@ class MyPPO:
         # ---------------------------
 
     # ------- TERESA ---------------
-    # Entropy con decay
-    def update_entropy_coef(self, current_iteration, total_iterations):
+    def update_decay(self, current_iteration, total_iterations):
+        # Entropy con decay
         decay_rate = 1 - current_iteration / total_iterations
         if self.entropy_coef >= 0.001: # valor mínimo de entropía
             self.entropy_coef = self.initial_entropy_coef * decay_rate
+        # epsilon con decay
+        decay_rate = 1 - current_iteration / total_iterations
+        min_clip_param = 0.01  # minimum clip_param value
+        self.clip_param = self.initial_clip_param * decay_rate + min_clip_param * (1 - decay_rate)
+
     # ------------------------------
 
     def act(self, obs):
@@ -435,7 +441,7 @@ class MyPPO:
         if self.symmetry:
             loss_dict["symmetry"] = mean_symmetry_loss
 
-        self.update_entropy_coef(self.current_iteration, self.total_iterations)
+        self.update_decay(self.current_iteration, self.total_iterations)
         return loss_dict
 
     """
