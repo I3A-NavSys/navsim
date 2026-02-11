@@ -10,7 +10,8 @@ class MissionStatus:
 
 class UAVStatus:
     AVAILABLE = "AVAILABLE"
-    OCCUPIED = "OCCUPIED"
+    BUSY = "BUSY"
+    PENDING_ASSIGNMENT = "PENDING_ASSIGNMENT"
     OUT_OF_SERVICE = "OUT_OF_SERVICE"
 
 class PadStatus:
