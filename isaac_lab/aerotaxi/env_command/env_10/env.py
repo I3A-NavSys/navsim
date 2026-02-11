@@ -177,7 +177,7 @@ class ActionsCfg:
 #     return asset.data.root_com_pos_w - env.scene.env_origins # posición relativa
 
 # ----- Teresa -------
-def my_obs_pos(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
+def my_obs_dist(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
     asset: Articulation = env.scene[asset_cfg.name]
     command_term = env.command_manager.get_term("vel_command")
     
@@ -188,10 +188,14 @@ def my_obs_pos(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
     # que el dron conozca la orientación a la que está ese punto
     invertir_z = math_utils.quat_inv(asset.data.root_com_quat_w)
     rel_pos_b = math_utils.quat_apply(invertir_z, relative_pos)
-    altura_z = uav_pos_local[:, 2:3] 
 
-    return torch.cat([rel_pos_b,altura_z], dim=1) # es [dist_x,dist_y,dist_z,z_dron_relativa]
+    return rel_pos_b # es [dist_x,dist_y,dist_z,z_dron_relativa]
 # ------------------------------
+def my_obs_height(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
+    asset: Articulation = env.scene[asset_cfg.name]
+    uav_pos_local = asset.data.root_com_pos_w - env.scene.env_origins
+    altura_z = uav_pos_local[:, 2:3]
+    return altura_z
 
 def my_obs_lin_vel(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
     asset: Articulation = env.scene[asset_cfg.name]
@@ -227,6 +231,14 @@ def my_obs_target_vel(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
     
     return target_vel_b
 
+def my_obs_yaw(env:ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
+    asset: Articulation = env.scene[asset_cfg.name]
+    _, _, yaw = math_utils.euler_xyz_from_quat(asset.data.root_com_quat_w)
+    yaw = torch.atan2(torch.sin(yaw), torch.cos(yaw)) # normalize angle to [-pi, pi]
+    yaw = yaw.unsqueeze(1)  # Add a dimension to match the expected shape
+
+    return yaw
+
 
 def my_obs_command(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Get current velocity commands."""
@@ -240,20 +252,21 @@ class ObervervationCfg:
     @configclass
     class PolicyCfg(ObsGroup):
         """Observation group for the policy."""
-        pos = ObsTerm(func=my_obs_pos, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.1))
-        lin_vel = ObsTerm(func=my_obs_lin_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.2))
-        ang_vel = ObsTerm(func=my_obs_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.1))
+        dist = ObsTerm(func=my_obs_dist, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.05))
+        lin_vel = ObsTerm(func=my_obs_lin_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.05))
+        ang_vel = ObsTerm(func=my_obs_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.05))
         roll = ObsTerm(func=my_obs_roll, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
         pitch = ObsTerm(func=my_obs_pitch, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
-        # yaw = ObsTerm(func=my_obs_yaw, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
+        yaw = ObsTerm(func=my_obs_yaw, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
+        height = ObsTerm(func=my_obs_height, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
         # current_command = ObsTerm(func=my_obs_command) # habría fuga de datos si no
         # GaussianNoiseCFG: simula el ruido de los sensores, así es como si fuera Regularización
         
         def __post_init__(self):
             self.enable_corruption = True  # Regularización con ruido en las observaciones
             self.concatenate_terms = True
-            self.history_length = 5 # como no queremos pasarle la velocidad directamente, que la infiera si no
-
+            self.history_length = 3 # como no queremos pasarle la velocidad directamente, que la infiera si no
+            self.flatten_history_dim = True
 
     # Crítico: la corrección que se hará sobre lo que ve el dron en train. En test no hay crítico
     # Por eso aquí vamos a incluir la velocidad del punto guía, para que pueda ajustarse a ella en train, pero en test no
@@ -264,26 +277,19 @@ class ObervervationCfg:
     class CriticCfg(ObsGroup):
         """Lo que el entrenador sabe (la verdad absoluta, sin ruido)"""
         # 1. Posición y velocidad de la Policy (pero sin ruido)
-        pos = ObsTerm(
-            func=my_obs_pos, 
-            params={"asset_cfg": SceneEntityCfg(name="aerotaxi")}
-        )
-        lin_vel = ObsTerm(
-            func=my_obs_lin_vel, 
-            params={"asset_cfg": SceneEntityCfg(name="aerotaxi")}
-        )
-        ang_vel = ObsTerm(
-            func=my_obs_ang_vel, 
-            params={"asset_cfg": SceneEntityCfg(name="aerotaxi")}
-        )
+        dist = ObsTerm(func=my_obs_dist, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        lin_vel = ObsTerm(func=my_obs_lin_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        ang_vel = ObsTerm(func=my_obs_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        roll = ObsTerm(func=my_obs_roll, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        pitch = ObsTerm(func=my_obs_pitch, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        yaw = ObsTerm(func=my_obs_yaw, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        height = ObsTerm(func=my_obs_height, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         # La nueva función del target también necesita saber respecto a qué dron rotar
         target_vel = ObsTerm(
             func=my_obs_target_vel, 
             params={"asset_cfg": SceneEntityCfg(name="aerotaxi")}
         )
-        
-        # 3. Datos globales (opcional)
-        # yaw = ObsTerm(func=my_obs_yaw) 
+    
 
         def __post_init__(self):
             self.enable_corruption = False # El crítico no necesita ruido
@@ -490,7 +496,7 @@ class RewardsCfg:
 
     rew_pos_diff_fine_grained = RewTerm(
         func=my_rewards.rew_pos_diff_fine_grained,
-        weight=10.0,
+        weight=5.0,
         params={"std": 15.0},
     )
 
@@ -519,8 +525,8 @@ class RewardsCfg:
     )
     rew_roll_diff_fine_grained = RewTerm(
         func=my_rewards.rew_roll_diff_fine_grained,
-        weight=1.0,
-        params={"std": 0.2, "target": 0.0}, # 0.5 para que pueda girarse un poco el ángulo y siga obteniendo reward
+        weight=2.0,
+        params={"std": 0.1, "target": 0.0}, # 0.5 para que pueda girarse un poco el ángulo y siga obteniendo reward
     )
     rew_pitch_diff = RewTerm(
         func=my_rewards.rew_pitch_diff,
@@ -529,8 +535,13 @@ class RewardsCfg:
     )
     rew_pitch_diff_fine_grained = RewTerm(
         func=my_rewards.rew_pitch_diff_fine_grained,
-        weight=1.0,
-        params={"std": 0.2, "target": 0.0}, # 0.5 para que pueda girarse un poco el ángulo y siga obteniendo reward
+        weight=2.0,
+        params={"std": 0.1, "target": 0.0}, # 0.5 para que pueda girarse un poco el ángulo y siga obteniendo reward
+    )
+    rew_hovering = RewTerm(
+        func=my_rewards.rew_hovering,
+        weight=6.0,
+        params={"min_altitude": 8, "max_altitude": 20.0, "margin": 0.2},
     )
     # rew_heading_alignment_fine_grained = RewTerm(
     #     func=my_rewards.rew_heading_alignment_fine_grained,
@@ -554,7 +565,7 @@ class TerminationsCfg:
 
     below_min_altitude = DoneTerm(
         func=my_terminations.below_min_altitude,
-        params={"min_altitude": 1.0,} # el centro de masas del dron está a 5.06m del suelo.
+        params={"min_altitude": 0.2,} # el centro de masas del dron está a 5.06m del suelo.
     )
     bad_attitude = DoneTerm(func=my_terminations.roll_pitch_termination)
     safety_shutdown = DoneTerm(func=my_terminations.are_nan_or_exploded)
@@ -685,7 +696,7 @@ class UAVEnvCfg(ManagerBasedRLEnvCfg):
         """Post initialization"""
         # ----- Teresa -------
         # pasos que se usan en la red de PPO
-        self.num_steps_per_env = 625
+        self.num_steps_per_env = 100
         # ----- Teresa -------
 
         # viewer settings

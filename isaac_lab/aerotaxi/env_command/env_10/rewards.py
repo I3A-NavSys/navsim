@@ -91,6 +91,33 @@ def rew_pitch_diff_fine_grained(env: ManagerBasedRLEnv, target: float, std: floa
     distance = torch.abs(pitch - target)
     return 1 - torch.tanh(distance/std)
 
+def rew_hovering(env: ManagerBasedRLEnv, min_altitude: float, max_altitude: float, margin: float):
+    z = env.scene["aerotaxi"].data.root_com_pos_w[:, 2] - env.scene.env_origins[:, 2]  # Altitud real
+
+    # Inicializar la recompensa
+    reward = torch.zeros_like(z)
+    
+    # Condición para estar dentro del rango (8-20 metros)
+    in_range = (z >= min_altitude) & (z <= max_altitude)
+    
+    # Recompensa máxima cuando está dentro del rango
+    reward[in_range] = 1.0
+    
+    # Penalización cuando está fuera del rango
+    out_of_range = (z < min_altitude) | (z > max_altitude)
+    
+    # Penalización proporcional a la distancia fuera del rango
+    penalty = torch.minimum(torch.abs(z[out_of_range] - min_altitude), torch.abs(z[out_of_range] - max_altitude))
+
+    # Asegurarse de que penalty tiene la misma forma que z (evitar posibles problemas de índices vacíos)
+    # La penalización será negativa por estar fuera del rango, y la recompensa positiva por estar dentro
+    reward[out_of_range] = -penalty
+
+    return reward
+
+
+
+
 # Recompensa de que el dron mire hacia el punto objetivo
 def rew_heading_alignment_fine_grained(env: ManagerBasedRLEnv, std: float) -> torch.Tensor:
     term = env.command_manager.get_term("vel_command")
