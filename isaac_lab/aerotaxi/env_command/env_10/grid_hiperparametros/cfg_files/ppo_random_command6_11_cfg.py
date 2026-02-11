@@ -1,5 +1,7 @@
 from isaaclab.utils import configclass
 from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, RslRlPpoAlgorithmCfg
+import sys
+sys.path.append('C:/Users/Teresa/Documents/GitHub/navsim/isaac_lab/rl_v5_1_0/rsl_rl')
 
 @configclass
 class Command6PPORunnerCfg(RslRlOnPolicyRunnerCfg):
