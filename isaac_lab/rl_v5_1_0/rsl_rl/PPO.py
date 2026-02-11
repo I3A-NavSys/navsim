@@ -102,11 +102,16 @@ class PPO:
 
         # PPO parameters
         self.clip_param = clip_param
+        # ----- Teresa -----------
         self.initial_clip_param = clip_param
+        # -----------------
         self.num_learning_epochs = num_learning_epochs
         self.num_mini_batches = num_mini_batches
         self.value_loss_coef = value_loss_coef
         self.entropy_coef = entropy_coef
+        # ----- Teresa -----------
+        self.initial_entropy_coef = entropy_coef
+        # -------------------------
         self.gamma = gamma
         self.lam = lam
         self.max_grad_norm = max_grad_norm
