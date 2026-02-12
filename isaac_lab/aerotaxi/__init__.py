@@ -177,6 +177,6 @@ for i in range(100):
         disable_env_checker=True,
         kwargs={
             "env_cfg_entry_point": f"{env_command.__name__}.env_11.env:UAVEnvCfg",
-            "rsl_rl_cfg_entry_point": f"{env_command.__name__}.env_11.grid_hiperparametros.cfg_files.ppo_random_command6_{i+1}_cfg:Command7PPORunnerCfg",
+            "rsl_rl_cfg_entry_point": f"{env_command.__name__}.env_11.grid_hiperparametros.cfg_files.ppo_random_command7_{i+1}_cfg:Command7PPORunnerCfg",
         },
     )
