@@ -91,32 +91,39 @@ def rew_pitch_diff_fine_grained(env: ManagerBasedRLEnv, target: float, std: floa
     distance = torch.abs(pitch - target)
     return 1 - torch.tanh(distance/std)
 
-def rew_hovering(env: ManagerBasedRLEnv, min_altitude: float, max_altitude: float, margin: float):
-    z = env.scene["aerotaxi"].data.root_com_pos_w[:, 2] - env.scene.env_origins[:, 2]  # Altitud real
-
-    # Inicializar la recompensa
-    reward = torch.zeros_like(z)
+def rew_hovering(env: ManagerBasedRLEnv, min_altitude: float, max_altitude: float):
+    asset = env.scene["aerotaxi"]
+    # Altura actual respecto al origen del entorno
+    z = asset.data.root_com_pos_w[:, 2] - env.scene.env_origins[:, 2]
     
-    # Condición para estar dentro del rango (8-20 metros)
-    in_range = (z >= min_altitude) & (z <= max_altitude)
+    # Si está dentro del rango, damos 1.0, si no 0.0
+    is_in_range = (z >= min_altitude) & (z <= max_altitude)
+    return is_in_range.float()
+
+
+def rew_velocity_rescue_bidirectional(env):
+    """Premia que el dron se mueva verticalmente hacia el objetivo, en ambas direcciones."""
+    asset = env.scene["aerotaxi"]
+    command_term = env.command_manager.get_term("vel_command")
     
-    # Recompensa máxima cuando está dentro del rango
-    reward[in_range] = 1.0
+    # 1. Error de altura (positivo si el target está arriba, negativo si está abajo)
+    z_actual = asset.data.root_com_pos_w[:, 2] - env.scene.env_origins[:, 2]
+    z_target = command_term.target_pos[:, 2]
+    z_error = z_target - z_actual
     
-    # Penalización cuando está fuera del rango
-    out_of_range = (z < min_altitude) | (z > max_altitude)
+    # 2. Velocidad vertical en Body Frame
+    vel_z = asset.data.root_com_lin_vel_b[:, 2]
     
-    # Penalización proporcional a la distancia fuera del rango
-    penalty = torch.minimum(torch.abs(z[out_of_range] - min_altitude), torch.abs(z[out_of_range] - max_altitude))
-
-    # Asegurarse de que penalty tiene la misma forma que z (evitar posibles problemas de índices vacíos)
-    # La penalización será negativa por estar fuera del rango, y la recompensa positiva por estar dentro
-    reward[out_of_range] = -penalty
-
-    return reward
-
-
-
+    # 3. Lógica Pro-Activa:
+    # Multiplicamos el signo del error por la velocidad. 
+    # - Si z_error > 0 (estoy bajo) y vel_z > 0 (subo) -> Resultado positivo (+)
+    # - Si z_error < 0 (estoy alto) y vel_z < 0 (bajo) -> Resultado positivo (+)
+    # - Si voy en dirección contraria -> Resultado negativo (-)
+    direction_reward = torch.sign(z_error) * vel_z
+    
+    # Solo premiamos si se mueve en la dirección CORRECTA (clamp a min=0.0)
+    # No queremos castigar aquí por ir en dirección contraria (de eso se encarga pos_diff)
+    return torch.clamp(direction_reward, min=0.0)
 
 # Recompensa de que el dron mire hacia el punto objetivo
 def rew_heading_alignment_fine_grained(env: ManagerBasedRLEnv, std: float) -> torch.Tensor:

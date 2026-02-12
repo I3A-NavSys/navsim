@@ -346,55 +346,11 @@ class UAVcommandTerm(CommandTerm):
         self._asset.update(self.dt)
         uav_pos_w = self._asset.data.root_com_pos_w[env_ids] - self._env.scene.env_origins[env_ids]
         self.target_pos[env_ids] = uav_pos_w[:, :3]
-
-        # # Definimos velocidad aleatoria del fantasma (3 a 6 m/s)
-        # speed = torch.rand(len(env_ids), device=self.device) * 3.0 + 3.0
-        
-        # # Dirección inicial aleatoria en el plano XY
-        # angle = torch.rand(len(env_ids), device=self.device) * 2 * math.pi
-        # self.target_vel[env_ids, 0] = torch.cos(angle) * speed
-        # self.target_vel[env_ids, 1] = torch.sin(angle) * speed
-        # self.target_vel[env_ids, 2] = torch.rand(len(env_ids), device=self.device) * 0.5 + 0.2
-        # # Curvatura aleatoria (Yaw rate del camino: -1.0 a 1.0 rad/s)
-        # # Esto genera círculos, curvas en S o rectas aleatorias
-        # self.target_yaw[env_ids] = (torch.rand(len(env_ids), device=self.device) - 0.5) * 2.0
         self.target_vel[env_ids] = 0.0
         self.target_yaw[env_ids] = 0.0
 
 
     def _update_command(self):
-        # # segundo o más frame de tiempo
-        # """Mueve el fantasma en cada paso de física."""
-        # # 1. Variación de altura dinámica durante el vuelo (cada ~2 seg)
-        # change_z = torch.rand(self.num_envs, device=self.device) < 0.01
-        # if change_z.any():
-        #     self.target_vel[change_z, 2] = (torch.rand(change_z.sum(), device=self.device) - 0.5) * 2.5
-
-        # # 2. Rotación horizontal (curvas)
-        # cos_theta = torch.cos(self.target_yaw * self.dt)
-        # sin_theta = torch.sin(self.target_yaw * self.dt)
-        # vx, vy = self.target_vel[:, 0].clone(), self.target_vel[:, 1].clone()
-        # self.target_vel[:, 0] = vx * cos_theta - vy * sin_theta
-        # self.target_vel[:, 1] = vx * sin_theta + vy * cos_theta
-
-        # # 3. Valla Virtual (Límite 100m spacing -> 50m radio)
-        # limite_xy = 45.0
-        # limite_z = (1.75, 20.0)
-        
-        # # Rebote XY
-        # out_x = (self.target_pos[:, 0].abs() > limite_xy)
-        # self.target_vel[out_x, 0] *= -1.1 # Rebote con un poco de impulso hacia adentro
-        # out_y = (self.target_pos[:, 1].abs() > limite_xy)
-        # self.target_vel[out_y, 1] *= -1.1
-
-        # # Rebote Z
-        # at_top = (self.target_pos[:, 2] > limite_z[1]) & (self.target_vel[:, 2] > 0)
-        # at_bot = (self.target_pos[:, 2] < limite_z[0]) & (self.target_vel[:, 2] < 0)
-        # self.target_vel[at_top | at_bot, 2] *= -1.0
-
-        # # 4. Actualizar posición del punto guía
-        # self.target_pos += self.target_vel * self.dt
-
         # # 5. Comando para la red (Posición relativa en Body Frame)
         uav_pos_local = self._asset.data.root_com_pos_w[:, :3] - self._env.scene.env_origins[:, :3]
         rel_pos_w = self.target_pos - uav_pos_local
@@ -403,7 +359,6 @@ class UAVcommandTerm(CommandTerm):
         
         # # 2. Guardamos la velocidad de giro del fantasma en la 4ª columna
         # # Esto es lo que la recompensa rew_ang_vel_z_diff está buscando
-        # self._command[:, 3] = self.target_yaw 
         self.command[:, 3] = 0.0
         # # ---------------------------
         # # Visualización dinámica
@@ -494,67 +449,50 @@ class RewardsCfg:
 
     rew_pos_diff = RewTerm(
         func=my_rewards.rew_pos_diff,
-        weight=-0.02,
+        weight=-5.0,
     )
 
     rew_pos_diff_fine_grained = RewTerm(
         func=my_rewards.rew_pos_diff_fine_grained,
-        weight=2.0,
-        params={"std": 15.0},
+        weight=10.0,
+        params={"std": 2.0},
     )
 
-    rew_lin_vel_diff = RewTerm(
-        func=my_rewards.rew_lin_vel_diff,
-        weight=-1.0,
-    )
     rew_lin_vel_diff_fine_grained = RewTerm(
         func=my_rewards.rew_lin_vel_diff_fine_grained,
-        weight=2.0,
+        weight=5.0,
         params={"std": 1.0},
     )
-    rew_ang_vel_z_diff = RewTerm(
-        func=my_rewards.rew_ang_vel_z_diff,
-        weight=-1.0,
-    )
+
     rew_ang_vel_z_diff_fine_grained = RewTerm(
         func=my_rewards.rew_ang_vel_z_diff_fine_grained,
-        weight=1.0,
-        params={"std": 0.5},
+        weight=3.0,
+        params={"std": 0.25},
     )
-    rew_roll_diff = RewTerm(
-        func=my_rewards.rew_roll_diff,
-        weight=-0.5,
-        params={"target": 0.0},
-    )
+
     rew_roll_diff_fine_grained = RewTerm(
         func=my_rewards.rew_roll_diff_fine_grained,
-        weight=2.0,
-        params={"std": 0.1, "target": 0.0}, # 0.5 para que pueda girarse un poco el ángulo y siga obteniendo reward
-    )
-    rew_pitch_diff = RewTerm(
-        func=my_rewards.rew_pitch_diff,
-        weight=-0.5,
-        params={"target": 0.0},
+        weight=5.0,
+        params={"std": 0.2, "target": 0.0}, # 0.5 para que pueda girarse un poco el ángulo y siga obteniendo reward
     )
     rew_pitch_diff_fine_grained = RewTerm(
         func=my_rewards.rew_pitch_diff_fine_grained,
-        weight=2.0,
-        params={"std": 0.1, "target": 0.0}, # 0.5 para que pueda girarse un poco el ángulo y siga obteniendo reward
+        weight=5.0,
+        params={"std": 0.2, "target": 0.0}, # 0.5 para que pueda girarse un poco el ángulo y siga obteniendo reward
     )
     rew_hovering = RewTerm(
         func=my_rewards.rew_hovering,
         weight=2.0,
-        params={"min_altitude": 8, "max_altitude": 20.0, "margin": 0.3},
+        params={"min_altitude": 8, "max_altitude": 20.0},
     )
-    # rew_heading_alignment_fine_grained = RewTerm(
-    #     func=my_rewards.rew_heading_alignment_fine_grained,
-    #     weight=5.0,
-    #     params={"std": 0.5}
-    # )
-    # rew_ang_vel_xy_penalty = RewTerm(
-    #     func=my_rewards.rew_ang_vel_xy_penalty, 
-    #     weight=-0.05 
-    # )
+    rew_vel_rescue = RewTerm(
+        func=my_rewards.rew_velocity_rescue_bidirectional,
+        weight=2.0, # Mantén un peso que sea notable pero no mayor que la posición
+    )
+    rew_ang_vel_xy_penalty = RewTerm(
+        func=my_rewards.rew_ang_vel_xy_penalty, 
+        weight=-0.5 
+    )
 
 # |---------------------------------------------------------|
 # |--------------------- TERMINATIONS ----------------------|
