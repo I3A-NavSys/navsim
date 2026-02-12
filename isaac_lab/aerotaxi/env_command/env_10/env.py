@@ -343,6 +343,7 @@ class UAVcommandTerm(CommandTerm):
         #     pass
         
         # El objetivo empieza en la posición actual del dron para un despegue suave
+        self._asset.update(self.dt)
         uav_pos_w = self._asset.data.root_com_pos_w[env_ids] - self._env.scene.env_origins[env_ids]
         self.target_pos[env_ids] = uav_pos_w[:, :3]
 
@@ -377,7 +378,7 @@ class UAVcommandTerm(CommandTerm):
 
         # 3. Valla Virtual (Límite 100m spacing -> 50m radio)
         limite_xy = 45.0
-        limite_z = (8, 20.0)
+        limite_z = (1.75, 20.0)
         
         # Rebote XY
         out_x = (self.target_pos[:, 0].abs() > limite_xy)
@@ -487,7 +488,7 @@ class RewardsCfg:
 
     action_rate = RewTerm(func=my_rewards.rew_action_rate, weight=-0.01)
 
-    terminating = RewTerm(func=mdp.is_terminated, weight=-10.0)
+    terminating = RewTerm(func=mdp.is_terminated, weight=-20.0)
 
     rew_pos_diff = RewTerm(
         func=my_rewards.rew_pos_diff,
@@ -496,7 +497,7 @@ class RewardsCfg:
 
     rew_pos_diff_fine_grained = RewTerm(
         func=my_rewards.rew_pos_diff_fine_grained,
-        weight=5.0,
+        weight=10.0,
         params={"std": 15.0},
     )
 
@@ -540,8 +541,8 @@ class RewardsCfg:
     )
     rew_hovering = RewTerm(
         func=my_rewards.rew_hovering,
-        weight=6.0,
-        params={"min_altitude": 8, "max_altitude": 20.0, "margin": 0.2},
+        weight=15.0,
+        params={"min_altitude": 7, "max_altitude": 25.0, "margin": 0.3},
     )
     # rew_heading_alignment_fine_grained = RewTerm(
     #     func=my_rewards.rew_heading_alignment_fine_grained,
