@@ -47,7 +47,7 @@ class UAVactionTerm(ActionTerm):
         super().__init__(cfg, env)
         self._raw_actions = torch.zeros(env.num_envs, 4, device=self.device)
         self._processed_actions = torch.zeros(env.num_envs, 10, 3, device=self.device)
-        self.action_scale = 10
+        self.action_scale = 30 # antes 10 
         self.max_prim_links = 5 # 4 rotors + 1 body
 
         # Create all positions at once in a single tensor operation
@@ -64,6 +64,9 @@ class UAVactionTerm(ActionTerm):
 
         # Create indexes efficiently
         self.indexes = torch.arange(env.num_envs, device=self.device)
+
+        self._asset = env.scene[cfg.asset_name]
+
 
 
     @property
@@ -97,6 +100,7 @@ class UAVactionTerm(ActionTerm):
         
         # Process raw actions (vectorized)
         self._raw_actions = actions.abs() * self.action_scale
+
 
         # print(f"[DEBUG]: raw_actions: {self._raw_actions[0]}")
         
@@ -239,6 +243,38 @@ def my_obs_yaw(env:ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
 
     return yaw
 
+def my_obs_target_ang_vel(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
+    """Velocidad angular deseada en el frame del dron (body frame)."""
+    asset = env.scene["aerotaxi"]
+    command_term = env.command_manager.get_term("vel_command")
+    zeros = torch.zeros_like(command_term.target_pos) # [N, 3]
+    zeros[:, 2] = command_term.target_yaw # Ponemos el comando en la componente Z
+    
+    # 2. Rotamos ese vector al body frame
+    quat_inv = math_utils.quat_inv(asset.data.root_com_quat_w)
+    target_ang_vel_b = math_utils.quat_apply(quat_inv, zeros)
+    
+    return target_ang_vel_b
+
+
+def my_obs_target_pos(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
+    """Vector hacia el objetivo relativo al dron, sin dar la posición absoluta de entrenamiento."""
+    asset = env.scene["aerotaxi"]
+    command_term = env.command_manager.get_term("vel_command")
+    target_pos_w = command_term.target_pos
+    current_pos_w = asset.data.root_com_pos_w[:, :3]
+    # Relativo al dron, no al mundo
+    target_rel = target_pos_w - current_pos_w
+    # Opcional: proyectar al frame del dron si quieres coherencia con velocities
+    quat_inv = math_utils.quat_inv(asset.data.root_com_quat_w)
+    target_rel_b = math_utils.quat_apply(quat_inv, target_rel)
+    return target_rel_b
+
+
+def my_obs_prev_action(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
+    """Retorna la acción previa aplicada, útil para rew_action_rate."""
+    return env.action_manager.prev_action
+
 
 def my_obs_command(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Get current velocity commands."""
@@ -252,7 +288,7 @@ class ObervervationCfg:
     @configclass
     class PolicyCfg(ObsGroup):
         """Observation group for the policy."""
-        dist = ObsTerm(func=my_obs_dist, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.05))
+        dist = ObsTerm(func=my_obs_dist, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
         lin_vel = ObsTerm(func=my_obs_lin_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.05))
         ang_vel = ObsTerm(func=my_obs_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.05))
         roll = ObsTerm(func=my_obs_roll, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
@@ -265,7 +301,7 @@ class ObervervationCfg:
         def __post_init__(self):
             self.enable_corruption = True  # Regularización con ruido en las observaciones
             self.concatenate_terms = True
-            self.history_length = 3 # como no queremos pasarle la velocidad directamente, que la infiera si no
+            self.history_length = 6 # como no queremos pasarle la velocidad directamente, que la infiera si no
             self.flatten_history_dim = True
 
     # Crítico: la corrección que se hará sobre lo que ve el dron en train. En test no hay crítico
@@ -289,11 +325,14 @@ class ObervervationCfg:
             func=my_obs_target_vel, 
             params={"asset_cfg": SceneEntityCfg(name="aerotaxi")}
         )
-    
+        target_pos = ObsTerm(func=my_obs_target_pos, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        target_ang_vel = ObsTerm(func=my_obs_target_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        prev_action = ObsTerm(func=my_obs_prev_action, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
 
         def __post_init__(self):
             self.enable_corruption = False # El crítico no necesita ruido
             self.concatenate_terms = True
+            self.history_length = 1
 
     policy: PolicyCfg = PolicyCfg()
     critic: CriticCfg = CriticCfg()
@@ -441,54 +480,50 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    alive = RewTerm(func=mdp.is_alive, weight=2.0)
+    alive = RewTerm(func=mdp.is_alive, weight=5.0)
 
     action_rate = RewTerm(func=my_rewards.rew_action_rate, weight=-0.01)
 
     terminating = RewTerm(func=mdp.is_terminated, weight=-20.0)
 
-    rew_pos_diff = RewTerm(
-        func=my_rewards.rew_pos_diff,
-        weight=-5.0,
-    )
+    # rew_pos_diff = RewTerm(
+    #     func=my_rewards.rew_pos_diff,
+    #     weight=-5.0,
+    # )
 
     rew_pos_diff_fine_grained = RewTerm(
         func=my_rewards.rew_pos_diff_fine_grained,
-        weight=10.0,
+        weight=15.0,
         params={"std": 2.0},
     )
 
     rew_lin_vel_diff_fine_grained = RewTerm(
         func=my_rewards.rew_lin_vel_diff_fine_grained,
-        weight=5.0,
+        weight=4.0,
         params={"std": 1.0},
     )
 
     rew_ang_vel_z_diff_fine_grained = RewTerm(
         func=my_rewards.rew_ang_vel_z_diff_fine_grained,
-        weight=3.0,
+        weight=2.0,
         params={"std": 0.25},
     )
 
     rew_roll_diff_fine_grained = RewTerm(
         func=my_rewards.rew_roll_diff_fine_grained,
-        weight=5.0,
+        weight=4.0,
         params={"std": 0.2, "target": 0.0}, # 0.5 para que pueda girarse un poco el ángulo y siga obteniendo reward
     )
     rew_pitch_diff_fine_grained = RewTerm(
         func=my_rewards.rew_pitch_diff_fine_grained,
-        weight=5.0,
+        weight=4.0,
         params={"std": 0.2, "target": 0.0}, # 0.5 para que pueda girarse un poco el ángulo y siga obteniendo reward
     )
-    rew_hovering = RewTerm(
-        func=my_rewards.rew_hovering,
-        weight=2.0,
-        params={"min_altitude": 8, "max_altitude": 20.0},
-    )
-    rew_vel_rescue = RewTerm(
-        func=my_rewards.rew_velocity_rescue_bidirectional,
-        weight=2.0, # Mantén un peso que sea notable pero no mayor que la posición
-    )
+    # rew_hovering = RewTerm(
+    #     func=my_rewards.rew_hovering,
+    #     weight=2.0,
+    #     params={"min_altitude": 8, "max_altitude": 20.0},
+    # )
     rew_ang_vel_xy_penalty = RewTerm(
         func=my_rewards.rew_ang_vel_xy_penalty, 
         weight=-0.5 
