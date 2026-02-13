@@ -14,7 +14,7 @@ class USpaceManager:
     def __init__(self, id=None, name=None):
         self.id: str = id
         self.name: str = name
-        self.airspace = GridPlanner()
+        self.airspace = GridPlanner(max_route_length=1000)
         # Dictionary of uav operators: {id: name}
         self.uav_operators: dict[str, str] = {}
         # Dictionary of vertiport operators: {id: {name: V0, grid_conn: [1,1,1]}}
@@ -498,8 +498,8 @@ class USpaceManager:
         print(f"  Is Landing: {is_landing}")
         print(f"  Is Reversed: {is_reversed}")
         print(f"  Pad ID: {pad_id}")
-        print("  Flightplan waypoints:")
-        flightplan.print_waypoints()
+        # print("  Flightplan waypoints:")
+        # flightplan.print_waypoints()
         print()
         
         # Store flightplan in mission processing status
@@ -573,8 +573,8 @@ class USpaceManager:
             print(f"  Mission ID: {mission_id}")
             print(f"  Origin Vertiport ID: {origin_vertiport_id}")
             print(f"  Destination Vertiport ID: {destination_vertiport_id}")
-            print("  Flightplan waypoints:")
-            grid_flightplan.print_waypoints()
+            # print("  Flightplan waypoints:")
+            # grid_flightplan.print_waypoints()
             print()
             
             # Store grid flightplan in mission processing status
@@ -620,8 +620,8 @@ class USpaceManager:
         print(f"  Is Landing: {is_landing}")
         print(f"  Is Reversed: {is_reversed}")
         print(f"  Pad ID: {pad_id}")
-        print("  Flightplan waypoints:")
-        flightplan.print_waypoints()
+        # print("  Flightplan waypoints:")
+        # flightplan.print_waypoints()
         print()
 
         # Store flightplan in mission processing status
@@ -682,8 +682,8 @@ class USpaceManager:
             print(f"  Mission ID: {mission_id}")
             print(f"  Origin Vertiport ID: {origin_vertiport_id}")
             print(f"  Destination Vertiport ID: {destination_vertiport_id}")
-            print("  Flightplan waypoints:")
-            grid_flightplan.print_waypoints()
+            # print("  Flightplan waypoints:")
+            # grid_flightplan.print_waypoints()
             print()
             
             # Store grid flightplan in mission processing status
@@ -695,7 +695,7 @@ class USpaceManager:
                 mission_manager_id=mission_manager_id,
                 mission_id=mission_id,
                 vertiport_operator_id=origin_vertiport_id,
-                pad_id=mission["takeoff_pad_id"],
+                pad_id=None,    # None as we need to know the complete mission's fligtplans
                 is_landing=False,
                 is_reversed=True,
                 mission_type=mission["mission_type"],

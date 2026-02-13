@@ -198,15 +198,17 @@ class VertiportOperator:
         flightplan = FlightPlan()
 
         # Get parameters' information
-        pad_pos = self.pads[pad_id].location
         takeoff_grid_pos = self.grid_connection["takeoff"]["position"]
         takeoff_grid_heading = self.grid_connection["takeoff"]["heading"]
         x_direction = takeoff_grid_heading[0]
         y_direction = takeoff_grid_heading[1]
-        counter_pad_heading = [
-            self.main_pad.location[0] - pad_pos[0],
-            self.main_pad.location[1] - pad_pos[1]
-        ]
+
+        if not is_reversed:
+            pad_pos = self.pads[pad_id].location
+            counter_pad_heading = [
+                self.main_pad.location[0] - pad_pos[0],
+                self.main_pad.location[1] - pad_pos[1]
+            ]
 
         # Determine time offset based on is_reversed
         offset = 0
@@ -214,20 +216,21 @@ class VertiportOperator:
             offset = 40
 
         # Set waypoints
-        # Wait 5 seconds at assigned pad
-        flightplan.set_waypoint(
-            time=time - offset, 
-            pos=pad_pos, 
-            vel=[0, 0, 0], 
-            heading=counter_pad_heading
-        )
-        # UAV pad -> main pad
-        flightplan.set_waypoint(
-            time=time + 5 - offset, 
-            pos=pad_pos, 
-            vel=[0, 0, 0], 
-            heading=counter_pad_heading
-        )
+        if not is_reversed:
+            # Wait 5 seconds at assigned pad
+            flightplan.set_waypoint(
+                time=time - offset, 
+                pos=pad_pos, 
+                vel=[0, 0, 0], 
+                heading=counter_pad_heading
+            )
+            # UAV pad -> main pad
+            flightplan.set_waypoint(
+                time=time + 5 - offset, 
+                pos=pad_pos, 
+                vel=[0, 0, 0], 
+                heading=counter_pad_heading
+            )
         # Wait 5 seconds at main pad to be properly oriented
         flightplan.set_waypoint(
             time=time + 15 - offset, 

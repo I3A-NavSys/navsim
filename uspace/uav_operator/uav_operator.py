@@ -3,7 +3,7 @@ import json
 from typing import Any
 
 from uspace.flight_plan.flight_plan import FlightPlan
-from uspace.uspace_manager.constants import Topics, MissionStatus, UAVStatus, CancellationReason
+from uspace.uspace_manager.constants import Topics, MissionStatus, UAVStatus, CancellationReason, MissionType
 from uspace.mqtt.mqtt_service import MQTTService
 from uspace.mission_manager.mission import Mission
 from .uav import UAV
@@ -100,15 +100,38 @@ class UAVOperator:
     # -------------------------
     # --- Auxiliary Methods ---
     # -------------------------
-    def get_available_uavs(self, mission_type):
-        if mission_type not in self.uavs:
-            return []
+    def get_available_uavs(self):
+        supported_mission_types = self.uavs.keys()
+
+        return {
+            mission_type: [
+                uav for uav in self.uavs[mission_type].values()
+                if uav.status == UAVStatus.AVAILABLE
+            ]
+            for mission_type in supported_mission_types
+        }
+
+    def get_busy_uavs(self, mission_type):
+        supported_mission_types = self.uavs.keys()
         
-        available_uavs = [
-            uav for uav in self.uavs[mission_type].values()
-            if uav.status == UAVStatus.AVAILABLE
-        ]
-        return available_uavs
+        return {
+            mission_type: [
+                uav for uav in self.uavs[mission_type].values()
+                if uav.status == UAVStatus.BUSY
+            ]
+            for mission_type in supported_mission_types
+        }
+
+    def get_out_of_service_uavs(self):
+        supported_mission_types = self.uavs.keys()
+        
+        return {
+            mission_type: [
+                uav for uav in self.uavs[mission_type].values()
+                if uav.status == UAVStatus.OUT_OF_SERVICE
+            ]
+            for mission_type in supported_mission_types
+        }
 
     def free_resources(
         self, 
@@ -117,14 +140,30 @@ class UAVOperator:
         mission_type, 
         cancellation_reason
     ):
+        # Get mission entry
         mission_dict = self.missions[mission_manager_id][mission_id]
         
+        # Get mission information
         mission = mission_dict["mission"]
-        uav_id = mission_dict["assigned_uav_id"]
+        assigned_uav_id = mission_dict["assigned_uav_id"]
 
+        # Update control variables' status
         mission.status = MissionStatus.CANCELLED
         mission.cancellation_reason = cancellation_reason
-        self.uavs[mission_type][uav_id].status = UAVStatus.AVAILABLE
+
+        # Free UAV booking if it was assigned
+        if assigned_uav_id:
+            # Get UAV
+            uav = self.uavs[mission_type][assigned_uav_id]
+
+            # Get start_time and end_time of the booking to cancel
+            start_time = mission_dict["flightplans"][0].init_time()
+            end_time = mission_dict["flightplans"][-1].finish_time()
+
+            # Cancel UAV booking
+            uav.cancel_booking(start_time, end_time)
+
+        # Clear flightplans list as they are no longer relevant (memory optimization)
         mission_dict["flightplans"] = []
 
     def log_dict_table(self, data, headers):
@@ -135,6 +174,34 @@ class UAVOperator:
 
         print(tabulate(formatted_data, headers=headers, tablefmt="grid"))
         print()
+
+    def add_remaining_waypoints_to_flightplan(self, flightplan, uav_location):
+        # Get parameters' information
+        main_pad_time = flightplan.init_time()
+        main_pad_pos = flightplan.waypoints[0].pos
+        counter_pad_heading = [
+            main_pad_pos[0] - uav_location[0],
+            main_pad_pos[1] - uav_location[1]
+        ]
+
+        # Set waypoints
+        # Wait 5 seconds at UAV's pad
+        flightplan.set_waypoint(
+            time=main_pad_time - 15, 
+            pos=uav_location, 
+            vel=[0, 0, 0], 
+            heading=counter_pad_heading
+        )
+        # UAV pad -> main pad
+        flightplan.set_waypoint(
+            time=main_pad_time - 10, 
+            pos=uav_location, 
+            vel=[0, 0, 0], 
+            heading=counter_pad_heading
+        )
+
+        # Smooth waypoints
+        flightplan.connect_waypoints()
 
     # ----------------------
     # --- USpace Methods ---
@@ -199,6 +266,38 @@ class UAVOperator:
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
 
+    def book_uav_for_mission(self, mission_manager_id, mission_id):
+        # Get corresponding mission entry
+        mission_dict = self.missions[mission_manager_id][mission_id]
+
+        # Get first takeoff and last landing flightplans to determine the whole mission duration
+        first_takeoff_flightplan = mission_dict["flightplans"][0]
+        last_landing_flightplan = mission_dict["flightplans"][-1]
+        # Set start_time and end_time for the whole mission
+        start_time = first_takeoff_flightplan.init_time()
+        end_time = last_landing_flightplan.finish_time()
+
+        # Add time to reach pad from first takeoff flightplan
+        start_time += 15    # (5 to correct position + 10 to reach pad)
+
+        # Book first available UAV for the whole mission duration
+        for uav in self.uavs[mission_dict["mission"].mission_type].values():
+            if uav.book(start_time, end_time):
+                # Store assigned UAV id in mission information
+                mission_dict["assigned_uav_id"] = uav.id
+
+                # Add remaining waypoitns to first takeoff flightplan now that we know 
+                # the assigned UAV
+                self.add_remaining_waypoints_to_flightplan(
+                    first_takeoff_flightplan, 
+                    uav.location
+                )
+
+                return True
+
+        return False
+
+
     # ----------------------
     # --- MQTT Callbacks ---
     # ----------------------
@@ -260,20 +359,6 @@ class UAVOperator:
             )
             return
         
-        # Return if there are no available UAVs (temporal)
-        available_uavs = self.get_available_uavs(mission_type)
-
-        if not available_uavs:
-            self.cancel_mission(
-                mission_manager_id, 
-                mission_id, 
-                CancellationReason.NO_AVAILABLE_UAV
-            )
-            return
-        
-        # Assign first available UAV
-        assigned_uav = available_uavs[0]
-        
         # Initialize missions and missions processing status
         if mission_manager_id not in self.missions_processing_status:
             self.missions_processing_status[mission_manager_id] = {}
@@ -290,7 +375,7 @@ class UAVOperator:
             "stop_time": stop_time, 
             "current_destination_stop_index": 0,
             "last_destination_stop_index": len(stop_list) - 1,
-            "uav_id": assigned_uav.id
+            "uav_id": None
         }
 
         # Store mission information for cancellation purposes
@@ -304,16 +389,13 @@ class UAVOperator:
                 landing_time=landing_time,
                 status=MissionStatus.PENDING
             ),
-            "assigned_uav_id": assigned_uav.id,
+            "assigned_uav_id": None,
             "flightplans": []
         }
 
-        # Mark UAV as occupied
-        assigned_uav.status = UAVStatus.OCCUPIED
-
         # Ask for first route (from private vertiport to first stop)
         self.request_route(
-            uav_pad_id=assigned_uav.pad_id,
+            uav_pad_id=None,    # None as we need to know the complete mission's fligtplans
             mission_manager_id=mission_manager_id,
             mission_id=mission_id,
             mission_type=mission_type,
@@ -344,8 +426,8 @@ class UAVOperator:
         print(f"  Mission Manager ID: {mission_manager_id}")
         print(f"  Mission ID: {mission_id}")
         print(f"  Landing Pad ID: {landing_pad_id}")
-        print("  Flightplan waypoints:")
-        flightplan.print_waypoints()
+        # print("  Flightplan waypoints:")
+        # flightplan.print_waypoints()
         print()
         
         # Store flightplan
@@ -360,8 +442,29 @@ class UAVOperator:
         last_stop = mission["last_destination_stop_index"]
 
         if current_stop == last_stop:
+            # Check UAV availability for the whole mission duration
+            is_any_uav_available = self.book_uav_for_mission(
+                mission_manager_id, 
+                mission_id
+            )
+
+            # Cancel mission if no UAV is available
+            if not is_any_uav_available:
+                self.cancel_mission(
+                    mission_manager_id, 
+                    mission_id, 
+                    CancellationReason.NO_AVAILABLE_UAV
+                )
+                return
+            
             # Logging
+            print(("----------------------------------------------------"))
             print(f"[{self.id}] - Mission {mission_id} completed all legs")
+            print(("----------------------------------------------------"))
+            print()
+            for i, fp in enumerate(self.missions[mission_manager_id][mission_id]["flightplans"]):
+                print(f"Leg {i+1}:")
+                fp.print_waypoints()
             print()
 
             # All legs completed, send mission status update to mission manager
@@ -374,7 +477,9 @@ class UAVOperator:
             return
 
         # Logging
+        print(("----------------------------------------------------------"))
         print(f"[{self.id}] - Leg completed ({current_stop + 1} / {last_stop + 1}) for mission {mission_id}")
+        print(("----------------------------------------------------------"))
         print()
 
         # Ask for next route

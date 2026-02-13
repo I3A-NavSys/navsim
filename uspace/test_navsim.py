@@ -32,7 +32,7 @@ uav_op1.uavs = {
             type=MissionType.DELIVERY,
             status=UAVStatus.AVAILABLE,
             battery_level=100.0,
-            location=(0.0, 0.0, 0.0),
+            location=(0, -30, 0),
             pad_id="VERT_OP_0_PAD_1"
         )
     },
@@ -43,7 +43,7 @@ uav_op1.uavs = {
             type=MissionType.PASSENGER_TRANSPORT,
             status=UAVStatus.AVAILABLE,
             battery_level=100.0,
-            location=(0.0, 50.0, 0.0),
+            location=(15, -30, 0),
             pad_id="VERT_OP_0_PAD_2",
         )
     }
