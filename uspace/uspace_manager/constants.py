@@ -39,6 +39,8 @@ class Topics:
 
     # UAV Operator Topics
     MISSION_UAV_SERVICE = "uav_operators/missions/request"
+    PRIVATE_VERTIPORT_TAKEOFF = "uav_operators/missions/routes/takeoff"
+    PRIVATE_VERTIPORT_LANDING = "uav_operators/missions/routes/landing"
 
     # Vertiport Operator Topics
     MISSION_VERTIPORT_SERVICE = "vertiport_operators/missions/request"

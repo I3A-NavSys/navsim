@@ -22,40 +22,42 @@ uspace_mgr = USpaceManager(id="USPACE_MGR_0", name="USpace Manager 0")
 uav_op1 = UAVOperator(
     id="UAV_OP_0", 
     name="UAV Operator 0",
-    private_vertiport_operator_id="VERT_OP_0"
-)
-uav_op1.uavs = {
-    MissionType.DELIVERY: {
-        "UAV_1": UAV(
-            id="UAV_1",
-            operator_id=uav_op1.id,
-            type=MissionType.DELIVERY,
-            status=UAVStatus.AVAILABLE,
-            battery_level=100.0,
-            location=(0, -30, 0),
-            pad_id="VERT_OP_0_PAD_1"
-        )
-    },
-    MissionType.PASSENGER_TRANSPORT: {
-        "UAV_2": UAV(
-            id="UAV_2",
-            operator_id=uav_op1.id,
-            type=MissionType.PASSENGER_TRANSPORT,
-            status=UAVStatus.AVAILABLE,
-            battery_level=100.0,
-            location=(15, -30, 0),
-            pad_id="VERT_OP_0_PAD_2",
-        )
+    private_vertiport_operator_id="VERT_OP_0",
+    uavs = {
+        MissionType.DELIVERY: {
+            "UAV_1": UAV(
+                id="UAV_1",
+                operator_id="UAV_OP_0",
+                type=MissionType.DELIVERY,
+                status=UAVStatus.AVAILABLE,
+                battery_level=100.0,
+                location=(0, -30, 0),
+                pad_id="VERT_OP_0_PAD_1"
+            )
+        },
+        MissionType.PASSENGER_TRANSPORT: {
+            "UAV_2": UAV(
+                id="UAV_2",
+                operator_id="UAV_OP_0",
+                type=MissionType.PASSENGER_TRANSPORT,
+                status=UAVStatus.AVAILABLE,
+                battery_level=100.0,
+                location=(15, -30, 0),
+                pad_id="VERT_OP_0_PAD_2",
+            )
+        }
     }
-}
+)
 
 vertiport_operators = []
 for j in range(-5, 6, 1):
     direction = 1 if j % 2 == 0 else -1
+    is_private = (j == 0)
     vert_id = f"VERT_OP_{j}"
     vert_op = VertiportOperator(
         id=vert_id,
         name=f"Vertiport Operator {j}",
+        is_private=is_private,
         grid_connection={
             "takeoff": {
                 "heading": [direction, 0],

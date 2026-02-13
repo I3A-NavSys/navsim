@@ -10,8 +10,9 @@ from uspace.mqtt.mqtt_service import MQTTService
 class VertiportOperator:
     def __init__(
         self, 
-        id=None, 
-        name=None, 
+        id="", 
+        name="", 
+        is_private=False,
         grid_connection=None, 
         main_pad=None, 
         pads=None,
@@ -19,6 +20,7 @@ class VertiportOperator:
     ):
         self.id: str = id
         self.name: str = name
+        self.is_private = is_private
         self.main_pad: Pad = main_pad
         self.pads: dict[str, Pad] = pads
         self.security_pad_booking_buffer: float = security_pad_booking_buffer  # in seconds
@@ -48,6 +50,11 @@ class VertiportOperator:
         #   }
         # }
         self.missions: dict[str, dict[str, dict[str, dict[str, Any]]]] = {}
+
+        if self.is_private:
+            # Initial booking to block every pad until first real booking is made
+            for pad in self.pads.values():
+                pad.book(0, float('inf'), 0, availability_checked=True)
 
         # MQTT client
         self.mqtt_client = MQTTService.build_client(self.id)
@@ -195,7 +202,8 @@ class VertiportOperator:
         msg = {
             "id": self.id,
             "name": self.name,
-            "grid_connection": self.grid_connection
+            "grid_connection": self.grid_connection,
+            "is_private": self.is_private
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
         
@@ -204,17 +212,15 @@ class VertiportOperator:
         flightplan = FlightPlan()
 
         # Get parameters' information
+        pad_pos = self.pads[pad_id].location
         takeoff_grid_pos = self.grid_connection["takeoff"]["position"]
         takeoff_grid_heading = self.grid_connection["takeoff"]["heading"]
         x_direction = takeoff_grid_heading[0]
         y_direction = takeoff_grid_heading[1]
-
-        if not is_reversed:
-            pad_pos = self.pads[pad_id].location
-            counter_pad_heading = [
-                self.main_pad.location[0] - pad_pos[0],
-                self.main_pad.location[1] - pad_pos[1]
-            ]
+        counter_pad_heading = [
+            self.main_pad.location[0] - pad_pos[0],
+            self.main_pad.location[1] - pad_pos[1]
+        ]
 
         # Determine time offset based on is_reversed
         offset = 0
@@ -222,21 +228,20 @@ class VertiportOperator:
             offset = 40
 
         # Set waypoints
-        if not is_reversed:
-            # Wait 5 seconds at assigned pad
-            flightplan.set_waypoint(
-                time=time - offset, 
-                pos=pad_pos, 
-                vel=[0, 0, 0], 
-                heading=counter_pad_heading
-            )
-            # UAV pad -> main pad
-            flightplan.set_waypoint(
-                time=time + 5 - offset, 
-                pos=pad_pos, 
-                vel=[0, 0, 0], 
-                heading=counter_pad_heading
-            )
+        # Wait 5 seconds at assigned pad
+        flightplan.set_waypoint(
+            time=time - offset, 
+            pos=pad_pos, 
+            vel=[0, 0, 0], 
+            heading=counter_pad_heading
+        )
+        # UAV pad -> main pad
+        flightplan.set_waypoint(
+            time=time + 5 - offset, 
+            pos=pad_pos, 
+            vel=[0, 0, 0], 
+            heading=counter_pad_heading
+        )
         # Wait 5 seconds at main pad to be properly oriented
         flightplan.set_waypoint(
             time=time + 15 - offset, 
@@ -334,10 +339,17 @@ class VertiportOperator:
         flightplan,
         pad_id
     ):
-        if is_landing:
-            topic = f"{Topics.RECEIVE_LANDING_FLIGHTPLAN}"
+        if self.is_private:
+            if is_landing:
+                topic = f"{Topics.PRIVATE_VERTIPORT_LANDING}"
+            else:
+                topic = f"{Topics.PRIVATE_VERTIPORT_TAKEOFF}"
+
         else:
-            topic = f"{Topics.RECEIVE_TAKEOFF_FLIGHTPLAN}"
+            if is_landing:
+                topic = f"{Topics.RECEIVE_LANDING_FLIGHTPLAN}"
+            else:
+                topic = f"{Topics.RECEIVE_TAKEOFF_FLIGHTPLAN}"
             
         msg = {
             "id": self.id,
@@ -382,7 +394,7 @@ class VertiportOperator:
         data = json.loads(msg.payload.decode())
 
         # Extract mission details
-        uspace_manager_id = data["id"]
+        uspace_manager_id = data.get("id", "")
         uav_operator_id = data["uav_operator_id"]
         mission_manager_id = data["mission_manager_id"]
         mission_id = data["mission_id"]
@@ -426,7 +438,10 @@ class VertiportOperator:
                 return
             
             # Get available pads in the requested time window
-            end_time = time + stop_time
+            if self.is_private:
+                end_time = float('inf')
+            else:
+                end_time = time + stop_time
 
             available_pads = self.get_available_pads(
                 start_time=time,
@@ -452,7 +467,7 @@ class VertiportOperator:
                 start_time=time,
                 end_time=end_time,
                 buffer=self.security_pad_booking_buffer,
-                availability_checked=True
+                availability_checked=True,
             )
 
             # Get pad id for the response
@@ -481,6 +496,11 @@ class VertiportOperator:
             # Build takeoff flightplan
             flightplan = self.build_takeoff_flightplan(pad_id, time, is_reversed)
 
+            # Update pad's availability (change end time to start time of this flightplan)
+            pad = self.pads[pad_id]
+            pad.update_booking(time)
+
+        # Send back flightplan
         self.send_flightplan(
             uav_operator_id=uav_operator_id,
             mission_manager_id=mission_manager_id,

@@ -14,6 +14,7 @@ class UAVOperator:
         self.id: str = id
         self.name: str = name
         self.private_vertiport_operator_id: str = private_vertiport_operator_id
+        self.private_vertiport_operator_fp_time: int = 40
         # Keep track of UAVs: {mission_type: {uav_id: UAV}}
         self.uavs: dict[str, dict[str, UAV]] = uavs
         # Keep track of missions' processing status (used when requesting routes): 
@@ -52,6 +53,8 @@ class UAVOperator:
             f"{Topics.MISSION_UAV_SERVICE}/{self.id}",
             f"{Topics.REQUEST_ROUTE}/{self.id}",
             f"{Topics.CANCEL_MISSION}/{self.id}",
+            Topics.PRIVATE_VERTIPORT_TAKEOFF,
+            Topics.PRIVATE_VERTIPORT_LANDING
         ]
 
         self.mqtt_client.message_callback_add(
@@ -67,6 +70,16 @@ class UAVOperator:
         self.mqtt_client.message_callback_add(
             f"{Topics.CANCEL_MISSION}/{self.id}",
             self.on_cancel_mission
+        )
+
+        self.mqtt_client.message_callback_add(
+            Topics.PRIVATE_VERTIPORT_TAKEOFF,
+            self.on_request_private_vertiport_takeoff_response
+        )
+
+        self.mqtt_client.message_callback_add(
+            Topics.PRIVATE_VERTIPORT_LANDING,
+            self.on_request_private_vertiport_landing_response
         )
 
     # ----------------------
@@ -175,34 +188,6 @@ class UAVOperator:
         print(tabulate(formatted_data, headers=headers, tablefmt="grid"))
         print()
 
-    def add_remaining_waypoints_to_flightplan(self, flightplan, uav_location):
-        # Get parameters' information
-        main_pad_time = flightplan.init_time()
-        main_pad_pos = flightplan.waypoints[0].pos
-        counter_pad_heading = [
-            main_pad_pos[0] - uav_location[0],
-            main_pad_pos[1] - uav_location[1]
-        ]
-
-        # Set waypoints
-        # Wait 5 seconds at UAV's pad
-        flightplan.set_waypoint(
-            time=main_pad_time - 15, 
-            pos=uav_location, 
-            vel=[0, 0, 0], 
-            heading=counter_pad_heading
-        )
-        # UAV pad -> main pad
-        flightplan.set_waypoint(
-            time=main_pad_time - 10, 
-            pos=uav_location, 
-            vel=[0, 0, 0], 
-            heading=counter_pad_heading
-        )
-
-        # Smooth waypoints
-        flightplan.connect_waypoints()
-
     # ----------------------
     # --- USpace Methods ---
     # ----------------------
@@ -240,7 +225,6 @@ class UAVOperator:
         for topic in topics:
             self.send_mqtt_msg(topic, json.dumps(msg))
 
-
     def request_route(
         self, 
         uav_pad_id,
@@ -251,7 +235,8 @@ class UAVOperator:
         destination_vertiport_id, 
         takeoff_time, 
         landing_time, 
-        stop_time
+        stop_time,
+        is_last_leg,
     ):
         topic = Topics.REQUEST_ROUTE
         msg = {
@@ -265,6 +250,7 @@ class UAVOperator:
             "takeoff_time": takeoff_time,
             "landing_time": landing_time,
             "stop_time": stop_time,
+            "is_last_leg": is_last_leg
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
 
@@ -277,37 +263,54 @@ class UAVOperator:
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
 
-    def book_uav_for_mission(self, mission_manager_id, mission_id):
+    def find_available_uav(self, mission_manager_id, mission_id):
         # Get corresponding mission entry
         mission_dict = self.missions[mission_manager_id][mission_id]
 
-        # Get first takeoff and last landing flightplans to determine the whole mission duration
-        first_takeoff_flightplan = mission_dict["flightplans"][0]
-        last_landing_flightplan = mission_dict["flightplans"][-1]
-        # Set start_time and end_time for the whole mission
-        start_time = first_takeoff_flightplan.init_time()
-        end_time = last_landing_flightplan.finish_time()
+        # Get the times to start and end the takeoff and landing flightplans
+        start_time = (
+            mission_dict["flightplans"][0].init_time() - 
+            self.private_vertiport_operator_fp_time
+        )
 
-        # Add time to reach pad from first takeoff flightplan
-        start_time += 15    # (5 to correct position + 10 to reach pad)
+        end_time = (
+            mission_dict["flightplans"][-1].finish_time() + 
+            self.private_vertiport_operator_fp_time
+        )
 
         # Book first available UAV for the whole mission duration
         for uav in self.uavs[mission_dict["mission"].mission_type].values():
             if uav.book(start_time, end_time):
                 # Store assigned UAV id in mission information
                 mission_dict["assigned_uav_id"] = uav.id
+                return True, uav.pad_id, start_time
 
-                # Add remaining waypoitns to first takeoff flightplan now that we know 
-                # the assigned UAV
-                self.add_remaining_waypoints_to_flightplan(
-                    first_takeoff_flightplan, 
-                    uav.location
-                )
+        return False, None, None
 
-                return True
-
-        return False
-
+    def request_private_vertiport_flightplan(
+        self, 
+        mission_manager_id, 
+        mission_id,
+        pad_id,
+        is_landing,
+        is_reversed,
+        mission_type,
+        time,
+        stop_time
+    ):
+        topic = f"{Topics.MISSION_VERTIPORT_SERVICE}/{self.private_vertiport_operator_id}"
+        msg = {
+            "uav_operator_id": self.id,
+            "mission_manager_id": mission_manager_id,
+            "mission_id": mission_id,
+            "pad_id": pad_id,
+            "is_landing": is_landing,
+            "is_reversed": is_reversed,
+            "mission_type": mission_type,
+            "time": time,
+            "stop_time": stop_time
+        }
+        self.send_mqtt_msg(topic, json.dumps(msg))
 
     # ----------------------
     # --- MQTT Callbacks ---
@@ -372,7 +375,7 @@ class UAVOperator:
 
         # Build new stop_list with private vertiport included at the beginning and end
         stop_list = stop_list + [self.private_vertiport_operator_id]
-        stop_time = stop_time + [0]
+        stop_time = stop_time + [float('inf')]
 
         # Store mission processing status information
         self.missions_processing_status[mission_manager_id][mission_id] = {
@@ -410,6 +413,7 @@ class UAVOperator:
             takeoff_time=None,   # None as we don't know when to start to arrive on time
             landing_time=landing_time,
             stop_time=stop_time[0],
+            is_last_leg=False,
         )
         
     def on_request_route_response(self, client, userdata, msg):
@@ -448,14 +452,11 @@ class UAVOperator:
         last_stop = mission["last_destination_stop_index"]
 
         if current_stop == last_stop:
-            # Check UAV availability for the whole mission duration
-            is_any_uav_available = self.book_uav_for_mission(
-                mission_manager_id, 
-                mission_id
-            )
+            # Find the first available UAV
+            is_any_available, pad_id, start_time = self.find_available_uav(mission_manager_id, mission_id)
 
             # Cancel mission if no UAV is available
-            if not is_any_uav_available:
+            if not is_any_available:
                 self.cancel_mission(
                     mission_manager_id, 
                     mission_id, 
@@ -463,23 +464,18 @@ class UAVOperator:
                 )
                 return
             
-            # Logging
-            print(("----------------------------------------------------"))
-            print(f"[{self.id}] - Mission {mission_id} completed all legs")
-            print(("----------------------------------------------------"))
-            print()
-            for i, fp in enumerate(self.missions[mission_manager_id][mission_id]["flightplans"]):
-                print(f"Leg {i+1}:")
-                fp.print_waypoints()
-            print()
-
-            # All legs completed, send mission status update to mission manager
-            self.send_mission_status_update(
-                mission_manager_id, 
-                mission_id, 
-                MissionStatus.IN_PROGRESS
+            # Request private vertiport takeoff flightplan
+            self.request_private_vertiport_flightplan(
+                mission_manager_id=mission_manager_id,
+                mission_id=mission_id,
+                pad_id=pad_id,
+                is_landing=False,
+                is_reversed=False,
+                mission_type=mission_type,
+                time=start_time,
+                stop_time=float('inf')
             )
-            # TODO: send flightplan to UAV for execution
+            
             return
 
         # Logging
@@ -504,10 +500,100 @@ class UAVOperator:
             takeoff_time=takeoff_time,
             landing_time=None,  # None as we don't know when uav will arrive
             stop_time=destination_stop_time,
+            is_last_leg=(destination_vertiport_id == self.private_vertiport_operator_id)
         )
 
         # Update mission processing status by incrementing current_destination_stop_index
         mission["current_destination_stop_index"] += 1
         
+    def on_request_private_vertiport_takeoff_response(self, client, userdata, msg):
+        data = json.loads(msg.payload.decode())
 
+        # Extract mission details
+        mission_manager_id = data.get("mission_manager_id", "")
+        mission_id = data.get("mission_id", "")
+        raw_flightplan = data.get("flightplan", None)
 
+        # Build flightplan object from raw data
+        takeoff_flightplan = FlightPlan()
+        takeoff_flightplan.from_dict(raw_flightplan)
+
+        # Get mission entry
+        mission_dict = self.missions[mission_manager_id][mission_id]
+
+        # Get first airspace flightplan
+        first_flightplan = mission_dict["flightplans"][0]
+        
+        # Remove first waypoint to avoid duplicates
+        first_flightplan.waypoints.pop(0)
+        
+        # Build new flightplan
+        new_flightplan = FlightPlan()
+        new_flightplan.waypoints = takeoff_flightplan.waypoints + first_flightplan.waypoints
+
+        # Smooth waypoints
+        new_flightplan.connect_waypoints()
+
+        # Store updated flightplan
+        mission_dict["flightplans"][0] = new_flightplan
+
+        # Request private vertiport landing flightplan
+        self.request_private_vertiport_flightplan(
+            mission_manager_id=mission_manager_id,
+            mission_id=mission_id,
+            pad_id=None,
+            is_landing=True,
+            is_reversed=False,
+            mission_type=mission_dict["mission"].mission_type,
+            time=mission_dict["flightplans"][-1].finish_time(),
+            stop_time=float('inf')
+        )
+
+    def on_request_private_vertiport_landing_response(self, client, userdata, msg):
+        data = json.loads(msg.payload.decode())
+
+        # Extract mission details
+        mission_manager_id = data.get("mission_manager_id", "")
+        mission_id = data.get("mission_id", "")
+        raw_flightplan = data.get("flightplan", None)
+
+        # Build flightplan object from raw data
+        landing_flightplan = FlightPlan()
+        landing_flightplan.from_dict(raw_flightplan)
+
+        # Get mission entry
+        mission_dict = self.missions[mission_manager_id][mission_id]
+
+        # Get last airspace flightplan
+        last_flightplan = mission_dict["flightplans"][-1]
+        
+        # Remove last waypoint to avoid duplicates
+        last_flightplan.waypoints.pop(-1)
+        
+        # Build new flightplan
+        new_flightplan = FlightPlan()
+        new_flightplan.waypoints =  last_flightplan.waypoints + landing_flightplan.waypoints
+
+        # Smooth waypoints
+        new_flightplan.connect_waypoints()
+
+        # Store updated flightplan
+        mission_dict["flightplans"][-1] = new_flightplan
+
+        # Logging
+        print(("----------------------------------------------------"))
+        print(f"[{self.id}] - Mission {mission_id} completed all legs")
+        print(("----------------------------------------------------"))
+        print()
+        for i, fp in enumerate(self.missions[mission_manager_id][mission_id]["flightplans"]):
+            print(f"Leg {i+1}:")
+            fp.print_waypoints()
+        print()
+
+        # All legs completed, send mission status update to mission manager
+        self.send_mission_status_update(
+            mission_manager_id, 
+            mission_id, 
+            MissionStatus.IN_PROGRESS
+        )
+        # TODO: send flightplan to UAV for execution
