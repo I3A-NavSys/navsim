@@ -208,16 +208,32 @@ class USpaceManager:
         # Get mission entry
         mission = self.missions[uav_operator_id][mission_manager_id][mission_id]
 
-        topic = Topics.CANCEL_MISSION
+        # Select topics based on cancellation reason
+        topics = [
+            f"{Topics.CANCEL_MISSION}/{vertiport_operator_id}"
+            for vertiport_operator_id in mission["vertiport_operator_ids"]
+        ]
+
+        inform_uav_operator = (
+            cancellation_reason == CancellationReason.NO_AVAILABLE_ROUTE or
+            cancellation_reason == CancellationReason.NO_AVAILABLE_PAD
+        )
+
+        if inform_uav_operator:
+            topics.append(f"{Topics.CANCEL_MISSION}/{uav_operator_id}")
+
+        # Build cancellation message
         msg = {
-            "vertiport_operator_ids": list(mission["vertiport_operator_ids"]),
             "uav_operator_id": uav_operator_id,
             "mission_manager_id": mission_manager_id,
             "mission_id": mission_id,
             "mission_type": mission["mission_type"],
             "cancellation_reason": cancellation_reason
         }
-        self.send_mqtt_msg(topic, json.dumps(msg))
+
+        # Send message to corresponding entities
+        for topic in topics:
+            self.send_mqtt_msg(topic, json.dumps(msg))
 
     def request_vertiport_flightplan(
         self, 
@@ -310,23 +326,18 @@ class USpaceManager:
         data = json.loads(msg.payload.decode())
 
         # Extract cancellation data
-        uspace_manager_id = data.get("uspace_manager_id", "")
         uav_operator_id = data.get("uav_operator_id", "")
         mission_manager_id = data.get("mission_manager_id", "")
         mission_id = data.get("mission_id", "")
         cancellation_reason = data.get("cancellation_reason", "")
 
-        # Only process cancellation if it comes from a Vertiport Operator
-        if uav_operator_id == "" or uspace_manager_id != self.id:
-            return
-        
-        # Logging
-        print(f"[{self.id}] - Received mission cancellation:")
-        print(f"  UAV Operator ID: {uav_operator_id}")
-        print(f"  Mission Manager ID: {mission_manager_id}")
-        print(f"  Mission ID: {mission_id}")
-        print(f"  Cancellation Reason: {cancellation_reason}")
-        print()
+        # Inform entities involved in the mission for them to free resources
+        self.cancel_mission(
+            uav_operator_id, 
+            mission_manager_id, 
+            mission_id,
+            cancellation_reason
+        )
 
         # Free resources and update cancellation reason
         self.free_resources(

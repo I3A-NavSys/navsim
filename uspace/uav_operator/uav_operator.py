@@ -51,7 +51,7 @@ class UAVOperator:
         self.callback_topics = [
             f"{Topics.MISSION_UAV_SERVICE}/{self.id}",
             f"{Topics.REQUEST_ROUTE}/{self.id}",
-            Topics.CANCEL_MISSION,
+            f"{Topics.CANCEL_MISSION}/{self.id}",
         ]
 
         self.mqtt_client.message_callback_add(
@@ -65,7 +65,7 @@ class UAVOperator:
         )
 
         self.mqtt_client.message_callback_add(
-            Topics.CANCEL_MISSION,
+            f"{Topics.CANCEL_MISSION}/{self.id}",
             self.on_cancel_mission
         )
 
@@ -222,13 +222,24 @@ class UAVOperator:
         print(f"  Cancellation Reason: {cancellation_reason}")
         print()
 
-        topic = Topics.CANCEL_MISSION
+        # Select topics based on cancellation reason
+        topics = [f"{Topics.CANCEL_MISSION}/{mission_manager_id}"]
+
+        if cancellation_reason == CancellationReason.NO_AVAILABLE_UAV:
+            topics.append(Topics.CANCEL_MISSION)
+        
+        # Build cancellation message
         msg = {
+            "uav_operator_id": self.id,
             "mission_manager_id": mission_manager_id,
             "mission_id": mission_id,
             "cancellation_reason": cancellation_reason
         }
-        self.send_mqtt_msg(topic, json.dumps(msg))
+        
+        # Send message to corresponding entities
+        for topic in topics:
+            self.send_mqtt_msg(topic, json.dumps(msg))
+
 
     def request_route(
         self, 
@@ -305,22 +316,17 @@ class UAVOperator:
         data = json.loads(msg.payload.decode())
 
         # Extract cancellation data
-        uav_operator_id = data.get("uav_operator_id", "")
         mission_manager_id = data.get("mission_manager_id", "")
         mission_id = data.get("mission_id", "")
         mission_type = data.get("mission_type", "")
         cancellation_reason = data.get("cancellation_reason", "")
 
-        # Only process cancellation if it is for this UAV operator
-        if uav_operator_id != self.id:
-            return
-        
-        # Logging
-        print(f"[{self.id}] - Received mission cancellation:")
-        print(f"  Mission Manager ID: {mission_manager_id}")
-        print(f"  Mission ID: {mission_id}")
-        print(f"  Cancellation Reason: {cancellation_reason}")
-        print()
+        # Inform entities involved in the mission for them to free resources
+        self.cancel_mission(
+            mission_manager_id, 
+            mission_id, 
+            cancellation_reason
+        )
 
         # Free resources and update mission cancellation reason
         self.free_resources(

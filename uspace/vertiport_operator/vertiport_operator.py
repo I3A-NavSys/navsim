@@ -57,7 +57,7 @@ class VertiportOperator:
         # MQTT Callbacks
         self.callback_topics = [
             f"{Topics.MISSION_VERTIPORT_SERVICE}/{self.id}",
-            Topics.CANCEL_MISSION,
+            f"{Topics.CANCEL_MISSION}/{self.id}",
         ]
 
         self.mqtt_client.message_callback_add(
@@ -66,7 +66,7 @@ class VertiportOperator:
         )
 
         self.mqtt_client.message_callback_add(
-            Topics.CANCEL_MISSION,
+            f"{Topics.CANCEL_MISSION}/{self.id}",
             self.on_cancel_mission
         )
 
@@ -161,15 +161,6 @@ class VertiportOperator:
     # ----------------------
     # --- USpace Methods ---
     # ----------------------
-    def register_into_airspace(self):
-        topic = Topics.VERTIPORT_OPERATOR_REGISTER
-        msg = {
-            "id": self.id,
-            "name": self.name,
-            "grid_connection": self.grid_connection
-        }
-        self.send_mqtt_msg(topic, json.dumps(msg))
-        
     def cancel_mission(
         self, 
         uav_operator_id, 
@@ -184,15 +175,30 @@ class VertiportOperator:
         print(f"  Cancellation Reason: {cancellation_reason}")
         print()
 
+        # Inform USpace manager about the cancellation
         topic = Topics.CANCEL_MISSION
+        
+        # Build cancellation message
         msg = {
             "uav_operator_id": uav_operator_id,
             "mission_manager_id": mission_manager_id,
             "mission_id": mission_id,
             "cancellation_reason": cancellation_reason
         }
+
+        # Send cancellation message
         self.send_mqtt_msg(topic, json.dumps(msg))
 
+
+    def register_into_airspace(self):
+        topic = Topics.VERTIPORT_OPERATOR_REGISTER
+        msg = {
+            "id": self.id,
+            "name": self.name,
+            "grid_connection": self.grid_connection
+        }
+        self.send_mqtt_msg(topic, json.dumps(msg))
+        
     def build_takeoff_flightplan(self, pad_id, time, is_reversed):
         # Initialize flightplan
         flightplan = FlightPlan()
@@ -352,18 +358,13 @@ class VertiportOperator:
         data = json.loads(msg.payload.decode())
 
         # Extract cancellation data
-        vertiport_operator_ids = data.get("vertiport_operator_ids", set())
         uav_operator_id = data.get("uav_operator_id", "")
         mission_manager_id = data.get("mission_manager_id", "")
         mission_id = data.get("mission_id", "")
         cancellation_reason = data.get("cancellation_reason", "")
-
-        # Only process cancellation if it is for this vertiport operator
-        if self.id not in vertiport_operator_ids:
-            return
         
         # Logging
-        print(f"[{self.id}] - Received mission cancellation:")
+        print(f"[{self.id}] - Cancelling mission:")
         print(f"  Mission Manager ID: {mission_manager_id}")
         print(f"  Mission ID: {mission_id}")
         print(f"  Cancellation Reason: {cancellation_reason}")
@@ -420,8 +421,7 @@ class VertiportOperator:
                     uav_operator_id,
                     mission_manager_id,
                     mission_id,
-                    is_landing,
-                    is_reversed
+                    CancellationReason.NO_AVAILABLE_PAD
                 )
                 return
             
@@ -440,8 +440,7 @@ class VertiportOperator:
                     uav_operator_id,
                     mission_manager_id,
                     mission_id,
-                    is_landing,
-                    is_reversed
+                    CancellationReason.NO_AVAILABLE_PAD
                 )
                 return
 
