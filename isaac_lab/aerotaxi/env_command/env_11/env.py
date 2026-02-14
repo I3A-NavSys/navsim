@@ -321,18 +321,18 @@ class ObervervationCfg:
         yaw = ObsTerm(func=my_obs_yaw, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         height = ObsTerm(func=my_obs_height, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         # La nueva función del target también necesita saber respecto a qué dron rotar
-        target_vel = ObsTerm(
-            func=my_obs_target_vel, 
-            params={"asset_cfg": SceneEntityCfg(name="aerotaxi")}
-        )
-        target_pos = ObsTerm(func=my_obs_target_pos, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
-        target_ang_vel = ObsTerm(func=my_obs_target_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
-        prev_action = ObsTerm(func=my_obs_prev_action, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        # target_vel = ObsTerm(
+        #     func=my_obs_target_vel, 
+        #     params={"asset_cfg": SceneEntityCfg(name="aerotaxi")}
+        # )
+        # target_pos = ObsTerm(func=my_obs_target_pos, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        # target_ang_vel = ObsTerm(func=my_obs_target_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        # prev_action = ObsTerm(func=my_obs_prev_action, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
 
         def __post_init__(self):
             self.enable_corruption = False # El crítico no necesita ruido
             self.concatenate_terms = True
-            self.history_length = 1
+            # self.history_length = 1
 
     policy: PolicyCfg = PolicyCfg()
     critic: CriticCfg = CriticCfg()
