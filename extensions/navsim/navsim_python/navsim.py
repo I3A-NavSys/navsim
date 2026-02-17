@@ -127,12 +127,18 @@ class NavSimManager:
 
         vertiport_prims = []
         vertiport_OPs = []
+        vertiport_OP_xyz = {}
         vertiport_pads = {}
 
         # Obtenemos todos los Prims del stage y filtramos aquellos que sean de tipo "vertiport"
         for prim in stage.TraverseAll():
             if prim.GetAttribute("NavSim:type").Get() == "vertiport":
                 vertiport_prims.append(prim)
+
+            if prim.GetAttribute("NavSim:id").Get() and prim.GetAttribute("NavSim:id").Get().startswith("VERT_OP_"):
+                xyz = prim.GetAttribute("xformOp:translate").Get()
+                print(f"Vertiport Operator {prim.GetAttribute('NavSim:id').Get()} found at position {xyz}")
+                vertiport_OP_xyz[prim.GetAttribute("NavSim:id").Get()] = xyz
 
         # Obtenemos el operador de vertiport asociado al pad actual
         for vertiport in vertiport_prims:
@@ -149,6 +155,9 @@ class NavSimManager:
 
         # Ahora creamos un objeto de la clase VertiportOperator para cada operador de vertiport y le asignamos la lista de pads correspondiente
         for vertiport_OP, pads in vertiport_pads.items():
+            # Buscamos la posición del operador de vertiport en el stage para asignarla al objeto VertiportOperator
+            xyz = vertiport_OP_xyz[vertiport_OP]
+
             # Buscamos el main pad
             main_pad = None
             pad_dict = {}
