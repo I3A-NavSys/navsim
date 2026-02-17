@@ -142,13 +142,14 @@ class PPO:
     # ------- TERESA ---------------
     def update_decay(self, current_iteration, total_iterations):
         # Entropy con decay
-        decay_rate = 1 - current_iteration / total_iterations
-        if self.entropy_coef >= 0.001: # valor mínimo de entropía
-            self.entropy_coef = self.initial_entropy_coef * decay_rate
-        # epsilon con decay
-        decay_rate = 1 - current_iteration / total_iterations
-        min_clip_param = 0.01  # minimum clip_param value
-        self.clip_param = self.initial_clip_param * decay_rate + min_clip_param * (1 - decay_rate)
+        # decay_rate = 1 - current_iteration / total_iterations
+        # if self.entropy_coef >= 0.001: # valor mínimo de entropía
+        #     self.entropy_coef = self.initial_entropy_coef * decay_rate
+        # # epsilon con decay
+        # decay_rate = 1 - current_iteration / total_iterations
+        # min_clip_param = 0.01  # minimum clip_param value
+        # self.clip_param = self.initial_clip_param * decay_rate + min_clip_param * (1 - decay_rate)
+        pass
 
     # ------------------------------
 
