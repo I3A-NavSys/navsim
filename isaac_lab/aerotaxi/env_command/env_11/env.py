@@ -298,6 +298,12 @@ class ObervervationCfg:
         # height = ObsTerm(func=my_obs_height, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
         # current_command = ObsTerm(func=my_obs_command) # habría fuga de datos si no
         # GaussianNoiseCFG: simula el ruido de los sensores, así es como si fuera Regularización
+        target_vel = ObsTerm(
+            func=my_obs_target_vel, 
+            params={"asset_cfg": SceneEntityCfg(name="aerotaxi")}
+        )
+        target_pos = ObsTerm(func=my_obs_target_pos, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        target_ang_vel = ObsTerm(func=my_obs_target_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         
         def __post_init__(self):
             self.enable_corruption = True  # Regularización con ruido en las observaciones
@@ -323,12 +329,12 @@ class ObervervationCfg:
         yaw = ObsTerm(func=my_obs_yaw, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         # height = ObsTerm(func=my_obs_height, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         # La nueva función del target también necesita saber respecto a qué dron rotar
-        # target_vel = ObsTerm(
-        #     func=my_obs_target_vel, 
-        #     params={"asset_cfg": SceneEntityCfg(name="aerotaxi")}
-        # )
-        # target_pos = ObsTerm(func=my_obs_target_pos, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
-        # target_ang_vel = ObsTerm(func=my_obs_target_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        target_vel = ObsTerm(
+            func=my_obs_target_vel, 
+            params={"asset_cfg": SceneEntityCfg(name="aerotaxi")}
+        )
+        target_pos = ObsTerm(func=my_obs_target_pos, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        target_ang_vel = ObsTerm(func=my_obs_target_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         # prev_action = ObsTerm(func=my_obs_prev_action, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
 
         def __post_init__(self):
