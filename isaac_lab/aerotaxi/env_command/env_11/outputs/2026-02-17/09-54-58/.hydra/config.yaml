@@ -619,26 +619,6 @@ env:
         scale: null
         history_length: 0
         flatten_history_dim: true
-      target_vel:
-        func: aerotaxi.env_command.env_11.env:my_obs_target_vel
-        params:
-          asset_cfg:
-            name: aerotaxi
-            joint_names: null
-            joint_ids: slice(None,None,None)
-            fixed_tendon_names: null
-            fixed_tendon_ids: slice(None,None,None)
-            body_names: null
-            body_ids: slice(None,None,None)
-            object_collection_names: null
-            object_collection_ids: slice(None,None,None)
-            preserve_order: false
-        modifiers: null
-        noise: null
-        clip: null
-        scale: null
-        history_length: 0
-        flatten_history_dim: true
   actions:
     rotors_vel:
       class_type: aerotaxi.env_command.env_11.env:UAVactionTerm
@@ -757,7 +737,7 @@ env:
     alive:
       func: isaaclab.envs.mdp.rewards:is_alive
       params: {}
-      weight: 2.0
+      weight: 5.0
     action_rate:
       func: aerotaxi.env_command.env_11.rewards:rew_action_rate
       params: {}
@@ -766,47 +746,33 @@ env:
       func: isaaclab.envs.mdp.rewards:is_terminated
       params: {}
       weight: -20.0
-    rew_pos_diff:
-      func: aerotaxi.env_command.env_11.rewards:rew_pos_diff
-      params: {}
-      weight: -5.0
     rew_pos_diff_fine_grained:
       func: aerotaxi.env_command.env_11.rewards:rew_pos_diff_fine_grained
       params:
         std: 2.0
-      weight: 10.0
+      weight: 15.0
     rew_lin_vel_diff_fine_grained:
       func: aerotaxi.env_command.env_11.rewards:rew_lin_vel_diff_fine_grained
       params:
         std: 1.0
-      weight: 5.0
+      weight: 4.0
     rew_ang_vel_z_diff_fine_grained:
       func: aerotaxi.env_command.env_11.rewards:rew_ang_vel_z_diff_fine_grained
       params:
         std: 0.25
-      weight: 3.0
+      weight: 2.0
     rew_roll_diff_fine_grained:
       func: aerotaxi.env_command.env_11.rewards:rew_roll_diff_fine_grained
       params:
         std: 0.2
         target: 0.0
-      weight: 5.0
+      weight: 4.0
     rew_pitch_diff_fine_grained:
       func: aerotaxi.env_command.env_11.rewards:rew_pitch_diff_fine_grained
       params:
         std: 0.2
         target: 0.0
-      weight: 5.0
-    rew_hovering:
-      func: aerotaxi.env_command.env_11.rewards:rew_hovering
-      params:
-        min_altitude: 8
-        max_altitude: 20.0
-      weight: 2.0
-    rew_vel_rescue:
-      func: aerotaxi.env_command.env_11.rewards:rew_velocity_rescue_bidirectional
-      params: {}
-      weight: 2.0
+      weight: 4.0
     rew_ang_vel_xy_penalty:
       func: aerotaxi.env_command.env_11.rewards:rew_ang_vel_xy_penalty
       params: {}
@@ -843,9 +809,9 @@ env:
 agent:
   seed: 42
   device: cuda:0
-  num_steps_per_env: 100
+  num_steps_per_env: 512
   max_iterations: 4001
-  empirical_normalization: false
+  empirical_normalization: true
   obs_groups: {}
   clip_actions: null
   save_interval: 100

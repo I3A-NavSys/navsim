@@ -11,7 +11,7 @@ class Command7PPORunnerCfg(RslRlOnPolicyRunnerCfg):
     experiment_name = "command7"
     run_name = "ppo_random_command7_11"
     resume = False
-    empirical_normalization = False
+    empirical_normalization = True
     csv_path_metrics = "C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid_command_v7"
     callbacks = True
     policy = RslRlPpoActorCriticCfg(

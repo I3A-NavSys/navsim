@@ -47,7 +47,7 @@ class UAVactionTerm(ActionTerm):
         super().__init__(cfg, env)
         self._raw_actions = torch.zeros(env.num_envs, 4, device=self.device)
         self._processed_actions = torch.zeros(env.num_envs, 10, 3, device=self.device)
-        self.action_scale = 30 # antes 10 
+        self.action_scale = 50 # antes 10 
         self.max_prim_links = 5 # 4 rotors + 1 body
 
         # Create all positions at once in a single tensor operation
@@ -99,7 +99,7 @@ class UAVactionTerm(ActionTerm):
         torch_2 = torch.tensor(2, device=self.device)
         
         # Process raw actions (vectorized)
-        self._raw_actions = actions.abs() * self.action_scale
+        self._raw_actions = actions * self.action_scale
 
 
         # print(f"[DEBUG]: raw_actions: {self._raw_actions[0]}")
@@ -486,11 +486,6 @@ class RewardsCfg:
 
     terminating = RewTerm(func=mdp.is_terminated, weight=-20.0)
 
-    # rew_pos_diff = RewTerm(
-    #     func=my_rewards.rew_pos_diff,
-    #     weight=-5.0,
-    # )
-
     rew_pos_diff_fine_grained = RewTerm(
         func=my_rewards.rew_pos_diff_fine_grained,
         weight=15.0,
@@ -519,11 +514,6 @@ class RewardsCfg:
         weight=4.0,
         params={"std": 0.2, "target": 0.0}, # 0.5 para que pueda girarse un poco el ángulo y siga obteniendo reward
     )
-    # rew_hovering = RewTerm(
-    #     func=my_rewards.rew_hovering,
-    #     weight=2.0,
-    #     params={"min_altitude": 8, "max_altitude": 20.0},
-    # )
     rew_ang_vel_xy_penalty = RewTerm(
         func=my_rewards.rew_ang_vel_xy_penalty, 
         weight=-0.5 

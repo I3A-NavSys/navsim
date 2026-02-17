@@ -65,8 +65,11 @@ def rew_lin_vel_diff_fine_grained(env: ManagerBasedRLEnv, std: float) -> torch.T
     quat_inv = math_utils.quat_inv(asset.data.root_com_quat_w)
     target_vel_b = math_utils.quat_apply(quat_inv, target_vel_w)
 
-    vel_error = torch.norm(lin_vel_b - target_vel_b, dim=1)
-    return 1.0 - torch.tanh(vel_error / std)
+    # pruebo a descomponer el error de velocidad en xy y en z, para dar más peso a la z
+    vel_error_xy = torch.norm(lin_vel_b[:, :2] - target_vel_b[:, :2], dim=1)
+    vel_error_z = torch.abs(lin_vel_b[:, 2] - target_vel_b[:, 2])
+    combined_error = vel_error_xy + (2 * vel_error_z)
+    return 1.0 - torch.tanh(combined_error / std)
 
 
 
@@ -116,12 +119,12 @@ def rew_pitch_diff_fine_grained(env: ManagerBasedRLEnv, target: float, std: floa
     distance = torch.abs(pitch - target)
     return 1 - torch.tanh(distance/std)
 
-def rew_hovering(env: ManagerBasedRLEnv, min_altitude: float, max_altitude: float):
-    asset = env.scene["aerotaxi"]
-    z = asset.data.root_com_pos_w[:, 2] - env.scene.env_origins[:, 2]
+# def rew_hovering(env: ManagerBasedRLEnv, min_altitude: float, max_altitude: float):
+#     asset = env.scene["aerotaxi"]
+#     z = asset.data.root_com_pos_w[:, 2] - env.scene.env_origins[:, 2]
 
-    inside = (z >= min_altitude) & (z <= max_altitude)
-    return inside.float()
+#     inside = (z >= min_altitude) & (z <= max_altitude)
+#     return inside.float()
 
 
 def rew_ang_vel_xy_penalty(env: ManagerBasedRLEnv) -> torch.Tensor:
