@@ -37,6 +37,7 @@ class NavSimManager:
     # -- System Initialization --
     # ---------------------------
     def startup(self):
+        self.scan_scene()
         self.temporal_scan_scene()
         self.connect_entities_to_mqtt()
         self.request_operators_list()
@@ -120,6 +121,58 @@ class NavSimManager:
         current_time = int(self.timeline.get_current_time())
         for mission_mgr in self.mission_managers:
             mission_mgr.request_uav_mission(current_time)
+
+    def scan_scene(self):
+        stage = omni.usd.get_context().get_stage()
+
+        vertiport_prims = []
+        vertiport_OPs = []
+        vertiport_pads = {}
+
+        # Obtenemos todos los Prims del stage y filtramos aquellos que sean de tipo "vertiport"
+        for prim in stage.TraverseAll():
+            if prim.GetAttribute("NavSim:type").Get() == "vertiport":
+                vertiport_prims.append(prim)
+
+        # Obtenemos el operador de vertiport asociado al pad actual
+        for vertiport in vertiport_prims:
+            vertiport_OP = vertiport.GetAttribute("NavSim:VertOP").Get()
+            id = vertiport.GetAttribute("NavSim:id").Get()
+            type = vertiport.GetAttribute("NavSim:type").Get()
+            location = vertiport.GetAttribute("xformOp:translate").Get()
+            pad = Pad(id=id, type=type, status=PadStatus.OPERATIVE, operator_id=vertiport_OP, location=location)
+            
+            # Si el operador de vertiport no está en el diccionario, lo añadimos con una lista vacía y luego añadimos el pad a la lista de pads de ese operador
+            if vertiport_OP not in vertiport_pads:
+                vertiport_pads[vertiport_OP] = []
+            vertiport_pads[vertiport_OP].append(pad)
+
+        # Ahora creamos un objeto de la clase VertiportOperator para cada operador de vertiport y le asignamos la lista de pads correspondiente
+        for vertiport_OP, pads in vertiport_pads.items():
+            # Buscamos el main pad
+            main_pad = None
+            pad_dict = {}
+            for pad in pads:
+                if pad.id == "MAIN_PAD":
+                    main_pad = pad
+                    break
+
+            # Creamos el diccionario de pads sin el main pad
+            for pad in pads:
+                if pad.id == "MAIN_PAD":
+                    continue
+                # Combinamos el id del operador de vertiport con el id del pad para crear un id único para cada pad
+                pad_dict[vertiport_OP + "_" + pad.id] = pad
+
+            vertiport_operator = VertiportOperator(
+                id = vertiport_OP,
+                name = vertiport_OP,
+                main_pad = main_pad,
+                pads = pad_dict,
+                security_pad_booking_buffer = 40
+            )
+
+            vertiport_OPs.append(vertiport_operator)
 
     def temporal_scan_scene(self):
         self.mission_managers = [
