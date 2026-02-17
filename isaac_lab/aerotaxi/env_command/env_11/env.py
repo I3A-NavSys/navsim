@@ -47,7 +47,7 @@ class UAVactionTerm(ActionTerm):
         super().__init__(cfg, env)
         self._raw_actions = torch.zeros(env.num_envs, 4, device=self.device)
         self._processed_actions = torch.zeros(env.num_envs, 10, 3, device=self.device)
-        self.action_scale = 30 # antes 10 
+        self.action_scale = 10 # antes 10 
         self.max_prim_links = 5 # 4 rotors + 1 body
 
         # Create all positions at once in a single tensor operation
@@ -288,23 +288,23 @@ class ObervervationCfg:
     @configclass
     class PolicyCfg(ObsGroup):
         """Observation group for the policy."""
-        pos = ObsTerm(func=my_obs_pos, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
+        # pos = ObsTerm(func=my_obs_pos, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
         dist = ObsTerm(func=my_obs_dist, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
         lin_vel = ObsTerm(func=my_obs_lin_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.05))
         ang_vel = ObsTerm(func=my_obs_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.05))
         roll = ObsTerm(func=my_obs_roll, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
         pitch = ObsTerm(func=my_obs_pitch, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
         yaw = ObsTerm(func=my_obs_yaw, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
-        # height = ObsTerm(func=my_obs_height, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
+        height = ObsTerm(func=my_obs_height, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
         # current_command = ObsTerm(func=my_obs_command) # habría fuga de datos si no
         # GaussianNoiseCFG: simula el ruido de los sensores, así es como si fuera Regularización
-        target_vel = ObsTerm(
-            func=my_obs_target_vel, 
-            params={"asset_cfg": SceneEntityCfg(name="aerotaxi")}
-        )
-        target_pos = ObsTerm(func=my_obs_target_pos, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
-        target_ang_vel = ObsTerm(func=my_obs_target_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
-        
+        # target_vel = ObsTerm(
+        #     func=my_obs_target_vel, 
+        #     params={"asset_cfg": SceneEntityCfg(name="aerotaxi")}
+        # )
+        # target_pos = ObsTerm(func=my_obs_target_pos, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        # target_ang_vel = ObsTerm(func=my_obs_target_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+
         def __post_init__(self):
             self.enable_corruption = True  # Regularización con ruido en las observaciones
             self.concatenate_terms = True
@@ -320,21 +320,21 @@ class ObervervationCfg:
     class CriticCfg(ObsGroup):
         """Lo que el entrenador sabe (la verdad absoluta, sin ruido)"""
         # 1. Posición y velocidad de la Policy (pero sin ruido)
-        pos = ObsTerm(func=my_obs_pos, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        # pos = ObsTerm(func=my_obs_pos, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         dist = ObsTerm(func=my_obs_dist, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         lin_vel = ObsTerm(func=my_obs_lin_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         ang_vel = ObsTerm(func=my_obs_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         roll = ObsTerm(func=my_obs_roll, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         pitch = ObsTerm(func=my_obs_pitch, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         yaw = ObsTerm(func=my_obs_yaw, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
-        # height = ObsTerm(func=my_obs_height, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        height = ObsTerm(func=my_obs_height, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         # La nueva función del target también necesita saber respecto a qué dron rotar
-        target_vel = ObsTerm(
-            func=my_obs_target_vel, 
-            params={"asset_cfg": SceneEntityCfg(name="aerotaxi")}
-        )
-        target_pos = ObsTerm(func=my_obs_target_pos, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
-        target_ang_vel = ObsTerm(func=my_obs_target_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        # target_vel = ObsTerm(
+        #     func=my_obs_target_vel, 
+        #     params={"asset_cfg": SceneEntityCfg(name="aerotaxi")}
+        # )
+        # target_pos = ObsTerm(func=my_obs_target_pos, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        # target_ang_vel = ObsTerm(func=my_obs_target_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         # prev_action = ObsTerm(func=my_obs_prev_action, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
 
         def __post_init__(self):
@@ -403,9 +403,6 @@ class UAVcommandTerm(CommandTerm):
         rel_pos_w = self.target_pos - uav_pos_local
         quat_inv = math_utils.quat_inv(self._asset.data.root_com_quat_w)
         self._command[:, :3] = math_utils.quat_apply(quat_inv, rel_pos_w)
-        
-        # # 2. Guardamos la velocidad de giro del fantasma en la 4ª columna
-        # # Esto es lo que la recompensa rew_ang_vel_z_diff está buscando
         self.command[:, 3] = 0.0
         # # ---------------------------
         # # Visualización dinámica
