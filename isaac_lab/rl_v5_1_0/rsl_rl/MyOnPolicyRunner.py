@@ -197,12 +197,15 @@ class MyOnPolicyRunner:
 
                     # Extraemos el resto de recompensas medias
                     reward_terms_dict = {}
-                    if len(ep_infos) > 0:
-                        keys = ep_infos[0].keys()
-                        for key in keys:
-                            reward_values = [info[key].cpu().item() if torch.is_tensor(info[key]) else info[key] 
-                                            for info in ep_infos if key in info]
-                            reward_terms_dict[f"mean_{key}"] = [np.mean(reward_values)]
+
+                    # Descomentar para almacenar todas las rewards:
+                    # ---------------------------------------------
+                    # if len(ep_infos) > 0:
+                    #     keys = ep_infos[0].keys()
+                    #     for key in keys:
+                    #         reward_values = [info[key].cpu().item() if torch.is_tensor(info[key]) else info[key] 
+                    #                         for info in ep_infos if key in info]
+                    #         reward_terms_dict[f"mean_{key}"] = [np.mean(reward_values)]
 
                     if self.activate_callbacks:
                         base_data = {
