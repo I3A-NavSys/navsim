@@ -29,7 +29,7 @@ class MissionManager:
             f"{Topics.REQUEST_VERTIPORT_OPERATOR_LIST}/{self.id}",
             f"{Topics.REQUEST_UAV_OPERATOR_LIST}/{self.id}",
             f"{Topics.MISSION_STATUS_UPDATE}/{self.id}",
-            Topics.CANCEL_MISSION,
+            f"{Topics.CANCEL_MISSION}/{self.id}",
         ]
 
         self.mqtt_client.message_callback_add(
@@ -48,7 +48,7 @@ class MissionManager:
         )
 
         self.mqtt_client.message_callback_add(
-            Topics.CANCEL_MISSION,
+            f"{Topics.CANCEL_MISSION}/{self.id}",
             self.on_cancel_mission
         )
 
@@ -118,7 +118,10 @@ class MissionManager:
         stop_list = random.sample(list(self.vertiport_operators.keys()), amount_stops)
         stop_times = [random.randint(10, 60) for _ in range(amount_stops)]
         uav_operator_id = random.choice(list(self.uav_operators.keys()))
-        landing_time = random.randint(current_time + 200, current_time + 600)
+        landing_time = random.randint(
+            current_time + random.randint(100, 300), 
+            current_time + random.randint(1000, 10000)
+        )
 
         self.missions[mission_id] = Mission(
             id=mission_id,
@@ -131,6 +134,7 @@ class MissionManager:
         )
 
         # Logging
+        print("----------------------------------------------")
         print(f"[{self.id}] - Requesting new UAV mission:")
         print(f"  Mission ID: {mission_id}")
         print(f"  Mission Type: {mission_type}")
@@ -158,16 +162,11 @@ class MissionManager:
         data = json.loads(msg.payload.decode())
 
         # Extract cancellation data
-        mission_manager_id = data.get("mission_manager_id", "")
-        mission_id = data["mission_id"]
-        cancellation_reason = data["cancellation_reason"]
-
-        # Only process cancellation if it is for this mission manager
-        if mission_manager_id != self.id:
-            return
+        mission_id = data.get("mission_id", "")
+        cancellation_reason = data.get("cancellation_reason", "")
         
         # Logging
-        print(f"[{self.id}] - Received mission cancellation:")
+        print(f"[{self.id}] - Cancelling mission:")
         print(f"  Mission ID: {mission_id}")
         print(f"  Cancellation Reason: {cancellation_reason}")
         print()
@@ -208,4 +207,5 @@ class MissionManager:
         print(f"  UAV Operator ID: {uav_operator_id}")
         print(f"  Mission ID: {mission_id}")
         print(f"  Mission Status: {mission_status}")
+        print("----------------------------------------------")
         print()

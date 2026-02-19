@@ -39,7 +39,7 @@ class Pad:
         # If availability not pre-checked, verify it now
         if not availability_checked and not self.is_available(start_time, end_time, buffer):
             return False
-        
+
         # Insert the new booking while maintaining sorted order
         self.bookings.add((start_time, end_time))
         return True
@@ -49,3 +49,5 @@ class Pad:
         
     def cancel_booking(self, start_time: float, end_time: float):
         self.bookings.discard((start_time, end_time))
+
+        
