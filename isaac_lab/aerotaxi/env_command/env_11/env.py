@@ -84,22 +84,22 @@ class UAVactionTerm(ActionTerm):
     def process_actions(self, actions: torch.Tensor):
         # Si algun dron reventó y el NaN se cuela, lo ponemos a 0
         # -------------- Teresa  ----------------------------------
-        actions = torch.clamp(actions, -1.0, 1.0) # antes -2,2
+        actions = torch.clamp(actions, -2.0, 2.0) # antes -2,2
         actions = torch.nan_to_num(actions, nan=0.0)
         # Define constants as tensors
 
         # Vamos a pasarle equilibrio físico directamente para que:
         # 0 - hover; >0 - se eleve; <0 - baje
-        mass = self._asset.data.default_mass.sum(dim=1, keepdim=True)
-        weight = mass*9.81 # gravedad
-        thrust_hover_total = weight
-        thrust_hover_per_rotor = torch.tensor(thrust_hover_total / 4.0, device=self.device)
-        kFT = torch.tensor([4.6544, 4.6544, 0.9309, 0.9309], device=self.device)
-        raw_hover = torch.sqrt(thrust_hover_per_rotor / kFT)
+        # mass = self._asset.data.default_mass.sum(dim=1, keepdim=True)
+        # weight = mass*9.81 # gravedad
+        # thrust_hover_total = weight
+        # thrust_hover_per_rotor = torch.tensor(thrust_hover_total / 4.0, device=self.device)
+        # kFT = torch.tensor([4.6544, 4.6544, 0.9309, 0.9309], device=self.device)
+        # raw_hover = torch.sqrt(thrust_hover_per_rotor / kFT)
 
-        thrust_scale = 0.5
-        self._raw_actions = raw_hover * (1.0 + thrust_scale * actions)
-        self._raw_actions = torch.clamp(self._raw_actions, min=0.0)
+        # thrust_scale = 0.5
+        # self._raw_actions = raw_hover * (1.0 + thrust_scale * actions)
+        # self._raw_actions = torch.clamp(self._raw_actions, min=0.0)
         # ---------------------------------------------------------
 
         kFT_N = torch.tensor(4.6544, device=self.device)
@@ -116,7 +116,7 @@ class UAVactionTerm(ActionTerm):
         
         # # Process raw actions (vectorized)
         # -----------------------------------------------
-        # self._raw_actions = actions.abs() * self.action_scale
+        self._raw_actions = actions.abs() * self.action_scale
         # -----------------------------------------------
 
         # print(f"[DEBUG]: raw_actions: {self._raw_actions[0]}")
@@ -508,11 +508,11 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    # alive = RewTerm(func=mdp.is_alive, weight=5.0)
+    alive = RewTerm(func=mdp.is_alive, weight=15.0)
 
     action_rate = RewTerm(func=my_rewards.rew_action_rate, weight=-0.01)
 
-    terminating = RewTerm(func=mdp.is_terminated, weight=-1000.0)
+    terminating = RewTerm(func=mdp.is_terminated, weight=-50.0)
 
     # rew_pos_diff_xy = RewTerm(func=my_rewards.rew_pos_diff_xy, weight=6.0)
     rew_pos_diffz = RewTerm(func=my_rewards.rew_pos_diff_z, weight=3.0)
