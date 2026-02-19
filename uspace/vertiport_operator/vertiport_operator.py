@@ -196,7 +196,6 @@ class VertiportOperator:
         # Send cancellation message
         self.send_mqtt_msg(topic, json.dumps(msg))
 
-
     def register_into_airspace(self):
         topic = Topics.VERTIPORT_OPERATOR_REGISTER
         msg = {
@@ -268,12 +267,12 @@ class VertiportOperator:
 
         return flightplan
 
-    def build_landing_flightplan(self, pad, time, is_reversed):
+    def build_landing_flightplan(self, pad_id, time, is_reversed):
         # Initialize flightplan
         flightplan = FlightPlan()
         
         # Get parameters' information
-        pad_pos = pad.location
+        pad_pos = self.pads[pad_id].location
         landing_grid_pos = self.grid_connection["landing"]["position"]
         landing_grid_heading = self.grid_connection["landing"]["heading"]
         x_direction = landing_grid_heading[0]
@@ -312,14 +311,14 @@ class VertiportOperator:
         # main pad -> assigned pad
         flightplan.set_waypoint(
             time=time + 35 - offset,
-            pos=pad.location,
+            pos=pad_pos,
             vel=[0, 0, 0],
             heading=counter_pad_heading
         )
         # wait 5 seconds at assigned pad
         flightplan.set_waypoint(
             time=time + 40 - offset,
-            pos=pad.location,
+            pos=pad_pos,
             vel=[0, 0, 0],
             heading=counter_pad_heading
         )
@@ -420,85 +419,81 @@ class VertiportOperator:
         print()
 
         if is_landing:
-            # Get operative and correct type pads
-            operative_pads = self.get_pads_by_status(status=PadStatus.OPERATIVE)
-            operative_correct_type_pads = self.get_pads_by_type(
-                type=mission_type,
-                pads=operative_pads
-            )
-
-            # Cancel mission if no operative pads of the correct type are available
-            if not operative_correct_type_pads:
-                self.cancel_mission(
-                    uav_operator_id,
-                    mission_manager_id,
-                    mission_id,
-                    CancellationReason.NO_AVAILABLE_PAD
+            # If the vertiport is private, a pad is always reserved for the UAV, 
+            # so no need to check for availability
+            if not self.is_private:
+                # Get operative and correct type pads
+                operative_pads = self.get_pads_by_status(status=PadStatus.OPERATIVE)
+                operative_correct_type_pads = self.get_pads_by_type(
+                    type=mission_type,
+                    pads=operative_pads
                 )
-                return
-            
-            # Get available pads in the requested time window
-            if self.is_private:
-                end_time = float('inf')
-            else:
+
+                # Cancel mission if no operative pads of the correct type are available
+                if not operative_correct_type_pads:
+                    self.cancel_mission(
+                        uav_operator_id,
+                        mission_manager_id,
+                        mission_id,
+                        CancellationReason.NO_AVAILABLE_PAD
+                    )
+                    return
+                
+                # Get available pads in the requested time window
                 end_time = time + stop_time
 
-            available_pads = self.get_available_pads(
-                start_time=time,
-                end_time=end_time,
-                pads=operative_correct_type_pads
-            )
-
-            # Cancel mission if no pads are available
-            if not available_pads:
-                self.cancel_mission(
-                    uav_operator_id,
-                    mission_manager_id,
-                    mission_id,
-                    CancellationReason.NO_AVAILABLE_PAD
+                available_pads = self.get_available_pads(
+                    start_time=time,
+                    end_time=end_time,
+                    pads=operative_correct_type_pads
                 )
-                return
 
-            # Assign the first available pad
-            assigned_pad = available_pads[0]
+                # Cancel mission if no pads are available
+                if not available_pads:
+                    self.cancel_mission(
+                        uav_operator_id,
+                        mission_manager_id,
+                        mission_id,
+                        CancellationReason.NO_AVAILABLE_PAD
+                    )
+                    return
 
-            # Book the pad for the mission duration plus the security buffer
-            assigned_pad.book(
-                start_time=time,
-                end_time=end_time,
-                buffer=self.security_pad_booking_buffer,
-                availability_checked=True,
-            )
+                # Assign the first available pad
+                assigned_pad = available_pads[0]
 
-            # Get pad id for the response
-            pad_id = assigned_pad.id
-            
-            # Initialize mission entry if it doesn't exist
-            if uav_operator_id not in self.missions:
-                self.missions[uav_operator_id] = {}
+                # Book the pad for the mission duration plus the security buffer
+                assigned_pad.book(
+                    start_time=time,
+                    end_time=end_time,
+                    buffer=self.security_pad_booking_buffer,
+                    availability_checked=True,
+                )
 
-            if mission_manager_id not in self.missions[uav_operator_id]:
-                self.missions[uav_operator_id][mission_manager_id] = {}
+                # Get pad id for the response
+                pad_id = assigned_pad.id
+                
+                # Initialize mission entry if it doesn't exist
+                if uav_operator_id not in self.missions:
+                    self.missions[uav_operator_id] = {}
 
-            if mission_id not in self.missions[uav_operator_id][mission_manager_id]:
-                self.missions[uav_operator_id][mission_manager_id][mission_id] = {
-                    "bookings": {pad_id: []},
-                    "cancellation_reason": None
-                }
+                if mission_manager_id not in self.missions[uav_operator_id]:
+                    self.missions[uav_operator_id][mission_manager_id] = {}
 
-            # Store booking index for potential future cancellation
-            mission = self.missions[uav_operator_id][mission_manager_id][mission_id]
-            mission["bookings"][pad_id].append((time, end_time))
+                if mission_id not in self.missions[uav_operator_id][mission_manager_id]:
+                    self.missions[uav_operator_id][mission_manager_id][mission_id] = {
+                        "bookings": {pad_id: []},
+                        "cancellation_reason": None
+                    }
+
+                # Store booking index for potential future cancellation
+                mission = self.missions[uav_operator_id][mission_manager_id][mission_id]
+                mission["bookings"][pad_id].append((time, end_time))
 
             # Build landing flightplan
-            flightplan = self.build_landing_flightplan(assigned_pad, time, is_reversed)
+            flightplan = self.build_landing_flightplan(pad_id, time, is_reversed)
         else:
             # Build takeoff flightplan
             flightplan = self.build_takeoff_flightplan(pad_id, time, is_reversed)
-
-            # Update pad's availability (change end time to start time of this flightplan)
-            pad = self.pads[pad_id]
-            pad.update_booking(time)
 
         # Send back flightplan
         self.send_flightplan(

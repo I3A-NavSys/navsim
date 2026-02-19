@@ -50,13 +50,4 @@ class Pad:
     def cancel_booking(self, start_time: float, end_time: float):
         self.bookings.discard((start_time, end_time))
 
-    def update_booking(self, end_time: float):
-        # Get (and remove) last booking entry
-        last_book = self.bookings.pop(-1)
-
-        # Update end time
-        new_book = (last_book[0], end_time)
-
-        # Re-insert updated booking
-        self.bookings.add(new_book)
         

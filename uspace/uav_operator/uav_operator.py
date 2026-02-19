@@ -473,7 +473,7 @@ class UAVOperator:
                 is_reversed=False,
                 mission_type=mission_type,
                 time=start_time,
-                stop_time=float('inf')
+                stop_time=0
             )
             
             return
@@ -537,14 +537,19 @@ class UAVOperator:
         # Store updated flightplan
         mission_dict["flightplans"][0] = new_flightplan
 
+        # Get pad_id
+        assigned_uav_id = mission_dict["assigned_uav_id"]
+        mission_type = mission_dict["mission"].mission_type
+        pad_id = self.uavs[mission_type][assigned_uav_id].pad_id
+
         # Request private vertiport landing flightplan
         self.request_private_vertiport_flightplan(
             mission_manager_id=mission_manager_id,
             mission_id=mission_id,
-            pad_id=None,
+            pad_id=pad_id,
             is_landing=True,
             is_reversed=False,
-            mission_type=mission_dict["mission"].mission_type,
+            mission_type=mission_type,
             time=mission_dict["flightplans"][-1].finish_time(),
             stop_time=float('inf')
         )
