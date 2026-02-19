@@ -118,5 +118,10 @@ mission_mgr.request_vertiport_operator_list()
 
 while True:
     time.sleep(2)
-    mission_mgr.request_uav_mission()
-# time.sleep(2)
+    try:
+        mission_mgr.request_uav_mission()
+    except Exception as e:
+        print(f"Error requesting UAV mission:")
+        print(e.__traceback__)
+
+        

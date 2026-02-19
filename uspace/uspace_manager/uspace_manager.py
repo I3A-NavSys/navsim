@@ -169,24 +169,8 @@ class USpaceManager:
         uav_operator_id, 
         mission_manager_id, 
         mission_id, 
-        mission_type, 
         route
     ):
-        # Initialize mission entry in missions dictionary for cancellation purposes
-        if uav_operator_id not in self.missions:
-            self.missions[uav_operator_id] = {}
-
-        if mission_manager_id not in self.missions[uav_operator_id]:
-            self.missions[uav_operator_id][mission_manager_id] = {}
-
-        if mission_id not in self.missions[uav_operator_id][mission_manager_id]:
-            self.missions[uav_operator_id][mission_manager_id][mission_id] = {
-                "mission_type": mission_type,
-                "vertiport_operator_ids": set(),
-                "routes": [],
-                "cancellation_reason": None
-            }
-
         # Store reserved route for cancellation purposes
         mission = self.missions[uav_operator_id][mission_manager_id][mission_id]
         mission["vertiport_operator_ids"].add(vertiport_operator_id)
@@ -453,12 +437,14 @@ class USpaceManager:
         print(f"  Destination Vertiport ID: {destination_vertiport_id}")
         print()
 
-        # Initialize mission processing status
+        # Initialize mission processing status and missions dictionaries
         if uav_operator_id not in self.missions_processing_status:
             self.missions_processing_status[uav_operator_id] = {}
+            self.missions[uav_operator_id] = {}
         
         if mission_manager_id not in self.missions_processing_status[uav_operator_id]:
             self.missions_processing_status[uav_operator_id][mission_manager_id] = {}
+            self.missions[uav_operator_id][mission_manager_id] = {}
 
         self.missions_processing_status[uav_operator_id][mission_manager_id][mission_id] = {
             "origin_vertiport_id": origin_vertiport_id,
@@ -471,6 +457,13 @@ class USpaceManager:
             "landing_flightplan": None,
             "grid_flightplan": None,
             "landing_pad_id": None
+        }
+
+        self.missions[uav_operator_id][mission_manager_id][mission_id] = {
+            "mission_type": mission_type,
+            "vertiport_operator_ids": set(),
+            "routes": [],
+            "cancellation_reason": None
         }
 
         # Determine if the route computing is reversed
@@ -563,7 +556,6 @@ class USpaceManager:
             uav_operator_id, 
             mission_manager_id, 
             mission_id, 
-            mission["mission_type"],
             route
         )
 
@@ -693,7 +685,6 @@ class USpaceManager:
                 uav_operator_id, 
                 mission_manager_id, 
                 mission_id, 
-                mission["mission_type"],
                 route
             )
 
