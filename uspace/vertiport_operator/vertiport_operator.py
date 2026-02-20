@@ -51,11 +51,6 @@ class VertiportOperator:
         # }
         self.missions: dict[str, dict[str, dict[str, dict[str, Any]]]] = {}
 
-        if self.is_private:
-            # Initial booking to block every pad until first real booking is made
-            for pad in self.pads.values():
-                pad.book(0, float('inf'), 0, availability_checked=True)
-
         # MQTT client
         self.mqtt_client = MQTTService.build_client(self.id)
         self.mqtt_is_connected = False
