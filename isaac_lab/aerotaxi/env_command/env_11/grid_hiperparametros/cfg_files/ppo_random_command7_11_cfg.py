@@ -16,8 +16,8 @@ class Command7PPORunnerCfg(RslRlOnPolicyRunnerCfg):
     callbacks = True
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=0.2,
-        actor_hidden_dims=[64, 64],
-        critic_hidden_dims=[128, 128],
+        actor_hidden_dims=[128, 128],
+        critic_hidden_dims=[256, 256],
         activation="elu",
     )
     algorithm = RslRlPpoAlgorithmCfg(

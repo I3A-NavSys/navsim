@@ -47,18 +47,20 @@ def rew_emergency_climb(env: ManagerBasedRLEnv):
     asset = env.scene["aerotaxi"]
     command_term = env.command_manager.get_term("vel_command")
     
-    # Altura actual vs Altura objetivo
+    # 1. Altura
     z_actual = asset.data.root_com_pos_w[:, 2] - env.scene.env_origins[:, 2]
     z_target = command_term.target_pos[:, 2]
     
-    # Velocidad vertical en el mundo (Z)
+    # 2. Velocidad vertical
     vel_w_z = asset.data.root_com_lin_vel_w[:, 2]
     
-    # SOLO premiamos subir (vel > 0) SI estamos por debajo del objetivo
+    # 3. Lógica: Si estoy bajo, premiar velocidad positiva Y penalizar la negativa
     is_below = z_actual < z_target
-    reward = torch.clamp(vel_w_z, min=0.0)
     
-    return is_below.float() * reward
+    # En lugar de clamp(0), permitimos valores negativos.
+    # Si vel_z = -2.0 (cayendo), dará -2.0.
+    # Si vel_z = 1.0 (subiendo), dará +1.0.
+    return is_below.float() * vel_w_z
 
 # def rew_pos_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
 #     term = env.command_manager.get_term("vel_command")

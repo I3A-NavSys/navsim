@@ -363,7 +363,8 @@ class ObervervationCfg:
         def __post_init__(self):
             self.enable_corruption = False # El crítico no necesita ruido
             self.concatenate_terms = True
-            # self.history_length = 1
+            self.history_length = 6 # como no queremos pasarle la velocidad directamente, que la infiera si no
+            self.flatten_history_dim = True
 
     policy: PolicyCfg = PolicyCfg()
     critic: CriticCfg = CriticCfg()
