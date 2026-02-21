@@ -512,11 +512,12 @@ class RewardsCfg:
 
     action_rate = RewTerm(func=my_rewards.rew_action_rate, weight=-0.01)
 
-    terminating = RewTerm(func=mdp.is_terminated, weight=-50.0)
+    terminating = RewTerm(func=mdp.is_terminated, weight=-300.0)
 
     # rew_pos_diff_xy = RewTerm(func=my_rewards.rew_pos_diff_xy, weight=6.0)
-    rew_pos_diffz = RewTerm(func=my_rewards.rew_pos_diff_z, weight=3.0)
-    rew_vel_z = RewTerm(func=my_rewards.rew_height_world_vel, weight=-4.0)
+    # rew_pos_diffz = RewTerm(func=my_rewards.rew_pos_diff_z, weight=3.0)
+    # rew_vel_z = RewTerm(func=my_rewards.rew_height_world_vel, weight=-4.0)
+    rew_emergency_climb = RewTerm(func=my_rewards.rew_emergency_climb, weight=2.0)
 
 
     rew_pos_diff = RewTerm(
@@ -583,7 +584,7 @@ class TerminationsCfg:
         func=my_terminations.below_min_altitude,
         params={"min_altitude": 0.2,} # el centro de masas del dron está a 5.06m del suelo.
     )
-    bad_attitude = DoneTerm(func=my_terminations.roll_pitch_termination)
+    # bad_attitude = DoneTerm(func=my_terminations.roll_pitch_termination)
     safety_shutdown = DoneTerm(func=my_terminations.are_nan_or_exploded)
 
 

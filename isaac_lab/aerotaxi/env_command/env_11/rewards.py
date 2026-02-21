@@ -34,18 +34,31 @@ def rew_pos_diff(env: ManagerBasedRLEnv):
 
 #     return torch.exp(-dist / 2)
 
-def rew_pos_diff_z(env: ManagerBasedRLEnv):
-    term = env.command_manager.get_term("vel_command")
-    target_pos = term.target_pos[:, 2] 
-    current_pos_w = env.scene["aerotaxi"].data.root_com_pos_w
-    current_pos_local = current_pos_w[:, 2] - env.scene.env_origins[:, 2]
-    dist = torch.abs(current_pos_local - target_pos)
+# def rew_pos_diff_z(env: ManagerBasedRLEnv):
+#     term = env.command_manager.get_term("vel_command")
+#     target_pos = term.target_pos[:, 2] 
+#     current_pos_w = env.scene["aerotaxi"].data.root_com_pos_w
+#     current_pos_local = current_pos_w[:, 2] - env.scene.env_origins[:, 2]
+#     dist = torch.abs(current_pos_local - target_pos)
 
-    return torch.exp(-dist / 2)
+#     return torch.exp(-dist / 2)
 
-def rew_height_world_vel(env: ManagerBasedRLEnv):
-    current_pos_w_z = env.scene["aerotaxi"].data.root_com_lin_vel_w[:, 2]
-    return current_pos_w_z**2
+def rew_emergency_climb(env: ManagerBasedRLEnv):
+    asset = env.scene["aerotaxi"]
+    command_term = env.command_manager.get_term("vel_command")
+    
+    # Altura actual vs Altura objetivo
+    z_actual = asset.data.root_com_pos_w[:, 2] - env.scene.env_origins[:, 2]
+    z_target = command_term.target_pos[:, 2]
+    
+    # Velocidad vertical en el mundo (Z)
+    vel_w_z = asset.data.root_com_lin_vel_w[:, 2]
+    
+    # SOLO premiamos subir (vel > 0) SI estamos por debajo del objetivo
+    is_below = z_actual < z_target
+    reward = torch.clamp(vel_w_z, min=0.0)
+    
+    return is_below.float() * reward
 
 # def rew_pos_diff(env: ManagerBasedRLEnv) -> torch.Tensor:
 #     term = env.command_manager.get_term("vel_command")
