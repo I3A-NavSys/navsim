@@ -572,6 +572,10 @@ class RewardsCfg:
         func=my_rewards.rew_ang_vel,
         weight=-1.2,
     )
+    rew_attitude_stability = RewTerm(
+        func=my_rewards.rew_attitude_stability,
+        weight=3.0,
+    )
 
     # rew_ang_vel_z_diff_fine_grained = RewTerm(
     #     func=my_rewards.rew_ang_vel_z_diff_fine_grained,

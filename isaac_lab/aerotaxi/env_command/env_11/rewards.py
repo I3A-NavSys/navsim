@@ -34,6 +34,16 @@ def rew_hover_stability(env):
     return pos_term * vel_term
     
 
+def rew_attitude_stability(env):
+    asset = env.scene["aerotaxi"]
+    roll, pitch, _ = math_utils.euler_xyz_from_quat(asset.data.root_com_quat_w)
+    ang_vel = asset.data.root_com_ang_vel_b[:, :2]
+
+    angle_term = torch.exp(-(roll**2 + pitch**2) / (0.3**2))
+    ang_vel_term = torch.exp(-(torch.norm(ang_vel, dim=1)**2) / (0.5**2))
+
+    return angle_term * ang_vel_term
+
 # def rew_pos_diff(env: ManagerBasedRLEnv):
 #     term = env.command_manager.get_term("vel_command")
 #     target_pos = term.target_pos 
