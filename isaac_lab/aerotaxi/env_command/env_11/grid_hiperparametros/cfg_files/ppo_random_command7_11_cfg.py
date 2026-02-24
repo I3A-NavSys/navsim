@@ -6,7 +6,7 @@ sys.path.append('C:/Users/Teresa/Documents/GitHub/navsim/isaac_lab/rl_v5_1_0/rsl
 @configclass
 class Command7PPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 512
-    max_iterations = 2049
+    max_iterations = 4001
     save_interval = 100
     experiment_name = "command7"
     run_name = "ppo_random_command7_11"

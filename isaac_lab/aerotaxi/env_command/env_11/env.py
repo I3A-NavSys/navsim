@@ -215,6 +215,20 @@ def my_obs_dist(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
     rel_pos_b = math_utils.quat_apply(invertir_z, relative_pos)
 
     return rel_pos_b # es [dist_x,dist_y,dist_z,z_dron_relativa]
+
+def my_obs_dist2(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
+    asset: Articulation = env.scene[asset_cfg.name]
+    command_term = env.command_manager.get_term("vel_command")
+    
+    uav_pos_local = asset.data.root_com_pos_w - env.scene.env_origins
+    rel_pos_b = command_term.target_pos - uav_pos_local[:, :3] # que coja no dónde está con respecto al centro, si no
+    # a cuánto está del punto, si no sobreajusta
+
+    # que el dron conozca la orientación a la que está ese punto
+    # invertir_z = math_utils.quat_inv(asset.data.root_com_quat_w)
+    # rel_pos_b = math_utils.quat_apply(invertir_z, relative_pos)
+
+    return rel_pos_b # es [dist_x,dist_y,dist_z,z_dron_relativa]
 # ------------------------------
 def my_obs_height(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
     asset: Articulation = env.scene[asset_cfg.name]
@@ -310,7 +324,7 @@ class ObervervationCfg:
     class PolicyCfg(ObsGroup):
         """Observation group for the policy."""
         # pos = ObsTerm(func=my_obs_pos, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
-        dist = ObsTerm(func=my_obs_dist, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
+        dist = ObsTerm(func=my_obs_dist2, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
         lin_vel = ObsTerm(func=my_obs_lin_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.05))
         ang_vel = ObsTerm(func=my_obs_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.05))
         # roll = ObsTerm(func=my_obs_roll, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
@@ -343,7 +357,7 @@ class ObervervationCfg:
         """Lo que el entrenador sabe (la verdad absoluta, sin ruido)"""
         # 1. Posición y velocidad de la Policy (pero sin ruido)
         # pos = ObsTerm(func=my_obs_pos, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
-        dist = ObsTerm(func=my_obs_dist, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        dist = ObsTerm(func=my_obs_dist2, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         lin_vel = ObsTerm(func=my_obs_lin_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         ang_vel = ObsTerm(func=my_obs_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         height = ObsTerm(func=my_obs_height, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
@@ -509,16 +523,16 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    alive = RewTerm(func=mdp.is_alive, weight=15.0)
+    alive = RewTerm(func=mdp.is_alive, weight=50.0)
 
     action_rate = RewTerm(func=my_rewards.rew_action_rate, weight=-0.01)
 
-    terminating = RewTerm(func=mdp.is_terminated, weight=-300.0)
+    terminating = RewTerm(func=mdp.is_terminated, weight=-100.0)
 
     # rew_pos_diff_xy = RewTerm(func=my_rewards.rew_pos_diff_xy, weight=6.0)
     # rew_pos_diffz = RewTerm(func=my_rewards.rew_pos_diff_z, weight=3.0)
     # rew_vel_z = RewTerm(func=my_rewards.rew_height_world_vel, weight=-4.0)
-    rew_emergency_climb = RewTerm(func=my_rewards.rew_emergency_climb, weight=2.0)
+    # rew_emergency_climb = RewTerm(func=my_rewards.rew_emergency_climb, weight=2.0)
 
 
     rew_pos_diff = RewTerm(
