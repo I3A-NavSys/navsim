@@ -570,7 +570,7 @@ class RewardsCfg:
 
     rew_ang_vel = RewTerm(
         func=my_rewards.rew_ang_vel,
-        weight=-0.8,
+        weight=-1.2,
     )
 
     # rew_ang_vel_z_diff_fine_grained = RewTerm(
@@ -580,7 +580,7 @@ class RewardsCfg:
     # )
     tilt_penalty_pg = RewTerm(
         func=my_rewards.rew_tilt_penalty_pg,
-        weight=-3.0,
+        weight=-4.0,
     )
     # tilt_penalty = RewTerm(
     #     func=my_rewards.rew_tilt_penalty,
