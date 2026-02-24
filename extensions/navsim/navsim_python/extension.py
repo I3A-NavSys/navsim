@@ -26,10 +26,10 @@ class NavSim(omni.ext.IExt):
             self.navsim_manager.start_simulation()
             return
         
-        if self.has_stage_been_modified:
-            self.navsim_manager.shutdown()
-            self.navsim_manager.startup()
-            self.has_stage_been_modified = False
+        # if self.has_stage_been_modified:
+        #     self.navsim_manager.shutdown()
+        #     self.navsim_manager.startup()
+        #     self.has_stage_been_modified = False
 
         # Start NavSim simulation
         self.navsim_manager.start_simulation()

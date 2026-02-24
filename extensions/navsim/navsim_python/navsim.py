@@ -1,6 +1,8 @@
 import asyncio
 
 import omni.timeline
+import omni.usd
+from isaacsim.core.utils.prims import find_matching_prim_paths
 
 from uspace.uav_operator.uav_operator import UAVOperator
 from uspace.uav_operator.uav import UAV
@@ -38,7 +40,6 @@ class NavSimManager:
     # ---------------------------
     def startup(self):
         self.scan_scene()
-        self.temporal_scan_scene()
         self.connect_entities_to_mqtt()
         self.request_operators_list()
 
@@ -122,66 +123,201 @@ class NavSimManager:
         for mission_mgr in self.mission_managers:
             mission_mgr.request_uav_mission(current_time)
 
-    def scan_scene(self):
-        stage = omni.usd.get_context().get_stage()
+    def scan_mission_managers(self):
+        self.mission_managers = [
+            MissionManager(id=f"MISSION_MGR_{i}", name=f"Mission Manager {i}") 
+            for i in range(self.mission_manager_amount)
+        ]
 
-        vertiport_prims = []
-        vertiport_OPs = []
-        vertiport_OP_xyz = {}
-        vertiport_pads = {}
-
-        # Obtenemos todos los Prims del stage y filtramos aquellos que sean de tipo "vertiport"
-        for prim in stage.TraverseAll():
-            if prim.GetAttribute("NavSim:type").Get() == "vertiport":
-                vertiport_prims.append(prim)
-
-            if prim.GetAttribute("NavSim:id").Get() and prim.GetAttribute("NavSim:id").Get().startswith("VERT_OP_"):
-                xyz = prim.GetAttribute("xformOp:translate").Get()
-                print(f"Vertiport Operator {prim.GetAttribute('NavSim:id').Get()} found at position {xyz}")
-                vertiport_OP_xyz[prim.GetAttribute("NavSim:id").Get()] = xyz
-
-        # Obtenemos el operador de vertiport asociado al pad actual
-        for vertiport in vertiport_prims:
-            vertiport_OP = vertiport.GetAttribute("NavSim:VertOP").Get()
-            id = vertiport.GetAttribute("NavSim:id").Get()
-            type = vertiport.GetAttribute("NavSim:type").Get()
-            location = vertiport.GetAttribute("xformOp:translate").Get()
-            pad = Pad(id=id, type=type, status=PadStatus.OPERATIVE, operator_id=vertiport_OP, location=location)
+    def scan_uav_operators(self, stage, prim_paths):
+        # Build UAV Operators list
+        for prim_path in prim_paths:
+            # Get the prim for the UAV operator
+            uav_operator_prim = stage.GetPrimAtPath(prim_path)
             
-            # Si el operador de vertiport no está en el diccionario, lo añadimos con una lista vacía y luego añadimos el pad a la lista de pads de ese operador
-            if vertiport_OP not in vertiport_pads:
-                vertiport_pads[vertiport_OP] = []
-            vertiport_pads[vertiport_OP].append(pad)
+            # Extract attributes for the UAV operator
+            uav_operator_id = uav_operator_prim.GetAttribute("NavSim:id").Get()
+            uav_operator_name = uav_operator_prim.GetAttribute("NavSim:name").Get()
+            private_vertiport_operator_id = uav_operator_prim.GetAttribute(
+                "NavSim:private_vertiport_operator_id"
+            ).Get()
 
-        # Ahora creamos un objeto de la clase VertiportOperator para cada operador de vertiport y le asignamos la lista de pads correspondiente
-        for vertiport_OP, pads in vertiport_pads.items():
-            # Buscamos la posición del operador de vertiport en el stage para asignarla al objeto VertiportOperator
-            xyz = vertiport_OP_xyz[vertiport_OP]
+            # Initialize the UAV operator's UAVs dictionary
+            uav_operator_uavs = {
+                MissionType.DELIVERY: {},
+                MissionType.PASSENGER_TRANSPORT: {}
+            }
 
-            # Buscamos el main pad
-            main_pad = None
-            pad_dict = {}
-            for pad in pads:
-                if pad.id == "MAIN_PAD":
-                    main_pad = pad
-                    break
+            # Build the UAVs for this UAV operator
+            for uav_prim in uav_operator_prim.GetChildren()[0].GetChildren():
+                # Get UAV attributes
+                uav_id = uav_prim.GetAttribute("NavSim:id").Get()
+                uav_type = uav_prim.GetAttribute("NavSim:type").Get()
+                uav_status = uav_prim.GetAttribute("NavSim:status").Get()
+                battery_level = uav_prim.GetAttribute("NavSim:battery_level").Get()
+                operator_id = uav_prim.GetAttribute("NavSim:operator_id").Get()
+                location = uav_prim.GetAttribute("xformOp:translate").Get()
+                pad_id = uav_prim.GetAttribute("NavSim:pad_id").Get()
 
-            # Creamos el diccionario de pads sin el main pad
-            for pad in pads:
-                if pad.id == "MAIN_PAD":
-                    continue
-                # Combinamos el id del operador de vertiport con el id del pad para crear un id único para cada pad
-                pad_dict[vertiport_OP + "_" + pad.id] = pad
+                # Store the UAV in the appropriate mission type category
+                match uav_type:
+                    case MissionType.DELIVERY:
+                        uav_operator_uavs[MissionType.DELIVERY][uav_id] = UAV(
+                            id=uav_id,
+                            type=uav_type,
+                            status=uav_status,
+                            battery_level=float(battery_level),
+                            operator_id=operator_id,
+                            location=tuple(location),
+                            pad_id=pad_id
+                        )
 
-            vertiport_operator = VertiportOperator(
-                id = vertiport_OP,
-                name = vertiport_OP,
-                main_pad = main_pad,
-                pads = pad_dict,
-                security_pad_booking_buffer = 40
+                    case MissionType.PASSENGER_TRANSPORT:
+                        uav_operator_uavs[MissionType.PASSENGER_TRANSPORT][uav_id] = UAV(
+                            id=uav_id,
+                            type=uav_type,
+                            status=uav_status,
+                            battery_level=float(battery_level),
+                            operator_id=operator_id,
+                            location=tuple(location),
+                            pad_id=pad_id
+                        )
+
+                    case _:
+                        raise ValueError(f"Unknown UAV type '{uav_type}' for UAV with ID '{uav_id}'")
+
+            # Create the UAV operator object and add it to the list
+            uav_operator = UAVOperator(
+                id=uav_operator_id,
+                name=uav_operator_name,
+                private_vertiport_operator_id=private_vertiport_operator_id,
+                uavs=uav_operator_uavs
             )
 
-            vertiport_OPs.append(vertiport_operator)
+            self.uav_operators.append(uav_operator)
+
+    def scan_vertiport_operators(self, stage, prim_paths):
+        # Build UAV Operators list
+        for prim_path in prim_paths:
+            # Get the prim for the vertiport operator
+            vertiport_operator_prim = stage.GetPrimAtPath(prim_path)
+            
+            # Extract attributes for the vertiport operator
+            vertiport_operator_id = vertiport_operator_prim.GetAttribute("NavSim:id").Get()
+            vertiport_operator_name = vertiport_operator_prim.GetAttribute("NavSim:name").Get()
+            vertiport_is_private = vertiport_operator_prim.GetAttribute("NavSim:is_private").Get()
+            vertiport_location = vertiport_operator_prim.GetAttribute("xformOp:translate").Get()
+
+            # Initialize the vertiport operator's pads dictionary
+            vertiport_operator_pads = {}
+
+            # Build the pads for this vertiport operator
+            for pad_prim in vertiport_operator_prim.GetChildren()[1].GetChildren():
+                # Get pad attributes
+                pad_id = pad_prim.GetAttribute("NavSim:id").Get()
+                pad_type = pad_prim.GetAttribute("NavSim:type").Get()
+                pad_status = pad_prim.GetAttribute("NavSim:status").Get()
+                operator_id = pad_prim.GetAttribute("NavSim:operator_id").Get()
+                location = pad_prim.GetAttribute("xformOp:translate").Get()
+
+                # Identify the main pad and store it separately
+                if pad_id == "MAIN_PAD":
+                    main_pad = Pad(
+                        id=pad_id,
+                        type=pad_type,
+                        status=pad_status,
+                        operator_id=operator_id,
+                        location=tuple(location + vertiport_location)
+                    )
+                    continue
+
+                # Store the pad in the vertiport operator's pads dictionary
+                vertiport_operator_pads[pad_id] = Pad(
+                    id=pad_id,
+                    type=pad_type,
+                    status=pad_status,
+                    operator_id=operator_id,
+                    location=tuple(location + vertiport_location)
+                )
+
+            # Build grid connection information
+            vertiport_grid_connection = {}
+
+            global_frame_main_pad_location = (
+                vertiport_location[0] + main_pad.location[0],
+                vertiport_location[1] + main_pad.location[1],
+                vertiport_location[2] + main_pad.location[2]
+            )
+
+            heading = [
+                1 if (global_frame_main_pad_location[0]) % 2 == 0 else -1, 
+                0
+            ]
+
+            takeoff_position = [
+                global_frame_main_pad_location[0] + 50 * heading[0],
+                global_frame_main_pad_location[1],
+                60  # TODO: Change this fixed values to adapt to grid requirements
+            ]
+
+            landing_position = [
+                global_frame_main_pad_location[0] - 50 * heading[0],
+                global_frame_main_pad_location[1],
+                60  # TODO: Change this fixed values to adapt to grid requirements
+            ]
+
+            vertiport_grid_connection["takeoff"] = {
+                "heading": heading,
+                "position": takeoff_position
+            }
+            vertiport_grid_connection["landing"] = {
+                "heading": heading,
+                "position": landing_position
+            }
+
+            # Create the vertiport operator object and add it to the list
+            vertiport_operator = VertiportOperator(
+                id=vertiport_operator_id,
+                name=vertiport_operator_name,
+                is_private=vertiport_is_private,
+                grid_connection=vertiport_grid_connection,
+                main_pad=main_pad,
+                pads=vertiport_operator_pads
+            )
+
+            self.vertiport_operators.append(vertiport_operator)
+
+    def scan_uspace_managers(self):
+        self.uspace_managers = [
+            USpaceManager(id=f"USPACE_MGR_{i}", name=f"U-Space Manager {i}") 
+            for i in range(self.uspace_manager_amount)
+        ]
+
+    def scan_scene(self):
+        # Get the current stage
+        stage = omni.usd.get_context().get_stage()
+
+        # Find the prim paths for all vertiport operators and UAV operators in the stage
+        uav_operator_prim_paths = find_matching_prim_paths("/*/*/UAV_OP_*")
+        vertiport_operator_prim_paths = find_matching_prim_paths("/*/*/VERT_OP_*")
+
+        # Clear existing lists
+        self.mission_managers = []
+        self.uav_operators = []
+        self.vertiport_operators = []
+        self.uspace_managers = []
+
+        # Refill entity lists based on the current stage content
+        self.scan_mission_managers()
+        self.scan_uav_operators(stage, uav_operator_prim_paths)
+        self.scan_vertiport_operators(stage, vertiport_operator_prim_paths)
+        self.scan_uspace_managers()
+
+        # Update control parameters based on the number of entities found
+        self.mission_manager_amount = len(self.mission_managers)
+        self.uav_operator_amount = len(self.uav_operators)
+        self.vertiport_operator_amount = len(self.vertiport_operators)
+        self.uspace_manager_amount = len(self.uspace_managers)
 
     def temporal_scan_scene(self):
         self.mission_managers = [
