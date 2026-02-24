@@ -526,8 +526,9 @@ class RewardsCfg:
     # alive = RewTerm(func=mdp.is_alive, weight=50.0)
 
     action_rate = RewTerm(func=my_rewards.rew_action_rate, weight=-0.01)
-    action_rate2 = RewTerm(func=my_rewards.rew_action_rate2, weight=-0.01)
-    rew_pos_fine = RewTerm(funb=my_rewards.rew_pos_fine, weight=1.0)
+    # action_rate2 = RewTerm(func=my_rewards.rew_action_rate2, weight=-0.001)
+    rew_pos_fine = RewTerm(func=my_rewards.rew_pos_fine, weight=0.5)
+    rew_hover_stability = RewTerm(func=my_rewards.rew_hover_stability, weight=3.0)
 
     # terminating = RewTerm(func=mdp.is_terminated, weight=-100.0)
 
@@ -542,12 +543,12 @@ class RewardsCfg:
 
     rew_pos_diff_cuad = RewTerm(
         func=my_rewards.rew_pos_diff_cuad,
-        weight=-2.0,
+        weight=-1.0,
     )
 
     rew_vel = RewTerm(
         func=my_rewards.rew_vel,
-        weight=-0.5,
+        weight=-0.4,
     )
 
     # rew_vel_z = RewTerm(
@@ -569,7 +570,7 @@ class RewardsCfg:
 
     rew_ang_vel = RewTerm(
         func=my_rewards.rew_ang_vel,
-        weight=-0.2,
+        weight=-0.8,
     )
 
     # rew_ang_vel_z_diff_fine_grained = RewTerm(
@@ -579,7 +580,7 @@ class RewardsCfg:
     # )
     tilt_penalty_pg = RewTerm(
         func=my_rewards.rew_tilt_penalty_pg,
-        weight=-1.0,
+        weight=-3.0,
     )
     # tilt_penalty = RewTerm(
     #     func=my_rewards.rew_tilt_penalty,

@@ -17,6 +17,23 @@ def rew_action_rate2(env: ManagerBasedRLEnv) -> torch.Tensor:
     action_rate = torch.norm(env.action_manager.action, dim=1)
     return action_rate**2
 
+def rew_hover_stability(env):
+    term = env.command_manager.get_term("vel_command")
+    target_pos = term.target_pos 
+    asset = env.scene["aerotaxi"]
+
+    pos = asset.data.root_com_pos_w[:, :3] - env.scene.env_origins[:, :3]
+    vel = asset.data.root_com_lin_vel_w[:, :3]
+
+    dist = torch.norm(pos - target_pos, dim=1)
+    vel_norm = torch.norm(vel, dim=1)
+
+    pos_term = torch.exp(-(dist / 4.0)**2)
+    vel_term = torch.exp(-(vel_norm / 4.0)**2)
+
+    return pos_term * vel_term
+    
+
 # def rew_pos_diff(env: ManagerBasedRLEnv):
 #     term = env.command_manager.get_term("vel_command")
 #     target_pos = term.target_pos 
