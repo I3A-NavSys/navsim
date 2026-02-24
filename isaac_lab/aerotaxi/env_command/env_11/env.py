@@ -344,8 +344,8 @@ class ObervervationCfg:
         def __post_init__(self):
             self.enable_corruption = True  # Regularización con ruido en las observaciones
             self.concatenate_terms = True
-            self.history_length = 6 # como no queremos pasarle la velocidad directamente, que la infiera si no
-            self.flatten_history_dim = True
+            # self.history_length = 6 # como no queremos pasarle la velocidad directamente, que la infiera si no
+            # self.flatten_history_dim = True
 
     # Crítico: la corrección que se hará sobre lo que ve el dron en train. En test no hay crítico
     # Por eso aquí vamos a incluir la velocidad del punto guía, para que pueda ajustarse a ella en train, pero en test no
@@ -377,8 +377,8 @@ class ObervervationCfg:
         def __post_init__(self):
             self.enable_corruption = False # El crítico no necesita ruido
             self.concatenate_terms = True
-            self.history_length = 6 # como no queremos pasarle la velocidad directamente, que la infiera si no
-            self.flatten_history_dim = True
+            # self.history_length = 6 # como no queremos pasarle la velocidad directamente, que la infiera si no
+            # self.flatten_history_dim = True
 
     policy: PolicyCfg = PolicyCfg()
     critic: CriticCfg = CriticCfg()
@@ -523,22 +523,37 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    alive = RewTerm(func=mdp.is_alive, weight=50.0)
+    # alive = RewTerm(func=mdp.is_alive, weight=50.0)
 
     action_rate = RewTerm(func=my_rewards.rew_action_rate, weight=-0.01)
+    action_rate2 = RewTerm(func=my_rewards.rew_action_rate2, weight=-0.01)
+    rew_pos_fine = RewTerm(funb=my_rewards.rew_pos_fine, weight=1.0)
 
-    terminating = RewTerm(func=mdp.is_terminated, weight=-100.0)
+    # terminating = RewTerm(func=mdp.is_terminated, weight=-100.0)
 
     # rew_pos_diff_xy = RewTerm(func=my_rewards.rew_pos_diff_xy, weight=6.0)
     # rew_pos_diffz = RewTerm(func=my_rewards.rew_pos_diff_z, weight=3.0)
     # rew_vel_z = RewTerm(func=my_rewards.rew_height_world_vel, weight=-4.0)
     # rew_emergency_climb = RewTerm(func=my_rewards.rew_emergency_climb, weight=2.0)
+    # rew_pos_diff_exp = RewTerm(
+    #     func=my_rewards.rew_pos_diff_exp,
+    #     weight=5.0,
+    # )
 
-
-    rew_pos_diff = RewTerm(
-        func=my_rewards.rew_pos_diff,
-        weight=5.0,
+    rew_pos_diff_cuad = RewTerm(
+        func=my_rewards.rew_pos_diff_cuad,
+        weight=-2.0,
     )
+
+    rew_vel = RewTerm(
+        func=my_rewards.rew_vel,
+        weight=-0.5,
+    )
+
+    # rew_vel_z = RewTerm(
+    #     func=my_rewards.rew_vel_z,
+    #     weight=-0.5
+    # )
 
     # rew_pos_diff_fine_grained = RewTerm(
     #     func=my_rewards.rew_pos_diff_fine_grained,
@@ -552,18 +567,23 @@ class RewardsCfg:
     #     params={"std": 1.0},
     # )
 
-    rew_ang_vel_z_diff_fine_grained = RewTerm(
-        func=my_rewards.rew_ang_vel_z_diff_fine_grained,
-        weight=2.0,
-        params={"std": 0.25},
+    rew_ang_vel = RewTerm(
+        func=my_rewards.rew_ang_vel,
+        weight=-0.2,
     )
+
+    # rew_ang_vel_z_diff_fine_grained = RewTerm(
+    #     func=my_rewards.rew_ang_vel_z_diff_fine_grained,
+    #     weight=2.0,
+    #     params={"std": 0.25},
+    # )
     tilt_penalty_pg = RewTerm(
         func=my_rewards.rew_tilt_penalty_pg,
-        weight=-5.0,
+        weight=-1.0,
     )
     # tilt_penalty = RewTerm(
     #     func=my_rewards.rew_tilt_penalty,
-    #     weight=-5.0,
+    #     weight=-0.05,
     # )
 
     # rew_roll_diff_fine_grained = RewTerm(
@@ -599,7 +619,7 @@ class TerminationsCfg:
         func=my_terminations.below_min_altitude,
         params={"min_altitude": 0.2,} # el centro de masas del dron está a 5.06m del suelo.
     )
-    # bad_attitude = DoneTerm(func=my_terminations.roll_pitch_termination)
+    bad_attitude = DoneTerm(func=my_terminations.roll_pitch_termination)
     safety_shutdown = DoneTerm(func=my_terminations.are_nan_or_exploded)
 
 
