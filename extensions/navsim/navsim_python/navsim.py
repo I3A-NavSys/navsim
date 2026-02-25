@@ -45,6 +45,7 @@ class NavSimManager:
 
     def shutdown(self):
         self.disconnect_entities_from_mqtt()
+        self.is_simulation_running = True
         self.stop_simulation()
 
     # ------------------------
@@ -318,84 +319,5 @@ class NavSimManager:
         self.uav_operator_amount = len(self.uav_operators)
         self.vertiport_operator_amount = len(self.vertiport_operators)
         self.uspace_manager_amount = len(self.uspace_managers)
-
-    def temporal_scan_scene(self):
-        self.mission_managers = [
-            MissionManager(id=f"MISSION_MGR_{i}", name=f"Mission Manager {i}") 
-            for i in range(self.mission_manager_amount)
-        ]
-        self.uav_operators = [
-            UAVOperator(
-                id=f"UAV_OP_{i}", 
-                name=f"UAV Operator {i}",
-                private_vertiport_operator_id=f"VERT_OP_{i}",
-                uavs={
-                    MissionType.DELIVERY: {
-                        f"UAV_{j}_DELIVERY": UAV(
-                            id=f"UAV_{j}_DELIVERY",
-                            operator_id=f"UAV_OP_{i}",
-                            type=MissionType.DELIVERY,
-                            status=UAVStatus.AVAILABLE,
-                            battery_level=100.0,
-                            location=(0.0, 0.0, 0.0),
-                            pad_id=f"VERT_OP_{i}_PAD_{j}"
-                        )
-                        for j in range(3)
-                    },
-                    MissionType.PASSENGER_TRANSPORT: {
-                        f"UAV_{j}_PASSENGER": UAV(
-                            id=f"UAV_{j}_PASSENGER",
-                            operator_id=f"UAV_OP_{i}",
-                            type=MissionType.PASSENGER_TRANSPORT,
-                            status=UAVStatus.AVAILABLE,
-                            battery_level=100.0,
-                            location=(0.0, 5.0, 0.0),
-                            pad_id=f"VERT_OP_{i}_PAD_{j}",
-                        )
-                        for j in range(3)
-                    }
-                }
-            ) 
-            for i in range(self.uav_operator_amount)
-        ]
-        self.vertiport_operators = [
-            VertiportOperator(
-                id=f"VERT_OP_{i}",
-                name=f"Vertiport Operator {i}",
-                grid_connection={
-                    "takeoff": {
-                        "heading": [1 if i % 2 == 0 else -1, 0],
-                        "position": [50 * (1 if i % 2 == 0 else -1) + i * 100, i * 100, 0]
-                    },
-                    "landing": {
-                        "heading": [1 if i % 2 == 0 else -1, 0],
-                        "position": [i * 100 - 50 * (1 if i % 2 == 0 else -1), i * 100, 0]
-                    }
-                },
-                main_pad=Pad(
-                    id=f"VERT_OP_{i}_MAIN_PAD",
-                    type=MissionType.PASSENGER_TRANSPORT,
-                    status=PadStatus.OPERATIVE,
-                    operator_id=f"VERT_OP_{i}",
-                    location=(i * 100, i * 100, 0)
-                ),
-                pads={
-                    f"VERT_OP_{i}_PAD_{j}": Pad(
-                        id=f"VERT_OP_{i}_PAD_{j}",
-                        type=MissionType.DELIVERY if j % 2 == 0 else MissionType.PASSENGER_TRANSPORT,
-                        status=PadStatus.OPERATIVE,
-                        operator_id=f"VERT_OP_{i}",
-                        location=(i * 100 + j * 10, i * 100 + j * 10, 0)
-                    )
-                    for j in range(3)
-                },
-                security_pad_booking_buffer=40
-            )
-            for i in range(self.vertiport_operator_amount)
-        ]
-        self.uspace_managers = [
-            USpaceManager(id=f"USPACE_MGR_{i}", name=f"U-Space Manager {i}") 
-            for i in range(self.uspace_manager_amount)
-        ]
 
     
