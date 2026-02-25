@@ -574,6 +574,10 @@ class RewardsCfg:
     )
     rew_attitude_stability = RewTerm(
         func=my_rewards.rew_attitude_stability,
+        weight=4.0,
+    )
+    rew_altitude_hold = RewTerm(
+        func=my_rewards.rew_altitude_hold,
         weight=3.0,
     )
 
@@ -584,7 +588,7 @@ class RewardsCfg:
     # )
     tilt_penalty_pg = RewTerm(
         func=my_rewards.rew_tilt_penalty_pg,
-        weight=-4.0,
+        weight=-3.5,
     )
     # tilt_penalty = RewTerm(
     #     func=my_rewards.rew_tilt_penalty,

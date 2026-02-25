@@ -33,6 +33,12 @@ def rew_hover_stability(env):
 
     return pos_term * vel_term
     
+def rew_altitude_hold(env):
+    asset = env.scene["aerotaxi"]
+    z = asset.data.root_com_pos_w[:, 2]
+    z_target = env.command_manager.get_term("vel_command").target_pos[:, 2]
+
+    return torch.exp(-((z - z_target)**2) / (0.5**2))
 
 def rew_attitude_stability(env):
     asset = env.scene["aerotaxi"]

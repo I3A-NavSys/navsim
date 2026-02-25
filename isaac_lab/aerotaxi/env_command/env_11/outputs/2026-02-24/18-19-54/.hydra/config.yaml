@@ -670,6 +670,14 @@ env:
       func: aerotaxi.env_command.env_11.rewards:rew_ang_vel
       params: {}
       weight: -1.2
+    rew_attitude_stability:
+      func: aerotaxi.env_command.env_11.rewards:rew_attitude_stability
+      params: {}
+      weight: 3.0
+    rew_altitude_hold:
+      func: aerotaxi.env_command.env_11.rewards:rew_altitude_hold
+      params: {}
+      weight: 4.0
     tilt_penalty_pg:
       func: aerotaxi.env_command.env_11.rewards:rew_tilt_penalty_pg
       params: {}
