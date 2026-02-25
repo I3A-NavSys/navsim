@@ -360,7 +360,7 @@ class UAVOperator:
         print()
 
         # Return if mission type is not supported
-        if mission_type not in self.uavs:
+        if mission_type not in self.uavs or self.uavs[mission_type] == {}:
             self.cancel_mission(
                 mission_manager_id, 
                 mission_id, 
