@@ -446,6 +446,14 @@ class USpaceManager:
             self.missions_processing_status[uav_operator_id][mission_manager_id] = {}
             self.missions[uav_operator_id][mission_manager_id] = {}
 
+        if mission_id not in self.missions[uav_operator_id][mission_manager_id]:
+            self.missions[uav_operator_id][mission_manager_id][mission_id] = {
+                "mission_type": mission_type,
+                "vertiport_operator_ids": set(),
+                "routes": [],
+                "cancellation_reason": None
+            }
+
         self.missions_processing_status[uav_operator_id][mission_manager_id][mission_id] = {
             "origin_vertiport_id": origin_vertiport_id,
             "destination_vertiport_id": destination_vertiport_id,
@@ -457,13 +465,6 @@ class USpaceManager:
             "landing_flightplan": None,
             "grid_flightplan": None,
             "landing_pad_id": None
-        }
-
-        self.missions[uav_operator_id][mission_manager_id][mission_id] = {
-            "mission_type": mission_type,
-            "vertiport_operator_ids": set(),
-            "routes": [],
-            "cancellation_reason": None
         }
 
         # Determine if the route computing is reversed
