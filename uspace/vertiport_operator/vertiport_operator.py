@@ -12,6 +12,7 @@ class VertiportOperator:
         self, 
         id="", 
         name="", 
+        service_types=None, 
         is_private=False,
         grid_connection=None, 
         main_pad=None, 
@@ -20,6 +21,7 @@ class VertiportOperator:
     ):
         self.id: str = id
         self.name: str = name
+        self.service_types: list[str] = service_types
         self.is_private = is_private
         self.main_pad: Pad = main_pad
         self.pads: dict[str, Pad] = pads
@@ -196,6 +198,7 @@ class VertiportOperator:
         msg = {
             "id": self.id,
             "name": self.name,
+            "service_types": self.service_types,
             "grid_connection": self.grid_connection,
             "is_private": self.is_private
         }

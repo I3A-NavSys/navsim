@@ -10,9 +10,17 @@ from .uav import UAV
 
 
 class UAVOperator:
-    def __init__(self, id=None, name=None, private_vertiport_operator_id=None, uavs={}):
+    def __init__(
+        self, 
+        id=None, 
+        name=None, 
+        service_types=None, 
+        private_vertiport_operator_id=None, 
+        uavs={}
+    ):
         self.id: str = id
         self.name: str = name
+        self.service_types: list[str] = service_types
         self.private_vertiport_operator_id: str = private_vertiport_operator_id
         self.private_vertiport_operator_fp_time: int = 40
         # Keep track of UAVs: {mission_type: {uav_id: UAV}}
@@ -195,7 +203,8 @@ class UAVOperator:
         topic = Topics.UAV_OPERATOR_REGISTER
         msg = {
             "id": self.id,
-            "name": self.name
+            "name": self.name,
+            "service_types": self.service_types,
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
 

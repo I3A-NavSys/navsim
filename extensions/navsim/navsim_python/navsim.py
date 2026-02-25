@@ -45,7 +45,6 @@ class NavSimManager:
 
     def shutdown(self):
         self.disconnect_entities_from_mqtt()
-        self.is_simulation_running = True
         self.stop_simulation()
 
     # ------------------------
@@ -139,6 +138,9 @@ class NavSimManager:
             # Extract attributes for the UAV operator
             uav_operator_id = uav_operator_prim.GetAttribute("NavSim:id").Get()
             uav_operator_name = uav_operator_prim.GetAttribute("NavSim:name").Get()
+            uav_operator_service_types = uav_operator_prim.GetAttribute(
+                "NavSim:service_types"
+            ).Get()
             private_vertiport_operator_id = uav_operator_prim.GetAttribute(
                 "NavSim:private_vertiport_operator_id"
             ).Get()
@@ -191,6 +193,7 @@ class NavSimManager:
             uav_operator = UAVOperator(
                 id=uav_operator_id,
                 name=uav_operator_name,
+                service_types=list(uav_operator_service_types),
                 private_vertiport_operator_id=private_vertiport_operator_id,
                 uavs=uav_operator_uavs
             )
@@ -204,10 +207,21 @@ class NavSimManager:
             vertiport_operator_prim = stage.GetPrimAtPath(prim_path)
             
             # Extract attributes for the vertiport operator
-            vertiport_operator_id = vertiport_operator_prim.GetAttribute("NavSim:id").Get()
-            vertiport_operator_name = vertiport_operator_prim.GetAttribute("NavSim:name").Get()
-            vertiport_is_private = vertiport_operator_prim.GetAttribute("NavSim:is_private").Get()
-            vertiport_location = vertiport_operator_prim.GetAttribute("xformOp:translate").Get()
+            vertiport_operator_id = vertiport_operator_prim.GetAttribute(
+                "NavSim:id"
+            ).Get()
+            vertiport_operator_name = vertiport_operator_prim.GetAttribute(
+                "NavSim:name"
+            ).Get()
+            vertiport_operator_service_types = vertiport_operator_prim.GetAttribute(
+                "NavSim:service_types"
+            ).Get()
+            vertiport_is_private = vertiport_operator_prim.GetAttribute(
+                "NavSim:is_private"
+            ).Get()
+            vertiport_location = vertiport_operator_prim.GetAttribute(
+                "xformOp:translate"
+            ).Get()
 
             # Initialize the vertiport operator's pads dictionary
             vertiport_operator_pads = {}
@@ -271,6 +285,7 @@ class NavSimManager:
                 "heading": heading,
                 "position": takeoff_position
             }
+
             vertiport_grid_connection["landing"] = {
                 "heading": heading,
                 "position": landing_position
@@ -280,6 +295,7 @@ class NavSimManager:
             vertiport_operator = VertiportOperator(
                 id=vertiport_operator_id,
                 name=vertiport_operator_name,
+                service_types=list(vertiport_operator_service_types),
                 is_private=vertiport_is_private,
                 grid_connection=vertiport_grid_connection,
                 main_pad=main_pad,

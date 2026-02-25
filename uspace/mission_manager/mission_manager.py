@@ -92,6 +92,19 @@ class MissionManager:
         print(tabulate(formatted_data, headers=headers, tablefmt="grid"))
         print()
 
+    def get_operators_by_service_type(self, service_type):
+        uav_operators = [
+            op_id for op_id, op_data in self.uav_operators.items()
+            if service_type in op_data["service_types"]
+        ]
+
+        vertiport_operators = [
+            op_id for op_id, op_data in self.vertiport_operators.items()
+            if service_type in op_data["service_types"]
+        ]
+
+        return uav_operators, vertiport_operators
+
     # ----------------------
     # --- USpace Methods ---
     # ----------------------
@@ -115,9 +128,15 @@ class MissionManager:
 
         mission_id = f"MISSION_{self.last_mission_id}"
         mission_type = random.choice([MissionType.DELIVERY, MissionType.PASSENGER_TRANSPORT])
-        stop_list = random.sample(list(self.vertiport_operators.keys()), amount_stops)
+
+        possible_uav_operators, possible_vertiport_operators = self.get_operators_by_service_type(mission_type)
+
+        if not possible_uav_operators or not possible_vertiport_operators:
+            return
+
+        stop_list = random.sample(possible_vertiport_operators, amount_stops)
         stop_times = [random.randint(10, 60) for _ in range(amount_stops)]
-        uav_operator_id = random.choice(list(self.uav_operators.keys()))
+        uav_operator_id = random.choice(possible_uav_operators)
         landing_time = random.randint(
             current_time + random.randint(100, 300), 
             current_time + random.randint(1000, 10000)

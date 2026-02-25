@@ -15,14 +15,21 @@ class USpaceManager:
         self.id: str = id
         self.name: str = name
         self.airspace = GridPlanner(max_route_length=1000)
-        # Dictionary of uav operators: {id: name}
-        self.uav_operators: dict[str, str] = {}
+        # Dictionary of uav operators: 
+        # {
+        #   id: {
+        #       name: str,
+        #       service_types: [str],
+        #   }
+        # }
+        self.uav_operators: dict[str, dict[str, Any]] = {}
         # Dictionary of vertiport operators: 
         # {
         #   id: {
-        #     name: V0, 
-        #     grid_conn: [1,1,1], 
-        #     is_private: False
+        #       name: V0, 
+        #       grid_conn: [1,1,1], 
+        #       is_private: False,
+        #       service_types: [str],
         #   }
         # }
         self.vertiport_operators: dict[str, dict[str, Any]] = {}
@@ -349,9 +356,12 @@ class USpaceManager:
         # Extract operator data
         operator_id = data["id"]
         operator_name = data["name"]
+        operator_service_types = data["service_types"]
 
         # Store UAV operator data
-        self.uav_operators[operator_id] = operator_name
+        self.uav_operators[operator_id] = {}
+        self.uav_operators[operator_id]["name"] = operator_name
+        self.uav_operators[operator_id]["service_types"] = operator_service_types
 
         # Logging
         print(f"[{self.id}] - UAV Operator registered:")
@@ -364,12 +374,14 @@ class USpaceManager:
         # Extract operator data
         operator_id = data["id"]
         operator_name = data["name"]
+        operator_service_types = data["service_types"]
         grid_connection = data["grid_connection"]
         is_private = data["is_private"]
 
         # Store vertiport operator data
         self.vertiport_operators[operator_id] = {}
         self.vertiport_operators[operator_id]["name"] = operator_name
+        self.vertiport_operators[operator_id]["service_types"] = operator_service_types
         self.vertiport_operators[operator_id]["grid_connection"] = grid_connection
         self.vertiport_operators[operator_id]["is_private"] = is_private
 
