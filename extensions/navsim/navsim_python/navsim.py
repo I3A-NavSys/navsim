@@ -45,6 +45,7 @@ class NavSimManager:
 
     def shutdown(self):
         self.disconnect_entities_from_mqtt()
+        self.is_simulation_running = True
         self.stop_simulation()
 
     # ------------------------
@@ -63,7 +64,8 @@ class NavSimManager:
         if self.is_simulation_running:
             self.is_simulation_running = False
             self.back_counter_time = self.back_counter_time_max
-            self.mission_generation_task.cancel()
+            if self.mission_generation_task is not None:
+                self.mission_generation_task.cancel()
 
             for uspace_manager in self.uspace_managers:
                 uspace_manager.airspace.clear_grid()

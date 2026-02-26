@@ -1,8 +1,12 @@
+import numpy as np
+
 import omni.ext
 import logging
 import omni.timeline
 import omni.usd
 from pxr import Tf, Usd
+import omni.physx
+from omni.isaac.core.prims import RigidPrimView
 
 from navsim_utils.sim_utils import *
 from .ui_builder import UIBuilder
@@ -31,6 +35,14 @@ class NavSim(omni.ext.IExt):
         #     self.navsim_manager.startup()
         #     self.has_stage_been_modified = False
 
+        # Start RigidPrimView
+        self.rigid_prim_view = RigidPrimView(
+            prim_paths_expr=["/World/*/*/*/UAV_*"],
+            # prim_paths_expr=["/World/*/*/*/UAV_01", "/World/*/*/*/UAV_02"],
+            name="NavSimRigidPrimView",
+        )
+        self.rigid_prim_view.initialize()
+
         # Start NavSim simulation
         self.navsim_manager.start_simulation()
 
@@ -43,6 +55,9 @@ class NavSim(omni.ext.IExt):
 
         # Stop NavSim simulation
         self.navsim_manager.stop_simulation()
+
+        # Reset RigidPrimView
+        self.rigid_prim_view = None
         
     def on_timeline_pause(self, event):
         self.time_manager.pause()
@@ -60,6 +75,16 @@ class NavSim(omni.ext.IExt):
         # Check addition/removal of prims in the stage to update NavSim entities lists
         if notice.GetResyncedPaths():
             self.has_stage_been_modified = True
+
+    def on_physics_step(self, step_size: float):
+        if self.is_simulation_running:
+            forces = np.tile(np.array([[0, 0, -9.81 * 2000]]), (self.rigid_prim_view.count, 1))
+            self.rigid_prim_view.apply_forces_and_torques_at_pos(
+                forces=forces,
+                torques=np.zeros_like(forces),
+                indices=np.array(range(self.rigid_prim_view.count)),
+                is_global=False
+            )
 
 
     def initialize_variables(self):
@@ -107,6 +132,12 @@ class NavSim(omni.ext.IExt):
             Usd.Notice.ObjectsChanged,
             self.on_stage_modification, 
             None
+        )
+
+        # Physx callbacks
+        self.physx_interface = omni.physx.get_physx_interface()
+        self.on_physics_step_sub = self.physx_interface.subscribe_physics_step_events(
+            self.on_physics_step,
         )
 
     def build_ui(self) -> None:
