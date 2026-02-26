@@ -139,8 +139,8 @@ class MissionManager:
         stop_times = [random.randint(10, 60) for _ in range(amount_stops)]
         uav_operator_id = random.choice(possible_uav_operators)
         landing_time = random.randint(
-            current_time + random.randint(100, 300), 
-            current_time + random.randint(1000, 10000)
+            current_time + random.randint(50, 200), 
+            current_time + random.randint(200, 500)
         )
 
         self.missions[mission_id] = Mission(
