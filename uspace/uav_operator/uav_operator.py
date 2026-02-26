@@ -61,8 +61,8 @@ class UAVOperator:
             f"{Topics.MISSION_UAV_SERVICE}/{self.id}",
             f"{Topics.REQUEST_ROUTE}/{self.id}",
             f"{Topics.CANCEL_MISSION}/{self.id}",
-            Topics.PRIVATE_VERTIPORT_TAKEOFF,
-            Topics.PRIVATE_VERTIPORT_LANDING
+            f"{Topics.PRIVATE_VERTIPORT_TAKEOFF}/{self.id}",
+            f"{Topics.PRIVATE_VERTIPORT_LANDING}/{self.id}"
         ]
 
         self.mqtt_client.message_callback_add(
@@ -81,12 +81,12 @@ class UAVOperator:
         )
 
         self.mqtt_client.message_callback_add(
-            Topics.PRIVATE_VERTIPORT_TAKEOFF,
+            f"{Topics.PRIVATE_VERTIPORT_TAKEOFF}/{self.id}",
             self.on_request_private_vertiport_takeoff_response
         )
 
         self.mqtt_client.message_callback_add(
-            Topics.PRIVATE_VERTIPORT_LANDING,
+            f"{Topics.PRIVATE_VERTIPORT_LANDING}/{self.id}",
             self.on_request_private_vertiport_landing_response
         )
 

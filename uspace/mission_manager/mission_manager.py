@@ -124,7 +124,6 @@ class MissionManager:
 
     def request_uav_mission(self, current_time=0):
         self.last_mission_id += 1
-        amount_stops = random.randint(2, 5)
 
         mission_id = f"MISSION_{self.last_mission_id}"
         mission_type = random.choice([MissionType.DELIVERY, MissionType.PASSENGER_TRANSPORT])
@@ -133,6 +132,8 @@ class MissionManager:
 
         if not possible_uav_operators or not possible_vertiport_operators:
             return
+        
+        amount_stops = random.randint(1, len(possible_vertiport_operators))
 
         stop_list = random.sample(possible_vertiport_operators, amount_stops)
         stop_times = [random.randint(10, 60) for _ in range(amount_stops)]

@@ -338,9 +338,9 @@ class VertiportOperator:
     ):
         if self.is_private:
             if is_landing:
-                topic = f"{Topics.PRIVATE_VERTIPORT_LANDING}"
+                topic = f"{Topics.PRIVATE_VERTIPORT_LANDING}/{uav_operator_id}"
             else:
-                topic = f"{Topics.PRIVATE_VERTIPORT_TAKEOFF}"
+                topic = f"{Topics.PRIVATE_VERTIPORT_TAKEOFF}/{uav_operator_id}"
 
         else:
             if is_landing:
