@@ -11,7 +11,7 @@ import omni.kit.window.filepicker
 def define_scene(project_root_path, sphere_amount, distance, x_level, y_level, offset, amount_vertiports, amount_uavs):
     vertiports_prim_path = "/World/Vertiports"
     uavs_prim_path = "/World/UAVs"
-    vertiport_usd_path = project_root_path + "/assets/vertiports/vertiport_aerotaxi.usd"
+    vertiport_usd_path = project_root_path + "/assets/vertiports/Passenger_transport_pad.usd"
     # aerotaxi_usd_path = project_root_path + "/fleet/UAM_aerotaxi/UAM_aerotaxi.usd"
     aerotaxi_usd_path = project_root_path + "/fleet/UAM_aerotaxi/1_rb_model.usd"
     environment_scope_path = "/World/Environment"
