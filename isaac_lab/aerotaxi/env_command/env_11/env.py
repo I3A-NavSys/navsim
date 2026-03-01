@@ -84,12 +84,13 @@ class UAVactionTerm(ActionTerm):
     def process_actions(self, actions: torch.Tensor):
         # Si algun dron reventó y el NaN se cuela, lo ponemos a 0
         # -------------- Teresa  ----------------------------------
-        actions = torch.clamp(actions, -2.0, 2.0) # antes -2,2
+        actions = torch.clamp(actions, -1.0, 1.0) # antes -2,2
         actions = torch.nan_to_num(actions, nan=0.0)
         # Define constants as tensors
 
         # Vamos a pasarle equilibrio físico directamente para que:
         # 0 - hover; >0 - se eleve; <0 - baje
+        # ----------------------- intento 1-----------------------------
         # mass = self._asset.data.default_mass.sum(dim=1, keepdim=True)
         # weight = mass*9.81 # gravedad
         # thrust_hover_total = weight
@@ -97,10 +98,54 @@ class UAVactionTerm(ActionTerm):
         # kFT = torch.tensor([4.6544, 4.6544, 0.9309, 0.9309], device=self.device)
         # raw_hover = torch.sqrt(thrust_hover_per_rotor / kFT)
 
-        # thrust_scale = 0.5
+        # thrust_scale = 0.3
         # self._raw_actions = raw_hover * (1.0 + thrust_scale * actions)
         # self._raw_actions = torch.clamp(self._raw_actions, min=0.0)
-        # ---------------------------------------------------------
+        # ------------------------intento 2-----------------------
+
+        mass = self._asset.data.default_mass.sum(dim=1, keepdim=True)
+        mg = mass * 9.81
+
+        # posiciones rotores (sin el cuerpo)
+        rotor_pos = self.positions[:, 1:5, :]  # (envs,4,3)
+        x = rotor_pos[:, :, 0]
+        y = rotor_pos[:, :, 1]
+
+        # coeficientes
+        kFT = torch.tensor([4.6544, 4.6544, 0.9309, 0.9309], device=self.device)
+        kMDR = torch.tensor([5.9683, -5.9683, 1.4921, -1.4921], device=self.device)
+        # signos alternados como en tu fórmula yaw
+
+        # Construir matriz A para cada env
+        A = torch.zeros(self._env.num_envs, 4, 4, device=self.device)
+
+        # Fuerza total
+        A[:, 0, :] = kFT
+
+        # Momento X (roll)
+        A[:, 1, :] = y * kFT
+
+        # Momento Y (pitch)
+        A[:, 2, :] = -x * kFT
+
+        # Momento Z (yaw)
+        A[:, 3, :] = kMDR
+
+        # Vector objetivo
+        b = torch.zeros(self._env.num_envs, 4, device=self.device)
+        b[:, 0] = mg.squeeze()
+
+        # Resolver sistema
+        u_hover = torch.linalg.solve(A, b)
+
+        # Asegurar positivo
+        u_hover = torch.clamp(u_hover, min=0.0)
+
+        omega_hover = torch.sqrt(u_hover)
+        thrust_scale = 0.3
+        self._raw_actions = omega_hover * (1.0 + thrust_scale * actions)
+        self._raw_actions = torch.clamp(self._raw_actions, min=0.0)
+        # ------------------------------------------------------
 
         kFT_N = torch.tensor(4.6544, device=self.device)
         kFT_S = torch.tensor(0.9309, device=self.device)
@@ -116,7 +161,7 @@ class UAVactionTerm(ActionTerm):
         
         # # Process raw actions (vectorized)
         # -----------------------------------------------
-        self._raw_actions = actions.abs() * self.action_scale
+        # self._raw_actions = actions.abs() * self.action_scale
         # -----------------------------------------------
 
         # print(f"[DEBUG]: raw_actions: {self._raw_actions[0]}")
@@ -131,7 +176,7 @@ class UAVactionTerm(ActionTerm):
         thrust_coeffs = torch.tensor([kFT_N, kFT_N, kFT_S, kFT_S], device=self.device)
         thrust_z = thrust_coeffs * self._raw_actions**torch_2
         # evito que la componente z sea infinita
-        thrust_z = torch.clamp(thrust_z, max=5000.0)
+        thrust_z = torch.clamp(thrust_z, max=9000.0) # antes 5000 N, pero es insuficiente para 2200 kilos
         FT_all = torch.zeros(self._env.num_envs, 4, 3, device=self.device)
         FT_all[:, :, 2] = thrust_z  # Only z-component is non-zero
         
@@ -332,6 +377,8 @@ class ObervervationCfg:
         # yaw = ObsTerm(func=my_obs_yaw, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
         height = ObsTerm(func=my_obs_height, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
         projected_gravity = ObsTerm(func=my_obs_projected_gravity, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
+        # prev_action = ObsTerm(func=my_obs_prev_action, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+
         # current_command = ObsTerm(func=my_obs_command) # habría fuga de datos si no
         # GaussianNoiseCFG: simula el ruido de los sensores, así es como si fuera Regularización
         # target_vel = ObsTerm(
@@ -523,12 +570,32 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    # alive = RewTerm(func=mdp.is_alive, weight=50.0)
+    rew_attitude_stability2 = RewTerm(func=my_rewards.rew_attitude_stability2, weight=6.0)
+    rew_ang_vel_stability2 = RewTerm(func=my_rewards.rew_ang_vel_stability2, weight=2.0)
+    rew_altitude_hold2 = RewTerm(func=my_rewards.rew_altitude_hold2,weight=4.0)
+    rew_vel2 = RewTerm(func=my_rewards.rew_vel2,weight=2.0)
+    # rew_vel_z = RewTerm(func=my_rewards.rew_vertical_velocity,weight=6.0)
+    rew_pos2 = RewTerm(func=my_rewards.rew_pos2, weight=1.0)
+    rew_action_rate = RewTerm(func=my_rewards.rew_action_rate, weight=1.0)
+    # tilt_penalty_pg = RewTerm(func=my_rewards.rew_tilt_penalty_pg,weight=-3.5)
 
-    action_rate = RewTerm(func=my_rewards.rew_action_rate, weight=-0.01)
+
+    # alive = RewTerm(func=mdp.is_alive, weight=2.0)
+    # action_rate = RewTerm(func=my_rewards.rew_action_rate, weight=-0.01)
+    # # rew_pos_fine = RewTerm(func=my_rewards.rew_pos_fine, weight=0.5)
+    # rew_hover_stability = RewTerm(func=my_rewards.rew_hover_stability, weight=3.0)
+    # rew_pos_diff_cuad = RewTerm(func=my_rewards.rew_pos_diff_cuad,weight=-1)
+    # # rew_vel = RewTerm(func=my_rewards.rew_vel,weight=-0.4)
+    # rew_ang_vel = RewTerm(func=my_rewards.rew_ang_vel,weight=-1.2)
+    # # rew_attitude_stability = RewTerm(func=my_rewards.rew_attitude_stability,weight=4.0)
+    # rew_altitude_hold = RewTerm(func=my_rewards.rew_altitude_hold,weight=3.0)
+    # tilt_penalty_pg = RewTerm(func=my_rewards.rew_tilt_penalty_pg,weight=-3.5)
+
+
+
+
+
     # action_rate2 = RewTerm(func=my_rewards.rew_action_rate2, weight=-0.001)
-    rew_pos_fine = RewTerm(func=my_rewards.rew_pos_fine, weight=0.5)
-    rew_hover_stability = RewTerm(func=my_rewards.rew_hover_stability, weight=3.0)
 
     # terminating = RewTerm(func=mdp.is_terminated, weight=-100.0)
 
@@ -541,15 +608,7 @@ class RewardsCfg:
     #     weight=5.0,
     # )
 
-    rew_pos_diff_cuad = RewTerm(
-        func=my_rewards.rew_pos_diff_cuad,
-        weight=-1.0,
-    )
-
-    rew_vel = RewTerm(
-        func=my_rewards.rew_vel,
-        weight=-0.4,
-    )
+    
 
     # rew_vel_z = RewTerm(
     #     func=my_rewards.rew_vel_z,
@@ -567,29 +626,11 @@ class RewardsCfg:
     #     weight=4.0,
     #     params={"std": 1.0},
     # )
-
-    rew_ang_vel = RewTerm(
-        func=my_rewards.rew_ang_vel,
-        weight=-1.2,
-    )
-    rew_attitude_stability = RewTerm(
-        func=my_rewards.rew_attitude_stability,
-        weight=4.0,
-    )
-    rew_altitude_hold = RewTerm(
-        func=my_rewards.rew_altitude_hold,
-        weight=3.0,
-    )
-
     # rew_ang_vel_z_diff_fine_grained = RewTerm(
     #     func=my_rewards.rew_ang_vel_z_diff_fine_grained,
     #     weight=2.0,
     #     params={"std": 0.25},
     # )
-    tilt_penalty_pg = RewTerm(
-        func=my_rewards.rew_tilt_penalty_pg,
-        weight=-3.5,
-    )
     # tilt_penalty = RewTerm(
     #     func=my_rewards.rew_tilt_penalty,
     #     weight=-0.05,
@@ -626,7 +667,7 @@ class TerminationsCfg:
 
     below_min_altitude = DoneTerm(
         func=my_terminations.below_min_altitude,
-        params={"min_altitude": 0.2,} # el centro de masas del dron está a 5.06m del suelo.
+        params={"min_altitude": 0.05,} # el centro de masas del dron está a 5.06m del suelo.
     )
     bad_attitude = DoneTerm(func=my_terminations.roll_pitch_termination)
     safety_shutdown = DoneTerm(func=my_terminations.are_nan_or_exploded)

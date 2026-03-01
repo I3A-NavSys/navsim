@@ -646,42 +646,30 @@ env:
   is_finite_horizon: false
   episode_length_s: 25.0
   rewards:
-    action_rate:
-      func: aerotaxi.env_command.env_11.rewards:rew_action_rate
+    rew_attitude_stability2:
+      func: aerotaxi.env_command.env_11.rewards:rew_attitude_stability2
       params: {}
-      weight: -0.01
-    rew_pos_fine:
-      func: aerotaxi.env_command.env_11.rewards:rew_pos_fine
+      weight: 6.0
+    rew_ang_vel_stability2:
+      func: aerotaxi.env_command.env_11.rewards:rew_ang_vel_stability2
       params: {}
-      weight: 0.5
-    rew_hover_stability:
-      func: aerotaxi.env_command.env_11.rewards:rew_hover_stability
-      params: {}
-      weight: 3.0
-    rew_pos_diff_cuad:
-      func: aerotaxi.env_command.env_11.rewards:rew_pos_diff_cuad
-      params: {}
-      weight: -1.0
-    rew_vel:
-      func: aerotaxi.env_command.env_11.rewards:rew_vel
-      params: {}
-      weight: -0.4
-    rew_ang_vel:
-      func: aerotaxi.env_command.env_11.rewards:rew_ang_vel
-      params: {}
-      weight: -1.2
-    rew_attitude_stability:
-      func: aerotaxi.env_command.env_11.rewards:rew_attitude_stability
-      params: {}
-      weight: 3.0
-    rew_altitude_hold:
-      func: aerotaxi.env_command.env_11.rewards:rew_altitude_hold
+      weight: 2.0
+    rew_altitude_hold2:
+      func: aerotaxi.env_command.env_11.rewards:rew_altitude_hold2
       params: {}
       weight: 4.0
-    tilt_penalty_pg:
-      func: aerotaxi.env_command.env_11.rewards:rew_tilt_penalty_pg
+    rew_vel2:
+      func: aerotaxi.env_command.env_11.rewards:rew_vel2
       params: {}
-      weight: -4.0
+      weight: 2.0
+    rew_pos2:
+      func: aerotaxi.env_command.env_11.rewards:rew_pos2
+      params: {}
+      weight: 1.0
+    rew_action_rate:
+      func: aerotaxi.env_command.env_11.rewards:rew_action_rate
+      params: {}
+      weight: 1.0
   terminations:
     time_out:
       func: isaaclab.envs.mdp.terminations:time_out
@@ -690,7 +678,7 @@ env:
     below_min_altitude:
       func: aerotaxi.env_command.env_11.terminations:below_min_altitude
       params:
-        min_altitude: 0.2
+        min_altitude: 0.05
       time_out: false
     bad_attitude:
       func: aerotaxi.env_command.env_11.terminations:roll_pitch_termination
@@ -714,7 +702,7 @@ env:
 agent:
   seed: 42
   device: cuda:0
-  num_steps_per_env: 32
+  num_steps_per_env: 128
   max_iterations: 4001
   empirical_normalization: true
   obs_groups: {}
@@ -731,26 +719,31 @@ agent:
   class_name: OnPolicyRunner
   policy:
     class_name: ActorCritic
-    init_noise_std: 0.15
+    init_noise_std: 0.05
     noise_std_type: scalar
     actor_obs_normalization: {}
     critic_obs_normalization: {}
     actor_hidden_dims:
     - 128
     - 128
+    - 128
+    - 128
     critic_hidden_dims:
-    - 256
-    - 256
+    - 512
+    - 512
+    - 512
+    - 512
+    - 512
     activation: elu
   algorithm:
     class_name: PPO
     num_learning_epochs: 5
     num_mini_batches: 8
-    learning_rate: 7.0e-05
-    schedule: adaptive
+    learning_rate: 0.0002
+    schedule: fixed
     gamma: 0.99
     lam: 0.95
-    entropy_coef: 0.001
+    entropy_coef: 0.05
     desired_kl: 0.01
     max_grad_norm: 0.5
     value_loss_coef: 0.5

@@ -1,0 +1,2 @@
+id_run_name,iteration,reward,max_reward,std_reward,num_envs_train
+ppo_random_command7_11,373,332.93926879882815,340.52923583984375,13.86193320156916,2048
