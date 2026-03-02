@@ -127,7 +127,7 @@ class MyOnPolicyRunner:
         patience = 500         # Número de iteraciones a esperar sin mejora
         patience_counter = 0   # Contador de iteraciones malas
         early_stopping = False
-        mejora_minima = 1.0
+        mejora_minima = 0.0 # pasamos cualquier mejora
         # ----------------------
         for it in range(start_iter, tot_iter):
                 start = time.time()
@@ -200,12 +200,12 @@ class MyOnPolicyRunner:
 
                     # Descomentar para almacenar todas las rewards:
                     # ---------------------------------------------
-                    # if len(ep_infos) > 0:
-                    #     keys = ep_infos[0].keys()
-                    #     for key in keys:
-                    #         reward_values = [info[key].cpu().item() if torch.is_tensor(info[key]) else info[key] 
-                    #                         for info in ep_infos if key in info]
-                    #         reward_terms_dict[f"mean_{key}"] = [np.mean(reward_values)]
+                    if len(ep_infos) > 0:
+                        keys = ep_infos[0].keys()
+                        for key in keys:
+                            reward_values = [info[key].cpu().item() if torch.is_tensor(info[key]) else info[key] 
+                                            for info in ep_infos if key in info]
+                            reward_terms_dict[f"mean_{key}"] = [np.mean(reward_values)]
 
                     if self.activate_callbacks:
                         base_data = {

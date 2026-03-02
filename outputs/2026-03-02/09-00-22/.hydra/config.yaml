@@ -306,7 +306,7 @@ env:
       history_length: null
       flatten_history_dim: true
       dist:
-        func: aerotaxi.env_command.env_12.env:my_obs_dist
+        func: aerotaxi.env_command.env_11.env:my_obs_dist2
         params:
           asset_cfg:
             name: aerotaxi
@@ -320,13 +320,17 @@ env:
             object_collection_ids: slice(None,None,None)
             preserve_order: false
         modifiers: null
-        noise: null
+        noise:
+          func: isaaclab.utils.noise.noise_model:gaussian_noise
+          operation: add
+          mean: 0.0
+          std: 0.01
         clip: null
         scale: null
         history_length: 0
         flatten_history_dim: true
       lin_vel:
-        func: aerotaxi.env_command.env_12.env:my_obs_lin_vel
+        func: aerotaxi.env_command.env_11.env:my_obs_lin_vel
         params:
           asset_cfg:
             name: aerotaxi
@@ -340,33 +344,17 @@ env:
             object_collection_ids: slice(None,None,None)
             preserve_order: false
         modifiers: null
-        noise: null
-        clip: null
-        scale: null
-        history_length: 0
-        flatten_history_dim: true
-      vel_diff:
-        func: aerotaxi.env_command.env_12.env:my_obs_vel_diff
-        params:
-          asset_cfg:
-            name: aerotaxi
-            joint_names: null
-            joint_ids: slice(None,None,None)
-            fixed_tendon_names: null
-            fixed_tendon_ids: slice(None,None,None)
-            body_names: null
-            body_ids: slice(None,None,None)
-            object_collection_names: null
-            object_collection_ids: slice(None,None,None)
-            preserve_order: false
-        modifiers: null
-        noise: null
+        noise:
+          func: isaaclab.utils.noise.noise_model:gaussian_noise
+          operation: add
+          mean: 0.0
+          std: 0.05
         clip: null
         scale: null
         history_length: 0
         flatten_history_dim: true
       ang_vel:
-        func: aerotaxi.env_command.env_12.env:my_obs_ang_vel
+        func: aerotaxi.env_command.env_11.env:my_obs_ang_vel
         params:
           asset_cfg:
             name: aerotaxi
@@ -380,13 +368,17 @@ env:
             object_collection_ids: slice(None,None,None)
             preserve_order: false
         modifiers: null
-        noise: null
+        noise:
+          func: isaaclab.utils.noise.noise_model:gaussian_noise
+          operation: add
+          mean: 0.0
+          std: 0.05
         clip: null
         scale: null
         history_length: 0
         flatten_history_dim: true
       height:
-        func: aerotaxi.env_command.env_12.env:my_obs_height
+        func: aerotaxi.env_command.env_11.env:my_obs_height
         params:
           asset_cfg:
             name: aerotaxi
@@ -400,13 +392,17 @@ env:
             object_collection_ids: slice(None,None,None)
             preserve_order: false
         modifiers: null
-        noise: null
+        noise:
+          func: isaaclab.utils.noise.noise_model:gaussian_noise
+          operation: add
+          mean: 0.0
+          std: 0.01
         clip: null
         scale: null
         history_length: 0
         flatten_history_dim: true
-      z_vect:
-        func: aerotaxi.env_command.env_12.env:my_obs_gravity_vector
+      projected_gravity:
+        func: aerotaxi.env_command.env_11.env:my_obs_projected_gravity
         params:
           asset_cfg:
             name: aerotaxi
@@ -420,7 +416,11 @@ env:
             object_collection_ids: slice(None,None,None)
             preserve_order: false
         modifiers: null
-        noise: null
+        noise:
+          func: isaaclab.utils.noise.noise_model:gaussian_noise
+          operation: add
+          mean: 0.0
+          std: 0.01
         clip: null
         scale: null
         history_length: 0
@@ -432,27 +432,7 @@ env:
       history_length: null
       flatten_history_dim: true
       dist:
-        func: aerotaxi.env_command.env_12.env:my_obs_dist
-        params:
-          asset_cfg:
-            name: aerotaxi
-            joint_names: null
-            joint_ids: slice(None,None,None)
-            fixed_tendon_names: null
-            fixed_tendon_ids: slice(None,None,None)
-            body_names: null
-            body_ids: slice(None,None,None)
-            object_collection_names: null
-            object_collection_ids: slice(None,None,None)
-            preserve_order: false
-        modifiers: null
-        noise: null
-        clip: null
-        scale: null
-        history_length: 0
-        flatten_history_dim: true
-      vel_diff:
-        func: aerotaxi.env_command.env_12.env:my_obs_vel_diff
+        func: aerotaxi.env_command.env_11.env:my_obs_dist2
         params:
           asset_cfg:
             name: aerotaxi
@@ -472,7 +452,7 @@ env:
         history_length: 0
         flatten_history_dim: true
       lin_vel:
-        func: aerotaxi.env_command.env_12.env:my_obs_lin_vel
+        func: aerotaxi.env_command.env_11.env:my_obs_lin_vel
         params:
           asset_cfg:
             name: aerotaxi
@@ -492,7 +472,7 @@ env:
         history_length: 0
         flatten_history_dim: true
       ang_vel:
-        func: aerotaxi.env_command.env_12.env:my_obs_ang_vel
+        func: aerotaxi.env_command.env_11.env:my_obs_ang_vel
         params:
           asset_cfg:
             name: aerotaxi
@@ -512,7 +492,7 @@ env:
         history_length: 0
         flatten_history_dim: true
       height:
-        func: aerotaxi.env_command.env_12.env:my_obs_height
+        func: aerotaxi.env_command.env_11.env:my_obs_height
         params:
           asset_cfg:
             name: aerotaxi
@@ -531,8 +511,8 @@ env:
         scale: null
         history_length: 0
         flatten_history_dim: true
-      z_vect:
-        func: aerotaxi.env_command.env_12.env:my_obs_gravity_vector
+      projected_gravity:
+        func: aerotaxi.env_command.env_11.env:my_obs_projected_gravity
         params:
           asset_cfg:
             name: aerotaxi
@@ -553,7 +533,7 @@ env:
         flatten_history_dim: true
   actions:
     rotors_vel:
-      class_type: aerotaxi.env_command.env_12.env:UAVactionTerm
+      class_type: aerotaxi.env_command.env_11.env:UAVactionTerm
       asset_name: aerotaxi
       debug_vis: false
       clip: null
@@ -605,36 +585,8 @@ env:
       interval_range_s: null
       is_global_time: false
       min_step_count_between_reset: 0
-  rerender_on_reset: false
-  wait_for_textures: true
-  xr: null
-  teleop_devices:
-    devices: {}
-  export_io_descriptors: false
-  io_descriptors_output_dir: null
-  log_dir: null
-  is_finite_horizon: false
-  episode_length_s: 25.0
-  rewards:
-    action_rate:
-      func: aerotaxi.env_command.env_12.rewards:rew_action_rate
-      params: {}
-      weight: -0.01
-    terminating:
-      func: isaaclab.envs.mdp.rewards:is_terminated
-      params: {}
-      weight: -300.0
-    pos_reward:
-      func: aerotaxi.env_command.env_12.rewards:rew_pos_diff
-      params: {}
-      weight: -15.0
-    rew_lin_vel_diff:
-      func: aerotaxi.env_command.env_12.rewards:rew_lin_vel_diff
-      params:
-        std: 1.0
-      weight: 8.0
-    tilt_penalty:
-      func: aerotaxi.env_command.env_12.rewards:rew_tilt_penalty
+    randomize_mass:
+      func: isaaclab.envs.mdp.events:randomize_rigid_body_mass
       params:
         asset_cfg:
           name: aerotaxi
@@ -647,29 +599,99 @@ env:
           object_collection_names: null
           object_collection_ids: slice(None,None,None)
           preserve_order: false
-      weight: -5.0
+        mass_distribution_params:
+        - 0.9
+        - 1.1
+        operation: scale
+      mode: reset
+      interval_range_s: null
+      is_global_time: false
+      min_step_count_between_reset: 0
+    randomize_wind:
+      func: isaaclab.envs.mdp.events:push_by_setting_velocity
+      params:
+        asset_cfg:
+          name: aerotaxi
+          joint_names: null
+          joint_ids: slice(None,None,None)
+          fixed_tendon_names: null
+          fixed_tendon_ids: slice(None,None,None)
+          body_names: null
+          body_ids: slice(None,None,None)
+          object_collection_names: null
+          object_collection_ids: slice(None,None,None)
+          preserve_order: false
+        velocity_range:
+          x:
+          - -1.0
+          - 1.0
+          'y':
+          - -1.0
+          - 1.0
+          z:
+          - -0.5
+          - 0.5
+      mode: reset
+      interval_range_s: null
+      is_global_time: false
+      min_step_count_between_reset: 0
+  rerender_on_reset: false
+  wait_for_textures: true
+  xr: null
+  teleop_devices:
+    devices: {}
+  export_io_descriptors: false
+  io_descriptors_output_dir: null
+  log_dir: null
+  is_finite_horizon: false
+  episode_length_s: 25.0
+  rewards:
+    rew_attitude_stability2:
+      func: aerotaxi.env_command.env_11.rewards:rew_attitude_stability2
+      params: {}
+      weight: 6.0
+    rew_ang_vel_stability2:
+      func: aerotaxi.env_command.env_11.rewards:rew_ang_vel_stability2
+      params: {}
+      weight: 2.0
+    rew_altitude_hold2:
+      func: aerotaxi.env_command.env_11.rewards:rew_altitude_hold2
+      params: {}
+      weight: 4.0
+    rew_vel2:
+      func: aerotaxi.env_command.env_11.rewards:rew_vel2
+      params: {}
+      weight: 2.0
+    rew_pos2:
+      func: aerotaxi.env_command.env_11.rewards:rew_pos2
+      params: {}
+      weight: 1.0
+    rew_action_rate:
+      func: aerotaxi.env_command.env_11.rewards:rew_action_rate
+      params: {}
+      weight: 1.0
   terminations:
     time_out:
       func: isaaclab.envs.mdp.terminations:time_out
       params: {}
       time_out: true
     below_min_altitude:
-      func: aerotaxi.env_command.env_12.terminations:below_min_altitude
+      func: aerotaxi.env_command.env_11.terminations:below_min_altitude
       params:
-        min_altitude: 0.2
+        min_altitude: 0.05
       time_out: false
     bad_attitude:
-      func: aerotaxi.env_command.env_12.terminations:roll_pitch_termination
+      func: aerotaxi.env_command.env_11.terminations:roll_pitch_termination
       params: {}
       time_out: false
     safety_shutdown:
-      func: aerotaxi.env_command.env_12.terminations:are_nan_or_exploded
+      func: aerotaxi.env_command.env_11.terminations:are_nan_or_exploded
       params: {}
       time_out: false
   curriculum: null
   commands:
     vel_command:
-      class_type: aerotaxi.env_command.env_12.env:UAVcommandTerm
+      class_type: aerotaxi.env_command.env_11.env:UAVcommandTerm
       resampling_time_range:
       - 15
       - 15
@@ -680,14 +702,14 @@ env:
 agent:
   seed: 42
   device: cuda:0
-  num_steps_per_env: 512
+  num_steps_per_env: 128
   max_iterations: 4001
   empirical_normalization: true
   obs_groups: {}
   clip_actions: null
   save_interval: 100
-  experiment_name: command8
-  run_name: ppo_random_command8_11
+  experiment_name: command7
+  run_name: ppo_random_command7_11
   logger: tensorboard
   neptune_project: isaaclab
   wandb_project: isaaclab
@@ -697,33 +719,38 @@ agent:
   class_name: OnPolicyRunner
   policy:
     class_name: ActorCritic
-    init_noise_std: 0.2
+    init_noise_std: 0.05
     noise_std_type: scalar
     actor_obs_normalization: {}
     critic_obs_normalization: {}
     actor_hidden_dims:
-    - 64
-    - 64
+    - 128
+    - 128
+    - 128
+    - 128
     critic_hidden_dims:
-    - 128
-    - 128
+    - 512
+    - 512
+    - 512
+    - 512
+    - 512
     activation: elu
   algorithm:
     class_name: PPO
-    num_learning_epochs: 4
+    num_learning_epochs: 5
     num_mini_batches: 8
-    learning_rate: 0.0001
-    schedule: adaptive
+    learning_rate: 0.0002
+    schedule: fixed
     gamma: 0.99
-    lam: 0.9
-    entropy_coef: 0.01
-    desired_kl: 0.005
+    lam: 0.95
+    entropy_coef: 0.05
+    desired_kl: 0.01
     max_grad_norm: 0.5
     value_loss_coef: 0.5
     use_clipped_value_loss: true
-    clip_param: 0.2
+    clip_param: 0.1
     normalize_advantage_per_mini_batch: false
     rnd_cfg: null
     symmetry_cfg: null
-  csv_path_metrics: C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid_command_v8
+  csv_path_metrics: C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid_command_v7
   callbacks: true
