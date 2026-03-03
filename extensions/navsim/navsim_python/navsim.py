@@ -338,4 +338,33 @@ class NavSimManager:
         self.vertiport_operator_amount = len(self.vertiport_operators)
         self.uspace_manager_amount = len(self.uspace_managers)
 
-    
+    def get_all_current_flitghplans(self, current_time):
+        flightplans = []
+
+        # Get the current flightplan to be executed or being executed of all missions
+        for uav_operator in self.uav_operators:
+            for mission_manager_missions in uav_operator.missions.values():
+                for mission in mission_manager_missions.values():
+                    # Only consider missions that have been assigned to a UAV
+                    assigned_uav_id = mission["assigned_uav_id"]
+                    
+                    if not assigned_uav_id:
+                        continue
+
+                    # Obtain the current flightplan to be or being executed
+                    flightplan = None
+                    
+                    for fp in mission["flightplans"]:
+                        if fp.init_time() - 5 <= current_time < fp.end_time():
+                            flightplan = fp
+                            break
+
+                    # Continue if no flightplan is being executed or about to be 
+                    # executed in the next 5 seconds
+                    if not flightplan:
+                        continue
+
+                    # Add the flightplan to the list along with the assigned UAV ID
+                    flightplans.append((assigned_uav_id, flightplan))
+
+        return flightplans

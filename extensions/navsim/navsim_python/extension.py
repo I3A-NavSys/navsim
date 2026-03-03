@@ -11,8 +11,12 @@ from omni.isaac.core.prims import RigidPrimView
 from navsim_utils.sim_utils import *
 from .ui_builder import UIBuilder
 from .navsim import NavSimManager
+from .uav_control import UAVControl
 
 class NavSim(omni.ext.IExt):
+    # ---------------
+    # -- Callbacks --
+    # ---------------
     def on_startup(self, ext_id):
         self.initialize_variables()
         self.build_ui()
@@ -22,6 +26,17 @@ class NavSim(omni.ext.IExt):
         self.reset_control_variables()
         self.disconnect_callbacks()
         self.navsim_manager.shutdown()
+
+    def on_physics_step(self, step_size: float):
+        if self.is_simulation_running:
+            # Get current time and current flightplans to update UAV control
+            current_time = self.timeline.get_current_time()
+            current_flightplans = self.navsim_manager.get_all_current_flitghplans(
+                current_time
+            )
+
+            # Update UAV control
+            self.uav_control.update(current_flightplans, current_time, step_size)
 
     def on_timeline_play(self, event):
         # Recover from pause
@@ -43,6 +58,15 @@ class NavSim(omni.ext.IExt):
         )
         self.rigid_prim_view.initialize()
 
+        # Relate UAV ids to physics buffer indices
+        self.relate_uav_ids_to_physics_buffer()
+
+        # Start UAVControl
+        self.uav_control = UAVControl(
+            self.rigid_prim_view, 
+            self.uav_ids_to_physics_buffer
+        )
+
         # Start NavSim simulation
         self.navsim_manager.start_simulation()
 
@@ -58,7 +82,10 @@ class NavSim(omni.ext.IExt):
 
         # Reset RigidPrimView
         self.rigid_prim_view = None
-        
+
+        # Reset UAVControl
+        self.uav_control = None
+
     def on_timeline_pause(self, event):
         self.time_manager.pause()
         self.navsim_manager.pause_simulation()
@@ -76,17 +103,9 @@ class NavSim(omni.ext.IExt):
         if notice.GetResyncedPaths():
             self.has_stage_been_modified = True
 
-    def on_physics_step(self, step_size: float):
-        if self.is_simulation_running:
-            forces = np.tile(np.array([[0, 0, -9.81 * 2000]]), (self.rigid_prim_view.count, 1))
-            self.rigid_prim_view.apply_forces_and_torques_at_pos(
-                forces=forces,
-                torques=np.zeros_like(forces),
-                indices=np.array(range(self.rigid_prim_view.count)),
-                is_global=False
-            )
-
-
+    # -----------------------
+    # -- Startup Functions --
+    # -----------------------
     def initialize_variables(self):
         # UI Builder
         self.ui_builder = UIBuilder()
@@ -97,6 +116,8 @@ class NavSim(omni.ext.IExt):
         # Control
         self.is_simulation_running = False
         self.has_stage_been_modified = False
+        self.uav_control = None
+        self.uav_ids_to_physics_buffer = {}
 
         # Managers
         self.time_manager = TimeManager()
@@ -136,14 +157,18 @@ class NavSim(omni.ext.IExt):
 
         # Physx callbacks
         self.physx_interface = omni.physx.get_physx_interface()
-        self.on_physics_step_sub = self.physx_interface.subscribe_physics_step_events(
-            self.on_physics_step,
+        self.on_physics_step_sub = self.physx_interface.subscribe_physics_on_step_events(
+            fn=lambda step_size: self.on_physics_step(step_size),
+            pre_step=True,
+            order=10
         )
 
     def build_ui(self) -> None:
         self.ui_builder.build_ui()
 
-
+    # -------------------------
+    # -- Auxiliary Functions --
+    # -------------------------
     def reset_control_variables(self):
         self.is_simulation_running = False
         self.has_stage_been_modified = False
@@ -154,3 +179,19 @@ class NavSim(omni.ext.IExt):
         self.on_pause_sub = None
         self.on_stage_event_sub = None
         self.on_stage_modification_sub.Revoke()
+
+    def relate_uav_ids_to_physics_buffer(self):
+        # Get UAV prims
+        uavs = self.rigid_prim_view.prims
+
+        for idx, uav in enumerate(uavs):
+            # Get UAV operator id and UAV id from prim attributes
+            uav_operator_id = uav.GetAttribute("NavSim:operator_id").Get()
+            uav_id = uav.GetAttribute("NavSim:id").Get()
+
+            # Relate UAV id to physics buffer index for each UAV
+            if uav_operator_id not in self.uav_ids_to_physics_buffer:
+                self.uav_ids_to_physics_buffer[uav_operator_id] = {}
+
+            self.uav_ids_to_physics_buffer[uav_operator_id][uav_id] = idx
+            

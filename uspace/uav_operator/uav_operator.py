@@ -184,6 +184,9 @@ class UAVOperator:
             # Cancel UAV booking
             uav.cancel_booking(start_time, end_time)
 
+        # Clear assigned UAV id as the mission is cancelled
+        mission_dict["assigned_uav_id"] = None
+
         # Clear flightplans list as they are no longer relevant (memory optimization)
         mission_dict["flightplans"] = []
 
