@@ -4,15 +4,15 @@ import sys
 sys.path.append('C:/Users/Teresa/Documents/GitHub/navsim/isaac_lab/rl_v5_1_0/rsl_rl')
 
 @configclass
-class Command7PPORunnerCfg(RslRlOnPolicyRunnerCfg):
+class Command8PPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 128
-    max_iterations = 4001
+    max_iterations = 1001
     save_interval = 100
-    experiment_name = "command7"
-    run_name = "ppo_random_command7_11"
+    experiment_name = "command8"
+    run_name = "ppo_random_command8_11"
     resume = False
     empirical_normalization = True
-    csv_path_metrics = "C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid_command_v7"
+    csv_path_metrics = "C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid_command_v8"
     callbacks = True
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=0.05,

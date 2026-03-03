@@ -14,11 +14,23 @@ def rew_attitude_stability2(env):
     angle_term = torch.exp(-3.0 * (roll**2 + pitch**2))
     return angle_term
 
-def rew_ang_vel_stability2(env):
+# def rew_ang_vel_stability3(env):
+#     asset = env.scene["aerotaxi"]
+#     ang_vel = asset.data.root_com_ang_vel_b
+#     ang_vel_term = torch.exp(-0.5*(torch.norm(ang_vel, dim=1)**2))
+#     return ang_vel_term 
+def rew_ang_vel_stability4(env):
     asset = env.scene["aerotaxi"]
-    ang_vel = asset.data.root_com_ang_vel_b[:, :2]
-    ang_vel_term = torch.exp(-0.5*(torch.norm(ang_vel, dim=1)**2))
-    return ang_vel_term 
+    ang_vel = asset.data.root_com_ang_vel_b
+
+    # Separar yaw
+    ang_vel_xy = ang_vel[:, :2]
+    yaw_rate = ang_vel[:, 2]
+
+    term_xy = torch.exp(-0.5 * torch.norm(ang_vel_xy, dim=1)**2)
+    term_yaw = torch.exp(-1.5 * yaw_rate**2)
+
+    return 0.7 * term_xy + 0.3 * term_yaw
 
 # def rew_altitude_hold3(env):
 #     asset = env.scene["aerotaxi"]
@@ -38,7 +50,7 @@ def rew_vel2(env:ManagerBasedRLEnv):
     asset = env.scene["aerotaxi"]
     vel_lin_b = asset.data.root_com_lin_vel_w[:, :3]
     vel = torch.norm(vel_lin_b, dim=1)
-    return torch.exp(-0.2 * vel**2)
+    return torch.exp(-1.0 * vel**2)
 
 def rew_vertical_velocity(env):
     asset = env.scene["aerotaxi"]
@@ -52,7 +64,7 @@ def rew_pos2(env: ManagerBasedRLEnv):
     current_pos_w = asset.data.root_com_pos_w
     current_pos_local = current_pos_w[:, :2] - env.scene.env_origins[:, :2]
     dist = torch.norm(current_pos_local - target_pos, dim=1)
-    dist_sq = torch.sum(dist**2)
+    dist_sq = dist**2
     pos_term = torch.exp(-0.5 * dist_sq)
     return pos_term 
 

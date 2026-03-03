@@ -1,5 +1,5 @@
 $ErrorActionPreference = 'Stop'
 
 Write-Host "Ejecutando Test final para Experimento 11..."
-& "C:/Users/Teresa/Desktop/RuralData/IsaacLab/IsaacLab/isaaclab.bat" -p "C:/Users/Teresa/Documents/GitHub/navsim/isaac_lab/rl_v5_1_0/rsl_rl/play.py" --task Isaac-Command7-Aerotaxi-RANDOM-11 --num_envs 64  --headless --checkpoint "C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid_command_v7/best_model_ppo_random_command7_11_2048.pt"
+& "C:/Users/Teresa/Desktop/RuralData/IsaacLab/IsaacLab/isaaclab.bat" -p "C:/Users/Teresa/Documents/GitHub/navsim/isaac_lab/rl_v5_1_0/rsl_rl/play.py" --task Isaac-Command8-Aerotaxi-RANDOM-11 --num_envs 64  --headless --checkpoint "C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid_command_v8/best_model_ppo_random_command8_11_8196.pt"
 

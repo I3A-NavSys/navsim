@@ -505,7 +505,7 @@ class UAVcommandTermCfg(CommandTermCfg):
 class CommandCfg:
     """Command specifications for the environment."""
     
-    vel_command = UAVcommandTermCfg(asset_name="aerotaxi",resampling_time_range=(15, 15)) # cada 15 segundos cambiamos
+    vel_command = UAVcommandTermCfg(asset_name="aerotaxi",resampling_time_range=(25, 25)) # cada 15 segundos cambiamos
 
 
 # |---------------------------------------------------------|
@@ -570,13 +570,14 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    rew_attitude_stability2 = RewTerm(func=my_rewards.rew_attitude_stability2, weight=6.0)
-    rew_ang_vel_stability2 = RewTerm(func=my_rewards.rew_ang_vel_stability2, weight=2.0)
+    rew_attitude_stability2 = RewTerm(func=my_rewards.rew_attitude_stability2, weight=2.0)
+    rew_ang_vel_stability4 = RewTerm(func=my_rewards.rew_ang_vel_stability4, weight=3.0)
     rew_altitude_hold2 = RewTerm(func=my_rewards.rew_altitude_hold2,weight=4.0)
-    rew_vel2 = RewTerm(func=my_rewards.rew_vel2,weight=2.0)
+    rew_vel2 = RewTerm(func=my_rewards.rew_vel2,weight=3.0)
+    rew_pos2 = RewTerm(func=my_rewards.rew_pos2, weight=3.0)
+    rew_action_rate = RewTerm(func=my_rewards.rew_action_rate, weight=0.5)
+
     # rew_vel_z = RewTerm(func=my_rewards.rew_vertical_velocity,weight=6.0)
-    rew_pos2 = RewTerm(func=my_rewards.rew_pos2, weight=1.0)
-    rew_action_rate = RewTerm(func=my_rewards.rew_action_rate, weight=1.0)
     # tilt_penalty_pg = RewTerm(func=my_rewards.rew_tilt_penalty_pg,weight=-3.5)
 
 
