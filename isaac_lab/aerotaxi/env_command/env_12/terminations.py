@@ -25,8 +25,8 @@ def roll_pitch_termination(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = S
     roll, pitch, _ = math_utils.euler_xyz_from_quat(quat_w)
     
     # Aplicamos la lógica de terminación (60 grados = pi/3)
-    # limit = torch.pi / 3
-    limit = 100.0 * torch.pi / 180.0
+    limit = torch.pi / 3
+    # limit = 100.0 * torch.pi / 180.0
     return torch.logical_or(torch.abs(roll) > limit, torch.abs(pitch) > limit)
 
 def below_min_altitude(env: ManagerBasedRLEnv, min_altitude: float) -> torch.Tensor:

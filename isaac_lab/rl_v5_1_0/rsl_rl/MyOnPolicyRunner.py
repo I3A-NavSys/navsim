@@ -251,8 +251,8 @@ class MyOnPolicyRunner:
                             # una vez que el entorno ya no cambia (it >= 1500)
                             patience_counter += 1
                             if (patience_counter >= patience): 
-                                # early_stopping = True
-                                pass
+                                early_stopping = True
+                                # pass
                 # ---------------------
 
 

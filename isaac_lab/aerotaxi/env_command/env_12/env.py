@@ -142,7 +142,7 @@ class UAVactionTerm(ActionTerm):
         u_hover = torch.clamp(u_hover, min=0.0)
 
         omega_hover = torch.sqrt(u_hover)
-        thrust_scale = 0.3
+        thrust_scale = 0.5
         self._raw_actions = omega_hover * (1.0 + thrust_scale * actions)
         self._raw_actions = torch.clamp(self._raw_actions, min=0.0)
         # ------------------------------------------------------
@@ -176,7 +176,7 @@ class UAVactionTerm(ActionTerm):
         thrust_coeffs = torch.tensor([kFT_N, kFT_N, kFT_S, kFT_S], device=self.device)
         thrust_z = thrust_coeffs * self._raw_actions**torch_2
         # evito que la componente z sea infinita
-        thrust_z = torch.clamp(thrust_z, max=9000.0) # antes 5000 N, pero es insuficiente para 2200 kilos
+        thrust_z = torch.clamp(thrust_z, max=12000.0) # antes 5000 N, pero es insuficiente para 2200 kilos
         FT_all = torch.zeros(self._env.num_envs, 4, 3, device=self.device)
         FT_all[:, :, 2] = thrust_z  # Only z-component is non-zero
         
@@ -570,12 +570,12 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    rew_attitude_stability2 = RewTerm(func=my_rewards.rew_attitude_stability2, weight=2.0)
-    rew_ang_vel_stability4 = RewTerm(func=my_rewards.rew_ang_vel_stability4, weight=3.0)
+    rew_attitude_stability2 = RewTerm(func=my_rewards.rew_attitude_stability2, weight=8.0)
+    rew_ang_vel_stability4 = RewTerm(func=my_rewards.rew_ang_vel_stability4, weight=4.0)
     rew_altitude_hold2 = RewTerm(func=my_rewards.rew_altitude_hold2,weight=4.0)
-    rew_vel2 = RewTerm(func=my_rewards.rew_vel2,weight=3.0)
-    rew_pos2 = RewTerm(func=my_rewards.rew_pos2, weight=3.0)
-    rew_action_rate = RewTerm(func=my_rewards.rew_action_rate, weight=0.5)
+    rew_vel2 = RewTerm(func=my_rewards.rew_vel2,weight=1.5)
+    rew_pos2 = RewTerm(func=my_rewards.rew_pos2, weight=2.0)
+    rew_action_rate = RewTerm(func=my_rewards.rew_action_rate, weight=3.0)
 
     # rew_vel_z = RewTerm(func=my_rewards.rew_vertical_velocity,weight=6.0)
     # tilt_penalty_pg = RewTerm(func=my_rewards.rew_tilt_penalty_pg,weight=-3.5)
