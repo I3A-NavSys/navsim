@@ -305,7 +305,6 @@ def my_obs_pitch(env:ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
 
     return pitch
 
-# Para el crítico
 def my_obs_target_vel(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
     asset = env.scene["aerotaxi"]
     command_term = env.command_manager.get_term("vel_command")
@@ -372,19 +371,16 @@ class ObervervationCfg:
         dist = ObsTerm(func=my_obs_dist2, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
         lin_vel = ObsTerm(func=my_obs_lin_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.05))
         ang_vel = ObsTerm(func=my_obs_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.05))
+        # height = ObsTerm(func=my_obs_height, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
+        projected_gravity = ObsTerm(func=my_obs_projected_gravity, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
+        # prev_action = ObsTerm(func=my_obs_prev_action, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         # roll = ObsTerm(func=my_obs_roll, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
         # pitch = ObsTerm(func=my_obs_pitch, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
         # yaw = ObsTerm(func=my_obs_yaw, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
-        height = ObsTerm(func=my_obs_height, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
-        projected_gravity = ObsTerm(func=my_obs_projected_gravity, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
-        # prev_action = ObsTerm(func=my_obs_prev_action, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
 
         # current_command = ObsTerm(func=my_obs_command) # habría fuga de datos si no
         # GaussianNoiseCFG: simula el ruido de los sensores, así es como si fuera Regularización
-        # target_vel = ObsTerm(
-        #     func=my_obs_target_vel, 
-        #     params={"asset_cfg": SceneEntityCfg(name="aerotaxi")}
-        # )
+        target_vel = ObsTerm(func=my_obs_target_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.02))
         # target_pos = ObsTerm(func=my_obs_target_pos, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         # target_ang_vel = ObsTerm(func=my_obs_target_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
 
@@ -407,8 +403,9 @@ class ObervervationCfg:
         dist = ObsTerm(func=my_obs_dist2, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         lin_vel = ObsTerm(func=my_obs_lin_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         ang_vel = ObsTerm(func=my_obs_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
-        height = ObsTerm(func=my_obs_height, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        # height = ObsTerm(func=my_obs_height, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         projected_gravity = ObsTerm(func=my_obs_projected_gravity, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        target_vel = ObsTerm(func=my_obs_target_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         # roll = ObsTerm(func=my_obs_roll, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         # pitch = ObsTerm(func=my_obs_pitch, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         # yaw = ObsTerm(func=my_obs_yaw, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
@@ -624,12 +621,12 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    rew_attitude_stability2 = RewTerm(func=my_rewards.rew_attitude_stability2, weight=8.0)
-    rew_ang_vel_stability4 = RewTerm(func=my_rewards.rew_ang_vel_stability4, weight=4.0)
-    rew_altitude_hold2 = RewTerm(func=my_rewards.rew_altitude_hold2,weight=4.0)
-    rew_vel2 = RewTerm(func=my_rewards.rew_vel2,weight=1.5)
-    rew_pos2 = RewTerm(func=my_rewards.rew_pos2, weight=2.0)
-    rew_action_rate = RewTerm(func=my_rewards.rew_action_rate, weight=3.0)
+    rew_attitude_stability2 = RewTerm(func=my_rewards.rew_attitude_stability3, weight=2.0)
+    rew_ang_vel_stability4 = RewTerm(func=my_rewards.rew_ang_vel_stability5, weight=1.0)
+    # rew_altitude_hold2 = RewTerm(func=my_rewards.rew_altitude_hold2,weight=4.0)
+    rew_vel2 = RewTerm(func=my_rewards.rew_track_vel,weight=4.0)
+    rew_pos2 = RewTerm(func=my_rewards.rew_track_pos, weight=12.0)
+    rew_action_rate = RewTerm(func=my_rewards.rew_action_rate, weight=0.8)
 
     # rew_vel_z = RewTerm(func=my_rewards.rew_vertical_velocity,weight=6.0)
     # tilt_penalty_pg = RewTerm(func=my_rewards.rew_tilt_penalty_pg,weight=-3.5)

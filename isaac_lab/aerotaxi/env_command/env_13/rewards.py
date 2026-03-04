@@ -8,18 +8,30 @@ import isaaclab.utils.math as math_utils
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
 
-def rew_attitude_stability2(env):
+# def rew_attitude_stability2(env):
+#     asset = env.scene["aerotaxi"]
+#     roll, pitch, _ = math_utils.euler_xyz_from_quat(asset.data.root_com_quat_w)
+#     angle_term = torch.exp(-3.0 * (roll**2 + pitch**2))
+#     return angle_term
+def rew_attitude_stability3(env):
     asset = env.scene["aerotaxi"]
     roll, pitch, _ = math_utils.euler_xyz_from_quat(asset.data.root_com_quat_w)
-    angle_term = torch.exp(-3.0 * (roll**2 + pitch**2))
+    angle_term = torch.exp(-1.0 * (roll**2 + pitch**2))
     return angle_term
 
-# def rew_ang_vel_stability3(env):
-#     asset = env.scene["aerotaxi"]
-#     ang_vel = asset.data.root_com_ang_vel_b
-#     ang_vel_term = torch.exp(-0.5*(torch.norm(ang_vel, dim=1)**2))
-#     return ang_vel_term 
-def rew_ang_vel_stability4(env):
+def rew_track_pos(env: ManagerBasedRLEnv):
+    term = env.command_manager.get_term("vel_command")
+    target_pos = term.target_pos  # XYZ
+    
+    asset = env.scene["aerotaxi"]
+    current_pos_w = asset.data.root_com_pos_w[:, :3]
+    current_pos_local = current_pos_w - env.scene.env_origins[:, :3]
+
+    error = torch.norm(current_pos_local - target_pos, dim=1)
+    
+    return torch.exp(-0.3 * error**2)
+
+def rew_ang_vel_stability5(env):
     asset = env.scene["aerotaxi"]
     ang_vel = asset.data.root_com_ang_vel_b
 
@@ -28,9 +40,43 @@ def rew_ang_vel_stability4(env):
     yaw_rate = ang_vel[:, 2]
 
     term_xy = torch.exp(-0.5 * torch.norm(ang_vel_xy, dim=1)**2)
-    term_yaw = torch.exp(-1.5 * yaw_rate**2)
+    term_yaw = torch.exp(-0.3 * yaw_rate**2)
 
     return 0.7 * term_xy + 0.3 * term_yaw
+
+def rew_track_vel(env: ManagerBasedRLEnv):
+    term = env.command_manager.get_term("vel_command")
+    target_vel = term.target_vel  # velocidad del punto guía
+
+    asset = env.scene["aerotaxi"]
+    vel = asset.data.root_com_lin_vel_w[:, :3]
+
+    vel_error = torch.norm(vel - target_vel, dim=1)
+
+    return torch.exp(-0.5 * vel_error**2)
+
+def rew_action_rate(env: ManagerBasedRLEnv) -> torch.Tensor:
+    # Penaliza la diferencia entre la acción actual y la anterior
+    diff = -0.01 * torch.norm(env.action_manager.action - env.action_manager.prev_action, dim=1)**2
+    return diff
+
+# def rew_ang_vel_stability3(env):
+#     asset = env.scene["aerotaxi"]
+#     ang_vel = asset.data.root_com_ang_vel_b
+#     ang_vel_term = torch.exp(-0.5*(torch.norm(ang_vel, dim=1)**2))
+#     return ang_vel_term 
+# def rew_ang_vel_stability4(env):
+#     asset = env.scene["aerotaxi"]
+#     ang_vel = asset.data.root_com_ang_vel_b
+
+#     # Separar yaw
+#     ang_vel_xy = ang_vel[:, :2]
+#     yaw_rate = ang_vel[:, 2]
+
+#     term_xy = torch.exp(-0.5 * torch.norm(ang_vel_xy, dim=1)**2)
+#     term_yaw = torch.exp(-1.5 * yaw_rate**2)
+
+#     return 0.7 * term_xy + 0.3 * term_yaw
 
 # def rew_altitude_hold3(env):
 #     asset = env.scene["aerotaxi"]
@@ -39,39 +85,35 @@ def rew_ang_vel_stability4(env):
 
 #     return -5.0*((z - z_target)**2)
 
-def rew_altitude_hold2(env):
-    asset = env.scene["aerotaxi"]
-    z = asset.data.root_com_pos_w[:, 2]
-    z_target = env.command_manager.get_term("vel_command").target_pos[:, 2]
+# def rew_altitude_hold2(env):
+#     asset = env.scene["aerotaxi"]
+#     z = asset.data.root_com_pos_w[:, 2]
+#     z_target = env.command_manager.get_term("vel_command").target_pos[:, 2]
 
-    return torch.exp(-2*((z - z_target)**2))
+#     return torch.exp(-2*((z - z_target)**2))
 
-def rew_vel2(env:ManagerBasedRLEnv):
-    asset = env.scene["aerotaxi"]
-    vel_lin_b = asset.data.root_com_lin_vel_w[:, :3]
-    vel = torch.norm(vel_lin_b, dim=1)
-    return torch.exp(-1.0 * vel**2)
+# def rew_vel2(env:ManagerBasedRLEnv):
+#     asset = env.scene["aerotaxi"]
+#     vel_lin_b = asset.data.root_com_lin_vel_w[:, :3]
+#     vel = torch.norm(vel_lin_b, dim=1)
+#     return torch.exp(-1.0 * vel**2)
 
-def rew_vertical_velocity(env):
-    asset = env.scene["aerotaxi"]
-    vz = asset.data.root_com_lin_vel_w[:, 2]
-    return -3.0 * torch.clamp(-vz, min=0.0)**2
+# def rew_vertical_velocity(env):
+#     asset = env.scene["aerotaxi"]
+#     vz = asset.data.root_com_lin_vel_w[:, 2]
+#     return -3.0 * torch.clamp(-vz, min=0.0)**2
 
-def rew_pos2(env: ManagerBasedRLEnv):
-    term = env.command_manager.get_term("vel_command")
-    target_pos = term.target_pos[:, :2] 
-    asset = env.scene["aerotaxi"]
-    current_pos_w = asset.data.root_com_pos_w
-    current_pos_local = current_pos_w[:, :2] - env.scene.env_origins[:, :2]
-    dist = torch.norm(current_pos_local - target_pos, dim=1)
-    dist_sq = dist**2
-    pos_term = torch.exp(-0.5 * dist_sq)
-    return pos_term 
+# def rew_pos2(env: ManagerBasedRLEnv):
+#     term = env.command_manager.get_term("vel_command")
+#     target_pos = term.target_pos[:, :2] 
+#     asset = env.scene["aerotaxi"]
+#     current_pos_w = asset.data.root_com_pos_w
+#     current_pos_local = current_pos_w[:, :2] - env.scene.env_origins[:, :2]
+#     dist = torch.norm(current_pos_local - target_pos, dim=1)
+#     dist_sq = dist**2
+#     pos_term = torch.exp(-0.5 * dist_sq)
+#     return pos_term 
 
-def rew_action_rate(env: ManagerBasedRLEnv) -> torch.Tensor:
-    # Penaliza la diferencia entre la acción actual y la anterior
-    diff = -0.01 * torch.norm(env.action_manager.action - env.action_manager.prev_action, dim=1)**2
-    return diff
 
 
 # def rew_action_rate2(env: ManagerBasedRLEnv) -> torch.Tensor:
