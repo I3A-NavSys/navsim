@@ -23,8 +23,8 @@ class Command9PPORunnerCfg(RslRlOnPolicyRunnerCfg):
     algorithm = RslRlPpoAlgorithmCfg(
         value_loss_coef=0.5,
         use_clipped_value_loss=True,
-        clip_param=0.1,
-        entropy_coef=0.02,
+        clip_param=0.2,
+        entropy_coef=0.005,
         num_learning_epochs=5,
         num_mini_batches=8,
         learning_rate=2e-4,

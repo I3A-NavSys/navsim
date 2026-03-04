@@ -387,8 +387,8 @@ class ObervervationCfg:
         def __post_init__(self):
             self.enable_corruption = True  # Regularización con ruido en las observaciones
             self.concatenate_terms = True
-            # self.history_length = 6 # como no queremos pasarle la velocidad directamente, que la infiera si no
-            # self.flatten_history_dim = True
+            self.history_length = 3 
+            self.flatten_history_dim = True
 
     # Crítico: la corrección que se hará sobre lo que ve el dron en train. En test no hay crítico
     # Por eso aquí vamos a incluir la velocidad del punto guía, para que pueda ajustarse a ella en train, pero en test no
@@ -421,8 +421,8 @@ class ObervervationCfg:
         def __post_init__(self):
             self.enable_corruption = False # El crítico no necesita ruido
             self.concatenate_terms = True
-            # self.history_length = 6 # como no queremos pasarle la velocidad directamente, que la infiera si no
-            # self.flatten_history_dim = True
+            self.history_length = 3 
+            self.flatten_history_dim = True
 
     policy: PolicyCfg = PolicyCfg()
     critic: CriticCfg = CriticCfg()
