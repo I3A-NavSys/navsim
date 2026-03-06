@@ -37,6 +37,13 @@ class NavSim(omni.ext.IExt):
 
             # Update UAV control
             self.uav_control.update(current_flightplans, current_time, step_size)
+            # forces = np.tile(np.array([[0, 0, 9.81 * 2100]]), (self.rigid_prim_view.count, 1))
+            # self.rigid_prim_view.apply_forces_and_torques_at_pos(
+            #     forces=forces,
+            #     torques=np.zeros_like(forces),
+            #     indices=np.array(range(self.rigid_prim_view.count)),
+            #     is_global=False
+            # )
 
     def on_timeline_play(self, event):
         # Recover from pause

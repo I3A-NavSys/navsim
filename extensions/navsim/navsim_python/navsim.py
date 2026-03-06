@@ -67,8 +67,19 @@ class NavSimManager:
             if self.mission_generation_task is not None:
                 self.mission_generation_task.cancel()
 
+            # for mission_manager in self.mission_managers:
+            #     mission_manager.missions = {}
+
+            # for uav_operator in self.uav_operators:
+            #     uav_operator.missions = {}
+
             for uspace_manager in self.uspace_managers:
                 uspace_manager.airspace.clear_grid()
+                # uspace_manager.missions = {}
+
+            # for vertiport_operator in self.vertiport_operators:
+            #     vertiport_operator.missions = {}
+
 
     def pause_simulation(self):
         self.mission_generation_task.cancel()
@@ -355,7 +366,7 @@ class NavSimManager:
                     flightplan = None
                     
                     for fp in mission["flightplans"]:
-                        if fp.init_time() - 5 <= current_time < fp.end_time():
+                        if fp.init_time() - 5 <= current_time < fp.finish_time():
                             flightplan = fp
                             break
 
@@ -365,6 +376,6 @@ class NavSimManager:
                         continue
 
                     # Add the flightplan to the list along with the assigned UAV ID
-                    flightplans.append((assigned_uav_id, flightplan))
+                    flightplans.append((uav_operator.id, assigned_uav_id, flightplan))
 
         return flightplans

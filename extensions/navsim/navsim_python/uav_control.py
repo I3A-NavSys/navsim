@@ -1,7 +1,6 @@
 import numpy as np
 
 from omni.isaac.core.prims import RigidPrimView
-from tmp.tmpVictor.playground.playground import rotate_vector_by_quaternion
 
 class UAVControl:
     def __init__(self, rigid_prim_view: RigidPrimView, uav_ids_to_physics_buffer: dict):
@@ -67,8 +66,8 @@ class UAVControl:
     def imu(self):
         self.positions, self.orientations = self.rigid_prim_view.get_world_poses()
         self.eulers = self.quaternion_to_euler(self.orientations)
-        self.world_linear_vels = self.rigid_prim_view.get_linear_velocities(clone=False)
-        self.world_angular_vels = self.rigid_prim_view.get_angular_velocities(clone=False)
+        self.world_linear_vels = self.rigid_prim_view.get_linear_velocities(clone=True)
+        self.world_angular_vels = self.rigid_prim_view.get_angular_velocities(clone=True)
         self.local_linear_vels = self.global_to_local_velocity(
             self.world_linear_vels, 
             self.orientations
@@ -78,12 +77,12 @@ class UAVControl:
             self.orientations
         )
     
-    def servo_control(self, command, uav_idx, step_size):
+    def servo_control(self, command_linear_vel, command_angular_vel, uav_idx, step_size):
         # Assign the model reference to be followed
-        self.r[0, 0] = command.velX       # bXdot
-        self.r[1, 0] = command.velY       # bYdot
-        self.r[2, 0] = command.velZ       # bZdot
-        self.r[3, 0] = command.rotZ       # hZdot
+        self.r[0, 0] = command_linear_vel[0]  # bXdot
+        self.r[1, 0] = command_linear_vel[1]  # bYdot
+        self.r[2, 0] = command_linear_vel[2]  # bZdot
+        self.r[3, 0] = command_angular_vel     # hZdot
 
         # Assign model state
         self.x[0:2, 0] = self.eulers[uav_idx, 0:2] # ePhi, eTheta
@@ -100,7 +99,7 @@ class UAVControl:
         self.e = self.y - self.r
 
         # Cumulative error
-        self.E = self.E + (self.e * self.step_size)
+        self.E = self.E + (self.e * step_size)
 
         # Dynamic system control
         self.u = self.Hs - np.dot(self.Kx, self.x) - np.dot(self.Ky, self.E)
@@ -157,17 +156,36 @@ class UAVControl:
     def update(self, flightplans, current_time, step_size):
         self.imu()
 
-        # self.forces_to_apply = np.zeros((len(flightplans), 3))
-        # self.torques_to_apply = np.zeros_like(self.forces_to_apply)
-        # uav_buffer_indexes = []
+        for operator_id, uav_id, flightplan in flightplans:
+            uav_idx = self.uav_ids_to_physics_buffer[operator_id][uav_id]
+            current_pos = self.positions[uav_idx]
+            current_world_linear_vel = self.world_linear_vels[uav_idx]
+            current_yaw = self.eulers[uav_idx, 2]
+            current_waypoint_heading = flightplan.get_running_waypoint(current_time).heading
 
-        for uav_id, flightplan in flightplans:
-            uav_idx = self.uav_ids_to_physics_buffer[uav_id]
-            # uav_buffer_indexes.append(uav_idx)
+            cmd_world_linear_vel, cmd_yaw_rotation = flightplan.get_isaacsim_command(
+                current_time,
+                current_pos,
+                current_world_linear_vel,
+                current_yaw,
+                current_waypoint_heading,
+                2
+            )
 
-            # get_command()
-            
-            self.servo_control(flightplan, uav_idx, step_size)
+            cmd_local_linear_vel = self.global_to_local_velocity(
+                cmd_world_linear_vel,
+                self.orientations[uav_idx]
+            )
+
+            print(f"POS: {current_pos}")
+            print(f"CURRENT WORLD LINEAR VEL: {current_world_linear_vel}")
+            print(f"CURRENT YAW: {current_yaw}")
+            print(f"CMD WORLD LINEAR VEL: {cmd_world_linear_vel}")
+            print(f"CMD YAW ROTATION: {cmd_yaw_rotation}")
+            print(f"CMD LOCAL LINEAR VEL: {cmd_local_linear_vel}")
+            print("----")
+
+            self.servo_control(cmd_local_linear_vel, cmd_yaw_rotation, uav_idx, step_size)
             self.compute_dynamics(uav_idx)
 
         self.apply_dynamics()
@@ -175,7 +193,7 @@ class UAVControl:
     # -------------------------
     # -- Auxiliary Functions --
     # -------------------------
-    def rotate_vector_by_quaternion(vector, quaternion, conjugate):
+    def rotate_vector_by_quaternion(self, vector, quaternion, conjugate):
         # Ensure working with a 2D array
         is_1d_array = False
 
@@ -202,13 +220,13 @@ class UAVControl:
 
         return np.round(vector_rotated, decimals=4)
 
-    def local_to_global_velocity(vector, quaternion):
-        return rotate_vector_by_quaternion(vector, quaternion, conjugate=False)
+    def local_to_global_velocity(self, vector, quaternion):
+        return self.rotate_vector_by_quaternion(vector, quaternion, conjugate=False)
 
-    def global_to_local_velocity(vector, quaternion):
-        return rotate_vector_by_quaternion(vector, quaternion, conjugate=True)
+    def global_to_local_velocity(self, vector, quaternion):
+        return self.rotate_vector_by_quaternion(vector, quaternion, conjugate=True)
 
-    def quaternion_to_euler(quaternion):
+    def quaternion_to_euler(self, quaternion):
         # Ensure it's a 2D array even if a single quaternion is passed
         is_1d_array = False
 

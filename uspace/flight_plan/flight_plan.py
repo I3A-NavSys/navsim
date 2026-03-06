@@ -79,6 +79,9 @@ class FlightPlan:
                 return i
         return None
     
+    def get_running_waypoint(self, t: float):
+        return self.waypoints[self.get_running_index_from_time(t)]
+
     def get_running_index_from_time(self, t: float):
         """
         It returns the WP the UAV is currently executing
@@ -521,6 +524,40 @@ class FlightPlan:
 
         return cmd
     
+    def get_isaacsim_command(self, time, pos, lin_vel, yaw, heading, t_to_solve):
+        # EXPECTED UAV POSE
+        expected = self.status_at_time(time)
+
+        # COMPUTING CORRECTION VELOCITY (to achieve status.pos in 'tToSolve' seconds)
+        correction_vel = (expected.pos - pos) / t_to_solve
+
+        # COMPUTING COMMANDED VELOCITY
+        command_linear_vel = expected.vel + correction_vel
+
+        # SMOOTHING COMMANDED VELOCITY
+        variation_vel = command_linear_vel - lin_vel
+        command_linear_vel = lin_vel + variation_vel
+
+        # COMPUTING TARGET ERROR YAW
+        if heading is None:
+            target_heading = expected.vel[:2]
+        else:
+            target_heading = heading
+
+        if np.linalg.norm(target_heading) > 0:
+            self.target_yaw = np.arctan2(target_heading[1], target_heading[0])
+        elif self.target_yaw is None:
+            self.target_yaw = yaw
+
+        yaw_error = self.target_yaw - yaw
+        # Normalize to [-pi, pi]
+        yaw_error = (yaw_error + np.pi) % (2 * np.pi) - np.pi
+
+        # COMPUTING TARGET ANGULAR VELOCITY
+        command_yaw_rotation = yaw_error / t_to_solve
+
+        return command_linear_vel, command_yaw_rotation
+
     #------------------------------------------------------------------------------------------------------------------
     # CONFLICT DETECTION
 

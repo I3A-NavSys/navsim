@@ -126,7 +126,8 @@ class MissionManager:
         self.last_mission_id += 1
 
         mission_id = f"MISSION_{self.last_mission_id}"
-        mission_type = random.choice([MissionType.DELIVERY, MissionType.PASSENGER_TRANSPORT])
+        # mission_type = random.choice([MissionType.DELIVERY, MissionType.PASSENGER_TRANSPORT])
+        mission_type = MissionType.PASSENGER_TRANSPORT
 
         possible_uav_operators, possible_vertiport_operators = self.get_operators_by_service_type(mission_type)
 
