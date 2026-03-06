@@ -305,7 +305,6 @@ def my_obs_pitch(env:ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
 
     return pitch
 
-# Para el crítico
 def my_obs_target_vel(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
     asset = env.scene["aerotaxi"]
     command_term = env.command_manager.get_term("vel_command")
@@ -360,12 +359,6 @@ def my_obs_command(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Get current velocity commands."""
     return env.command_manager.get_command("vel_command")
 
-def my_obs_mass(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
-    asset = env.scene["aerotaxi"]
-    mass = asset.data.default_mass.sum(dim=1)
-    mass = mass.to(env.device)
-    return mass.unsqueeze(1) / 2000.0
-
 @configclass
 class ObervervationCfg:
     """Observation specifications for the environment."""
@@ -378,28 +371,24 @@ class ObervervationCfg:
         dist = ObsTerm(func=my_obs_dist2, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
         lin_vel = ObsTerm(func=my_obs_lin_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.05))
         ang_vel = ObsTerm(func=my_obs_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.05))
+        # height = ObsTerm(func=my_obs_height, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
+        projected_gravity = ObsTerm(func=my_obs_projected_gravity, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
+        # prev_action = ObsTerm(func=my_obs_prev_action, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         # roll = ObsTerm(func=my_obs_roll, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
         # pitch = ObsTerm(func=my_obs_pitch, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
         # yaw = ObsTerm(func=my_obs_yaw, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
-        height = ObsTerm(func=my_obs_height, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
-        projected_gravity = ObsTerm(func=my_obs_projected_gravity, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
-        # mass = ObsTerm(func=my_obs_mass, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.01))
-        # prev_action = ObsTerm(func=my_obs_prev_action, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
 
         # current_command = ObsTerm(func=my_obs_command) # habría fuga de datos si no
         # GaussianNoiseCFG: simula el ruido de los sensores, así es como si fuera Regularización
-        # target_vel = ObsTerm(
-        #     func=my_obs_target_vel, 
-        #     params={"asset_cfg": SceneEntityCfg(name="aerotaxi")}
-        # )
+        target_vel = ObsTerm(func=my_obs_target_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")},noise=GaussianNoiseCfg(std=0.02))
         # target_pos = ObsTerm(func=my_obs_target_pos, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         # target_ang_vel = ObsTerm(func=my_obs_target_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
 
         def __post_init__(self):
             self.enable_corruption = True  # Regularización con ruido en las observaciones
             self.concatenate_terms = True
-            # self.history_length = 6 # como no queremos pasarle la velocidad directamente, que la infiera si no
-            # self.flatten_history_dim = True
+            self.history_length = 3 
+            self.flatten_history_dim = True
 
     # Crítico: la corrección que se hará sobre lo que ve el dron en train. En test no hay crítico
     # Por eso aquí vamos a incluir la velocidad del punto guía, para que pueda ajustarse a ella en train, pero en test no
@@ -414,9 +403,9 @@ class ObervervationCfg:
         dist = ObsTerm(func=my_obs_dist2, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         lin_vel = ObsTerm(func=my_obs_lin_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         ang_vel = ObsTerm(func=my_obs_ang_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
-        height = ObsTerm(func=my_obs_height, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        # height = ObsTerm(func=my_obs_height, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         projected_gravity = ObsTerm(func=my_obs_projected_gravity, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
-        # mass = ObsTerm(func=my_obs_mass, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
+        target_vel = ObsTerm(func=my_obs_target_vel, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         # roll = ObsTerm(func=my_obs_roll, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         # pitch = ObsTerm(func=my_obs_pitch, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
         # yaw = ObsTerm(func=my_obs_yaw, params={"asset_cfg": SceneEntityCfg(name="aerotaxi")})
@@ -432,8 +421,8 @@ class ObervervationCfg:
         def __post_init__(self):
             self.enable_corruption = False # El crítico no necesita ruido
             self.concatenate_terms = True
-            # self.history_length = 6 # como no queremos pasarle la velocidad directamente, que la infiera si no
-            # self.flatten_history_dim = True
+            self.history_length = 3 
+            self.flatten_history_dim = True
 
     policy: PolicyCfg = PolicyCfg()
     critic: CriticCfg = CriticCfg()
@@ -458,6 +447,7 @@ class UAVcommandTerm(CommandTerm):
         # velocidad en x,y,z (tamaño 3)
         self.target_vel = torch.zeros(self.num_envs, 3, device=self.device)
         self.target_yaw = torch.zeros(self.num_envs,device=self.device)
+        self.target_yaw_prev = torch.zeros(self.num_envs, device=self.device)
 
         # estado del punto guía en t (vel_x,vel_y,vel_z, yaw_rate)
         self._command = torch.zeros(self.num_envs,4,device=self.device)
@@ -486,21 +476,124 @@ class UAVcommandTerm(CommandTerm):
         self._asset.update(self.dt)
         uav_pos_w = self._asset.data.root_com_pos_w[env_ids] - self._env.scene.env_origins[env_ids]
         self.target_pos[env_ids] = uav_pos_w[:, :3]
-        self.target_vel[env_ids] = 0.0
-        self.target_yaw[env_ids] = 0.0
 
+        # Definimos velocidad aleatoria del fantasma (3 a 6 m/s)
+        speed = torch.rand(len(env_ids), device=self.device) * 3.0 + 3.0
+        
+        # Dirección inicial aleatoria en el plano XY
+        angle = torch.rand(len(env_ids), device=self.device) * 2 * math.pi
+        self.target_vel[env_ids, 0] = torch.cos(angle) * speed
+        self.target_vel[env_ids, 1] = torch.sin(angle) * speed
+        self.target_vel[env_ids, 2] = torch.rand(len(env_ids), device=self.device) * 0.5 + 0.2
+        # Curvatura aleatoria (Yaw rate del camino: -0.3 a 0.3 rad/s)
+        # Esto genera círculos, curvas en S o rectas aleatorias
+        max_yaw_rate_change = 0.3
+        self.target_yaw[env_ids] = (torch.rand(len(env_ids), device=self.device) - 0.5) * 2.0 * max_yaw_rate_change
+        self.target_yaw_prev[env_ids] = self.target_yaw[env_ids].clone()
 
     def _update_command(self):
-        # # 5. Comando para la red (Posición relativa en Body Frame)
+        # segundo o más frame de tiempo
+        """Mueve el fantasma en cada paso de física."""
+        # Variación de altura dinámica durante el vuelo (cada ~2 seg)
+        change_z = torch.rand(self.num_envs, device=self.device) < 0.01
+        if change_z.any():
+            self.target_vel[change_z, 2] = (torch.rand(change_z.sum(), device=self.device) - 0.5) * 1.6 # -0.8 a 0.8 m/s de variación de velocidad 
+
+        # Limitar cambio de yaw del punto (aceleración angular)
+        max_yaw_change = 0.1 * self.dt
+        self.target_yaw = self.target_yaw_prev + torch.clamp(
+            self.target_yaw - self.target_yaw_prev, -max_yaw_change, max_yaw_change
+        )
+        self.target_yaw_prev = self.target_yaw.clone()
+
+
+        # Rotación horizontal (curvas)
+        cos_theta = torch.cos(self.target_yaw * self.dt)
+        sin_theta = torch.sin(self.target_yaw * self.dt)
+        vx, vy = self.target_vel[:, 0].clone(), self.target_vel[:, 1].clone()
+        self.target_vel[:, 0] = vx * cos_theta - vy * sin_theta
+        self.target_vel[:, 1] = vx * sin_theta + vy * cos_theta
+
+        # Valla Virtual (Límite 100m spacing -> 50m radio)
+        limite_xy = 45.0
+        limite_z = (1.75, 20.0)
+        
+        # Rebote XY
+        out_x = (self.target_pos[:, 0].abs() > limite_xy)
+        self.target_vel[out_x, 0] *= -1.1 # Rebote con un poco de impulso hacia adentro
+        out_y = (self.target_pos[:, 1].abs() > limite_xy)
+        self.target_vel[out_y, 1] *= -1.1
+
+        # Rebote Z
+        at_top = (self.target_pos[:, 2] > limite_z[1]) & (self.target_vel[:, 2] > 0)
+        at_bot = (self.target_pos[:, 2] < limite_z[0]) & (self.target_vel[:, 2] < 0)
+        self.target_vel[at_top | at_bot, 2] *= -1.0
+
+        # limitación de velocidad máxima
+        max_speed = 6.0  # m/s
+        speed = torch.norm(self.target_vel[:, :2], dim=1, keepdim=True)
+        scale = torch.clamp(max_speed / (speed + 1e-6), max=1.0)
+        self.target_vel[:, :2] *= scale
+
+        # Actualizar posición del punto guía
+        self.target_pos += self.target_vel * self.dt
+
+        # Comando para la red (Posición relativa en Body Frame)
         uav_pos_local = self._asset.data.root_com_pos_w[:, :3] - self._env.scene.env_origins[:, :3]
         rel_pos_w = self.target_pos - uav_pos_local
+
+        # Calcular yaw deseado hacia el objetivo
+        delta = self.target_pos[:, :2] - uav_pos_local[:, :2]
+        target_yaw_angle = torch.atan2(delta[:, 1], delta[:, 0])
+        current_yaw = math_utils.euler_xyz_from_quat(self._asset.data.root_com_quat_w)[2]
+        yaw_error = target_yaw_angle - current_yaw
+        yaw_error = (yaw_error + math.pi) % (2*math.pi) - math.pi  # [-pi, pi]
+
+
         quat_inv = math_utils.quat_inv(self._asset.data.root_com_quat_w)
         self._command[:, :3] = math_utils.quat_apply(quat_inv, rel_pos_w)
-        self.command[:, 3] = 0.0
-        # # ---------------------------
-        # # Visualización dinámica
+        
+        # Guardamos la velocidad de giro del fantasma en la 4ª columna
+        # Esto es lo que la recompensa rew_ang_vel_z_diff está buscando
+        self._command[:, 3] = self.target_yaw 
+        # ---------------------------
+        # Visualización dinámica
         target_pos_w = self.target_pos + self._env.scene.env_origins
         self._marker_visualizer.visualize(translations=target_pos_w)
+
+        # --- Flecha orientación objetivo (verde)
+        delta_xy = self.target_pos[:, :2] - (self._asset.data.root_com_pos_w[:, :2] - self._env.scene.env_origins[:, :2])
+        unit_vec = delta_xy / (torch.norm(delta_xy, dim=1, keepdim=True) + 1e-6)
+        arrow_length = 2.0  # m
+        arrow_vec = torch.zeros(self.num_envs, 3, device=self.device)
+        arrow_vec[:, 0] = unit_vec[:, 0] * arrow_length
+        arrow_vec[:, 1] = unit_vec[:, 1] * arrow_length
+        arrow_vec[:, 2] = 0.1
+        origin_pos = self._asset.data.root_com_pos_w - self._env.scene.env_origins
+        self._marker_visualizer.visualize_arrows(
+            translations=origin_pos,
+            directions=arrow_vec,
+            color=(0.0, 1.0, 0.0),  # verde
+            scale=1.0
+        )
+
+        # --- Flecha orientación actual del dron (roja)
+        # Tomamos la orientación del dron: vector forward en body frame z=0
+        # En muchos UAV, forward = +X del body frame
+        forward_body = torch.tensor([1.0, 0.0, 0.0], device=self.device).repeat(self.num_envs, 1)
+        # Rotar al mundo según quaternion
+        drone_forward_w = math_utils.quat_apply(self._asset.data.root_com_quat_w, forward_body)
+        drone_forward_w[:, 2] = 0.1  # un poquito de elevación para visualizar
+        drone_forward_w = drone_forward_w / (torch.norm(drone_forward_w, dim=1, keepdim=True) + 1e-6)
+        drone_forward_w *= arrow_length
+        self._marker_visualizer.visualize_arrows(
+            translations=origin_pos,
+            directions=drone_forward_w,
+            color=(1.0, 0.0, 0.0),  # rojo
+            scale=1.0
+        )
+        
+
 @configclass
 class UAVcommandTermCfg(CommandTermCfg):
     """Command term configuration for the UAV."""
@@ -578,12 +671,12 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    rew_attitude_stability2 = RewTerm(func=my_rewards.rew_attitude_stability2, weight=8.0)
-    rew_ang_vel_stability4 = RewTerm(func=my_rewards.rew_ang_vel_stability4, weight=4.0)
-    rew_altitude_hold2 = RewTerm(func=my_rewards.rew_altitude_hold2,weight=4.0)
-    rew_vel2 = RewTerm(func=my_rewards.rew_vel2,weight=1.5)
-    rew_pos2 = RewTerm(func=my_rewards.rew_pos2, weight=2.0)
-    rew_action_rate = RewTerm(func=my_rewards.rew_action_rate, weight=3.0)
+    rew_attitude_stability2 = RewTerm(func=my_rewards.rew_attitude_stability3, weight=2.0)
+    rew_ang_vel_stability4 = RewTerm(func=my_rewards.rew_ang_vel_stability5, weight=1.0)
+    # rew_altitude_hold2 = RewTerm(func=my_rewards.rew_altitude_hold2,weight=4.0)
+    rew_vel2 = RewTerm(func=my_rewards.rew_track_vel,weight=4.0)
+    rew_pos2 = RewTerm(func=my_rewards.rew_track_pos, weight=12.0)
+    rew_action_rate = RewTerm(func=my_rewards.rew_action_rate, weight=0.8)
 
     # rew_vel_z = RewTerm(func=my_rewards.rew_vertical_velocity,weight=6.0)
     # tilt_penalty_pg = RewTerm(func=my_rewards.rew_tilt_penalty_pg,weight=-3.5)
