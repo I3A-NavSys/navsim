@@ -12,6 +12,10 @@ from scipy.spatial.transform import Rotation
 import isaaclab.envs.mdp as mdp
 from isaaclab.markers import VisualizationMarkersCfg, VisualizationMarkers
 import isaaclab.sim as sim_utils
+# para la flecha
+# -------------------------------------------------
+from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR
+# -------------------------------------------------
 from isaaclab.assets import AssetBaseCfg, Articulation, ArticulationCfg
 from isaaclab.envs import ManagerBasedRLEnv, ManagerBasedRLEnvCfg
 from isaaclab.managers import ActionTermCfg, ActionTerm
@@ -31,6 +35,8 @@ from . import terminations as my_terminations
 from .flight_plan import FlightPlan
 # ruido gaussiano para la regularización -- Teresa ---
 from isaaclab.utils.noise import GaussianNoiseCfg
+# para las flechas
+from isaaclab.utils.math import quat_from_matrix
 # ---------------------------------------------------
 
 # |---------------------------------------------------------|
@@ -441,6 +447,8 @@ class UAVcommandTerm(CommandTerm):
     def __init__(self, cfg: UAVcommandTermCfg, env: ManagerBasedRLEnv):
         super().__init__(cfg, env)
         self._marker_visualizer = VisualizationMarkers(VISUAL_TARGET_CFG)
+        self._marker_visualizer_green = VisualizationMarkers(GREEN_ARROW_CFG)
+        self._marker_visualizer_red = VisualizationMarkers(RED_ARROW_CFG)
         self._asset = env.scene[cfg.asset_name]
         
         # ponemos la velocidad y giro al que deberá ir nuestro punto guía
@@ -464,6 +472,23 @@ class UAVcommandTerm(CommandTerm):
     def _update_metrics(self):
         pass
 
+    def get_arrow_quat(self, direction_vec):
+        """Convierte un vector de dirección en un cuaternión que apunta hacia esa dirección."""
+        # 1. Normalizamos la dirección (Eje X de la flecha)
+        x_axis = torch.nn.functional.normalize(direction_vec, dim=-1)
+        
+        # 2. Creamos una base ortonormal (Gram-Schmidt)
+        # Usamos un vector 'up' auxiliar
+        up = torch.tensor([0.0, 0.0, 1.0], device=self.device).repeat(direction_vec.shape[0], 1)
+        # Eje Y = Up x X
+        y_axis = torch.nn.functional.normalize(torch.cross(up, x_axis, dim=-1), dim=-1)
+        # Eje Z = X x Y
+        z_axis = torch.cross(x_axis, y_axis, dim=-1)
+        
+        # 3. Formamos la matriz de rotación [N, 3, 3] y convertimos a cuaternión
+        # Isaac Lab espera las columnas en orden X, Y, Z
+        res_matrix = torch.stack([x_axis, y_axis, z_axis], dim=-1)
+        return quat_from_matrix(res_matrix)
 
     def _resample_command(self, env_ids: torch.Tensor):
         # primer frame de tiempo
@@ -569,28 +594,40 @@ class UAVcommandTerm(CommandTerm):
         arrow_vec[:, 0] = unit_vec[:, 0] * arrow_length
         arrow_vec[:, 1] = unit_vec[:, 1] * arrow_length
         arrow_vec[:, 2] = 0.1
-        origin_pos = self._asset.data.root_com_pos_w - self._env.scene.env_origins
-        self._marker_visualizer.visualize_arrows(
-            translations=origin_pos,
-            directions=arrow_vec,
-            color=(0.0, 1.0, 0.0),  # verde
-            scale=1.0
+        origin_pos_w = self._asset.data.root_com_pos_w
+        # 1. Flecha Objetivo (Verde)
+        # Vector desde el dron al target
+        target_dir_w = target_pos_w - origin_pos_w
+        quat_target = self.get_arrow_quat(target_dir_w)
+        
+        # 2. Flecha Dron (Roja)
+
+
+        # --- VISUALIZAR ---
+
+        # Si usas el mismo y quieres ver AMBAS, concatena:
+        uav_pos_w = self._asset.data.root_com_pos_w[:, :3]
+        target_pos_w = self.target_pos + self._env.scene.env_origins
+
+        # 2. FLECHA OBJETIVO (Verde - Dirección hacia donde tiene que ir)
+        target_dir_w = target_pos_w - uav_pos_w
+        quat_target = self.get_arrow_quat(target_dir_w)
+        
+        # 3. FLECHA DRON (Roja - Hacia donde mira el morro del dron)
+        # El forward del dron es su propio quaternion (si el asset mira hacia +X)
+        quat_drone = self._asset.data.root_com_quat_w
+        
+        self._marker_visualizer_green.visualize(
+            translations=uav_pos_w + torch.tensor([0, 0, 2.0], device=self.device), 
+            orientations=quat_target,
+            scales=torch.tensor([10.0, 3.0, 3.0], device=self.device).repeat(self.num_envs, 1)
         )
 
-        # --- Flecha orientación actual del dron (roja)
-        # Tomamos la orientación del dron: vector forward en body frame z=0
-        # En muchos UAV, forward = +X del body frame
-        forward_body = torch.tensor([1.0, 0.0, 0.0], device=self.device).repeat(self.num_envs, 1)
-        # Rotar al mundo según quaternion
-        drone_forward_w = math_utils.quat_apply(self._asset.data.root_com_quat_w, forward_body)
-        drone_forward_w[:, 2] = 0.1  # un poquito de elevación para visualizar
-        drone_forward_w = drone_forward_w / (torch.norm(drone_forward_w, dim=1, keepdim=True) + 1e-6)
-        drone_forward_w *= arrow_length
-        self._marker_visualizer.visualize_arrows(
-            translations=origin_pos,
-            directions=drone_forward_w,
-            color=(1.0, 0.0, 0.0),  # rojo
-            scale=1.0
+        # Flecha Roja (Orientación actual)
+        self._marker_visualizer_red.visualize(
+            translations=uav_pos_w + torch.tensor([0, 0, 1.0], device=self.device),
+            orientations=quat_drone,
+            scales=torch.tensor([8.0, 3.0, 3.0], device=self.device).repeat(self.num_envs, 1)
         )
         
 
@@ -789,6 +826,31 @@ VISUAL_TARGET_CFG = VisualizationMarkersCfg(
     },
 )
 
+GREEN_ARROW_CFG = VisualizationMarkersCfg(
+    prim_path="/Visuals/TargetArrow",
+    markers={
+        "arrow": sim_utils.ConeCfg(
+            radius=0.1,
+            height=0.5,
+            axis='X',
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.0, 1.0, 0.0)), # VERDE
+        ),
+    },
+)
+
+
+RED_ARROW_CFG = VisualizationMarkersCfg(
+    prim_path="/Visuals/DroneArrow",
+    markers={
+        "arrow": sim_utils.ConeCfg(
+            radius=0.1,
+            height=0.5,
+            axis='X',
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 0.0, 0.0)), # ROJO
+        ),
+    },
+)
+
 @configclass
 class MySceneCfg(InteractiveSceneCfg):
     """Configuration for a UAV scene"""
@@ -870,6 +932,7 @@ class MySceneCfg(InteractiveSceneCfg):
             intensity=30000
         )
     )
+
 
 
 
