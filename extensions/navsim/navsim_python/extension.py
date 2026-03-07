@@ -29,22 +29,21 @@ class NavSim(omni.ext.IExt):
 
     def on_physics_step(self, step_size: float):
         if self.is_simulation_running:
-            # Get current time and current flightplans to update UAV control
+            # Get current time
             current_time = self.timeline.get_current_time()
+
+            # Update time manager current times
+            self.time_manager.current_sim_time = current_time
+            self.time_manager.current_real_time = self.time_manager.sim_to_real(current_time)
+
+            # Get current flightplans to update UAV control
             current_flightplans = self.navsim_manager.get_all_current_flitghplans(
                 current_time
             )
 
             # Update UAV control
             self.uav_control.update(current_flightplans, current_time, step_size)
-            # forces = np.tile(np.array([[0, 0, 9.81 * 2100]]), (self.rigid_prim_view.count, 1))
-            # self.rigid_prim_view.apply_forces_and_torques_at_pos(
-            #     forces=forces,
-            #     torques=np.zeros_like(forces),
-            #     indices=np.array(range(self.rigid_prim_view.count)),
-            #     is_global=False
-            # )
-
+            
     def on_timeline_play(self, event):
         # Recover from pause
         if self.is_simulation_running:
@@ -56,6 +55,9 @@ class NavSim(omni.ext.IExt):
         #     self.navsim_manager.shutdown()
         #     self.navsim_manager.startup()
         #     self.has_stage_been_modified = False
+
+        # Start time manager
+        self.time_manager.start()
 
         # Start RigidPrimView
         self.rigid_prim_view = RigidPrimView(
@@ -128,7 +130,7 @@ class NavSim(omni.ext.IExt):
 
         # Managers
         self.time_manager = TimeManager()
-        self.navsim_manager = NavSimManager()
+        self.navsim_manager = NavSimManager(self.time_manager)
 
         # Timeline callbacks
         self.timeline = omni.timeline.get_timeline_interface()

@@ -140,8 +140,8 @@ class MissionManager:
         stop_times = [random.randint(10, 60) for _ in range(amount_stops)]
         uav_operator_id = random.choice(possible_uav_operators)
         landing_time = random.randint(
-            current_time + random.randint(50, 200), 
-            current_time + random.randint(200, 500)
+            current_time + 300, 
+            current_time + 1000
         )
 
         self.missions[mission_id] = Mission(
@@ -187,10 +187,10 @@ class MissionManager:
         cancellation_reason = data.get("cancellation_reason", "")
         
         # Logging
-        print(f"[{self.id}] - Cancelling mission:")
-        print(f"  Mission ID: {mission_id}")
-        print(f"  Cancellation Reason: {cancellation_reason}")
-        print()
+        # print(f"[{self.id}] - Cancelling mission:")
+        # print(f"  Mission ID: {mission_id}")
+        # print(f"  Cancellation Reason: {cancellation_reason}")
+        # print()
 
         # Update mission status and cancellation reason
         self.missions[mission_id].status = MissionStatus.CANCELLED
@@ -201,16 +201,16 @@ class MissionManager:
         self.vertiport_operators = data["vertiport_operators"]
 
         # Logging
-        print(f"[{self.id}] - Received Vertiport operator list:")
-        self.log_dict_table(self.vertiport_operators, ["ID", "Data"])
+        # print(f"[{self.id}] - Received Vertiport operator list:")
+        # self.log_dict_table(self.vertiport_operators, ["ID", "Data"])
 
     def on_receive_uav_operator_list(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())
         self.uav_operators = data["uav_operators"]
 
         # Logging
-        print(f"[{self.id}] - Received UAV operator list:")
-        self.log_dict_table(self.uav_operators, ["ID", "Data"])
+        # print(f"[{self.id}] - Received UAV operator list:")
+        # self.log_dict_table(self.uav_operators, ["ID", "Data"])
 
     def on_receive_uav_mission_update(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())
@@ -224,9 +224,9 @@ class MissionManager:
         mission.status = mission_status
 
         # Logging
-        print(f"[{self.id}] - Received mission status update:")
-        print(f"  UAV Operator ID: {uav_operator_id}")
-        print(f"  Mission ID: {mission_id}")
-        print(f"  Mission Status: {mission_status}")
-        print("----------------------------------------------")
-        print()
+        # print(f"[{self.id}] - Received mission status update:")
+        # print(f"  UAV Operator ID: {uav_operator_id}")
+        # print(f"  Mission ID: {mission_id}")
+        # print(f"  Mission Status: {mission_status}")
+        # print("----------------------------------------------")
+        # print()

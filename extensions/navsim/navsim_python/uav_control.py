@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.spatial.transform import Rotation
 
 from omni.isaac.core.prims import RigidPrimView
 
@@ -48,7 +49,7 @@ class UAVControl:
         self.x = np.zeros((8, 1))
         self.y = np.zeros((4, 1))
         self.e = np.zeros((4, 1))
-        self.E = np.zeros((4, 1))
+        self.E = np.zeros((self.amount_uavs, 4, 1))
         self.u = np.zeros((4, 1))
         self.E_max = 150
 
@@ -85,7 +86,8 @@ class UAVControl:
         self.r[3, 0] = command_angular_vel     # hZdot
 
         # Assign model state
-        self.x[0:2, 0] = self.eulers[uav_idx, 0:2] # ePhi, eTheta
+        self.x[0, 0] = self.eulers[uav_idx, 0]
+        self.x[1, 0] = self.eulers[uav_idx, 1]
         self.x[2:5, 0] = self.local_angular_vels[uav_idx] # bWx, bWy, bWz
         self.x[5:8, 0] = self.local_linear_vels[uav_idx]  # bXdot, bYdot, bZdot
 
@@ -99,16 +101,20 @@ class UAVControl:
         self.e = self.y - self.r
 
         # Cumulative error
-        self.E = self.E + (self.e * step_size)
+        self.E[uav_idx] += self.e * step_size
+        self.E[uav_idx] = np.clip(self.E[uav_idx], -self.E_max, self.E_max)
 
         # Dynamic system control
-        self.u = self.Hs - np.dot(self.Kx, self.x) - np.dot(self.Ky, self.E)
+        self.u = self.Hs - np.dot(self.Kx, self.x) - np.dot(self.Ky, self.E[uav_idx])
 
         # Rotor speed saturation
         self.u = np.clip(self.u, self.w_min, self.w_max)
 
         # Assign rotor speed
-        self.rotors_vel = self.u[:, 0]
+        self.rotors_vel[0] = self.u[1, 0]
+        self.rotors_vel[1] = self.u[0, 0]
+        self.rotors_vel[2] = self.u[3, 0]
+        self.rotors_vel[3] = self.u[2, 0]
 
     def compute_dynamics(self, uav_idx):
         square_rotors_vel = self.rotors_vel**2

@@ -173,11 +173,11 @@ class VertiportOperator:
         cancellation_reason
     ):
         # Logging
-        print(f"[{self.id}] - Cancelling mission:")
-        print(f"  Mission Manager ID: {mission_manager_id}")
-        print(f"  Mission ID: {mission_id}")
-        print(f"  Cancellation Reason: {cancellation_reason}")
-        print()
+        # print(f"[{self.id}] - Cancelling mission:")
+        # print(f"  Mission Manager ID: {mission_manager_id}")
+        # print(f"  Mission ID: {mission_id}")
+        # print(f"  Cancellation Reason: {cancellation_reason}")
+        # print()
 
         # Inform USpace manager about the cancellation
         topic = Topics.CANCEL_MISSION
@@ -192,6 +192,14 @@ class VertiportOperator:
 
         # Send cancellation message
         self.send_mqtt_msg(topic, json.dumps(msg))
+
+        # Free resources and update cancellation reason
+        self.free_resources(
+            uav_operator_id, 
+            mission_manager_id, 
+            mission_id, 
+            cancellation_reason
+        )
 
     def register_into_airspace(self):
         topic = Topics.VERTIPORT_OPERATOR_REGISTER
@@ -228,28 +236,36 @@ class VertiportOperator:
         # Wait 5 seconds at assigned pad
         flightplan.set_waypoint(
             time=time - offset, 
-            pos=pad_pos, 
+            pos=[pad_pos[0], pad_pos[1], pad_pos[2] + 1.75], 
             vel=[0, 0, 0], 
             heading=counter_pad_heading
         )
         # UAV pad -> main pad
         flightplan.set_waypoint(
             time=time + 5 - offset, 
-            pos=pad_pos, 
+            pos=[pad_pos[0], pad_pos[1], pad_pos[2] + 1.75], 
             vel=[0, 0, 0], 
             heading=counter_pad_heading
         )
         # Wait 5 seconds at main pad to be properly oriented
         flightplan.set_waypoint(
             time=time + 15 - offset, 
-            pos=self.main_pad.location, 
+            pos=[
+                self.main_pad.location[0], 
+                self.main_pad.location[1], 
+                self.main_pad.location[2] + 1.75
+            ], 
             vel=[0, 0, 0],
             heading=takeoff_grid_heading
         )
         # main pad -> grid connection point
         flightplan.set_waypoint(
             time=time + 20 - offset, 
-            pos=self.main_pad.location, 
+            pos=[
+                self.main_pad.location[0], 
+                self.main_pad.location[1], 
+                self.main_pad.location[2] + 1.75
+            ], 
             vel=[0, 0, 0],
             heading=takeoff_grid_heading
         )
@@ -296,27 +312,35 @@ class VertiportOperator:
         # main pad
         flightplan.set_waypoint(
             time=time + 20 - offset,
-            pos=self.main_pad.location,
+            pos=[
+                self.main_pad.location[0], 
+                self.main_pad.location[1], 
+                self.main_pad.location[2] + 1.75
+            ], 
             vel=[0, 0, -1],
         )
         # wait 5 seconds at main pad to be properly oriented
         flightplan.set_waypoint(
             time=time + 25 - offset,
-            pos=self.main_pad.location,
+            pos=[
+                self.main_pad.location[0], 
+                self.main_pad.location[1], 
+                self.main_pad.location[2] + 1.75
+            ], 
             vel=[0, 0, 0],
             heading=counter_pad_heading
         )
         # main pad -> assigned pad
         flightplan.set_waypoint(
             time=time + 35 - offset,
-            pos=pad_pos,
+            pos=[pad_pos[0], pad_pos[1], pad_pos[2] + 1.75], 
             vel=[0, 0, 0],
             heading=counter_pad_heading
         )
         # wait 5 seconds at assigned pad
         flightplan.set_waypoint(
             time=time + 40 - offset,
-            pos=pad_pos,
+            pos=[pad_pos[0], pad_pos[1], pad_pos[2] + 1.75], 
             vel=[0, 0, 0],
             heading=counter_pad_heading
         )
@@ -373,11 +397,11 @@ class VertiportOperator:
         cancellation_reason = data.get("cancellation_reason", "")
         
         # Logging
-        print(f"[{self.id}] - Cancelling mission:")
-        print(f"  Mission Manager ID: {mission_manager_id}")
-        print(f"  Mission ID: {mission_id}")
-        print(f"  Cancellation Reason: {cancellation_reason}")
-        print()
+        # print(f"[{self.id}] - Cancelling mission:")
+        # print(f"  Mission Manager ID: {mission_manager_id}")
+        # print(f"  Mission ID: {mission_id}")
+        # print(f"  Cancellation Reason: {cancellation_reason}")
+        # print()
 
         # Free resources and update cancellation reason
         self.free_resources(
@@ -403,18 +427,18 @@ class VertiportOperator:
         stop_time = data["stop_time"]
 
         # Logging
-        print(f"[{self.id}] - Received mission request:")
-        print(f"  USpace Manager ID: {uspace_manager_id}")
-        print(f"  UAV Operator ID: {uav_operator_id}")
-        print(f"  Mission Manager ID: {mission_manager_id}")
-        print(f"  Mission ID: {mission_id}")
-        print(f"  Pad ID: {pad_id}")
-        print(f"  Is Landing: {is_landing}")
-        print(f"  Is Reversed: {is_reversed}")
-        print(f"  Mission Type: {mission_type}")
-        print(f"  Time: {time}")
-        print(f"  Stop Time: {stop_time}")
-        print()
+        # print(f"[{self.id}] - Received mission request:")
+        # print(f"  USpace Manager ID: {uspace_manager_id}")
+        # print(f"  UAV Operator ID: {uav_operator_id}")
+        # print(f"  Mission Manager ID: {mission_manager_id}")
+        # print(f"  Mission ID: {mission_id}")
+        # print(f"  Pad ID: {pad_id}")
+        # print(f"  Is Landing: {is_landing}")
+        # print(f"  Is Reversed: {is_reversed}")
+        # print(f"  Mission Type: {mission_type}")
+        # print(f"  Time: {time}")
+        # print(f"  Stop Time: {stop_time}")
+        # print()
 
         if is_landing:
             # If the vertiport is private, a pad is always reserved for the UAV, 

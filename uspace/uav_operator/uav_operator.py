@@ -18,6 +18,7 @@ class UAVOperator:
         private_vertiport_operator_id=None, 
         uavs={}
     ):
+        self.time_manager = None
         self.id: str = id
         self.name: str = name
         self.service_types: list[str] = service_types
@@ -158,7 +159,6 @@ class UAVOperator:
         self, 
         mission_manager_id, 
         mission_id, 
-        mission_type, 
         cancellation_reason
     ):
         # Get mission entry
@@ -175,7 +175,7 @@ class UAVOperator:
         # Free UAV booking if it was assigned
         if assigned_uav_id:
             # Get UAV
-            uav = self.uavs[mission_type][assigned_uav_id]
+            uav = self.uavs[mission.mission_type][assigned_uav_id]
 
             # Get start_time and end_time of the booking to cancel
             start_time = mission_dict["flightplans"][0].init_time()
@@ -222,7 +222,12 @@ class UAVOperator:
         # Select topics based on cancellation reason
         topics = [f"{Topics.CANCEL_MISSION}/{mission_manager_id}"]
 
-        if cancellation_reason == CancellationReason.NO_AVAILABLE_UAV:
+        inform_uspace_manager = (
+            cancellation_reason == CancellationReason.NO_AVAILABLE_UAV or
+            cancellation_reason == CancellationReason.FLIGHTPLAN_IN_THE_PAST
+        )
+        
+        if inform_uspace_manager:
             topics.append(Topics.CANCEL_MISSION)
         
         # Build cancellation message
@@ -236,6 +241,13 @@ class UAVOperator:
         # Send message to corresponding entities
         for topic in topics:
             self.send_mqtt_msg(topic, json.dumps(msg))
+
+        # Free resources and update cancellation reason
+        self.free_resources(
+            mission_manager_id,
+            mission_id,
+            cancellation_reason
+        )
 
     def request_route(
         self, 
@@ -333,21 +345,12 @@ class UAVOperator:
         # Extract cancellation data
         mission_manager_id = data.get("mission_manager_id", "")
         mission_id = data.get("mission_id", "")
-        mission_type = data.get("mission_type", "")
         cancellation_reason = data.get("cancellation_reason", "")
 
         # Inform entities involved in the mission for them to free resources
         self.cancel_mission(
             mission_manager_id, 
             mission_id, 
-            cancellation_reason
-        )
-
-        # Free resources and update mission cancellation reason
-        self.free_resources(
-            mission_manager_id, 
-            mission_id, 
-            mission_type, 
             cancellation_reason
         )
 
@@ -363,13 +366,13 @@ class UAVOperator:
         landing_time = data["landing_time"]
 
         # Logging
-        print(f"[{self.id}] - Received request for mission:")
-        print(f"  Mission ID: {mission_id}")
-        print(f"  Mission Type: {mission_type}")
-        print(f"  Stop List: {stop_list}")
-        print(f"  Stop Times: {stop_time}")
-        print(f"  Landing Time: {landing_time}")
-        print()
+        # print(f"[{self.id}] - Received request for mission:")
+        # print(f"  Mission ID: {mission_id}")
+        # print(f"  Mission Type: {mission_type}")
+        # print(f"  Stop List: {stop_list}")
+        # print(f"  Stop Times: {stop_time}")
+        # print(f"  Landing Time: {landing_time}")
+        # print()
 
         # Return if mission type is not supported
         if mission_type not in self.uavs or self.uavs[mission_type] == {}:
@@ -443,14 +446,14 @@ class UAVOperator:
         flightplan.from_dict(raw_flightplan)
 
         # Logging
-        print(f"[{self.id}] - Received new leg flightplan:")
-        print(f"  USpace Manager ID: {uspace_manager_id}")
-        print(f"  Mission Manager ID: {mission_manager_id}")
-        print(f"  Mission ID: {mission_id}")
-        print(f"  Landing Pad ID: {landing_pad_id}")
+        # print(f"[{self.id}] - Received new leg flightplan:")
+        # print(f"  USpace Manager ID: {uspace_manager_id}")
+        # print(f"  Mission Manager ID: {mission_manager_id}")
+        # print(f"  Mission ID: {mission_id}")
+        # print(f"  Landing Pad ID: {landing_pad_id}")
         # print("  Flightplan waypoints:")
         # flightplan.print_waypoints()
-        print()
+        # print()
         
         # Store flightplan
         self.missions[mission_manager_id][mission_id]["flightplans"].append(flightplan)
@@ -491,10 +494,10 @@ class UAVOperator:
             return
 
         # Logging
-        print(("----------------------------------------------------------"))
-        print(f"[{self.id}] - Leg completed ({current_stop + 1} / {last_stop + 1}) for mission {mission_id}")
-        print(("----------------------------------------------------------"))
-        print()
+        # print(("----------------------------------------------------------"))
+        # print(f"[{self.id}] - Leg completed ({current_stop + 1} / {last_stop + 1}) for mission {mission_id}")
+        # print(("----------------------------------------------------------"))
+        # print()
 
         # Ask for next route
         origin_vertiport_id = stop_list[current_stop]
@@ -529,6 +532,17 @@ class UAVOperator:
         # Build flightplan object from raw data
         takeoff_flightplan = FlightPlan()
         takeoff_flightplan.from_dict(raw_flightplan)
+
+        # Cancel mission if flightplan's start time is in the past (in simulation time)
+        if takeoff_flightplan.init_time() <= self.time_manager.current_sim_time:
+            print(f"TFO TIME: {takeoff_flightplan.init_time()}")
+            print(f"CURRENT TIME: {self.time_manager.current_sim_time}")
+            self.cancel_mission(
+                mission_manager_id,
+                mission_id,
+                CancellationReason.FLIGHTPLAN_IN_THE_PAST
+            )
+            return
 
         # Get mission entry
         mission_dict = self.missions[mission_manager_id][mission_id]
@@ -602,10 +616,13 @@ class UAVOperator:
         print(f"[{self.id}] - Mission {mission_id} completed all legs")
         print(("----------------------------------------------------"))
         print()
-        for i, fp in enumerate(self.missions[mission_manager_id][mission_id]["flightplans"]):
-            print(f"Leg {i+1}:")
-            fp.print_waypoints()
-        print()
+        # for i, fp in enumerate(self.missions[mission_manager_id][mission_id]["flightplans"]):
+        #     print(f"Leg {i+1}:")
+        #     fp.print_waypoints()
+        # print()
+
+        print("\tAssigned UAV: ", mission_dict["assigned_uav_id"])
+        print("\tStart time: ", mission_dict["flightplans"][0].init_time())
 
         # All legs completed, send mission status update to mission manager
         self.send_mission_status_update(

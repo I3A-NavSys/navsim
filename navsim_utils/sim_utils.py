@@ -31,6 +31,8 @@ class TimeManager:
     def __init__(self):
         self.start_real_time = None
         self.time_offset = 0.0
+        self.current_sim_time = 0.0
+        self.current_real_time = None
 
     def start(self):
         self.start_real_time = datetime.now()
@@ -38,6 +40,8 @@ class TimeManager:
     def stop(self):
         self.start_real_time = None
         self.time_offset = 0.0
+        self.current_sim_time = 0.0
+        self.current_real_time = None
 
     def pause(self):
         self.start_pause_time = datetime.now()

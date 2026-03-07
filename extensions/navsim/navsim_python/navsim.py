@@ -13,8 +13,9 @@ from uspace.uspace_manager.uspace_manager import USpaceManager
 from uspace.uspace_manager.constants import MissionType, UAVStatus, PadStatus
 
 class NavSimManager:
-    def __init__(self):
+    def __init__(self, time_manager):
         # Control
+        self.time_manager = time_manager
         self.is_simulation_running = False
         self.back_counter_time_max = 10
         self.back_counter_time = self.back_counter_time_max
@@ -211,6 +212,7 @@ class NavSimManager:
                 uavs=uav_operator_uavs
             )
 
+            uav_operator.time_manager = self.time_manager
             self.uav_operators.append(uav_operator)
 
     def scan_vertiport_operators(self, stage, prim_paths):
