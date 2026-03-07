@@ -512,7 +512,7 @@ class UAVcommandTerm(CommandTerm):
         self.target_vel[env_ids, 2] = torch.rand(len(env_ids), device=self.device) * 0.5 + 0.2
         # Curvatura aleatoria (Yaw rate del camino: -0.3 a 0.3 rad/s)
         # Esto genera círculos, curvas en S o rectas aleatorias
-        max_yaw_rate_change = 0.3
+        max_yaw_rate_change = 0.06
         self.target_yaw[env_ids] = (torch.rand(len(env_ids), device=self.device) - 0.5) * 2.0 * max_yaw_rate_change
         self.target_yaw_prev[env_ids] = self.target_yaw[env_ids].clone()
 
@@ -525,7 +525,7 @@ class UAVcommandTerm(CommandTerm):
             self.target_vel[change_z, 2] = (torch.rand(change_z.sum(), device=self.device) - 0.5) * 1.6 # -0.8 a 0.8 m/s de variación de velocidad 
 
         # Limitar cambio de yaw del punto (aceleración angular)
-        max_yaw_change = 0.1 * self.dt
+        max_yaw_change = 0.02 * self.dt
         self.target_yaw = self.target_yaw_prev + torch.clamp(
             self.target_yaw - self.target_yaw_prev, -max_yaw_change, max_yaw_change
         )
@@ -544,15 +544,18 @@ class UAVcommandTerm(CommandTerm):
         limite_z = (1.75, 20.0)
         
         # Rebote XY
-        out_x = (self.target_pos[:, 0].abs() > limite_xy)
-        self.target_vel[out_x, 0] *= -1.1 # Rebote con un poco de impulso hacia adentro
-        out_y = (self.target_pos[:, 1].abs() > limite_xy)
-        self.target_vel[out_y, 1] *= -1.1
+        margin = 3.0
 
-        # Rebote Z
-        at_top = (self.target_pos[:, 2] > limite_z[1]) & (self.target_vel[:, 2] > 0)
-        at_bot = (self.target_pos[:, 2] < limite_z[0]) & (self.target_vel[:, 2] < 0)
-        self.target_vel[at_top | at_bot, 2] *= -1.0
+        out_x = (self.target_pos[:,0].abs() > limite_xy - margin)
+        self.target_vel[out_x,0] *= -1.0
+
+        out_y = (self.target_pos[:,1].abs() > limite_xy - margin)
+        self.target_vel[out_y,1] *= -1.0
+
+        # Z
+        at_top = (self.target_pos[:,2] > limite_z[1]) & (self.target_vel[:,2] > 0)
+        at_bot = (self.target_pos[:,2] < limite_z[0]) & (self.target_vel[:,2] < 0)
+        self.target_vel[at_top | at_bot,2] *= -1.0
 
         # limitación de velocidad máxima
         max_speed = 6.0  # m/s
@@ -568,7 +571,7 @@ class UAVcommandTerm(CommandTerm):
         rel_pos_w = self.target_pos - uav_pos_local
 
         # Calcular yaw deseado hacia el objetivo
-        delta = self.target_pos[:, :2] - uav_pos_local[:, :2]
+        delta = self.target_vel[:, :2] # ya no es target_pos - drone_pos
         target_yaw_angle = torch.atan2(delta[:, 1], delta[:, 0])
         current_yaw = math_utils.euler_xyz_from_quat(self._asset.data.root_com_quat_w)[2]
         yaw_error = target_yaw_angle - current_yaw
@@ -617,14 +620,14 @@ class UAVcommandTerm(CommandTerm):
         # El forward del dron es su propio quaternion (si el asset mira hacia +X)
         quat_drone = self._asset.data.root_com_quat_w
         
-        self._marker_visualizer_green.visualize(
+        self._marker_visualizer_red.visualize(
             translations=uav_pos_w + torch.tensor([0, 0, 2.0], device=self.device), 
             orientations=quat_target,
             scales=torch.tensor([10.0, 3.0, 3.0], device=self.device).repeat(self.num_envs, 1)
         )
 
         # Flecha Roja (Orientación actual)
-        self._marker_visualizer_red.visualize(
+        self._marker_visualizer_green.visualize(
             translations=uav_pos_w + torch.tensor([0, 0, 1.0], device=self.device),
             orientations=quat_drone,
             scales=torch.tensor([8.0, 3.0, 3.0], device=self.device).repeat(self.num_envs, 1)
@@ -711,9 +714,10 @@ class RewardsCfg:
     rew_attitude_stability2 = RewTerm(func=my_rewards.rew_attitude_stability3, weight=2.0)
     rew_ang_vel_stability4 = RewTerm(func=my_rewards.rew_ang_vel_stability5, weight=1.0)
     # rew_altitude_hold2 = RewTerm(func=my_rewards.rew_altitude_hold2,weight=4.0)
-    rew_vel2 = RewTerm(func=my_rewards.rew_track_vel,weight=4.0)
-    rew_pos2 = RewTerm(func=my_rewards.rew_track_pos, weight=12.0)
+    rew_vel2 = RewTerm(func=my_rewards.rew_track_vel,weight=10.0)
+    rew_pos2 = RewTerm(func=my_rewards.rew_track_pos, weight=3.0)
     rew_action_rate = RewTerm(func=my_rewards.rew_action_rate, weight=0.8)
+    rew_heading = RewTerm(func=my_rewards.rew_heading, weight=4.0)
 
     # rew_vel_z = RewTerm(func=my_rewards.rew_vertical_velocity,weight=6.0)
     # tilt_penalty_pg = RewTerm(func=my_rewards.rew_tilt_penalty_pg,weight=-3.5)

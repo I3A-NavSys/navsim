@@ -60,6 +60,21 @@ def rew_action_rate(env: ManagerBasedRLEnv) -> torch.Tensor:
     diff = -0.01 * torch.norm(env.action_manager.action - env.action_manager.prev_action, dim=1)**2
     return diff
 
+def rew_heading(env):
+
+    asset = env.scene["aerotaxi"]
+    vel = asset.data.root_com_lin_vel_w[:,:2]
+
+    yaw = math_utils.euler_xyz_from_quat(asset.data.root_com_quat_w)[2]
+
+    forward = torch.stack([torch.cos(yaw), torch.sin(yaw)],dim=1)
+
+    vel_dir = vel / (torch.norm(vel,dim=1,keepdim=True)+1e-6)
+
+    alignment = torch.sum(forward * vel_dir, dim=1)
+
+    return torch.clamp(alignment,0,1)
+
 # def rew_ang_vel_stability3(env):
 #     asset = env.scene["aerotaxi"]
 #     ang_vel = asset.data.root_com_ang_vel_b
