@@ -535,8 +535,6 @@ class UAVOperator:
 
         # Cancel mission if flightplan's start time is in the past (in simulation time)
         if takeoff_flightplan.init_time() <= self.time_manager.current_sim_time:
-            print(f"TFO TIME: {takeoff_flightplan.init_time()}")
-            print(f"CURRENT TIME: {self.time_manager.current_sim_time}")
             self.cancel_mission(
                 mission_manager_id,
                 mission_id,

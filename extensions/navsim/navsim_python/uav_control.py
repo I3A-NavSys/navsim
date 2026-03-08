@@ -183,13 +183,13 @@ class UAVControl:
                 self.orientations[uav_idx]
             )
 
-            print(f"POS: {current_pos}")
-            print(f"CURRENT WORLD LINEAR VEL: {current_world_linear_vel}")
-            print(f"CURRENT YAW: {current_yaw}")
-            print(f"CMD WORLD LINEAR VEL: {cmd_world_linear_vel}")
-            print(f"CMD YAW ROTATION: {cmd_yaw_rotation}")
-            print(f"CMD LOCAL LINEAR VEL: {cmd_local_linear_vel}")
-            print("----")
+            # print(f"POS: {current_pos}")
+            # print(f"CURRENT WORLD LINEAR VEL: {current_world_linear_vel}")
+            # print(f"CURRENT YAW: {current_yaw}")
+            # print(f"CMD WORLD LINEAR VEL: {cmd_world_linear_vel}")
+            # print(f"CMD YAW ROTATION: {cmd_yaw_rotation}")
+            # print(f"CMD LOCAL LINEAR VEL: {cmd_local_linear_vel}")
+            # print("----")
 
             self.servo_control(cmd_local_linear_vel, cmd_yaw_rotation, uav_idx, step_size)
             self.compute_dynamics(uav_idx)

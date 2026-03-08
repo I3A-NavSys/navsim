@@ -273,26 +273,21 @@ class NavSimManager:
             # Build grid connection information
             vertiport_grid_connection = {}
 
-            global_frame_main_pad_location = (
-                vertiport_location[0] + main_pad.location[0],
-                vertiport_location[1] + main_pad.location[1],
-                vertiport_location[2] + main_pad.location[2]
-            )
-
+            i_grid = main_pad.location[1] // 100
             heading = [
-                1 if (global_frame_main_pad_location[0]) % 2 == 0 else -1, 
+                1 if i_grid % 2 == 0 else -1,
                 0
             ]
 
             takeoff_position = [
-                global_frame_main_pad_location[0] + 50 * heading[0],
-                global_frame_main_pad_location[1],
+                main_pad.location[0] + 50 * heading[0],
+                main_pad.location[1],
                 60  # TODO: Change this fixed values to adapt to grid requirements
             ]
 
             landing_position = [
-                global_frame_main_pad_location[0] - 50 * heading[0],
-                global_frame_main_pad_location[1],
+                main_pad.location[0] - 50 * heading[0],
+                main_pad.location[1],
                 60  # TODO: Change this fixed values to adapt to grid requirements
             ]
 
