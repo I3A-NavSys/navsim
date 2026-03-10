@@ -23,7 +23,6 @@ class UAVOperator:
         self.name: str = name
         self.service_types: list[str] = service_types
         self.private_vertiport_operator_id: str = private_vertiport_operator_id
-        self.private_vertiport_operator_fp_time: int = 40
         # Keep track of UAVs: {mission_type: {uav_id: UAV}}
         self.uavs: dict[str, dict[str, UAV]] = uavs
         # Keep track of missions' processing status (used when requesting routes): 
@@ -294,12 +293,12 @@ class UAVOperator:
         # Get the times to start and end the takeoff and landing flightplans
         start_time = (
             mission_dict["flightplans"][0].init_time() - 
-            self.private_vertiport_operator_fp_time
+            50
         )
 
         end_time = (
             mission_dict["flightplans"][-1].finish_time() + 
-            self.private_vertiport_operator_fp_time
+            70
         )
 
         # Book first available UAV for the whole mission duration

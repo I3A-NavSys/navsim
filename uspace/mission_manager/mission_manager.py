@@ -10,7 +10,7 @@ from .mission import Mission
 class MissionManager:
     def __init__(self, id=None, name=None):
         # Test
-        random.seed(1)
+        random.seed(2)
 
         self.id: str = id
         self.name: str = name

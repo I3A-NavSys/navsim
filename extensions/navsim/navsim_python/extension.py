@@ -126,7 +126,7 @@ class NavSim(omni.ext.IExt):
         self.is_simulation_running = False
         self.has_stage_been_modified = False
         self.uav_control = None
-        self.uav_ids_to_physics_buffer = {}
+        self.uav_ids_to_physics_buffer = {} # {operator_id: {uav_id: physics_buffer_index}}
 
         # Managers
         self.time_manager = TimeManager()

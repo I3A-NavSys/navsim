@@ -17,7 +17,7 @@ class VertiportOperator:
         grid_connection=None, 
         main_pad=None, 
         pads=None,
-        security_pad_booking_buffer=40
+        security_pad_booking_buffer=70
     ):
         self.id: str = id
         self.name: str = name
@@ -222,7 +222,7 @@ class VertiportOperator:
         takeoff_grid_heading = self.grid_connection["takeoff"]["heading"]
         x_direction = takeoff_grid_heading[0]
         y_direction = takeoff_grid_heading[1]
-        counter_pad_heading = [
+        pad_to_main_pad_heading = [
             self.main_pad.location[0] - pad_pos[0],
             self.main_pad.location[1] - pad_pos[1]
         ]
@@ -230,48 +230,52 @@ class VertiportOperator:
         # Determine time offset based on is_reversed
         offset = 0
         if is_reversed:
-            offset = 40
+            offset = 50
 
         # Set waypoints
-        # Wait 5 seconds at assigned pad
         flightplan.set_waypoint(
+            label="PAD",
             time=time - offset, 
             pos=[pad_pos[0], pad_pos[1], pad_pos[2] + 1.75], 
             vel=[0, 0, 0], 
-            heading=counter_pad_heading
+            heading=pad_to_main_pad_heading
         )
-        # UAV pad -> main pad
+
         flightplan.set_waypoint(
+            label="PAD_TO_MAIN_PAD",
             time=time + 5 - offset, 
-            pos=[pad_pos[0], pad_pos[1], pad_pos[2] + 1.75], 
-            vel=[0, 0, 0], 
-            heading=counter_pad_heading
+            pos=[pad_pos[0], pad_pos[1], pad_pos[2] + 3], 
+            vel=[0,0,0],
+            heading=pad_to_main_pad_heading
         )
-        # Wait 5 seconds at main pad to be properly oriented
+
         flightplan.set_waypoint(
-            time=time + 15 - offset, 
+            label="MAIN_PAD",
+            time=time + 25 - offset, 
             pos=[
                 self.main_pad.location[0], 
                 self.main_pad.location[1], 
-                self.main_pad.location[2] + 1.75
+                self.main_pad.location[2] + 3
             ], 
             vel=[0, 0, 0],
             heading=takeoff_grid_heading
         )
-        # main pad -> grid connection point
+
         flightplan.set_waypoint(
-            time=time + 20 - offset, 
+            label="MAIN_PAD_TO_GRID",
+            time=time + 30 - offset, 
             pos=[
                 self.main_pad.location[0], 
                 self.main_pad.location[1], 
-                self.main_pad.location[2] + 1.75
+                self.main_pad.location[2] + 3
             ], 
-            vel=[0, 0, 0],
+            vel=[0, 0, 1],
             heading=takeoff_grid_heading
         )
-        # UAV in the grid
+
         flightplan.set_waypoint(
-            time=time + 40 - offset, 
+            label="GRID",
+            time=time + 50 - offset, 
             pos=takeoff_grid_pos, 
             vel=[x_direction * 10, y_direction * 10, 0]
         )
@@ -291,7 +295,7 @@ class VertiportOperator:
         landing_grid_heading = self.grid_connection["landing"]["heading"]
         x_direction = landing_grid_heading[0]
         y_direction = landing_grid_heading[1]
-        counter_pad_heading = [
+        pad_to_main_pad_heading = [
             self.main_pad.location[0] - pad_pos[0],
             self.main_pad.location[1] - pad_pos[1]
         ]
@@ -299,50 +303,77 @@ class VertiportOperator:
         # Determine time offset based on is_reversed
         offset = 0
         if is_reversed:
-            offset = 40
+            offset = 70
 
         # Set waypoints
-        # UAV in the grid -> main pad
         flightplan.set_waypoint(
+            label="GRID",
             time=time - offset, 
             pos=landing_grid_pos, 
-            vel=[x_direction * 5, y_direction * 5, 0],
-            heading=landing_grid_heading
+            vel=[x_direction * 5.5, y_direction * 5.5, 0]
         )
-        # main pad
+
         flightplan.set_waypoint(
+            label="GRID_TO_MAIN_PAD_1",
             time=time + 20 - offset,
             pos=[
                 self.main_pad.location[0], 
                 self.main_pad.location[1], 
-                self.main_pad.location[2] + 1.75
+                self.main_pad.location[2] + 20
             ], 
-            vel=[0, 0, -1],
+            vel=[0, 0, -3],
+            heading=pad_to_main_pad_heading
         )
-        # wait 5 seconds at main pad to be properly oriented
+
         flightplan.set_waypoint(
-            time=time + 25 - offset,
+            label="GRID_TO_MAIN_PAD_2",
+            time=time + 30 - offset,
             pos=[
                 self.main_pad.location[0], 
                 self.main_pad.location[1], 
-                self.main_pad.location[2] + 1.75
+                self.main_pad.location[2] + 5
+            ], 
+            vel=[0, 0, -0.2],
+            heading=pad_to_main_pad_heading
+        )
+
+        flightplan.set_waypoint(
+            label="GRID_TO_MAIN_PAD_3",
+            time=time + 40 - offset,
+            pos=[
+                self.main_pad.location[0], 
+                self.main_pad.location[1], 
+                self.main_pad.location[2] + 3
             ], 
             vel=[0, 0, 0],
-            heading=counter_pad_heading
+            heading=pad_to_main_pad_heading
         )
-        # main pad -> assigned pad
+
         flightplan.set_waypoint(
-            time=time + 35 - offset,
-            pos=[pad_pos[0], pad_pos[1], pad_pos[2] + 1.75], 
+            label="MAIN_PAD",
+            time=time + 45 - offset,
+            pos=[
+                self.main_pad.location[0], 
+                self.main_pad.location[1], 
+                self.main_pad.location[2] + 3
+            ], 
             vel=[0, 0, 0],
-            heading=counter_pad_heading
+            heading=pad_to_main_pad_heading
         )
-        # wait 5 seconds at assigned pad
+
         flightplan.set_waypoint(
-            time=time + 40 - offset,
-            pos=[pad_pos[0], pad_pos[1], pad_pos[2] + 1.75], 
+            label="MAIN_PAD_TO_PAD",
+            time=time + 65 - offset,
+            pos=[pad_pos[0], pad_pos[1], pad_pos[2] + 3], 
             vel=[0, 0, 0],
-            heading=counter_pad_heading
+            heading=pad_to_main_pad_heading
+        )
+
+        flightplan.set_waypoint(
+            label="PAD",
+            time=time + 70 - offset,
+            pos=[pad_pos[0], pad_pos[1], pad_pos[2] + 1.75], 
+            vel=[0, 0, 0]
         )
 
         # Smooth waypoints

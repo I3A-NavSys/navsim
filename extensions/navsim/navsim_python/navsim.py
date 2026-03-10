@@ -17,7 +17,7 @@ class NavSimManager:
         # Control
         self.time_manager = time_manager
         self.is_simulation_running = False
-        self.back_counter_time_max = 10
+        self.back_counter_time_max = 5
         self.back_counter_time = self.back_counter_time_max
 
         # Parameters
@@ -68,8 +68,8 @@ class NavSimManager:
             if self.mission_generation_task is not None:
                 self.mission_generation_task.cancel()
 
-            # for mission_manager in self.mission_managers:
-            #     mission_manager.missions = {}
+            for mission_manager in self.mission_managers:
+                mission_manager.last_mission_id = 0
 
             # for uav_operator in self.uav_operators:
             #     uav_operator.missions = {}
