@@ -8,6 +8,7 @@ project_root_path = path.abspath(path.join(current_file_path, ".."))
 if project_root_path not in sys.path:
     sys.path.append(project_root_path)
 
+from navsim_utils.sim_utils import TimeManager
 from uav_operator.uav_operator import UAVOperator
 from uav_operator.uav import UAV
 from mission_manager.mission_manager import MissionManager
@@ -17,11 +18,14 @@ from uspace_manager.uspace_manager import USpaceManager
 from uspace_manager.constants import MissionType, UAVStatus, PadStatus
 
 
+time_manager = TimeManager()
+
 mission_mgr = MissionManager(id="MISSION_MGR_0", name="Mission Manager 0")
 uspace_mgr = USpaceManager(id="USPACE_MGR_0", name="USpace Manager 0")
 uav_op1 = UAVOperator(
     id="UAV_OP_0", 
     name="UAV Operator 0",
+    service_types=[MissionType.DELIVERY, MissionType.PASSENGER_TRANSPORT],
     private_vertiport_operator_id="VERT_OP_0",
     uavs = {
         MissionType.DELIVERY: {
@@ -48,6 +52,7 @@ uav_op1 = UAVOperator(
         }
     }
 )
+uav_op1.time_manager = time_manager
 
 vertiport_operators = []
 for j in range(-5, 6, 1):
@@ -57,6 +62,7 @@ for j in range(-5, 6, 1):
     vert_op = VertiportOperator(
         id=vert_id,
         name=f"Vertiport Operator {j}",
+        service_types=[MissionType.DELIVERY, MissionType.PASSENGER_TRANSPORT],
         is_private=is_private,
         grid_connection={
             "takeoff": {
@@ -118,10 +124,8 @@ mission_mgr.request_vertiport_operator_list()
 
 while True:
     time.sleep(2)
-    try:
-        mission_mgr.request_uav_mission()
-    except Exception as e:
-        print(f"Error requesting UAV mission:")
-        print(e.__traceback__)
+    time_manager.current_sim_time = time.time()
+    mission_mgr.request_uav_mission()
+    
 
         
