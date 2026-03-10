@@ -182,7 +182,7 @@ class UAVactionTerm(ActionTerm):
         thrust_coeffs = torch.tensor([kFT_N, kFT_N, kFT_S, kFT_S], device=self.device)
         thrust_z = thrust_coeffs * self._raw_actions**torch_2
         # evito que la componente z sea infinita
-        thrust_z = torch.clamp(thrust_z, max=12000.0) # antes 5000 N, pero es insuficiente para 2200 kilos
+        thrust_z = torch.clamp(thrust_z, max=15000.0) # antes 5000 N, pero es insuficiente para 2200 kilos
         FT_all = torch.zeros(self._env.num_envs, 4, 3, device=self.device)
         FT_all[:, :, 2] = thrust_z  # Only z-component is non-zero
         
