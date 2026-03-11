@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.spatial.transform import Rotation
 
 from omni.isaac.core.prims import RigidPrimView
 
@@ -9,6 +8,7 @@ class UAVControl:
         self.rigid_prim_view = rigid_prim_view
         self.uav_ids_to_physics_buffer = uav_ids_to_physics_buffer
         self.amount_uavs = self.rigid_prim_view.count
+        self.rigid_prim_uav_indices = np.arange(self.amount_uavs)
 
         # UAVs parameters
         self.positions = None
@@ -152,18 +152,31 @@ class UAVControl:
         
         self.torques_to_apply[uav_idx] = mdr + md + torques
 
-    def apply_dynamics(self):
+    def apply_dynamics(self, uav_to_update_idx):
         self.rigid_prim_view.apply_forces_and_torques_at_pos(
-            forces=self.forces_to_apply,
-            torques=self.torques_to_apply,
-            is_global=False
+            forces=self.forces_to_apply[uav_to_update_idx],
+            torques=self.torques_to_apply[uav_to_update_idx],
+            is_global=False,
+            indices=self.rigid_prim_uav_indices[uav_to_update_idx]
         )
     
+    def reset_dynamics(self, uav_to_update_idx):
+        mask = np.ones(self.amount_uavs, dtype=bool)
+        mask[uav_to_update_idx] = False
+
+        self.forces_to_apply[mask] = [0,0,0]
+        self.torques_to_apply[mask] = [0,0,0]
+
+        self.E[mask, :, 0] = 0
+
     def update(self, flightplans, current_time, step_size):
         self.imu()
 
+        uav_idxs = []
         for operator_id, uav_id, flightplan in flightplans:
             uav_idx = self.uav_ids_to_physics_buffer[operator_id][uav_id]
+            uav_idxs.append(uav_idx)
+
             current_pos = self.positions[uav_idx]
             current_world_linear_vel = self.world_linear_vels[uav_idx]
             current_yaw = self.eulers[uav_idx, 2]
@@ -183,18 +196,21 @@ class UAVControl:
                 self.orientations[uav_idx]
             )
 
-            # print(f"POS: {current_pos}")
-            # print(f"CURRENT WORLD LINEAR VEL: {current_world_linear_vel}")
-            # print(f"CURRENT YAW: {current_yaw}")
-            # print(f"CMD WORLD LINEAR VEL: {cmd_world_linear_vel}")
-            # print(f"CMD YAW ROTATION: {cmd_yaw_rotation}")
-            # print(f"CMD LOCAL LINEAR VEL: {cmd_local_linear_vel}")
-            # print("----")
+            # if uav_id == "UAV_03":
+            #     print(f"[{uav_id}] - POS: {current_pos}")
+                # print(f"CURRENT WORLD LINEAR VEL: {current_world_linear_vel}")
+                # print(f"CURRENT YAW: {current_yaw}")
+                # print(f"CMD WORLD LINEAR VEL: {cmd_world_linear_vel}")
+                # print(f"CMD YAW ROTATION: {cmd_yaw_rotation}")
+                # print(f"CMD LOCAL LINEAR VEL: {cmd_local_linear_vel}")
+                # print()
 
             self.servo_control(cmd_local_linear_vel, cmd_yaw_rotation, uav_idx, step_size)
             self.compute_dynamics(uav_idx)
 
-        self.apply_dynamics()
+        self.apply_dynamics(uav_idxs)
+        self.reset_dynamics(uav_idxs)
+        
 
     # -------------------------
     # -- Auxiliary Functions --

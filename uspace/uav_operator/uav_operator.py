@@ -298,7 +298,7 @@ class UAVOperator:
 
         end_time = (
             mission_dict["flightplans"][-1].finish_time() + 
-            70
+            65
         )
 
         # Book first available UAV for the whole mission duration
@@ -620,6 +620,8 @@ class UAVOperator:
 
         print("\tAssigned UAV: ", mission_dict["assigned_uav_id"])
         print("\tStart time: ", mission_dict["flightplans"][0].init_time())
+        print("\tFinish time: ", mission_dict["flightplans"][0].finish_time())
+        print("\tNext FP time: ", mission_dict["flightplans"][1].init_time())
 
         # All legs completed, send mission status update to mission manager
         self.send_mission_status_update(

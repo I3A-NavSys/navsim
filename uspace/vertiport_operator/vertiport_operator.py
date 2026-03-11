@@ -303,7 +303,7 @@ class VertiportOperator:
         # Determine time offset based on is_reversed
         offset = 0
         if is_reversed:
-            offset = 70
+            offset = 65
 
         # Set waypoints
         flightplan.set_waypoint(
@@ -321,8 +321,7 @@ class VertiportOperator:
                 self.main_pad.location[1], 
                 self.main_pad.location[2] + 20
             ], 
-            vel=[0, 0, -3],
-            heading=pad_to_main_pad_heading
+            vel=[0, 0, -3]
         )
 
         flightplan.set_waypoint(
@@ -334,12 +333,11 @@ class VertiportOperator:
                 self.main_pad.location[2] + 5
             ], 
             vel=[0, 0, -0.2],
-            heading=pad_to_main_pad_heading
         )
 
         flightplan.set_waypoint(
             label="GRID_TO_MAIN_PAD_3",
-            time=time + 40 - offset,
+            time=time + 35 - offset,
             pos=[
                 self.main_pad.location[0], 
                 self.main_pad.location[1], 
@@ -351,7 +349,7 @@ class VertiportOperator:
 
         flightplan.set_waypoint(
             label="MAIN_PAD",
-            time=time + 45 - offset,
+            time=time + 40 - offset,
             pos=[
                 self.main_pad.location[0], 
                 self.main_pad.location[1], 
@@ -363,7 +361,7 @@ class VertiportOperator:
 
         flightplan.set_waypoint(
             label="MAIN_PAD_TO_PAD",
-            time=time + 65 - offset,
+            time=time + 60 - offset,
             pos=[pad_pos[0], pad_pos[1], pad_pos[2] + 3], 
             vel=[0, 0, 0],
             heading=pad_to_main_pad_heading
@@ -371,7 +369,7 @@ class VertiportOperator:
 
         flightplan.set_waypoint(
             label="PAD",
-            time=time + 70 - offset,
+            time=time + 65 - offset,
             pos=[pad_pos[0], pad_pos[1], pad_pos[2] + 1.75], 
             vel=[0, 0, 0]
         )
