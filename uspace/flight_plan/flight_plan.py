@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backend_tools import ToolToggleBase
 from matplotlib.collections import PathCollection
 from scipy.spatial.transform import Rotation
+import multiprocessing as mp
 
 
 from uspace.flight_plan.waypoint import Waypoint
@@ -27,6 +28,7 @@ class FlightPlan:
         self.max_var_ang_vel = 1        # maximum variation in angular velocity   [rad/s]
         self.target_yaw = None
         self.waypoints: List[Waypoint] = []
+        self.figure_processes = []
 
     def set_waypoint(self, wp=None, label="", time=None, pos=None, vel=None, heading=None):
         numWPs = len(self.waypoints)
@@ -632,7 +634,13 @@ class FlightPlan:
         if not self.waypoints:
             print('The flight plan is empty')
             return
-        
+
+        # Build a process to show the figure without blocking the main thread
+        process = mp.Process(target=self.position_figure_process, args=(figName, timeStep, ))
+        self.figure_processes.append(process)
+        process.start()
+
+    def position_figure_process(self, figName, timeStep):
         # Create matplolib figure (window)
         posFig = plt.figure(figName)
         posFig.canvas.manager.toolmanager.add_tool("ToogleUAV", ToggleUAVtracking, gid="UAVtracking")
@@ -757,8 +765,7 @@ class FlightPlan:
         xPosTimePlot.set_ylim(xMidValue - addition, xMidValue + addition)
         yPosTimePlot.set_ylim(yMidValue - addition, yMidValue + addition)
 
-        # Show the plots
-        plt.show(block=False)
+        plt.show()
 
     def velocity_figure(self, figName, timeStep):
         # Display the flight plan instant velocity
@@ -768,6 +775,12 @@ class FlightPlan:
             print('The flight plan is empty')
             return
         
+        # Build a process to show the figure without blocking the main thread
+        process = mp.Process(target=self.velocity_figure_process, args=(figName, timeStep, ))
+        self.figure_processes.append(process)
+        process.start()
+
+    def velocity_figure_process(self, figName, timeStep):
         # Create matplolib figure (window)
         velFig = plt.figure(figName)
         velFig.canvas.manager.toolmanager.add_tool("ToogleUAV", ToggleUAVtracking, gid="UAVtracking")
@@ -858,8 +871,7 @@ class FlightPlan:
         yVelTimePlot.set_ylim(-maxLim, maxLim)
         zVelTimePlot.set_ylim(-maxLim, maxLim)
 
-        # Show the plots
-        plt.show(block=False)
+        plt.show()
 
     def acceleration_figure(self, figName, timeStep):
         # Display the flight plan instant velocity
@@ -868,9 +880,15 @@ class FlightPlan:
         if not self.waypoints:
             print('The flight plan is empty')
             return
-        
+
+        # Build a process to show the figure without blocking the main thread
+        process = mp.Process(target=self.acceleration_figure_process, args=(figName, timeStep))
+        self.figure_processes.append(process)
+        process.start()
+
+    def acceleration_figure_process(self, figName, timeStep):
         # Create matplolib figure (window)
-        velFig = plt.figure(figName)
+        accFig = plt.figure(figName)
 
         # Figure settings
         color = [0, 0.7, 1]
@@ -884,7 +902,7 @@ class FlightPlan:
 
         # ACCELERATION 3D
         # Create plot
-        accPlot3D = velFig.add_subplot(4, 2, (1, 2))
+        accPlot3D = accFig.add_subplot(4, 2, (1, 2))
         
         # Indicate axes' name
         accPlot3D.set_ylabel("3D [m/s2]")
@@ -900,9 +918,9 @@ class FlightPlan:
 
         # ACCELERATIONS VERSUS TIME
         # Create plots
-        xAccTimePlot = velFig.add_subplot(4, 2, (3, 4))
-        yAccTimePlot = velFig.add_subplot(4, 2, (5, 6))
-        zAccTimePlot = velFig.add_subplot(4, 2, (7, 8))
+        xAccTimePlot = accFig.add_subplot(4, 2, (3, 4))
+        yAccTimePlot = accFig.add_subplot(4, 2, (5, 6))
+        zAccTimePlot = accFig.add_subplot(4, 2, (7, 8))
         
         # Indicate axes' names
         xAccTimePlot.set_ylabel("ax [m/s2]")
@@ -957,8 +975,7 @@ class FlightPlan:
         yAccTimePlot.set_ylim(-maxLim, maxLim)
         zAccTimePlot.set_ylim(-maxLim, maxLim)
 
-        # Show the plots
-        plt.show(block=False)
+        plt.show()
 
     def add_UAV_track_pos(self, figName, UAVinfo : List[Waypoint]):
         posFig = plt.figure(figName)
@@ -1078,6 +1095,11 @@ class FlightPlan:
         xAccTimePlot.scatter(timeUAV, xAccUAV, color="black", s=10, gid="UAVtracking", zorder=2)
         yAccTimePlot.scatter(timeUAV, yAccUAV, color="black", s=10, gid="UAVtracking", zorder=2)
         zAccTimePlot.scatter(timeUAV, zAccUAV, color="black", s=10, gid="UAVtracking", zorder=2)
+
+    def terminate_figure_processes(self):
+        for process in self.figure_processes:
+            process.terminate()
+        self.figure_processes = []
 
 class ToggleUAVtracking(ToolToggleBase):
     default_keymap = 'S'

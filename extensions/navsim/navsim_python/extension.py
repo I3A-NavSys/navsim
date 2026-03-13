@@ -41,6 +41,8 @@ class NavSim(omni.ext.IExt):
                 current_time
             )
 
+            self.ui_builder.current_flightplans = current_flightplans
+
             # Update UAV control
             self.uav_control.update(current_flightplans, current_time, step_size)
             
@@ -116,9 +118,6 @@ class NavSim(omni.ext.IExt):
     # -- Startup Functions --
     # -----------------------
     def initialize_variables(self):
-        # UI Builder
-        self.ui_builder = UIBuilder()
-
         # Logger
         self.logger = logging.getLogger("NavSim")
 
@@ -171,6 +170,9 @@ class NavSim(omni.ext.IExt):
             pre_step=True,
             order=10
         )
+
+        # UI Builder
+        self.ui_builder = UIBuilder(self.navsim_manager)
 
     def build_ui(self) -> None:
         self.ui_builder.build_ui()
