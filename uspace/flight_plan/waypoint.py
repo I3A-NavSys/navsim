@@ -13,7 +13,7 @@ class Waypoint:
         snap=[0,0,0], 
         crakle=[0,0,0],
         fly_over=False, 
-        heading=None
+        heading=[0,0]
     ):
         self.label: str = label            # identifier to refer the waypoint
         self.t: float = t     # time          (s)

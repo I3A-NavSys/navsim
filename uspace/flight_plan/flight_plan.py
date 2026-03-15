@@ -30,7 +30,7 @@ class FlightPlan:
         self.waypoints: List[Waypoint] = []
         self.figure_processes = []
 
-    def set_waypoint(self, wp=None, label="", time=None, pos=None, vel=None, heading=None):
+    def set_waypoint(self, wp=None, label="", time=None, pos=None, vel=None, heading=[0,0]):
         numWPs = len(self.waypoints)
 
         if wp is None:
