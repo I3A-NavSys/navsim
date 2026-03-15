@@ -161,6 +161,18 @@ class FlightPlan:
             )
             self.waypoints.append(wp)
 
+    def to_lists(self):
+        times = [wp.t for wp in self.waypoints]
+        positions = [wp.pos for wp in self.waypoints]
+        velocities = [wp.vel for wp in self.waypoints]
+        accelerations = [wp.acel for wp in self.waypoints]
+        jerks = [wp.jerk for wp in self.waypoints]
+        snaps = [wp.snap for wp in self.waypoints]
+        crackels = [wp.crakle for wp in self.waypoints]
+        headings = [wp.heading for wp in self.waypoints]
+        
+        return [times, positions, velocities, accelerations, jerks, snaps, crackels, headings]
+
     #------------------------------------------------------------------------------------------------------------------
     # TIME MANAGEMENT
 

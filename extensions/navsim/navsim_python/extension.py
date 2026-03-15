@@ -37,14 +37,20 @@ class NavSim(omni.ext.IExt):
             self.time_manager.current_real_time = self.time_manager.sim_to_real(current_time)
 
             # Get current flightplans to update UAV control
-            current_flightplans = self.navsim_manager.get_all_current_flitghplans(
-                current_time
+            uav_physics_indices, current_flightplans = (
+                self.navsim_manager.get_all_current_flitghplans(current_time)
             )
 
-            self.ui_builder.current_flightplans = current_flightplans
+            # self.ui_builder.current_flightplans = current_flightplans
 
             # Update UAV control
-            self.uav_control.update(current_flightplans, current_time, step_size)
+            if uav_physics_indices:
+                self.uav_control.update(
+                    uav_physics_indices, 
+                    current_flightplans, 
+                    current_time, 
+                    step_size
+                )
             
     def on_timeline_play(self, event):
         # Recover from pause
@@ -80,6 +86,7 @@ class NavSim(omni.ext.IExt):
 
         # Start NavSim simulation
         self.navsim_manager.start_simulation()
+        self.navsim_manager.uav_ids_to_physics_buffer = self.uav_ids_to_physics_buffer
 
         # Set simulation as running
         self.is_simulation_running = True

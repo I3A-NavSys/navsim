@@ -14,6 +14,9 @@ from uspace.uspace_manager.constants import MissionType, UAVStatus, PadStatus
 
 class NavSimManager:
     def __init__(self, time_manager):
+        # Runtime variables
+        self.uav_ids_to_physics_buffer = {}
+
         # Control
         self.time_manager = time_manager
         self.is_simulation_running = False
@@ -347,13 +350,14 @@ class NavSimManager:
         self.uspace_manager_amount = len(self.uspace_managers)
 
     def get_all_current_flitghplans(self, current_time):
-        flightplans = []
+        uav_physics_indices = []
+        flightplan_as_lists = []
 
         # Get the current flightplan to be executed or being executed of all missions
         for uav_operator in self.uav_operators:
             for mission_manager_missions in uav_operator.missions.values():
                 for mission in mission_manager_missions.values():
-                    # Only consider missions that have been assigned to a UAV
+                    # Only consider missions that have been assigned to an UAV
                     assigned_uav_id = mission["assigned_uav_id"]
                     
                     if not assigned_uav_id:
@@ -372,7 +376,32 @@ class NavSimManager:
                     if not flightplan:
                         continue
 
-                    # Add the flightplan to the list along with the assigned UAV ID
-                    flightplans.append((uav_operator.id, assigned_uav_id, flightplan))
+                    # Obtain the physics buffer index for the assigned UAV
+                    uav_physics_indices.append(
+                        self.uav_ids_to_physics_buffer[uav_operator.id][assigned_uav_id]
+                    )
 
-        return flightplans
+                    # Convert the flightplan to lists for vectorized processing
+                    flightplan_as_lists.append(flightplan.to_lists())
+
+        times = [fp[0] for fp in flightplan_as_lists]
+        positions = [fp[1] for fp in flightplan_as_lists]
+        velocities = [fp[2] for fp in flightplan_as_lists]
+        accelerations = [fp[3] for fp in flightplan_as_lists]
+        jerks = [fp[4] for fp in flightplan_as_lists]
+        snaps = [fp[5] for fp in flightplan_as_lists]
+        crackels = [fp[6] for fp in flightplan_as_lists]
+        headings = [fp[7] for fp in flightplan_as_lists]
+
+        current_flightplans = [
+            times, 
+            positions, 
+            velocities, 
+            accelerations, 
+            jerks, 
+            snaps, 
+            crackels, 
+            headings
+        ]
+
+        return uav_physics_indices, current_flightplans
