@@ -9,9 +9,11 @@ from matplotlib.backend_tools import ToolToggleBase
 from matplotlib.collections import PathCollection
 from scipy.spatial.transform import Rotation
 
+from flight_plan.conflictDetection import SweptBox
 
-from uspace.flight_plan.waypoint import Waypoint
-from uspace.flight_plan.command import Command
+
+from .waypoint import Waypoint
+from .command import Command
 
 
 matplotlib.use("Qt5Agg")
@@ -269,7 +271,7 @@ class FlightPlan:
         # Para ello descompone dicho waypoint en dos
 
         if type(wp) == str:
-            i : int = self.get_index_from_label(wp)
+            i = self.get_index_from_label(wp)
         elif type(wp) == int:
             i = wp
 
@@ -339,7 +341,7 @@ class FlightPlan:
         # reduciendo velocidad y manteniendo el tiempo de vuelo
         # Para ello descompone dicho waypoint en dos
         if type(wp) == str:
-            i : int = self.get_index_from_label(wp)
+            i = self.get_index_from_label(wp)
         elif type(wp) == int:
             i = wp
             
@@ -551,6 +553,38 @@ class FlightPlan:
 
         return distances, trace_1_times[init_trace_1[0][0]:end_trace_1[0][0]]
 
+    def generate_swept_boxes(self, interval=1.0) -> List[SweptBox]:
+        
+        """
+        Generate a sequence of Swept Volumes (CCD) along the trajectory.
+        
+        The length of each box is proportional to the UAV's speed.
+        """
+
+        boxes = []
+        t = self.init_time()
+        t_final = self.finish_time()
+        
+        while t < t_final:
+            t_next = min(t + interval, t_final)
+            
+            # With status_at_time, we obtain the position of the UAV at time t and t_next, which are the start and end of the interval.
+            p_start = self.status_at_time(t).pos
+            p_end = self.status_at_time(t_next).pos
+            
+            # The swept box is defined by the minimum and maximum coordinates of the start and end positions, 
+            # expanded by the safety radius ( This is why every box is overlapping another one,
+            # and also to ensure that there are no gaps in the coverage of the trajectory).
+            
+           
+            p_min = np.minimum(p_start, p_end) - self.radius
+            p_max = np.maximum(p_start, p_end) + self.radius
+            
+            # We save the swept box with its corresponding time interval.
+            boxes.append(SweptBox(p_min, p_max, t, t_next))
+            t = t_next
+            
+        return boxes
     #------------------------------------------------------------------------------------------------------------------
     # INFORMATION AND FIGURES
 
@@ -814,7 +848,7 @@ class FlightPlan:
         xLim = max(np.abs(xVelTimePlot.get_ylim()))
         yLim = max(np.abs(yVelTimePlot.get_ylim()))
         zLim = max(np.abs(zVelTimePlot.get_ylim()))
-        maxLim = max(lim3D, xLim, yLim, zLim)
+        maxLim = float(max(lim3D, xLim, yLim, zLim))
 
         velPlot3D.set_ylim(-maxLim, maxLim)
         xVelTimePlot.set_ylim(-maxLim, maxLim)
@@ -913,7 +947,7 @@ class FlightPlan:
         xLim = max(np.abs(xAccTimePlot.get_ylim()))
         yLim = max(np.abs(yAccTimePlot.get_ylim()))
         zLim = max(np.abs(zAccTimePlot.get_ylim()))
-        maxLim = max(lim3D, xLim, yLim, zLim)
+        maxLim = float(max(lim3D, xLim, yLim, zLim))
 
         accPlot3D.set_ylim(-maxLim, maxLim)
         xAccTimePlot.set_ylim(-maxLim, maxLim)
@@ -1024,6 +1058,10 @@ class FlightPlan:
             zVelUAV.append(wp.vel[2])
             timeUAV.append(wp.t)
 
+        xVelUAV = np.array(xVelUAV)
+        yVelUAV = np.array(yVelUAV)
+        zVelUAV = np.array(zVelUAV)
+
         xAccUAV = np.diff(xVelUAV, prepend=xVelUAV[:1])
         yAccUAV = np.diff(yVelUAV, prepend=yVelUAV[:1])
         zAccUAV = np.diff(zVelUAV, prepend=zVelUAV[:1])
@@ -1041,6 +1079,200 @@ class FlightPlan:
         xAccTimePlot.scatter(timeUAV, xAccUAV, color="black", s=10, gid="UAVtracking", zorder=2)
         yAccTimePlot.scatter(timeUAV, yAccUAV, color="black", s=10, gid="UAVtracking", zorder=2)
         zAccTimePlot.scatter(timeUAV, zAccUAV, color="black", s=10, gid="UAVtracking", zorder=2)
+
+    @staticmethod
+    def _draw_swept_box(ax, sweptbox, color, alpha=0.1):
+        """
+        Helper method to draw a swept box (AABB) in 3D.
+        
+        Args:
+            ax: matplotlib 3D axis
+            sweptbox: SweptBox object
+            color: color for the box
+            alpha: transparency level
+        """
+        # Define the 8 corners of the bounding box
+        p_min = sweptbox.min
+        p_max = sweptbox.max
+        
+        corners = [
+            [p_min[0], p_min[1], p_min[2]],
+            [p_max[0], p_min[1], p_min[2]],
+            [p_max[0], p_max[1], p_min[2]],
+            [p_min[0], p_max[1], p_min[2]],
+            [p_min[0], p_min[1], p_max[2]],
+            [p_max[0], p_min[1], p_max[2]],
+            [p_max[0], p_max[1], p_max[2]],
+            [p_min[0], p_max[1], p_max[2]],
+        ]
+        
+        # Define the 12 edges of the cube
+        edges = [
+            [0, 1], [1, 2], [2, 3], [3, 0],  # Bottom face
+            [4, 5], [5, 6], [6, 7], [7, 4],  # Top face
+            [0, 4], [1, 5], [2, 6], [3, 7],  # Vertical edges
+        ]
+        
+        corners = np.array(corners)
+        
+        # Draw edges
+        for edge in edges:
+            points = corners[edge]
+            ax.plot3D(*points.T, color=color, linewidth=0.5, alpha=0.6)
+        
+        # Draw filled faces with transparency
+        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+        
+        # Define the 6 faces of the cube
+        faces = [
+            [corners[0], corners[1], corners[5], corners[4]],  # Front
+            [corners[2], corners[3], corners[7], corners[6]],  # Back
+            [corners[0], corners[3], corners[7], corners[4]],  # Left
+            [corners[1], corners[2], corners[6], corners[5]],  # Right
+            [corners[0], corners[1], corners[2], corners[3]],  # Bottom
+            [corners[4], corners[5], corners[6], corners[7]],  # Top
+        ]
+        
+        poly = Poly3DCollection(faces, alpha=alpha, facecolor=color, edgecolor=color, linewidth=0.5)
+        ax.add_collection3d(poly)
+
+    @staticmethod
+    def compare_flight_plans(flight_plans: List['FlightPlan'], figName: str, timeStep: float = 0.1, 
+                            show_swept_boxes: bool = False, box_interval: float = 1.0) -> None:
+        """
+        Visualize multiple flight plans in the same figure with different colors.
+        
+        Args:
+            flight_plans (List[FlightPlan]): List of flight plans to visualize
+            figName (str): Title of the figure
+            timeStep (float): Time step for trajectory sampling (default: 0.1)
+            show_swept_boxes (bool): Whether to display swept boxes for collision detection (default: False)
+            box_interval (float): Time interval for generating swept boxes (default: 1.0)
+        """
+        
+        if not flight_plans or len(flight_plans) == 0:
+            print("No flight plans to visualize")
+            return
+        
+        # Check if any flight plan is empty
+        for i, fp in enumerate(flight_plans):
+            if not fp.waypoints:
+                print(f'Flight plan {i} is empty')
+                return
+        
+        # Color palette for different flight plans (including various hues)
+        colors = [
+            [0, 0.7, 1],      # Blue
+            [1, 0, 0],         # Red
+            [0, 1, 0],         # Green
+            [1, 1, 0],         # Yellow
+            [1, 0, 1],         # Magenta
+            [0, 1, 1],         # Cyan
+            [1, 0.5, 0],       # Orange
+            [0.5, 0, 1],       # Purple
+        ]
+        
+        # Create matplotlib figure
+        posFig = plt.figure(figName)
+        posFig.canvas.manager.toolmanager.add_tool("ToogleUAV", ToggleUAVtracking, gid="UAVtracking")
+        posFig.canvas.manager.toolbar.add_tool('ToogleUAV', 'navigation', 1)
+
+        # POSITION 3D
+        xyzPosPlot = posFig.add_subplot(6, 5, (1, 23), projection="3d")
+        xyzPosPlot.set_xlabel("x [m]")
+        xyzPosPlot.set_ylabel("y [m]")
+        xyzPosPlot.set_zlabel("z [m]")
+        xyzPosPlot.set_title("Position 3D - Multiple Flight Plans")
+        xyzPosPlot.grid(True)
+
+        # POSITION ERROR VERSUS TIME
+        xyzPosErrorPlot = posFig.add_subplot(6, 5, (26, 28))
+        xyzPosErrorPlot.set_xlabel("t [s]")
+        xyzPosErrorPlot.set_ylabel("Error [m]")
+        xyzPosErrorPlot.set_title("Position error versus time")
+        xyzPosErrorPlot.grid(True)
+
+        # POSITIONS VERSUS TIME
+        xPosTimePlot = posFig.add_subplot(6, 5, (4, 10))
+        yPosTimePlot = posFig.add_subplot(6, 5, (14, 20))
+        zPosTimePlot = posFig.add_subplot(6, 5, (24, 30))
+        
+        xPosTimePlot.set_ylabel("x [m]")
+        yPosTimePlot.set_ylabel("y [m]")
+        zPosTimePlot.set_ylabel("z [m]")
+        zPosTimePlot.set_xlabel("t [s]")
+        xPosTimePlot.set_title("Position versus time")
+        
+        xPosTimePlot.grid(True)
+        yPosTimePlot.grid(True)
+        zPosTimePlot.grid(True)
+
+        # Plot each flight plan
+        for idx, fp in enumerate(flight_plans):
+            color = colors[idx % len(colors)]
+            
+            # Get trace
+            tr = fp.trace(timeStep)
+            tr_t = tr[:, 0]
+            tr_x = tr[:, 1]
+            tr_y = tr[:, 2]
+            tr_z = tr[:, 3]
+            
+            # Plot trajectories
+            xyzPosPlot.plot(tr_x, tr_y, tr_z, linewidth=2, color=color, zorder=1, label=f"FP {idx+1}")
+            xPosTimePlot.plot(tr_t, tr_x, linewidth=2, color=color, zorder=1, label=f"FP {idx+1}")
+            yPosTimePlot.plot(tr_t, tr_y, linewidth=2, color=color, zorder=1, label=f"FP {idx+1}")
+            zPosTimePlot.plot(tr_t, tr_z, linewidth=2, color=color, zorder=1, label=f"FP {idx+1}")
+            
+            # Highlight waypoints
+            xPos = [wp.pos[0] for wp in fp.waypoints]
+            yPos = [wp.pos[1] for wp in fp.waypoints]
+            zPos = [wp.pos[2] for wp in fp.waypoints]
+            t = [wp.t for wp in fp.waypoints]
+            
+            xyzPosPlot.scatter(xPos, yPos, zPos, marker="o", color=color, s=25, pickradius=30, zorder=3)
+            xPosTimePlot.scatter(t, xPos, marker="o", color=color, s=25, pickradius=30, zorder=3)
+            yPosTimePlot.scatter(t, yPos, marker="o", color=color, s=25, pickradius=30, zorder=3)
+            zPosTimePlot.scatter(t, zPos, marker="o", color=color, s=25, pickradius=30, zorder=3)
+            
+            # Draw swept boxes if requested
+            if show_swept_boxes:
+                boxes = fp.generate_swept_boxes(interval=box_interval)
+                for box in boxes:
+                    FlightPlan._draw_swept_box(xyzPosPlot, box, color, alpha=0.05)
+        
+        # Add legends
+        xyzPosPlot.legend(loc='upper right')
+        xPosTimePlot.legend(loc='upper right')
+        yPosTimePlot.legend(loc='upper right')
+        zPosTimePlot.legend(loc='upper right')
+        
+        # Update limits to maintain scale in all axes
+        xLim = max(np.abs(xyzPosPlot.get_xlim3d()))
+        yLim = max(np.abs(xyzPosPlot.get_ylim3d()))
+        zLim = max(np.abs(xyzPosPlot.get_zlim3d()))
+        maxLim = max(xLim, yLim, zLim)
+
+        xyzPosPlot.set_xlim3d(-maxLim, maxLim)
+        xyzPosPlot.set_ylim3d(-maxLim, maxLim)
+        xyzPosPlot.set_zlim3d(-maxLim, maxLim)
+
+        xLim = xPosTimePlot.get_ylim()
+        yLim = yPosTimePlot.get_ylim()
+        xRange = xLim[1] - xLim[0]
+        yRange = yLim[1] - yLim[0]
+        
+        maxRange = max(xRange, yRange)
+        addition = maxRange / 2
+
+        xMidValue = (xLim[1] + xLim[0]) / 2
+        yMidValue = (yLim[1] + yLim[0]) / 2
+
+        xPosTimePlot.set_ylim(xMidValue - addition, xMidValue + addition)
+        yPosTimePlot.set_ylim(yMidValue - addition, yMidValue + addition)
+
+        # Show the plots
+        plt.show(block=False)
 
 class ToggleUAVtracking(ToolToggleBase):
     default_keymap = 'S'
@@ -1065,6 +1297,6 @@ class ToggleUAVtracking(ToolToggleBase):
 
             scatter_plots = [coll for coll in ax.collections if isinstance(coll, PathCollection)]
             for scatter in scatter_plots:
-                if scatter.get_gid() == self.gid:
-                    scatter.set_visible(state)
+                if scatter.get_gid() == self.gid:  # type: ignore
+                    scatter.set_visible(state)  # type: ignore
         self.figure.canvas.draw()
