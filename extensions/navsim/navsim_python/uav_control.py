@@ -158,16 +158,11 @@ class UAVControl:
         self.E[uav_physics_indices] += self.e[uav_physics_indices] * step_size
         self.E = np.clip(self.E, -self.E_max, self.E_max)
 
-        a = np.dot(self.Kx, self.x[uav_physics_indices])
-        b = np.dot(self.Ky, self.E[uav_physics_indices])
-        c = a - b
-        d = self.Hs - c
-
         # Dynamic system control
         self.u[uav_physics_indices] = (
             self.Hs - 
-            np.dot(self.Kx, self.x[uav_physics_indices]) - 
-            np.dot(self.Ky, self.E[uav_physics_indices])
+            (self.Kx @ self.x[uav_physics_indices]) - 
+            (self.Ky @ self.E[uav_physics_indices])
         )
 
         # Rotor speed saturation
@@ -183,42 +178,44 @@ class UAVControl:
         square_rotors_vel = self.rotors_vel * self.rotors_vel
 
         # Thrust forces
-        thrust_z = self.thrust_coeffs * square_rotors_vel[uav_physics_indices]
+        thrust_z = self.thrust_coeffs * square_rotors_vel
         
         # Drag forces
         fd = (
             self.drag_force_coeffs * 
-            np.abs(self.local_linear_vels[uav_physics_indices]) * 
-            self.local_linear_vels[uav_physics_indices]
+            np.abs(self.local_linear_vels) * 
+            self.local_linear_vels
         )
         
         # Drag moments
-        mdr_z = self.drag_moment_coeffs * square_rotors_vel[uav_physics_indices]
+        mdr_z = self.drag_moment_coeffs * square_rotors_vel
         mdr = np.zeros((self.amount_uavs, 3))
-        mdr[uav_physics_indices, 2] = mdr_z[1] - mdr_z[0] - mdr_z[3] + mdr_z[2]
+        mdr[:, 2] = mdr_z[:, 1] - mdr_z[:, 0] - mdr_z[:, 3] + mdr_z[:, 2]
         
         # Friction moments
         md = (
             self.friction_moment_coeffs * 
-            np.abs(self.local_angular_vels[uav_physics_indices]) * 
-            self.local_angular_vels[uav_physics_indices]
+            np.abs(self.local_angular_vels) * 
+            self.local_angular_vels
         )
         
         # Force and torque
         bodies_forces = np.zeros((self.amount_uavs, 5, 3))
-        bodies_forces[uav_physics_indices, 0] = fd
-        bodies_forces[uav_physics_indices, 1:4] = thrust_z
+        bodies_forces[uav_physics_indices, 0] = fd[uav_physics_indices]
+        bodies_forces[uav_physics_indices, 1:, 2] = thrust_z[uav_physics_indices]
         
         self.forces_to_apply[uav_physics_indices] = np.sum(
             bodies_forces[uav_physics_indices], 
-            axis=0
+            axis=1
         )
         
         torques = np.sum(
-            np.cross(self.bodies_positions, bodies_forces[uav_physics_indices]), axis=0
+            np.cross(self.bodies_positions, bodies_forces[uav_physics_indices]), axis=1
         )
         
-        self.torques_to_apply[uav_physics_indices] = mdr[uav_physics_indices] + md + torques
+        self.torques_to_apply[uav_physics_indices] = (
+            mdr[uav_physics_indices] + md[uav_physics_indices] + torques
+        )
 
     def apply_dynamics(self, uav_to_update_idx):
         self.rigid_prim_view.apply_forces_and_torques_at_pos(
@@ -518,6 +515,7 @@ class UAVControl:
         running_crackel, 
     ):
         running_times_diff = current_time - running_times
+        running_times_diff = np.clip(running_times_diff, 0, None)  # Ensure non-negative
         running_times_diff = running_times_diff[:, np.newaxis]  # Reshape for broadcasting
 
         running_times_diff_2 = running_times_diff * running_times_diff
@@ -551,13 +549,16 @@ class UAVControl:
         variation_vel = command_linear_vel - current_lin_vel
         command_linear_vel = current_lin_vel + variation_vel
 
-        # Reemplazar los casos antiguamente None por la velocidad esperada
+        # Replace any [0,0] heading with the expected velocity direction
         mask = (headings[:, 0] == 0) & (headings[:, 1] == 0)
         headings[mask] = expected_vel[mask, :2]
+        mask = (headings[:, 0] == 0) & (headings[:, 1] == 0)
 
         target_yaw = np.arctan2(headings[:, 1], headings[:, 0])
-        # Si el target_yaw es 0, lo reemplazamos por el current_yaw para evitar un error de cálculo
-        target_yaw = np.where(target_yaw == 0, current_yaw, target_yaw)
+        
+        # If the target_yaw is 0, replace it with the current_yaw to avoid a calculation error
+        target_yaw[mask] = current_yaw[mask]
+
         yaw_error = target_yaw - current_yaw
 
         yaw_error = (yaw_error + np.pi) % (2 * np.pi) - np.pi
