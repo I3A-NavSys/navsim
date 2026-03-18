@@ -37,11 +37,11 @@ class NavSim(omni.ext.IExt):
             self.time_manager.current_real_time = self.time_manager.sim_to_real(current_time)
 
             # Get current flightplans to update UAV control
-            uav_physics_indices, current_flightplans = (
+            uav_physics_indices, current_flightplans, flightplans_objects = (
                 self.navsim_manager.get_all_current_flitghplans(current_time)
             )
 
-            # self.ui_builder.current_flightplans = current_flightplans
+            self.ui_builder.current_flightplans = flightplans_objects
 
             # Update UAV control
             if uav_physics_indices:

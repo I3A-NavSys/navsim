@@ -298,7 +298,7 @@ class UAVOperator:
 
         end_time = (
             mission_dict["flightplans"][-1].finish_time() + 
-            65
+            60
         )
 
         # Book first available UAV for the whole mission duration

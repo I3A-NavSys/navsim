@@ -301,6 +301,7 @@ class USpaceManager:
                 grid_flightplan.waypoints + 
                 landing_flightplan.waypoints
             )
+            complete_flightplan.connect_waypoints()
 
             # Send complete flightplan to UAV Operator
             self.send_mission_flightplan(

@@ -31,35 +31,10 @@ class UIBuilder:
     # -- UI Callbacks --
     # ------------------
     def show_flightplan(self):
-        # for uav_operator_id, uav_id, flightplan in self.current_flightplans:
-        #     if uav_operator_id == "UAV_OP_01" and uav_id == "UAV_03":
-                # if not plt.fignum_exists("UAV_OP_01-UAV_03"):
-                #     flightplan.position_figure("UAV_OP_01-UAV_03", 0.1)
-
-        fp = FlightPlan()
-
-        fp.set_waypoint(
-            time=0,
-            pos=[0, 0, 0],
-            vel=[10, 0, 0]
-        )
-
-        fp.set_waypoint(
-            time=10,
-            pos=[100, 0, 0],
-            vel=[0, 10, 0]
-        )
-
-        fp.set_waypoint(
-            time=20,
-            pos=[100, 100, 0],
-            vel=[0, 0, 0]
-        )
-
-        fp.connect_waypoints()
-
-        fp.position_figure("POS", 0.1)
-        fp.velocity_figure("VEL", 0.1)
-        fp.acceleration_figure("ACC", 0.1)
+        for uav_operator_id, uav_id, flightplan in self.current_flightplans:
+            if uav_operator_id == "UAV_OP_01" and uav_id == "UAV_03":
+                flightplan.position_figure("UAV_OP_01-UAV_03-POS", 0.1)
+                flightplan.velocity_figure("UAV_OP_01-UAV_03-VEL", 0.1)
+                flightplan.acceleration_figure("UAV_OP_01-UAV_03-ACC", 0.1)
 
 

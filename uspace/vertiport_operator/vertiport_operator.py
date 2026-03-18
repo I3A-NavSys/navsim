@@ -303,7 +303,7 @@ class VertiportOperator:
         # Determine time offset based on is_reversed
         offset = 0
         if is_reversed:
-            offset = 65
+            offset = 60
 
         # Set waypoints
         flightplan.set_waypoint(
@@ -326,17 +326,29 @@ class VertiportOperator:
 
         flightplan.set_waypoint(
             label="GRID_TO_MAIN_PAD_2",
-            time=time + 30 - offset,
+            time=time + 25 - offset,
             pos=[
                 self.main_pad.location[0], 
                 self.main_pad.location[1], 
-                self.main_pad.location[2] + 5
+                self.main_pad.location[2] + 10
             ], 
             vel=[0, 0, -0.2],
         )
 
         flightplan.set_waypoint(
             label="GRID_TO_MAIN_PAD_3",
+            time=time + 30 - offset,
+            pos=[
+                self.main_pad.location[0], 
+                self.main_pad.location[1], 
+                self.main_pad.location[2] + 5
+            ], 
+            vel=[0, 0, 0],
+            heading=pad_to_main_pad_heading
+        )
+
+        flightplan.set_waypoint(
+            label="MAIN_PAD",
             time=time + 35 - offset,
             pos=[
                 self.main_pad.location[0], 
@@ -348,20 +360,8 @@ class VertiportOperator:
         )
 
         flightplan.set_waypoint(
-            label="MAIN_PAD",
-            time=time + 40 - offset,
-            pos=[
-                self.main_pad.location[0], 
-                self.main_pad.location[1], 
-                self.main_pad.location[2] + 3
-            ], 
-            vel=[0, 0, 0],
-            heading=pad_to_main_pad_heading
-        )
-
-        flightplan.set_waypoint(
             label="MAIN_PAD_TO_PAD",
-            time=time + 60 - offset,
+            time=time + 55 - offset,
             pos=[pad_pos[0], pad_pos[1], pad_pos[2] + 3], 
             vel=[0, 0, 0],
             heading=pad_to_main_pad_heading
@@ -369,7 +369,7 @@ class VertiportOperator:
 
         flightplan.set_waypoint(
             label="PAD",
-            time=time + 65 - offset,
+            time=time + 60 - offset,
             pos=[pad_pos[0], pad_pos[1], pad_pos[2] + 1.75], 
             vel=[0, 0, 0]
         )

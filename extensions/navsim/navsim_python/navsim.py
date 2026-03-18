@@ -352,6 +352,7 @@ class NavSimManager:
     def get_all_current_flitghplans(self, current_time):
         uav_physics_indices = []
         flightplan_as_lists = []
+        flightplan_objects = []
 
         # Get the current flightplan to be executed or being executed of all missions
         for uav_operator in self.uav_operators:
@@ -384,6 +385,8 @@ class NavSimManager:
                     # Convert the flightplan to lists for vectorized processing
                     flightplan_as_lists.append(flightplan.to_lists())
 
+                    flightplan_objects.append((uav_operator.id, assigned_uav_id, flightplan))
+
         times = [fp[0] for fp in flightplan_as_lists]
         positions = [fp[1] for fp in flightplan_as_lists]
         velocities = [fp[2] for fp in flightplan_as_lists]
@@ -404,4 +407,4 @@ class NavSimManager:
             headings
         ]
 
-        return uav_physics_indices, current_flightplans
+        return uav_physics_indices, current_flightplans, flightplan_objects
