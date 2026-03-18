@@ -44,24 +44,10 @@ uav_d.set_waypoint(label="D5", time=12.5, pos=[75, 0, 3], vel=[12, 0, -0.1])
 uav_d.connect_waypoints()
 
 # 5. Generate the swept boxes for all UAVs
-# COMPULSORY: We need to use the same interval for all UAVs to ensure that
-# we are comparing boxes that correspond to the same time intervals.
-
-# Choose box type: "aabb" or "obb"
-BOX_TYPE = "obb"  # Change to "aabb" to use traditional axis-aligned boxes
-
-if BOX_TYPE == "obb":
-    boxes_a = uav_a.generate_swept_boxes_obb(interval=0.5)
-    boxes_b = uav_b.generate_swept_boxes_obb(interval=0.5)
-    boxes_c = uav_c.generate_swept_boxes_obb(interval=0.5)
-    boxes_d = uav_d.generate_swept_boxes_obb(interval=0.5)
-    print("Using Oriented Bounding Boxes (OBB) for collision detection\n")
-else:
-    boxes_a = uav_a.generate_swept_boxes(interval=0.5)
-    boxes_b = uav_b.generate_swept_boxes(interval=0.5)
-    boxes_c = uav_c.generate_swept_boxes(interval=0.5)
-    boxes_d = uav_d.generate_swept_boxes(interval=0.5)
-    print("Using Axis-Aligned Bounding Boxes (AABB) for collision detection\n")
+boxes_a = uav_a.generate_swept_boxes(interval=0.5)
+boxes_b = uav_b.generate_swept_boxes(interval=0.5)
+boxes_c = uav_c.generate_swept_boxes(interval=0.5)
+boxes_d = uav_d.generate_swept_boxes(interval=0.5)
 
 # 6. CCD: Compare boxes and detect conflicts
 print(f"\n=== CONFLICT DETECTION ===")
@@ -79,13 +65,7 @@ for i in range(len(all_boxes)):
         boxes2, name2 = all_boxes[j]
         for box1 in boxes1:
             for box2 in boxes2:
-                # Check temporal overlap
-                t1_start, t1_end = box1.t_range
-                t2_start, t2_end = box2.t_range
-                
-                # Check if time intervals overlap # We do this here and not inside collides_with to avoid
-                #  doing the more expensive collision check if they don't even overlap in time
-                if not (t1_end < t2_start or t2_end < t1_start):
+                if box1.t_range == box2.t_range:
                     if box1.collides_with(box2):
                         print(f"CONFLICT: {name1} <-> {name2} at t={box1.t_range[0]}-{box1.t_range[1]}s")
                         conflict_count += 1
@@ -97,6 +77,5 @@ FlightPlan.compare_flight_plans([uav_a, uav_b, uav_c, uav_d ],
                                  "Complex UAV Trajectories with Swept Boxes", 
                                  timeStep=0.1, 
                                  show_swept_boxes=True, 
-                                 box_interval=0.5,
-                                 box_type=BOX_TYPE)  # Uses the same box type as collision detection. Go back to line 51 to change it.
+                                 box_interval=0.5)
 plt.show()

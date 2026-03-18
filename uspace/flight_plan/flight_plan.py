@@ -9,7 +9,7 @@ from matplotlib.backend_tools import ToolToggleBase
 from matplotlib.collections import PathCollection
 from scipy.spatial.transform import Rotation
 
-from flight_plan.conflictDetection import SweptBox
+from .conflictDetection import SweptBox_AABB, SweptBox_OBB
 
 
 from .waypoint import Waypoint
@@ -553,7 +553,7 @@ class FlightPlan:
 
         return distances, trace_1_times[init_trace_1[0][0]:end_trace_1[0][0]]
 
-    def generate_swept_boxes(self, interval=1.0) -> List[SweptBox]:
+    def generate_swept_boxes(self, interval=1.0) -> List[SweptBox_AABB]:
         
         """
         Generate a sequence of Swept Volumes (CCD) along the trajectory.
@@ -581,9 +581,65 @@ class FlightPlan:
             p_max = np.maximum(p_start, p_end) + self.radius
             
             # We save the swept box with its corresponding time interval.
-            boxes.append(SweptBox(p_min, p_max, t, t_next))
+            boxes.append(SweptBox_AABB(p_min, p_max, t, t_next))
             t = t_next
             
+        return boxes
+    
+    def generate_swept_boxes_obb(self, interval=1.0) -> List[SweptBox_OBB]:
+        """
+        Generate a sequence of Swept Volumes (CCD) using Oriented Bounding Boxes (OBB).
+        
+        OBBs are rotated to align with the movement direction, reducing false positives.
+        """
+        boxes = []
+        t = self.init_time()
+        t_final = self.finish_time()
+        
+        while t < t_final:
+            t_next = min(t + interval, t_final)
+            
+            p_start = self.status_at_time(t).pos
+            p_end = self.status_at_time(t_next).pos
+            
+            # Calculate movement vector
+            direction = p_end - p_start
+            distance = np.linalg.norm(direction)
+            
+            if distance < 1e-10:
+                # No movement - create a sphere-like OBB
+                center = p_start
+                forward = np.array([1, 0, 0])
+                right = np.array([0, 1, 0])
+                up = np.array([0, 0, 1])
+                half_extents = np.array([self.radius, self.radius, self.radius])
+            else:
+                # Normalize direction (forward axis)
+                forward = direction / distance
+                
+                # Create perpendicular axes (right and up)
+                # Find a vector not parallel to forward
+                if abs(forward[0]) < 0.9:
+                    temp = np.array([1, 0, 0])
+                else:
+                    temp = np.array([0, 1, 0])
+                
+                right = np.cross(forward, temp)
+                right = right / (np.linalg.norm(right) + 1e-10)
+                up = np.cross(right, forward)
+                up = up / (np.linalg.norm(up) + 1e-10)
+                
+                # Center between start and end
+                center = (p_start + p_end) / 2
+                
+                # Half-extents: movement distance/2 along forward, radius in other directions
+                half_extents = np.array([distance / 2, self.radius, self.radius])
+            
+            # Create OBB with axes as rows of matrix
+            axes = np.array([forward, right, up])
+            boxes.append(SweptBox_OBB(center, axes, half_extents, t, t_next))
+            t = t_next
+        
         return boxes
     #------------------------------------------------------------------------------------------------------------------
     # INFORMATION AND FIGURES
@@ -1083,14 +1139,24 @@ class FlightPlan:
     @staticmethod
     def _draw_swept_box(ax, sweptbox, color, alpha=0.1):
         """
-        Helper method to draw a swept box (AABB) in 3D.
+        Helper method to draw a swept box in 3D.
+        Detects if it's AABB or OBB and draws accordingly.
         
         Args:
             ax: matplotlib 3D axis
-            sweptbox: SweptBox object
+            sweptbox: SweptBox_AABB or SweptBox_OBB object
             color: color for the box
             alpha: transparency level
         """
+        # Detect type based on attributes
+        if hasattr(sweptbox, 'center'):  # OBB
+            FlightPlan._draw_swept_box_obb(ax, sweptbox, color, alpha)
+        else:  # AABB
+            FlightPlan._draw_swept_box_aabb(ax, sweptbox, color, alpha)
+
+    @staticmethod
+    def _draw_swept_box_aabb(ax, sweptbox, color, alpha=0.1):
+        """Draw Axis-Aligned Bounding Box (AABB)."""
         # Define the 8 corners of the bounding box
         p_min = sweptbox.min
         p_max = sweptbox.max
@@ -1137,8 +1203,43 @@ class FlightPlan:
         ax.add_collection3d(poly)
 
     @staticmethod
+    def _draw_swept_box_obb(ax, sweptbox, color, alpha=0.1):
+        """Draw Oriented Bounding Box (OBB)."""
+        # Get the 8 corners of the OBB
+        corners = sweptbox.get_corners()
+        corners = np.array(corners)
+        
+        # Define the 12 edges connecting the corners
+        edges = [
+            [0, 1], [1, 3], [3, 2], [2, 0],  # Bottom face
+            [4, 5], [5, 7], [7, 6], [6, 4],  # Top face
+            [0, 4], [1, 5], [2, 6], [3, 7],  # Vertical edges
+        ]
+        
+        # Draw edges
+        for edge in edges:
+            points = corners[edge]
+            ax.plot3D(*points.T, color=color, linewidth=1.0, alpha=0.8)
+        
+        # Draw filled faces with transparency
+        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+        
+        # Define the 6 faces using corner indices
+        faces = [
+            [corners[0], corners[1], corners[5], corners[4]],  # Face 1
+            [corners[2], corners[3], corners[7], corners[6]],  # Face 2
+            [corners[0], corners[2], corners[6], corners[4]],  # Face 3
+            [corners[1], corners[3], corners[7], corners[5]],  # Face 4
+            [corners[0], corners[1], corners[3], corners[2]],  # Face 5
+            [corners[4], corners[5], corners[7], corners[6]],  # Face 6
+        ]
+        
+        poly = Poly3DCollection(faces, alpha=alpha, facecolor=color, edgecolor=color, linewidth=0.8)
+        ax.add_collection3d(poly)
+
+    @staticmethod
     def compare_flight_plans(flight_plans: List['FlightPlan'], figName: str, timeStep: float = 0.1, 
-                            show_swept_boxes: bool = False, box_interval: float = 1.0) -> None:
+                            show_swept_boxes: bool = False, box_interval: float = 1.0, box_type: str = "aabb") -> None:
         """
         Visualize multiple flight plans in the same figure with different colors.
         
@@ -1148,6 +1249,7 @@ class FlightPlan:
             timeStep (float): Time step for trajectory sampling (default: 0.1)
             show_swept_boxes (bool): Whether to display swept boxes for collision detection (default: False)
             box_interval (float): Time interval for generating swept boxes (default: 1.0)
+            box_type (str): Type of boxes - "aabb" or "obb" (default: "aabb")
         """
         
         if not flight_plans or len(flight_plans) == 0:
@@ -1178,7 +1280,7 @@ class FlightPlan:
         posFig.canvas.manager.toolbar.add_tool('ToogleUAV', 'navigation', 1)
 
         # POSITION 3D
-        xyzPosPlot = posFig.add_subplot(6, 5, (1, 23), projection="3d")
+        xyzPosPlot = posFig.add_subplot(6, 5, (1, 28), projection="3d")
         xyzPosPlot.set_xlabel("x [m]")
         xyzPosPlot.set_ylabel("y [m]")
         xyzPosPlot.set_zlabel("z [m]")
@@ -1186,11 +1288,11 @@ class FlightPlan:
         xyzPosPlot.grid(True)
 
         # POSITION ERROR VERSUS TIME
-        xyzPosErrorPlot = posFig.add_subplot(6, 5, (26, 28))
-        xyzPosErrorPlot.set_xlabel("t [s]")
-        xyzPosErrorPlot.set_ylabel("Error [m]")
-        xyzPosErrorPlot.set_title("Position error versus time")
-        xyzPosErrorPlot.grid(True)
+        # xyzPosErrorPlot = posFig.add_subplot(6, 5, (26, 28))
+        # xyzPosErrorPlot.set_xlabel("t [s]")
+        # xyzPosErrorPlot.set_ylabel("Error [m]")
+        # xyzPosErrorPlot.set_title("Position error versus time")
+        # xyzPosErrorPlot.grid(True)
 
         # POSITIONS VERSUS TIME
         xPosTimePlot = posFig.add_subplot(6, 5, (4, 10))
@@ -1206,6 +1308,14 @@ class FlightPlan:
         xPosTimePlot.grid(True)
         yPosTimePlot.grid(True)
         zPosTimePlot.grid(True)
+
+        # Determine box generation method
+        if box_type.lower() == "obb":
+            print("Using Oriented Bounding Boxes (OBB) for visualization")
+            box_generator = lambda fp: fp.generate_swept_boxes_obb(interval=box_interval)
+        else:
+            print("Using Axis-Aligned Bounding Boxes (AABB) for visualization")
+            box_generator = lambda fp: fp.generate_swept_boxes(interval=box_interval)
 
         # Plot each flight plan
         for idx, fp in enumerate(flight_plans):
@@ -1237,7 +1347,7 @@ class FlightPlan:
             
             # Draw swept boxes if requested
             if show_swept_boxes:
-                boxes = fp.generate_swept_boxes(interval=box_interval)
+                boxes = box_generator(fp)
                 for box in boxes:
                     FlightPlan._draw_swept_box(xyzPosPlot, box, color, alpha=0.05)
         
