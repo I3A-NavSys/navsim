@@ -17,15 +17,15 @@ class VertiportOperator:
         grid_connection=None, 
         main_pad=None, 
         pads=None,
-        security_pad_booking_buffer=70
     ):
         self.id: str = id
         self.name: str = name
         self.service_types: list[str] = service_types
         self.is_private = is_private
+        self.takeoff_duration = 50
+        self.landing_duration = 60
         self.main_pad: Pad = main_pad
         self.pads: dict[str, Pad] = pads
-        self.security_pad_booking_buffer: float = security_pad_booking_buffer  # in seconds
         # Connection points in the grid for takeoff and landing
         # {
         #   "takeoff": {
@@ -43,8 +43,9 @@ class VertiportOperator:
         #   uav_operator_id: {
         #     mission_manager_id: {
         #       mission_id: {
-        #         bookings: {
-        #          pad_id: [tuple[float, float]], list of (start_time, end_time) tuples of the pad's bookings corresponding to the mission's bookings
+        #         main_pad_bookings: [tuple[float, float]],
+        #         pad_bookings: {
+        #          pad_id: [tuple[float, float]],
         #         },
         #         cancellation_reason: CancellationReason (None if not cancelled)
         #       }
@@ -118,8 +119,12 @@ class VertiportOperator:
         # Update cancellation reason
         mission["cancellation_reason"] = cancellation_reason
 
+        # Free main pad's time slots
+        for start_time, end_time in mission["main_pad_bookings"]:
+            self.main_pad.cancel_booking(start_time, end_time)
+
         # Free booked pads' time slots
-        for pad_id, bookings in mission["bookings"].items():
+        for pad_id, bookings in mission["pad_bookings"].items():
             for start_time, end_time in bookings:
                 self.pads[pad_id].cancel_booking(start_time, end_time)
 
@@ -157,10 +162,30 @@ class VertiportOperator:
         # Filter available pads
         available_pads = [
             pad for pad in pads
-            if pad.is_available(start_time, end_time, self.security_pad_booking_buffer)
+            if pad.is_available(start_time, end_time)
         ]
 
         return available_pads        
+
+    def check_main_pad_availability(self, time, is_landing, is_reversed):
+        if is_landing:
+            offset_time = self.landing_duration
+        else:
+            offset_time = self.takeoff_duration
+
+        start_time = time
+        end_time = time + offset_time
+
+        if is_reversed:
+            start_time = time - offset_time
+            end_time = time
+
+        is_available = self.main_pad.book(
+            start_time=start_time,
+            end_time=end_time,
+        )
+
+        return is_available, start_time, end_time
 
     # ----------------------
     # --- USpace Methods ---
@@ -230,7 +255,7 @@ class VertiportOperator:
         # Determine time offset based on is_reversed
         offset = 0
         if is_reversed:
-            offset = 50
+            offset = self.takeoff_duration
 
         # Set waypoints
         flightplan.set_waypoint(
@@ -303,7 +328,7 @@ class VertiportOperator:
         # Determine time offset based on is_reversed
         offset = 0
         if is_reversed:
-            offset = 60
+            offset = self.landing_duration
 
         # Set waypoints
         flightplan.set_waypoint(
@@ -469,6 +494,46 @@ class VertiportOperator:
         # print(f"  Stop Time: {stop_time}")
         # print()
 
+        # Initialize mission entry if it doesn't exist
+        if uav_operator_id not in self.missions:
+            self.missions[uav_operator_id] = {}
+
+        if mission_manager_id not in self.missions[uav_operator_id]:
+            self.missions[uav_operator_id][mission_manager_id] = {}
+
+        if mission_id not in self.missions[uav_operator_id][mission_manager_id]:
+            self.missions[uav_operator_id][mission_manager_id][mission_id] = {
+                "main_pad_bookings": [],
+                "pad_bookings": {},
+                "cancellation_reason": None
+            }
+
+        # Book main pad for the mission duration as a security measure
+        is_main_pad_available, main_pad_start_time, main_pad_end_time = (
+            self.check_main_pad_availability(
+                time=time, 
+                is_landing=is_landing, 
+                is_reversed=is_reversed
+            )
+        )
+
+        # If main pad's airspace is not available, cancel the mission immediately
+        if not is_main_pad_available:
+            self.cancel_mission(
+                uav_operator_id,
+                mission_manager_id,
+                mission_id,
+                CancellationReason.MAIN_PAD_OCCUPIED
+            )
+            return
+        
+        # Store main pad booking for potential future cancellation
+        mission = self.missions[uav_operator_id][mission_manager_id][mission_id]
+        mission["main_pad_bookings"].append((main_pad_start_time, main_pad_end_time))
+
+        # If it's a landing mission, check for available pads and book one.
+        # If it's a takeoff mission, directly build the flightplan since the pad is 
+        # already reserved for the UAV.
         if is_landing:
             # If the vertiport is private, a pad is always reserved for the UAV, 
             # so no need to check for availability
@@ -512,33 +577,23 @@ class VertiportOperator:
                 # Assign the first available pad
                 assigned_pad = available_pads[0]
 
-                # Book the pad for the mission duration plus the security buffer
+                # Book the pad for the mission duration
                 assigned_pad.book(
                     start_time=time,
                     end_time=end_time,
-                    buffer=self.security_pad_booking_buffer,
                     availability_checked=True,
                 )
 
                 # Get pad id for the response
                 pad_id = assigned_pad.id
-                
-                # Initialize mission entry if it doesn't exist
-                if uav_operator_id not in self.missions:
-                    self.missions[uav_operator_id] = {}
-
-                if mission_manager_id not in self.missions[uav_operator_id]:
-                    self.missions[uav_operator_id][mission_manager_id] = {}
-
-                if mission_id not in self.missions[uav_operator_id][mission_manager_id]:
-                    self.missions[uav_operator_id][mission_manager_id][mission_id] = {
-                        "bookings": {pad_id: []},
-                        "cancellation_reason": None
-                    }
 
                 # Store booking index for potential future cancellation
                 mission = self.missions[uav_operator_id][mission_manager_id][mission_id]
-                mission["bookings"][pad_id].append((time, end_time))
+
+                if pad_id not in mission["pad_bookings"]:
+                    mission["pad_bookings"][pad_id] = []
+
+                mission["pad_bookings"][pad_id].append((time, end_time))
 
             # Build landing flightplan
             flightplan = self.build_landing_flightplan(pad_id, time, is_reversed)

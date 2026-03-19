@@ -9,7 +9,7 @@ class Pad:
         self.operator_id: str = operator_id
         self.location: tuple[float, float, float] = location
 
-    def is_available(self, start_time: float, end_time: float, buffer: float):
+    def is_available(self, start_time: float, end_time: float):
         # Find the insertion point to maintain sorted order
         index = self.bookings.bisect_right((start_time, end_time))
 
@@ -17,7 +17,7 @@ class Pad:
         if index > 0:
             _, prev_end = self.bookings[index - 1]
 
-            if start_time < prev_end + buffer:
+            if start_time < prev_end:
                 return False
             
         # Check for overlap with the next booking
@@ -33,11 +33,10 @@ class Pad:
         self, 
         start_time: float, 
         end_time: float, 
-        buffer: float, 
         availability_checked: bool=False
     ):
         # If availability not pre-checked, verify it now
-        if not availability_checked and not self.is_available(start_time, end_time, buffer):
+        if not availability_checked and not self.is_available(start_time, end_time):
             return False
 
         # Insert the new booking while maintaining sorted order

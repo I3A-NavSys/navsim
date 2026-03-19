@@ -214,7 +214,8 @@ class USpaceManager:
 
         inform_uav_operator = (
             cancellation_reason == CancellationReason.NO_AVAILABLE_ROUTE or
-            cancellation_reason == CancellationReason.NO_AVAILABLE_PAD
+            cancellation_reason == CancellationReason.NO_AVAILABLE_PAD or
+            cancellation_reason == CancellationReason.MAIN_PAD_OCCUPIED
         )
 
         if inform_uav_operator:
