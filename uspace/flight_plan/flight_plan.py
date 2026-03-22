@@ -1381,6 +1381,24 @@ class FlightPlan:
         xPosTimePlot.set_ylim(xMidValue - addition, xMidValue + addition)
         yPosTimePlot.set_ylim(yMidValue - addition, yMidValue + addition)
 
+        # Fix matplotlib 3D scroll zoom bug by wrapping _set_view_from_bbox
+        # This prevents ValueError when unpacking 3 values into 4 variables
+        original_set_view = xyzPosPlot._set_view_from_bbox
+        
+        def safe_set_view_from_bbox(bbox, *args, **kwargs):
+            """Safely handle _set_view_from_bbox for 3D axes, preventing unpacking errors."""
+            try:
+                # Only call original if bbox has correct number of elements
+                if isinstance(bbox, (list, tuple)) and len(bbox) == 4:
+                    return original_set_view(bbox, *args, **kwargs)
+                # Otherwise, ignore and return (silently handle 3D zoom errors)
+                return
+            except (ValueError, TypeError):
+                # Silently ignore the error
+                return
+        
+        xyzPosPlot._set_view_from_bbox = safe_set_view_from_bbox
+
         # Show the plots
         plt.show(block=False)
 
