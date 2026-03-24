@@ -235,3 +235,14 @@ for i in range(100):
             "rsl_rl_cfg_entry_point": f"{env_command.__name__}.env_16.grid_hiperparametros.cfg_files.ppo_random_command12_{i+1}_cfg:Command12PPORunnerCfg",
         },
     )
+
+for i in range(100):
+    gym.register(
+        id=f"Isaac-Command13-Aerotaxi-RANDOM-{i+1}",
+        entry_point="isaaclab.envs:ManagerBasedRLEnv",
+        disable_env_checker=True,
+        kwargs={
+            "env_cfg_entry_point": f"{env_command.__name__}.env_17.env:UAVEnvCfg",
+            "rsl_rl_cfg_entry_point": f"{env_command.__name__}.env_17.grid_hiperparametros.cfg_files.ppo_random_command13_{i+1}_cfg:Command13PPORunnerCfg",
+        },
+    )
