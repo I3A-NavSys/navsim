@@ -164,7 +164,7 @@ class USpaceManager:
         mission["cancellation_reason"] = cancellation_reason
 
         # Clear vertiport operators ids involved in the mission for memory optimization
-        mission["vertiport_operator_ids"] = []
+        mission["vertiport_operator_ids"] = set()
 
         # Free reserved routes in the airspace
         for route in mission["routes"]:
