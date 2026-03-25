@@ -126,3 +126,4 @@ CATKIN_IGNORE
 *isaac_lab/exported*
 .thumbs/
 **/.thumbs/*
+**/render
