@@ -107,6 +107,12 @@ class FlightPlan:
     def copy(self):
         """Realiza una copia profunda de la instancia actual de FlightPlan."""
         fp = FlightPlan()
+        fp.id = self.id
+        fp.priority = self.priority
+        fp.radius = self.radius
+        fp.max_var_lin_vel = self.max_var_lin_vel
+        fp.max_var_ang_vel = self.max_var_ang_vel
+        fp.target_yaw = self.target_yaw
         fp.waypoints = copy.deepcopy(self.waypoints)
         return fp
 

@@ -139,101 +139,9 @@ uav_d.connect_waypoints()
 # Choose box type: "aabb" or "obb"
 BOX_TYPE = "obb"  # Change to "aabb" to use traditional axis-aligned boxes
 
-# ========== OPTIMIZED CONFLICT DETECTION ==========
+# ========== STRATEGIC MANAGER FOR CONFLICT DETECTION ==========
 import numpy as np
-from bisect import bisect_left, bisect_right
-
-def detect_conflicts_optimized(all_boxes):
-    """
-    Ultra-Optimized Continuous Collision Detection (CCD) with Binary Search:
-    
-    KEY STRATEGIES:
-    1. TEMPORAL SORTING: Boxes are sorted by start time - enables binary search
-    2. BINARY SEARCH (bisect): Jump directly to the time-relevant box range using O(log M) search
-    3. SPATIAL FILTERING: Only run expensive SAT checks on temporally-overlapping boxes
-    
-    OPTIMIZATION COMPARISON:
-    - Naive approach: O(N² × M²) with all comparisons
-    - Previous version: O(N² × M²) with linear continue/break filtering
-    - THIS VERSION: O(N² × M × log M) - binary search reduces inner loop significantly
-    
-    Result: ~5-10x faster for large box counts (100+ boxes per UAV)
-    """
-    conflict_count = 0
-    conflicts_list = []
-    
-    # STEP 1: Pre-extract time information into tuples (t_start, t_end, box_index, box_object)
-    # PURPOSE: Avoid repeated attribute access in tight loops, saving function call overhead
-    time_ranges = []
-    for boxes_list, _ in all_boxes:
-        time_ranges.append([(box.t_range[0], box.t_range[1], idx, box) 
-                           for idx, box in enumerate(boxes_list)])
-    
-    # STEP 2: Compare each pair of UAVs (i.e., their box lists)
-    # PURPOSE: Generate all unique pairs (A-B, A-C, B-C, etc.) without redundant comparisons
-    for i in range(len(all_boxes)):
-        for j in range(i+1, len(all_boxes)): # i+1 to avoid redundant comparisons and self-comparison
-            boxes1, name1 = all_boxes[i]
-            boxes2, name2 = all_boxes[j]
-            ranges1 = time_ranges[i]
-            ranges2 = time_ranges[j]
-            
-            # STEP 3: Iterate through boxes of UAV 1
-            # All boxes are pre-sorted by start time (generated sequentially by FlightPlan)
-            for t1_start, t1_end, idx1, box1 in ranges1:
-                
-                # ============ BINARY SEARCH OPTIMIZATION ============
-                # Instead of iterating through ALL boxes in ranges2 with continue/break,
-                # use bisect to jump directly to the relevant time range
-                # bisect_left/bisect_right use binary search on SORTED data to find insertion point
-                # This runs in O(log n) time instead of O(n) linear scan
-                
-                # STEP 4A: Binary search finds the FIRST box in ranges2 that COULD overlap with box1
-                # We need the leftmost index where a box's t_start >= box1.t_start
-                # 
-                # KEY INSIGHT: ranges2 contains tuples like (t_start, t_end, idx, box)
-                # bisect_left() compares tuples element-by-element:
-                #   - First compares t_start values
-                #   - If t_start values are equal, compares second element (t_end)
-                #
-                # WHY -float('inf')?
-                # - We create (t1_start, -float('inf')) as search key
-                # - If multiple boxes have the SAME t_start, we want the FIRST one
-                # - Using -float('inf') as second element ensures we land at the leftmost position
-                #   (since -infinity is less than any t_end value)
-                #
-                start_idx = bisect_left(ranges2, (t1_start, -float('inf')))
-                
-                # STEP 4B: Binary search finds the LAST box in ranges2 that COULD overlap with box1
-                # We need the rightmost index where a box's t_end <= box1.t_end
-                # More precisely: first index where t_start > box1.t_end
-                #
-                # WHY float('inf')?
-                # - We create (t1_end, float('inf')) as search key
-                # - bisect_right() returns the insertion point AFTER all equal elements
-                # - Using +infinity as second element ensures we skip past all boxes with t_start == t1_end
-                #   (since infinity is greater than any t_end value)
-                # - This gives us the index RIGHT AFTER the last relevant box
-                #
-                end_idx = bisect_right(ranges2, (t1_end, float('inf')))
-                
-                # STEP 5: Iterate ONLY through the temporally-relevant boxes
-                # This is a SMALL slice compared to the full ranges2 list
-                # NOTE: Since all boxes are uniformly generated with the same interval,
-                # bisect guarantees we only get boxes that temporally overlap with box1
-                for box_tuple in ranges2[start_idx:end_idx]:
-                    t2_start, t2_end, idx2, box2 = box_tuple
-                    
-                    # ============ SPATIAL COLLISION CHECK ============
-                    # At this point, we've confirmed TEMPORAL overlap
-                    # Now perform the expensive SAT (Separating Axis Theorem) check
-                    # SAT tests 15 axes for OBB collision or checks AABB bounds
-                    if box1.collides_with(box2):
-                        # COLLISION FOUND: Store all relevant information
-                        conflicts_list.append((idx1, box1.t_range, idx2, box2.t_range, name1, name2))
-                        conflict_count += 1
-    
-    return conflict_count, conflicts_list
+from flight_plan.manager import StrategicManager
 
 # Import necessary modules for visualization
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
@@ -267,24 +175,9 @@ def visualize_with_colored_conflicts(flight_plans, all_boxes, conflicts):
         collision_boxes.add((uav1_idx, idx1))
         collision_boxes.add((uav2_idx, idx2))
     
-    # Plot each UAV's trajectory and boxes
+    # First pass: Plot all boxes (they will be behind trajectories)
     for uav_idx, (fp, (boxes_list, name)) in enumerate(zip(flight_plans, all_boxes)):
         color = base_colors[uav_idx % len(base_colors)]
-        
-        # Get trace
-        tr = fp.trace(0.1)
-        tr_x = tr[:, 1]
-        tr_y = tr[:, 2]
-        tr_z = tr[:, 3]
-        
-        # Plot trajectory
-        ax.plot(tr_x, tr_y, tr_z, linewidth=2, color=color, label=name, zorder=10)
-        
-        # Plot waypoints
-        xPos = [wp.pos[0] for wp in fp.waypoints]
-        yPos = [wp.pos[1] for wp in fp.waypoints]
-        zPos = [wp.pos[2] for wp in fp.waypoints]
-        ax.scatter(xPos, yPos, zPos, marker="o", color=color, s=50, zorder=15)
         
         # Plot boxes with collision status coloring
         for box_idx, box in enumerate(boxes_list):
@@ -323,6 +216,50 @@ def visualize_with_colored_conflicts(flight_plans, all_boxes, conflicts):
             poly = Poly3DCollection(faces, alpha=alpha, facecolor=box_color, 
                                    edgecolor=box_color, linewidth=0.8)
             ax.add_collection3d(poly)
+    
+    # Second pass: Draw trajectories on top of boxes (zorder makes them visible)
+    for uav_idx, (fp, (boxes_list, name)) in enumerate(zip(flight_plans, all_boxes)):
+        color = base_colors[uav_idx % len(base_colors)]
+        
+        # Get trace
+        tr = fp.trace(0.1)
+        tr_x = tr[:, 1]
+        tr_y = tr[:, 2]
+        tr_z = tr[:, 3]
+        
+        # Plot trajectory on top
+        ax.plot(tr_x, tr_y, tr_z, linewidth=3, color=color, label=name, zorder=100)
+        
+        # Plot waypoints on top
+        xPos = [wp.pos[0] for wp in fp.waypoints]
+        yPos = [wp.pos[1] for wp in fp.waypoints]
+        zPos = [wp.pos[2] for wp in fp.waypoints]
+        ax.scatter(xPos, yPos, zPos, marker="o", color=color, s=100, zorder=105, edgecolors='black', linewidth=1)
+        
+        # Add a simple directional arrow at the first waypoint
+        if len(fp.waypoints) > 1:
+            wp0 = fp.waypoints[0]
+            wp1 = fp.waypoints[1]
+            
+            # Direction vector
+            dx = wp1.pos[0] - wp0.pos[0]
+            dy = wp1.pos[1] - wp0.pos[1]
+            dz = wp1.pos[2] - wp0.pos[2]
+            
+            # Normalize and scale for fixed arrow length
+            mag = np.sqrt(dx**2 + dy**2 + dz**2)
+            if mag > 0:
+                scale = 8 / mag  # Arrow length = 8 units
+                end_x = wp0.pos[0] + dx * scale
+                end_y = wp0.pos[1] + dy * scale
+                end_z = wp0.pos[2] + dz * scale
+                
+                # Draw line from waypoint to arrow tip
+                ax.plot([wp0.pos[0], end_x], [wp0.pos[1], end_y], [wp0.pos[2], end_z], 
+                       color='black', linewidth=2, zorder=101)
+                
+                # Draw arrow tip (small triangle marker)
+                ax.scatter([end_x], [end_y], [end_z], marker='^', color='black', s=60, zorder=102)
     
     # Add legend
     ax.legend(loc='upper right', fontsize=10)
@@ -365,39 +302,58 @@ def main():
         
         print("="*80 + "\n")
         
-        # Generate swept boxes
-        if BOX_TYPE == "obb":
-            boxes1 = fp1.generate_swept_boxes_obb(interval=0.5)
-            boxes2 = fp2.generate_swept_boxes_obb(interval=0.5)
-            print("Using Oriented Bounding Boxes (OBB) for collision detection\n")
-        else:
-            boxes1 = fp1.generate_swept_boxes(interval=0.5)
-            boxes2 = fp2.generate_swept_boxes(interval=0.5)
-            print("Using Axis-Aligned Bounding Boxes (AABB) for collision detection\n")
+        # Create Strategic Manager and register UAVs
+        print("Using Oriented Bounding Boxes (OBB) via StrategicManager for collision detection\n")
         
-        all_boxes = [
-            (boxes1, "UAV A"),
-            (boxes2, "UAV B"),
-        ]
+        manager = StrategicManager()
+        manager.register_uav("UAV A", fp1, interval=0.5)
+        manager.register_uav("UAV B", fp2, interval=0.5)
         
-        # Detect conflicts
+        # Detect all conflicts system-wide (no duplicates automatically handled)
         print("Starting conflict detection...")
         start_time = time.time()
-        conflict_count, conflicts = detect_conflicts_optimized(all_boxes)
+        conflicts = manager.detect_all_conflicts_system_wide()
         elapsed_time = time.time() - start_time
+        
+        conflict_count = len(conflicts)
         
         print(f"Conflict detection completed in {elapsed_time:.4f} seconds ({elapsed_time*1000:.2f} ms)\n")
         
         if conflict_count > 0:
             print(f"CONFLICTS DETECTED: {conflict_count}\n")
-            for idx1, t_range1, idx2, t_range2, name1, name2 in conflicts:
-                print(f"  {name1}[{idx1}] {t_range1} collides with {name2}[{idx2}] {t_range2}")
+            for conflict in conflicts:
+                print(f"  {conflict['uav_a']} vs {conflict['uav_b']}: "
+                      f"box {conflict['box_a_idx']} collides with box {conflict['box_b_idx']} "
+                      f"at time {conflict['time_range']}")
         else:
             print("NO CONFLICTS DETECTED\n")
         
+        # Prepare data for visualization
+        # Get boxes from manager for visualization
+        boxes1 = manager.uavs["UAV A"]["boxes"]
+        boxes2 = manager.uavs["UAV B"]["boxes"]
+        all_boxes = [(boxes1, "UAV A"), (boxes2, "UAV B")]
+        
+        # Convert conflict format for visualization
+        conflicts_for_viz = []
+        for conflict in conflicts:
+            # Find which UAV is A and which is B
+            if conflict["uav_a"] == "UAV A":
+                conflicts_for_viz.append((
+                    conflict["box_a_idx"], conflict["time_range"],
+                    conflict["box_b_idx"], conflict["time_range"],
+                    conflict["uav_a"], conflict["uav_b"]
+                ))
+            else:
+                conflicts_for_viz.append((
+                    conflict["box_b_idx"], conflict["time_range"],
+                    conflict["box_a_idx"], conflict["time_range"],
+                    conflict["uav_b"], conflict["uav_a"]
+                ))
+        
         # Visualize
         print("\nGenerating visualization...\n")
-        visualize_with_colored_conflicts(flight_plans, all_boxes, conflicts)
+        visualize_with_colored_conflicts(flight_plans, all_boxes, conflicts_for_viz)
 
 if __name__ == "__main__":
     main()

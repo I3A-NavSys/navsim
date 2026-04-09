@@ -79,12 +79,12 @@ def test_head_on_collision():
     fp2.priority = 2
     fp2.radius = 2.0
     
-    # UAV 2: (100,0,10) -> (0,0,10) opposite movement
-    fp2.set_waypoint(time=0, pos=[100, 0, 10], vel=[-10, 0, 0])
-    fp2.set_waypoint(time=10, pos=[0, 0, 10], vel=[-10, 0, 0])
+    # UAV 2: (100,2,10) -> (0,2,10) opposite movement (separated slightly in Y axis)
+    fp2.set_waypoint(time=0, pos=[100, 2, 10], vel=[-10, 0, 0])
+    fp2.set_waypoint(time=10, pos=[0, 2, 10], vel=[-10, 0, 0])
     fp2.connect_waypoints()
     
-    return fp1, fp2, "EXPECTED CONFLICT: Head-on collision at t=5s"
+    return fp1, fp2, "EXPECTED CONFLICT: Head-on collision at t=5s (offset in Y)"
 
 
 # =============================================================================
