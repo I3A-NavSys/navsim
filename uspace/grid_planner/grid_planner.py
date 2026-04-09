@@ -257,7 +257,8 @@ class GridPlanner:
         """
 
         for (i, j, l, s) in route:
-            self.grid.remove((i, j, l, s))
+            if (i, j, l, s) in self.grid:
+                self.grid.remove((i, j, l, s))
 
     def clear_grid(self):
         self.grid.clear()
