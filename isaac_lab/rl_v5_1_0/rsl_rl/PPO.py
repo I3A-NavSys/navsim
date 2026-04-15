@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.optim as optim
 from itertools import chain
 
-from rsl_rl.modules import ActorCritic
+from MyActorCritic import ActorCritic
 from rsl_rl.modules.rnd import RandomNetworkDistillation
 from rsl_rl.storage import RolloutStorage
 from rsl_rl.utils import string_to_callable
@@ -95,7 +95,8 @@ class PPO:
         self.policy = policy
         self.policy.to(self.device)
         # Create optimizer
-        self.optimizer = optim.Adam(self.policy.parameters(), lr=learning_rate)
+        # weight decay es regularización L2
+        self.optimizer = optim.Adam(self.policy.parameters(), lr=learning_rate,weight_decay=1e-5)
         # Create rollout storage
         self.storage: RolloutStorage = None  # type: ignore
         self.transition = RolloutStorage.Transition()
@@ -142,14 +143,14 @@ class PPO:
     # ------- TERESA ---------------
     def update_decay(self, current_iteration, total_iterations):
         # Entropy con decay
-        # decay_rate = 1 - current_iteration / total_iterations
-        # if self.entropy_coef >= 0.001: # valor mínimo de entropía
-        #     self.entropy_coef = self.initial_entropy_coef * decay_rate
+        decay_rate = 1 - current_iteration / total_iterations
+        if self.entropy_coef >= 0.001: # valor mínimo de entropía
+            self.entropy_coef = self.initial_entropy_coef * decay_rate
         # # epsilon con decay
-        # decay_rate = 1 - current_iteration / total_iterations
-        # min_clip_param = 0.01  # minimum clip_param value
-        # self.clip_param = self.initial_clip_param * decay_rate + min_clip_param * (1 - decay_rate)
-        pass
+        decay_rate = 1 - current_iteration / total_iterations
+        min_clip_param = 0.01  # minimum clip_param value
+        self.clip_param = self.initial_clip_param * decay_rate + min_clip_param * (1 - decay_rate)
+        # pass
 
     # ------------------------------
 
