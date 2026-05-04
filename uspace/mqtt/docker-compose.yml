@@ -1,16 +1,15 @@
 version: '3.8'
 services:
   mqtt-broker:
-    image: eclipse-mosquitto:latest
+    image: eclipse-mosquitto:2.0
     container_name: mosquitto_server
+    restart: unless-stopped
     ports:
       - "1883:1883"
-      - "9001:9001" # Para WebSockets si lo necesitas después
     volumes:
-      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - mosquitto-data:/mosquitto/data
       - mosquitto-log:/mosquitto/log
-    restart: always
 
 volumes:
   mosquitto-data:
