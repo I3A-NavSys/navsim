@@ -1,18 +1,11 @@
+
+import numpy as np
+
 import omni.ext
 from isaacsim.gui.components.ui_utils import ui
-import carb.events
 import omni.timeline
 import omni.physx
-import omni.kit.app
-
-
-import pickle
-import base64
-
-
-from navsim_utils.sim_utils import *
-from navsim_utils.extensions_utils import ExtensionUtils
-from uspace.grid_planner.grid_planner import GridPlanner
+from isaacsim.core.prims import RigidPrim, Articulation
 
 
 class USpaceManager(omni.ext.IExt):
@@ -26,19 +19,91 @@ class USpaceManager(omni.ext.IExt):
         self.event_sub = None
         
     def on_physics_step(self, step_size:int) -> None:
-        self.current_time += step_size
+        if self.is_simulation_running:
+            for rigid_prim, force_to_apply in zip(self.rigid_prims, self.forces_to_apply):
+                rigid_prim.apply_forces(
+                    forces=force_to_apply,
+                    is_global=False
+                )
+
+                print(rigid_prim.prim_paths[0])
+                print(rigid_prim.get_world_poses()[0])
+
+            for articulation, rotor_target, blade_target in zip(self.articulations, self.rotor_targets, self.blade_targets):
+                articulation.set_joint_position_targets(
+                    positions=rotor_target,
+                    joint_names=articulation.joint_names[:6]
+                )
+                
+                articulation.set_joint_velocity_targets(
+                    velocities=blade_target,
+                    joint_names=articulation.joint_names[6:]
+                )
 
     def on_timeline_stop(self, event) -> None:
-        self.current_time = 0
+        if self.is_simulation_running:
+            self.is_simulation_running = False
+
+            self.rigid_prims = []
+            self.forces_to_apply = []
+
+            self.articulations = []
+            self.rotor_targets = []
+            self.blade_targets = []
 
     def on_timeline_play(self, event) -> None:
-        self.requests = {}
-        self.gp.clear_grid()
+        if not self.is_simulation_running:
+            for path in self.rigid_prim_paths:
+                rigid_prim = RigidPrim(prim_paths_expr=path)
+                rigid_prim.initialize()
+                self.rigid_prims.append(rigid_prim)
+
+                forces_to_apply = np.zeros((rigid_prim.count, 3), dtype=np.float32)
+                forces_to_apply[:, 2] = self.hover_force / rigid_prim.count
+
+                if "blades4" in path or "jovi" in path:
+                    forces_to_apply[:, 2] -= self.hover_force / rigid_prim.count
+
+                self.forces_to_apply.append(forces_to_apply)
+
+            for path in self.articulation_paths:
+                articulation = Articulation(prim_paths_expr=path)
+                articulation.initialize()
+                self.articulations.append(articulation)
+
+                self.rotor_targets.append(np.zeros(6))
+                self.blade_targets.append(np.zeros(6))
+
+            self.is_simulation_running = True
     
     def init_vars(self) -> None:
+        self.rigid_prim_paths = [
+            # "/World/blades0/body", 
+            # "/World/blades4/body", 
+            # "/World/blades4_1rb",
+            # "/World/jovi/body",
+            "/World/jovi/blade*",
+        ]
+        self.rigid_prims = []
+        self.forces_to_apply = []
+
+        self.articulation_paths = [
+            "/World/jovi",
+        ]
+        self.articulations = []
+        self.rotor_targets = []
+        self.blade_targets = []
+
+        self.is_simulation_running = False
+        self.gravity = 9.81
+        self.total_mass = 2002
+        self.hover_force = self.total_mass * self.gravity
+
         self.physx_interface = omni.physx.get_physx_interface()
-        self.on_physics_step_sub = self.physx_interface.subscribe_physics_step_events(
-            self.on_physics_step
+        self.on_physics_step_sub = self.physx_interface.subscribe_physics_on_step_events(
+            fn=self.on_physics_step,
+            pre_step=True,
+            order=0
         )
 
         self.timeline = omni.timeline.get_timeline_interface()
@@ -51,169 +116,66 @@ class USpaceManager(omni.ext.IExt):
             int(omni.timeline.TimelineEventType.PLAY), 
             self.on_timeline_play
         )
-        
-        self.event_stream = omni.kit.app.get_app().get_message_bus_event_stream()
-        self.operator_uav_event = carb.events.type_from_string("NavSim.OperatorUAV")
-        self.operator_vertiport_event = carb.events.type_from_string("NavSim.OperatorVertiport")
-        self.uspace_manager_event = carb.events.type_from_string("NavSim.USpaceManager")
-        self.event_sub = self.event_stream.create_subscription_to_push_by_type(
-            self.uspace_manager_event, 
-            self.event_listener
-        )
-
-        self.current_time = 0
-        self.time_manager = TimeManager()
-        self.geospatial_manager = GeospatialManager()
-        self.extension_utils = ExtensionUtils()
-        self.gp = GridPlanner()
-        self.requests = {}
-
-    def event_listener(self, event) -> None:
-        payload = event.payload
-
-        match payload["type_message"]:
-            case TypeMessage.USPACE:
-                self.handle_uspace_msg(payload)
-
-    def handle_uspace_msg(self, payload) -> None:
-        msg = payload["msg"]
-
-        match msg["sender"]:
-            case TypeSender.OPERATOR_UAV:
-                self.handle_operator_uav_msg(msg)
-            case TypeSender.OPERATOR_VERTIPORT:
-                self.handle_operator_vertiport_msg(msg)
-
-    def handle_operator_uav_msg(self, msg) -> None:
-        request = msg["request"]
-
-        origin = request["origin"]
-        destination = request["destination"]
-        init_time = request["init_time"]
-        end_time = request["end_time"]
-
-        self.requests[f"{origin}_{destination}"] = {
-            "origin": origin,
-            "destination": destination,
-            "init_time": init_time,
-            "end_time": end_time,
-        }
-
-    def handle_operator_vertiport_msg(self, msg) -> None:
-        pass
 
     def build_ui(self) -> None:
         self.window = ui.Window(
-            "USM: NavSim - Uspace manager", 
+            "Prueba Fuerzas", 
             width=300, 
             height=300,
         )
 
         with self.window.frame:
             with ui.ScrollingFrame():
-                with ui.VStack(spacing=self.extension_utils.SPACING_S, height=0):
-                    self.build_ui_title()
-                    self.build_ui_grid_parameters()
+                with ui.VStack(height=0):
+                    with ui.HStack():
+                        ui.Label("Rigid Prim")
+                        ui.Label("Articulation Root")
 
-    def build_ui_title(self) -> None:
-        ui.Spacer(height=10)
-        ui.Label(
-            "NAVSIM - USPACE MANAGER", 
-            alignment=ui.Alignment.CENTER, 
-            style={"font_size": 20, "font_weight": "bold"}
-        )
-        ui.Spacer(height=5)
+                    with ui.HStack():
+                        with ui.VStack():
+                            ui.Button(
+                                text="Upward",
+                                clicked_fn=self.set_upward_force
+                            )
+                            ui.Button(
+                                text="Forward",
+                                clicked_fn=self.set_forward_force
+                            )
+                        
+                        with ui.VStack():
+                            with ui.VStack():
+                                ui.Label("Rotors angle (0-90)")
+                                self.rotors_angle_field = ui.IntField()
+                                ui.Button(
+                                    text="Apply",
+                                    clicked_fn=self.set_rotors_angle
+                                )
+                            with ui.VStack():
+                                ui.Label("Thrust")
+                                self.blades_thrust_field = ui.IntField()
+                                ui.Button(
+                                    text="Apply",
+                                    clicked_fn=self.set_thrust
+                                )
 
-    def build_ui_grid_parameters(self) -> None:
-        with ui.CollapsableFrame(
-            "Grid Parameters", 
-            collapsed=False,
-            style=self.extension_utils.CollapsableFrame_style,
-        ):
-            # Content
-            with ui.VStack():
-                ui.Spacer(height=10)
+    def set_upward_force(self) -> None:
+        for force, path in zip(self.forces_to_apply, self.rigid_prim_paths):
+            force[:, 2] = (self.hover_force / force.shape[0]) * 1.1
+            
+            if "blades4" in path or "jovi" in path:
+                force[:, 2] -= self.hover_force / force.shape[0]
 
-                with ui.ZStack(
-                    style={"margin_width": 5},
-                ):
-                    # Background
-                    ui.Rectangle(
-                        style={
-                            "background_color": 0xFF5b5b5b, 
-                            "border_radius": 5, 
-                            "corner_flag": ui.CornerFlag.ALL
-                        }
-                    )
-                    
-                    # Parameters
-                    with ui.VStack(
-                        spacing=self.extension_utils.SPACING_S, 
-                        height=0, 
-                        style=self.extension_utils.VStack_A,
-                    ):
-                        ui.Spacer(height=5)
+    def set_forward_force(self) -> None:
+        for force in self.forces_to_apply:
+            force[:, 0] = 100
 
-                        with ui.HStack():
-                            ui.Label("Cell size")
-                            self.ui_grid_cell_size = ui.IntField()
-                            self.ui_grid_cell_size.model.set_value(100)
-                        with ui.HStack():
-                            ui.Label("Slot time")
-                            self.ui_grid_slot_time = ui.IntField()
-                            self.ui_grid_slot_time.model.set_value(10)
-                        with ui.HStack():
-                            ui.Label("X level height")
-                            self.ui_grid_x_level_height = ui.IntField()
-                            self.ui_grid_x_level_height.model.set_value(60)
-                        with ui.HStack():
-                            ui.Label("Y level height")
-                            self.ui_grid_y_level_height = ui.IntField()
-                            self.ui_grid_y_level_height.model.set_value(100)
+    def set_rotors_angle(self) -> None:
+        for rotor_target in self.rotor_targets:
+            value = self.rotors_angle_field.model.get_value_as_int()
+            rotor_target[:] = np.deg2rad(value)
 
-                        self.ui_grid_set_params = ui.Button(
-                            "SET PARAMETERS", 
-                            height=50, 
-                            clicked_fn=self.set_grid_parameters
-                        )
-
-                        ui.Spacer(height=5)
-
-                ui.Spacer(height=10)
-
-    def set_grid_parameters(self) -> None:
-        self.gp.cell_side = self.ui_grid_cell_size.model.get_value_as_int()
-        self.gp.slot_time = self.ui_grid_slot_time.model.get_value_as_int()
-        self.gp.x_height = self.ui_grid_x_level_height.model.get_value_as_int()
-        self.gp.y_height = self.ui_grid_y_level_height.model.get_value_as_int()
-
-    def inform_operator_uav(self, type_message, request=None) -> None:
-        payload = {"type_message": type_message}
-        msg = {"sender": TypeSender.USPACE_MANAGER}
-
-        match type_message:
-            case TypeMessage.USPACE:
-                msg["request"] = request
-
-        payload["msg"] = msg
-
-        self.event_stream.push(self.operator_uav_event, payload=payload)
-
-    def inform_operator_vertiport(
-        self, 
-        type_message, 
-        origin, 
-        destination,
-    ) -> None:
-        payload = {"type_message": type_message}
-        msg = {"sender": TypeSender.USPACE_MANAGER}
-
-        match type_message:
-            case TypeMessage.USPACE:
-                msg["request"] = {
-                    "origin": origin,
-                    "destination": destination,
-                }
-
-        payload["msg"] = msg
-        self.event_stream.push(self.operator_vertiport_event, payload=payload)
+    def set_thrust(self) -> None:
+        for blade_target in self.blade_targets:
+            value = self.blades_thrust_field.model.get_value_as_int()
+            blade_target[[0,3,4]] = np.deg2rad(value)
+            blade_target[[1,2,5]] = np.deg2rad(-value)
