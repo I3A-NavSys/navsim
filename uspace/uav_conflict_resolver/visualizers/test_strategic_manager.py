@@ -28,11 +28,12 @@ import sys
 from pathlib import Path
 import time
 
-# Add the parent directory to the path for imports
-sys.path.insert(0, str(Path(__file__).parent))
+_PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
 
-from flight_plan import FlightPlan
-from flight_plan.manager import StrategicManager
+from core.models.flight_plan import FlightPlan
+from detection.rtree_detector import RTreeDetector as StrategicManager
 
 
 # =============================================================================
@@ -72,13 +73,13 @@ def test_scenario_1_direct_collision():
     detect_time = time.perf_counter() - start_time
     
     print(f"Description: Two UAVs on the same trajectory")
-    print(f"Expected: CONFLICT ✓")
-    print(f"Result: {'CONFLICT DETECTED ✓' if conflicts else 'NO CONFLICT ✗'}")
+    print(f"Expected: CONFLICT OK")
+    print(f"Result: {'CONFLICT DETECTED OK' if conflicts else 'NO CONFLICT FAIL'}")
     print(f"Detection time: {detect_time*1000:.3f} ms")
     if conflicts:
         print(f"Conflicts found: {len(conflicts)}")
         for c in conflicts[:3]:  # Show first 3 conflicts
-            print(f"  - UAVs {c['uav_a']} ↔ {c['uav_b']}: boxes {c['box_a_idx']} ↔ {c['box_b_idx']}, time: {c['time_range']}")
+            print(f"  - UAVs {c['uav_a']} <-> {c['uav_b']}: boxes {c['box_a_idx']} <-> {c['box_b_idx']}, time: {c['time_range']}")
     
     return len(conflicts) > 0, detect_time
 
@@ -120,8 +121,8 @@ def test_scenario_2_head_on_collision():
     detect_time = time.perf_counter() - start_time
     
     print(f"Description: UAVs flying toward each other")
-    print(f"Expected: CONFLICT ✓")
-    print(f"Result: {'CONFLICT DETECTED ✓' if conflicts else 'NO CONFLICT ✗'}")
+    print(f"Expected: CONFLICT OK")
+    print(f"Result: {'CONFLICT DETECTED OK' if conflicts else 'NO CONFLICT FAIL'}")
     print(f"Detection time: {detect_time*1000:.3f} ms")
     if conflicts:
         print(f"Conflicts found: {len(conflicts)}")
@@ -166,8 +167,8 @@ def test_scenario_3_crossing_paths():
     detect_time = time.perf_counter() - start_time
     
     print(f"Description: UAVs with perpendicular paths crossing at (50, 50, 10)")
-    print(f"Expected: CONFLICT ✓")
-    print(f"Result: {'CONFLICT DETECTED ✓' if conflicts else 'NO CONFLICT ✗'}")
+    print(f"Expected: CONFLICT OK")
+    print(f"Result: {'CONFLICT DETECTED OK' if conflicts else 'NO CONFLICT FAIL'}")
     print(f"Detection time: {detect_time*1000:.3f} ms")
     if conflicts:
         print(f"Conflicts found: {len(conflicts)}")
@@ -212,8 +213,8 @@ def test_scenario_4_near_miss():
     detect_time = time.perf_counter() - start_time
     
     print(f"Description: UAVs pass 5m apart")
-    print(f"Expected: NO CONFLICT ✓")
-    print(f"Result: {'NO CONFLICT DETECTED ✓' if not conflicts else f'CONFLICT DETECTED ✗ ({len(conflicts)} conflicts)'}")
+    print(f"Expected: NO CONFLICT OK")
+    print(f"Result: {'NO CONFLICT DETECTED OK' if not conflicts else f'CONFLICT DETECTED FAIL ({len(conflicts)} conflicts)'}")
     print(f"Detection time: {detect_time*1000:.3f} ms")
     
     return len(conflicts) == 0, detect_time
@@ -256,8 +257,8 @@ def test_scenario_5_different_altitudes():
     detect_time = time.perf_counter() - start_time
     
     print(f"Description: UAV1 at 10m altitude, UAV2 at 20m altitude")
-    print(f"Expected: NO CONFLICT ✓")
-    print(f"Result: {'NO CONFLICT DETECTED ✓' if not conflicts else f'CONFLICT DETECTED ✗ ({len(conflicts)} conflicts)'}")
+    print(f"Expected: NO CONFLICT OK")
+    print(f"Result: {'NO CONFLICT DETECTED OK' if not conflicts else f'CONFLICT DETECTED FAIL ({len(conflicts)} conflicts)'}")
     print(f"Detection time: {detect_time*1000:.3f} ms")
     
     return len(conflicts) == 0, detect_time
@@ -300,8 +301,8 @@ def test_scenario_6_parallel_paths():
     detect_time = time.perf_counter() - start_time
     
     print(f"Description: Parallel paths 20m apart")
-    print(f"Expected: NO CONFLICT ✓")
-    print(f"Result: {'NO CONFLICT DETECTED ✓' if not conflicts else f'CONFLICT DETECTED ✗ ({len(conflicts)} conflicts)'}")
+    print(f"Expected: NO CONFLICT OK")
+    print(f"Result: {'NO CONFLICT DETECTED OK' if not conflicts else f'CONFLICT DETECTED FAIL ({len(conflicts)} conflicts)'}")
     print(f"Detection time: {detect_time*1000:.3f} ms")
     
     return len(conflicts) == 0, detect_time
@@ -344,8 +345,8 @@ def test_scenario_7_same_path_different_times():
     detect_time = time.perf_counter() - start_time
     
     print(f"Description: UAV1 t=0-10s, UAV2 t=20-30s on same path")
-    print(f"Expected: NO CONFLICT ✓")
-    print(f"Result: {'NO CONFLICT DETECTED ✓' if not conflicts else f'CONFLICT DETECTED ✗ ({len(conflicts)} conflicts)'}")
+    print(f"Expected: NO CONFLICT OK")
+    print(f"Result: {'NO CONFLICT DETECTED OK' if not conflicts else f'CONFLICT DETECTED FAIL ({len(conflicts)} conflicts)'}")
     print(f"Detection time: {detect_time*1000:.3f} ms")
     
     return len(conflicts) == 0, detect_time
@@ -390,8 +391,8 @@ def test_scenario_8_complex_maneuver():
     detect_time = time.perf_counter() - start_time
     
     print(f"Description: Complex paths crossing at (50,50,10) at t=10s")
-    print(f"Expected: CONFLICT ✓")
-    print(f"Result: {'CONFLICT DETECTED ✓' if conflicts else 'NO CONFLICT ✗'}")
+    print(f"Expected: CONFLICT OK")
+    print(f"Result: {'CONFLICT DETECTED OK' if conflicts else 'NO CONFLICT FAIL'}")
     print(f"Detection time: {detect_time*1000:.3f} ms")
     if conflicts:
         print(f"Conflicts found: {len(conflicts)}")
@@ -436,8 +437,8 @@ def test_scenario_9_overtaking():
     detect_time = time.perf_counter() - start_time
     
     print(f"Description: Overtaking with 5m lateral separation")
-    print(f"Expected: NO CONFLICT ✓")
-    print(f"Result: {'NO CONFLICT DETECTED ✓' if not conflicts else f'CONFLICT DETECTED ✗ ({len(conflicts)} conflicts)'}")
+    print(f"Expected: NO CONFLICT OK")
+    print(f"Result: {'NO CONFLICT DETECTED OK' if not conflicts else f'CONFLICT DETECTED FAIL ({len(conflicts)} conflicts)'}")
     print(f"Detection time: {detect_time*1000:.3f} ms")
     
     return len(conflicts) == 0, detect_time
@@ -484,8 +485,8 @@ def test_scenario_10_spiral_maneuver():
     detect_time = time.perf_counter() - start_time
     
     print(f"Description: Convergent spiral trajectories")
-    print(f"Expected: CONFLICT ✓")
-    print(f"Result: {'CONFLICT DETECTED ✓' if conflicts else 'NO CONFLICT ✗'}")
+    print(f"Expected: CONFLICT OK")
+    print(f"Result: {'CONFLICT DETECTED OK' if conflicts else 'NO CONFLICT FAIL'}")
     print(f"Detection time: {detect_time*1000:.3f} ms")
     if conflicts:
         print(f"Conflicts found: {len(conflicts)}")
@@ -532,8 +533,8 @@ def test_scenario_11_takeoff_conflict():
     detect_time = time.perf_counter() - start_time
     
     print(f"Description: Uncoordinated takeoff - both starting from ground")
-    print(f"Expected: CONFLICT ✓")
-    print(f"Result: {'CONFLICT DETECTED ✓' if conflicts else 'NO CONFLICT ✗'}")
+    print(f"Expected: CONFLICT OK")
+    print(f"Result: {'CONFLICT DETECTED OK' if conflicts else 'NO CONFLICT FAIL'}")
     print(f"Detection time: {detect_time*1000:.3f} ms")
     if conflicts:
         print(f"Conflicts found: {len(conflicts)}")
@@ -578,8 +579,8 @@ def test_scenario_12_landing_conflict():
     detect_time = time.perf_counter() - start_time
     
     print(f"Description: Uncoordinated landing - both converging to ground")
-    print(f"Expected: CONFLICT ✓")
-    print(f"Result: {'CONFLICT DETECTED ✓' if conflicts else 'NO CONFLICT ✗'}")
+    print(f"Expected: CONFLICT OK")
+    print(f"Result: {'CONFLICT DETECTED OK' if conflicts else 'NO CONFLICT FAIL'}")
     print(f"Detection time: {detect_time*1000:.3f} ms")
     if conflicts:
         print(f"Conflicts found: {len(conflicts)}")
@@ -624,8 +625,8 @@ def test_scenario_13_near_miss_different_times():
     detect_time = time.perf_counter() - start_time
     
     print(f"Description: UAV1 t=0-10s, UAV2 t=10-20s on same path")
-    print(f"Expected: NO CONFLICT ✓")
-    print(f"Result: {'NO CONFLICT DETECTED ✓' if not conflicts else f'CONFLICT DETECTED ✗ ({len(conflicts)} conflicts)'}")
+    print(f"Expected: NO CONFLICT OK")
+    print(f"Result: {'NO CONFLICT DETECTED OK' if not conflicts else f'CONFLICT DETECTED FAIL ({len(conflicts)} conflicts)'}")
     print(f"Detection time: {detect_time*1000:.3f} ms")
     
     return len(conflicts) == 0, detect_time
@@ -668,8 +669,8 @@ def test_scenario_14_large_safety_radius():
     detect_time = time.perf_counter() - start_time
     
     print(f"Description: Large safety radii (4m each) at 6m distance")
-    print(f"Expected: CONFLICT ✓")
-    print(f"Result: {'CONFLICT DETECTED ✓' if conflicts else 'NO CONFLICT ✗'}")
+    print(f"Expected: CONFLICT OK")
+    print(f"Result: {'CONFLICT DETECTED OK' if conflicts else 'NO CONFLICT FAIL'}")
     print(f"Detection time: {detect_time*1000:.3f} ms")
     if conflicts:
         print(f"Conflicts found: {len(conflicts)}")
@@ -715,8 +716,8 @@ def test_scenario_15_sharp_turn_conflict():
     detect_time = time.perf_counter() - start_time
     
     print(f"Description: UAV2 makes sharp turn crossing UAV1 at (50,50,10)")
-    print(f"Expected: CONFLICT ✓")
-    print(f"Result: {'CONFLICT DETECTED ✓' if conflicts else 'NO CONFLICT ✗'}")
+    print(f"Expected: CONFLICT OK")
+    print(f"Result: {'CONFLICT DETECTED OK' if conflicts else 'NO CONFLICT FAIL'}")
     print(f"Detection time: {detect_time*1000:.3f} ms")
     if conflicts:
         print(f"Conflicts found: {len(conflicts)}")
@@ -765,7 +766,7 @@ def run_all_tests():
             passed = result == expected_conflict
             results.append((name, passed, expected_conflict, result, detect_time))
         except Exception as e:
-            print(f"\n❌ ERROR in scenario {i}: {str(e)}")
+            print(f"\n[ERROR] ERROR in scenario {i}: {str(e)}")
             results.append((name, False, expected_conflict, None, 0))
     
     elapsed_time = time.time() - start_time
@@ -780,7 +781,7 @@ def run_all_tests():
     total_count = len(results)
     
     for i, (name, passed, expected, result, detect_time) in enumerate(results, 1):
-        status = "✓ PASS" if passed else "✗ FAIL"
+        status = "OK PASS" if passed else "FAIL FAIL"
         expected_str = "CONFLICT" if expected else "NO CONFLICT"
         result_str = "CONFLICT" if result else "NO CONFLICT"
         time_str = f"{detect_time*1000:.3f} ms"

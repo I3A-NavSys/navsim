@@ -1,5 +1,5 @@
 from rtree import index
-import numpy as np
+
 
 class RTreeDetector:
     """

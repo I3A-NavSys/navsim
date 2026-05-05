@@ -13,10 +13,8 @@ PURPOSE:
                                   is available (e.g. degenerate geometry).
 
     build_trapezoid_detour()    — PRIMARY.  Trapezoid (anc → det1 → det2 → ret).
-                                  Uses the Bézier Convex Hull Property to give a
-                                  100% mathematical guarantee that the flat top
-                                  segment stays inside the safe OBB displaced by
-                                  the MTV.  See bezier_hull.py for the math.
+                                  Uses heuristic MTV scaling to find a conflict-free
+                                  route via the Shadow R-Tree.
 
 TRAPEZOID GEOMETRY:
     Original route:
@@ -49,8 +47,8 @@ from core.config import (
     TRAP_DETOUR_RAMP_IN_FRACTION,
     TRAP_DETOUR_TOP_END_FRACTION,
     TRAP_DETOUR_RAMP_OUT_FRACTION,
-    BEZIER_HULL_REDUCTION_FACTOR,
-    BEZIER_HULL_MAX_REDUCTIONS,
+    MIN_DETOUR_DURATION,
+    POST_CONFLICT_BUFFER,
 )
 
 if TYPE_CHECKING:
@@ -256,47 +254,26 @@ def build_trapezoid_detour(
     fp:           FlightPlan,
     t_anchor:     float,
     mtv:          np.ndarray,
-    conflict_obb: Optional["SweptBox_OBB"] = None,
+    conflict_obbs: Optional[List["SweptBox_OBB"]] = None,
 ) -> Optional[FlightPlan]:
     """
-    Build a trapezoid detour (anc → det1 → det2 → ret) with a Bézier Convex
-    Hull safety check on the flat top segment.
+    Build a trapezoid detour (anc → det1 → det2 → ret) using a heuristic
+    translation based on the MTV.
 
     ALGORITHM
     ---------
     1. Anchor position and next waypoint are retrieved.
-    2. If ``conflict_obb`` is provided, the safe OBB is computed (conflict_obb
+    2. If ``conflict_obb`` is provided, the safe center is computed (conflict_obb
        displaced by ``mtv``) and det1/det2 are placed at the entry/exit corners
-       of that safe OBB along its forward axis (axes[0]).
+       of that safe zone along its forward axis (axes[0]).
        Otherwise, the function degrades gracefully to a simple single-point
        detour (same behaviour as build_spatial_detour).
     3. Time fractions TRAP_DETOUR_{RAMP_IN,TOP_END,RAMP_OUT}_FRACTION allocate
        the available time budget [t_anchor, next_wp.t].
     4. Velocity at det1 and det2 is set to the natural flat-crossing speed
        (L / Δt_flat along axes[0]) and capped at fp.max_var_lin_vel.
-    5. The Bézier hull check on the flat segment (det1→det2) is performed.
-       If it fails (numerically unlikely with the construction above but
-       checked for robustness), the speed is reduced by BEZIER_HULL_REDUCTION_FACTOR
-       up to BEZIER_HULL_MAX_REDUCTIONS times.
-    6. If the hull check cannot be satisfied: return None.
-    7. The four waypoints are inserted into a copy of fp and
+    5. The four waypoints are inserted into a copy of fp and
        connect_waypoints() is called to commit the polynomial.
-
-    BÉZIER HULL GUARANTEE (flat segment)
-    -------------------------------------
-    With det1 at the entry corner and det2 at the exit corner of the safe OBB,
-    velocity aligned with axes[0] and zero acceleration at both waypoints, the
-    6 Bézier control points work out to:
-
-        P0 = det1.pos = C − L/2 · â₀      (C = safe_obb.center, L = 2·h₀, â₀ = axes[0])
-        P1 = C − 3L/10 · â₀
-        P2 = C − L/10  · â₀
-        P3 = C + L/10  · â₀
-        P4 = C + 3L/10 · â₀
-        P5 = det2.pos = C + L/2 · â₀
-
-    All have zero perpendicular component, so the only binding constraint is
-    along â₀: every projection satisfies |proj| ≤ L/2 = h₀. ✓
 
     Args:
         fp:           Original FlightPlan (not mutated).
@@ -306,14 +283,9 @@ def build_trapezoid_detour(
                       If None, degrades to build_spatial_detour behaviour.
 
     Returns:
-        A conflict-free FlightPlan candidate, or None if geometry is degenerate
-        or the Bézier hull cannot be satisfied even after speed reduction.
+        A FlightPlan candidate (to be validated by the Shadow R-Tree),
+        or None if geometry is degenerate.
     """
-    from resolution.geometry.bezier_hull import (
-        build_safe_evasion_obb,
-        check_trapezoid_flat_hull,
-    )
-
     # ------------------------------------------------------------------
     # Guard: anchor must be within the flight plan window
     # ------------------------------------------------------------------
@@ -331,7 +303,19 @@ def build_trapezoid_detour(
     anchor_pos: np.ndarray = status_anchor.pos.copy()
     anchor_vel: np.ndarray = status_anchor.vel.copy()
 
-    target_idx = fp.get_target_index_from_time(t_anchor)
+    if conflict_obbs:
+        t_max_conflict = conflict_obbs[-1].t_range[1]
+        t_target = max(t_anchor + MIN_DETOUR_DURATION, t_max_conflict + POST_CONFLICT_BUFFER)
+        target_idx = 0
+        for idx, wp in enumerate(fp.waypoints):
+            if wp.t >= t_target:
+                target_idx = idx
+                break
+        else:
+            target_idx = len(fp.waypoints) - 1
+    else:
+        target_idx = fp.get_target_index_from_time(t_anchor)
+
     if target_idx >= len(fp.waypoints):
         return None
     next_wp: Waypoint = fp.waypoints[target_idx]
@@ -341,100 +325,136 @@ def build_trapezoid_detour(
         return None
 
     # ------------------------------------------------------------------
-    # Step 2: Compute timing for the four trapezoid waypoints
+    # Step 2: Extract dynamic constraints & build safe center
     # ------------------------------------------------------------------
-    t_det1 = t_anchor + TRAP_DETOUR_RAMP_IN_FRACTION  * t_to_next
-    t_det2 = t_anchor + TRAP_DETOUR_TOP_END_FRACTION  * t_to_next
-    t_ret  = t_anchor + TRAP_DETOUR_RAMP_OUT_FRACTION * t_to_next
+    v_nominal = np.linalg.norm(anchor_vel)
+    if v_nominal < NORM_ZERO_THRESHOLD:
+        v_nominal = 1.0  # Fallback minimum speed for hover states
+        
+    w_max = float(fp.max_var_ang_vel)
+    a_max = float(fp.max_var_lin_vel)
 
-    if not (t_anchor < t_det1 < t_det2 < t_ret < next_wp.t):
-        return None  # Time budget too small to fit 4 waypoints
+    def calc_dt_turn(dir_in: np.ndarray, dir_out: np.ndarray) -> float:
+        """Algoritmo 6 (Casado et al., 2026): Turn time computation."""
+        dir_in_norm = np.linalg.norm(dir_in)
+        dir_out_norm = np.linalg.norm(dir_out)
+        if dir_in_norm < NORM_ZERO_THRESHOLD or dir_out_norm < NORM_ZERO_THRESHOLD:
+            return 0.0
+        
+        u_in = dir_in / dir_in_norm
+        u_out = dir_out / dir_out_norm
+        dot = np.clip(np.dot(u_in, u_out), -1.0, 1.0)
+        alpha = np.arccos(dot)
+        
+        dt_w = alpha / w_max if w_max > NORM_ZERO_THRESHOLD else 0.0
+        dt_a = (2.0 * v_nominal * np.sin(alpha / 2.0)) / a_max if a_max > NORM_ZERO_THRESHOLD else 0.0
+        return max(dt_w, dt_a)
 
-    # ------------------------------------------------------------------
-    # Step 3: Compute det1 and det2 positions
-    # ------------------------------------------------------------------
-    safe_obb = None
+    safe_center = None
+    vel_anc = anchor_vel.copy()
 
-    if conflict_obb is not None:
-        # Build the safe OBB (same shape as conflicting OBB, shifted by MTV)
-        safe_obb = build_safe_evasion_obb(conflict_obb, mtv)
+    if conflict_obbs:
+        first_obb = conflict_obbs[0]
+        last_obb = conflict_obbs[-1]
+        
+        fwd_axis: np.ndarray = first_obb.axes[0]  # unit vector
+        
+        # Aggregate the boxes along the forward axis
+        dir_vector = last_obb.center - first_obb.center
+        l_proj = np.dot(dir_vector, fwd_axis)
+        
+        half_len = (abs(l_proj) + first_obb.half_extents[0] + last_obb.half_extents[0]) / 2.0
+        composite_center = first_obb.center + fwd_axis * (l_proj / 2.0)
 
-        # Forward axis of the safe OBB (= flight direction through safe zone)
-        fwd_axis: np.ndarray = safe_obb.axes[0]          # unit vector
-        half_len: float      = safe_obb.half_extents[0]  # half-length along fwd
+        # Build the safe center (conflict composite center shifted by MTV)
+        safe_center = composite_center + mtv
 
-        # det1 and det2 at the entry / exit corners of the safe OBB
-        det1_pos: np.ndarray = safe_obb.center - half_len * fwd_axis
-        det2_pos: np.ndarray = safe_obb.center + half_len * fwd_axis
+        # det1 and det2 at the entry / exit corners of the safe OBB sequence
+        det1_pos: np.ndarray = safe_center - half_len * fwd_axis
+        det2_pos: np.ndarray = safe_center + half_len * fwd_axis
+        
+        # Geometrically define ret_pos to return to original line
+        # Advance along the line by the distance of the mtv to make a symmetric ramp-out
+        line_dir = next_wp.pos - anchor_pos
+        line_len = np.linalg.norm(line_dir)
+        
+        if line_len > NORM_ZERO_THRESHOLD:
+            u_line = line_dir / line_len
+            proj_dist = np.dot(det2_pos - anchor_pos, u_line)
+            ret_dist = min(proj_dist + np.linalg.norm(mtv), line_len - 0.5)
+            ret_pos = anchor_pos + ret_dist * u_line
+        else:
+            ret_pos = det2_pos - mtv
+            
+        # ------------------------------------------------------------------
+        # Step 3: Accumulate turn & transit times dynamically
+        # ------------------------------------------------------------------
+        dir_anc_det1 = det1_pos - anchor_pos
+        dir_det1_det2 = det2_pos - det1_pos
+        dir_det2_ret = ret_pos - det2_pos
+        dir_ret_next = next_wp.pos - ret_pos
+        
+        # Turn 1 (anc)
+        v_in_anc = anchor_vel.copy()
+        if np.linalg.norm(v_in_anc) <= NORM_ZERO_THRESHOLD:
+            v_in_anc = line_dir if line_len > NORM_ZERO_THRESHOLD else mtv
+            
+        dt_turn_anc = calc_dt_turn(v_in_anc, dir_anc_det1)
+        transit_anc_det1 = np.linalg.norm(dir_anc_det1) / v_nominal
+        t_det1 = t_anchor + dt_turn_anc + transit_anc_det1
+        
+        # Turn 2 (det1)
+        dt_turn_det1 = calc_dt_turn(dir_anc_det1, dir_det1_det2)
+        transit_det1_det2 = np.linalg.norm(dir_det1_det2) / v_nominal
+        t_det2 = t_det1 + dt_turn_det1 + transit_det1_det2
+        
+        # Turn 3 (det2)
+        dt_turn_det2 = calc_dt_turn(dir_det1_det2, dir_det2_ret)
+        transit_det2_ret = np.linalg.norm(dir_det2_ret) / v_nominal
+        t_ret = t_det2 + dt_turn_det2 + transit_det2_ret
+        
+        # Turn 4 (ret)
+        dt_turn_ret = calc_dt_turn(dir_det2_ret, dir_ret_next)
+        t_post_ret = t_ret + dt_turn_ret
+        
+        # ------------------------------------------------------------------
+        # Step 4: Kinetic validation (Time budget scaling)
+        # ------------------------------------------------------------------
+        if t_post_ret >= next_wp.t:
+            # We scale the allocated deltas to fit inside the time budget
+            available_dt = next_wp.t - t_anchor
+            total_dt_needed = t_post_ret - t_anchor
+            scale = (available_dt * 0.99) / total_dt_needed
+            
+            t_det1 = t_anchor + (t_det1 - t_anchor) * scale
+            t_det2 = t_anchor + (t_det2 - t_anchor) * scale
+            t_ret  = t_anchor + (t_ret - t_anchor) * scale
+            
+            # Since we scale time, the velocity increases
+            v_safe = min(v_nominal / scale, float(fp.max_var_lin_vel))
+        else:
+            v_safe = min(v_nominal, float(fp.max_var_lin_vel))
+
+        # Velocities directed along the trapezoid segments
+        vel_det1 = fwd_axis * v_safe
+        vel_det2 = fwd_axis * v_safe
+
+        norm_to_next = np.linalg.norm(dir_ret_next)
+        vel_ret = (dir_ret_next / norm_to_next * v_safe
+                   if norm_to_next > NORM_ZERO_THRESHOLD else np.zeros(3))
+
     else:
         # Degraded mode: single displaced point (identical to build_spatial_detour)
         det1_pos = anchor_pos + mtv
         det2_pos = anchor_pos + mtv
-        fwd_axis = None
-
-    # ------------------------------------------------------------------
-    # Step 4: Compute velocities
-    # ------------------------------------------------------------------
-    # Anchor: keep the original velocity (already on-route)
-    vel_anc = anchor_vel.copy()
-
-    # Return waypoint position on the original route (interpolated)
-    ret_pos: np.ndarray = fp.status_at_time(t_ret).pos.copy()
-
-    if safe_obb is not None and fwd_axis is not None:
-        # Flat top: natural crossing speed along axes[0], capped at max_var_lin_vel
-        flat_dist  = np.linalg.norm(det2_pos - det1_pos)  # = 2 * half_len
-        dt_flat    = t_det2 - t_det1
-        v_nominal  = flat_dist / dt_flat if dt_flat > NORM_ZERO_THRESHOLD else 0.0
-        v_safe     = min(v_nominal, float(fp.max_var_lin_vel))
-
-        vel_det1 = fwd_axis * v_safe
-        vel_det2 = fwd_axis * v_safe
-
-        # Return: direct the drone back toward the next_wp
-        dir_to_next   = next_wp.pos - ret_pos
-        norm_to_next  = np.linalg.norm(dir_to_next)
-        vel_ret = (dir_to_next / norm_to_next * v_safe
-                   if norm_to_next > NORM_ZERO_THRESHOLD else np.zeros(3))
-
-        # --------------------------------------------------------------
-        # Step 5: Bézier hull check with optional velocity reduction loop
-        # --------------------------------------------------------------
-        wp_anc_tmp  = Waypoint(label="anc",  t=t_anchor, pos=anchor_pos, vel=vel_anc)
-        wp_det1_tmp = Waypoint(label="det1", t=t_det1,   pos=det1_pos,   vel=vel_det1)
-        wp_det2_tmp = Waypoint(label="det2", t=t_det2,   pos=det2_pos,   vel=vel_det2)
-        wp_ret_tmp  = Waypoint(label="ret",  t=t_ret,    pos=ret_pos,     vel=vel_ret)
-
-        hull_ok = False
-        for _ in range(BEZIER_HULL_MAX_REDUCTIONS + 1):
-            hull_ok, _pts = check_trapezoid_flat_hull(wp_det1_tmp, wp_det2_tmp, safe_obb)
-            if hull_ok:
-                break
-            # Reduce flat-top speed and re-check
-            v_safe       *= BEZIER_HULL_REDUCTION_FACTOR
-            vel_det1      = fwd_axis * v_safe
-            vel_det2      = fwd_axis * v_safe
-            vel_ret       = (dir_to_next / norm_to_next * v_safe
-                             if norm_to_next > NORM_ZERO_THRESHOLD else np.zeros(3))
-            wp_det1_tmp.vel = vel_det1
-            wp_det2_tmp.vel = vel_det2
-            wp_ret_tmp.vel  = vel_ret
-
-        if not hull_ok:
-            # Cannot satisfy the Bézier hull guarantee — discard candidate
-            return None
-
-        # Commit the final (possibly reduced) velocities
-        vel_det1 = wp_det1_tmp.vel.copy()
-        vel_det2 = wp_det2_tmp.vel.copy()
-        vel_ret  = wp_ret_tmp.vel.copy()
-
-    else:
-        # Degraded mode: zero velocities, let set_uniform_velocity compute them
+        ret_pos = fp.status_at_time(t_anchor + TRAP_DETOUR_RAMP_OUT_FRACTION * t_to_next).pos.copy()
+        
+        t_det1 = t_anchor + TRAP_DETOUR_RAMP_IN_FRACTION * t_to_next
+        t_det2 = t_anchor + TRAP_DETOUR_TOP_END_FRACTION * t_to_next
+        t_ret  = t_anchor + TRAP_DETOUR_RAMP_OUT_FRACTION * t_to_next
+        
         vel_det1 = np.zeros(3)
         vel_det2 = np.zeros(3)
-        dir_to_next  = next_wp.pos - ret_pos
-        norm_to_next = np.linalg.norm(dir_to_next)
         vel_ret = np.zeros(3)
 
     # ------------------------------------------------------------------
@@ -450,13 +470,20 @@ def build_trapezoid_detour(
     # ------------------------------------------------------------------
     new_fp: FlightPlan = fp.copy()
 
+    # Filter out waypoints that fall inside the detour interval
+    filtered_wps = []
+    for wp in new_fp.waypoints:
+        if wp.t <= t_anchor or wp.t >= next_wp.t:
+            filtered_wps.append(wp)
+    new_fp.waypoints = filtered_wps
+
     new_fp.set_waypoint(wp_anc)
     new_fp.set_waypoint(wp_det1)
     new_fp.set_waypoint(wp_det2)
     new_fp.set_waypoint(wp_ret)
 
     # If we didn't set velocities explicitly, let the plan compute them
-    if safe_obb is None:
+    if safe_center is None:
         new_fp.set_uniform_velocity()
 
     # commit the quintic polynomial for every segment (= connect_to per pair)

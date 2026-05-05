@@ -66,6 +66,7 @@ from core.config import (
     HOVER_MAX_TIMEOUT,
     HOVER_TIME_STEP,
     WAYPOINT_TIME_EPSILON,
+    FORWARD_PROGRESS_MARGIN,
 )
 from resolution.geometry.sat_mtv import generate_mtv_candidates, SATResult
 from resolution.geometry.path_geometry import (
@@ -157,18 +158,40 @@ class ConflictResolver:
         # Step 0: Compute anchor time (WCET invariant)
         #
         # t_start  = the UAV's scheduled departure time (fp_pleb.init_time()).
-        #            This is set by the operator when registering the route.
-        #            We use it as a HARD FLOOR: t_anchor must never be earlier
-        #            than t_start, otherwise we would be planning a maneuver
-        #            before the drone has even taken off.
+        #            We use it as a HARD FLOOR: t_anchor >= t_start + ANCHOR_DELTA.
         #
-        # t_anchor = the point from which the maneuver starts, computed as:
-        #            max(t_conflict, t_start) + ANCHOR_DELTA
-        #            ANCHOR_DELTA = WCET + safety margin (see config.py).
+        # t_anchor = the point from which the maneuver starts.
+        #
+        # KEY INVARIANT: t_anchor MUST be BEFORE t_conflict.
+        #   If the anchor is placed after the conflict, any detour / speed change /
+        #   hover will only affect the post-conflict trajectory — the drone has
+        #   already crossed the conflict zone and all strategies become useless.
+        #
+        # Formula:
+        #   t_anchor = max(t_start + ANCHOR_DELTA, t_conflict - ANCHOR_DELTA)
+        #   if t_anchor >= t_conflict:                  (no time left to maneuver)
+        #       clamp to t_conflict - WAYPOINT_TIME_EPSILON
+        #       (the drone inserts the maneuver as late as geometrically possible
+        #        while still being BEFORE the collision instant)
         # =================================================================
         t_start    = fp_pleb.init_time()           # Scheduled departure time
         t_conflict = conflict["time_range"][0]     # Earliest overlap instant
-        t_anchor   = max(t_conflict, t_start) + ANCHOR_DELTA
+
+        # Place the anchor ANCHOR_DELTA seconds before the conflict, but respect the floor
+        t_anchor = max(t_start + ANCHOR_DELTA, t_conflict - ANCHOR_DELTA)
+
+        # Ensure the anchor is still strictly before the conflict
+        if t_anchor >= t_conflict:
+            t_anchor = t_conflict - WAYPOINT_TIME_EPSILON
+            if t_anchor < t_start:
+                # Not even t_start is before the conflict — true DEADLOCK
+                return ResolveResult(
+                    success=False,
+                    strategy_used="DEADLOCK",
+                    message=f"t_anchor cannot be placed before t_conflict={t_conflict:.2f}s "
+                            f"(t_start={t_start:.2f}s, ANCHOR_DELTA={ANCHOR_DELTA}s). "
+                            f"Mission abort.",
+                )
 
         # Guard: anchor must be before plebeian finishes its flight
         if t_anchor >= fp_pleb.finish_time():
@@ -191,10 +214,11 @@ class ConflictResolver:
         # =================================================================
         result_s1 = run_strategy1(
             fp_pleb=fp_pleb,
-            fp_vip=fp_vip_held,
+            fp_vip=fp_vip,
             pleb_id=pleb_id,
             t_anchor=t_anchor,
             manager=self._manager,
+            t_conflict=t_conflict,
         )
 
         # =================================================================
@@ -235,7 +259,7 @@ class ConflictResolver:
         # =================================================================
         s2_result, iters = self._strategy2_horizontal(
             fp_pleb=fp_pleb,
-            fp_vip=fp_vip_held,
+            fp_vip=fp_vip,
             pleb_id=pleb_id,
             t_anchor=t_anchor,
             horizontal_mtvs=sat_result.horizontal_mtvs,
@@ -262,7 +286,7 @@ class ConflictResolver:
         # =================================================================
         fb1_result, iters = self._fallback1_vertical_mtvs(
             fp_pleb=fp_pleb,
-            fp_vip=fp_vip_held,
+            fp_vip=fp_vip,
             pleb_id=pleb_id,
             t_anchor=t_anchor,
             vertical_mtvs=sat_result.vertical_mtvs,
@@ -287,7 +311,7 @@ class ConflictResolver:
         # =================================================================
         fb2_result, iters = self._fallback2_timeshift(
             fp_pleb=fp_pleb,
-            fp_vip=fp_vip_held,
+            fp_vip=fp_vip,
             pleb_id=pleb_id,
             t_anchor=t_anchor,
             shadow=shadow,
@@ -420,19 +444,30 @@ class ConflictResolver:
         candidate_fp: FlightPlan,
         pleb_id: str,
         shadow: "RTreeDetector",
+        t_conflict_being_solved: float = 0.0,
     ) -> bool:
         """
         Swap the plebeian's entry in the pre-built shadow R-Tree with the
         candidate FlightPlan and check for conflicts.
 
-        register_uav() automatically removes the previous entry for
-        pleb_id (if any) before inserting the new boxes, so successive
-        calls are safe.
-
-        Returns True if no conflicts are detected.
+        FORWARD PROGRESS GUARANTEE:
+        If the route still contains conflicts, the system accepts it ONLY if 
+        the earliest remaining conflict is strictly and comfortably after the 
+        one we are actively solving. This allows CentralManager to resolve 
+        multi-conflict scenarios iteratively without DEADLOCK.
         """
         shadow.register_uav(pleb_id, candidate_fp, interval=OBB_INTERVAL)
-        return len(shadow.detect_all_conflicts(pleb_id)) == 0
+        conflicts = shadow.detect_all_conflicts(pleb_id)
+        if len(conflicts) == 0:
+            return True
+            
+        # Check for forward progress
+        conflicts.sort(key=lambda c: c["time_range"][0])
+        earliest_new_conflict = conflicts[0]["time_range"][0]
+        
+        # Accept if the earliest remaining conflict is further in the future
+        # (with safety margin)
+        return earliest_new_conflict >= t_conflict_being_solved + FORWARD_PROGRESS_MARGIN
 
     # ------------------------------------------------------------------
     # Strategy 2: Horizontal Path Stretch
@@ -450,44 +485,52 @@ class ConflictResolver:
     ) -> tuple[Optional[FlightPlan], int]:
         """
         Iterate over horizontal MTVs, building a TRAPEZOID spatial detour for each
-        candidate using the Bézier Convex Hull guarantee on the flat-top segment.
+        candidate. The detour relies on heuristic scaling and validation against
+        the Shadow R-Tree.
 
-        The conflicting OBB (box_a_idx from the conflict dict) is passed to
-        build_trapezoid_detour so it can construct the safe OBB and verify that
-        all 6 Bézier control points of the flat segment (det1 → det2) lie inside.
+        The conflicting OBB sequence is passed to build_trapezoid_detour to compute
+        an aggregated safe volume for the evasion maneuver.
 
         Returns: (accepted_flight_plan | None, iteration_count)
         """
-        # Retrieve the plebeian's colliding OBB for the hull check
+        # Retrieve ALL the plebeian's colliding OBBs in the conflict time range
         pleb_id_key = conflict.get("uav_a", pleb_id)
-        box_a_idx   = conflict.get("box_a_idx", None)
-        conflict_obb = None
-        if box_a_idx is not None:
-            try:
-                conflict_obb = self._manager.uavs[pleb_id_key]["boxes"][box_a_idx]
-            except (KeyError, IndexError):
-                conflict_obb = None
+        t_min, t_max = conflict["time_range"]
+        conflict_obbs = []
+        try:
+            for box in self._manager.uavs[pleb_id_key]["boxes"]:
+                if box.t_range[1] > t_min and box.t_range[0] < t_max:
+                    conflict_obbs.append(box)
+        except KeyError:
+            pass
 
-        for i, mtv in enumerate(horizontal_mtvs):
-            # Build the trapezoid detour with Bézier hull pre-check
-            candidate = build_trapezoid_detour(
-                fp=fp_pleb,
-                t_anchor=t_anchor,
-                mtv=mtv,
-                conflict_obb=conflict_obb,
-            )
-            if candidate is None:
-                continue
+        if not conflict_obbs:
+            conflict_obbs = None
 
-            # Local kinematic validation of the turn corners
-            if not self._validate_detour_kinematics(candidate, t_anchor, fp_pleb):
-                continue
+        iters_count = 0
+        for mtv in horizontal_mtvs:
+            # Iterative heuristic: scale the MTV to push the detour further
+            # if the generated polynomial curve bulges and collides.
+            for scale in [1.0, 1.25, 1.5, 2.0]:
+                scaled_mtv = mtv * scale
+                
+                # Build the trapezoid detour
+                candidate = build_trapezoid_detour(
+                    fp=fp_pleb,
+                    t_anchor=t_anchor,
+                    mtv=scaled_mtv,
+                    conflict_obbs=conflict_obbs,
+                )
+                if candidate is None:
+                    continue
 
-            # Global R-Tree validation (shadow)
-            if self._validate_shadow(candidate, pleb_id, shadow):
-                return candidate, i + 1
+                iters_count += 1
 
-        return None, len(horizontal_mtvs)
+                # Global R-Tree validation (shadow)
+                if self._validate_shadow(candidate, pleb_id, shadow, conflict["time_range"][0]):
+                    return candidate, iters_count
+
+        return None, iters_count
 
     # ------------------------------------------------------------------
     # Fallback 1: Vertical MTVs (Z-shift happens naturally from SAT result)
@@ -506,39 +549,48 @@ class ConflictResolver:
         """
         Iterate over vertical MTVs (Z-dominant) from the SAT result.
 
-        Uses build_trapezoid_detour so the Bézier hull guarantee also applies
-        to vertical evasion manoeuvres.  The flat top of the trapezoid is a
-        section of the original route displaced vertically by the MTV — the
-        UAV climbs / descends to the safe altitude corridor, crosses it, then
-        returns.  Angular kinematic validation is still skipped for vertical
-        manoeuvres (multirotors can change altitude without changing heading).
+        Uses build_trapezoid_detour to construct a vertical spatial detour.
+        The flat top of the trapezoid is a section of the original route displaced
+        vertically by the MTV — the UAV climbs / descends to the safe altitude
+        corridor, crosses it, then returns. Angular kinematic validation uses
+        Algoritmo 6 just like horizontal detours.
 
         Returns: (accepted_flight_plan | None, iteration_count)
         """
-        # Retrieve the plebeian's colliding OBB for the hull check
+        # Retrieve ALL the plebeian's colliding OBBs in the conflict time range
         pleb_id_key = conflict.get("uav_a", pleb_id)
-        box_a_idx   = conflict.get("box_a_idx", None)
-        conflict_obb = None
-        if box_a_idx is not None:
-            try:
-                conflict_obb = self._manager.uavs[pleb_id_key]["boxes"][box_a_idx]
-            except (KeyError, IndexError):
-                conflict_obb = None
+        t_min, t_max = conflict["time_range"]
+        conflict_obbs = []
+        try:
+            for box in self._manager.uavs[pleb_id_key]["boxes"]:
+                if box.t_range[1] > t_min and box.t_range[0] < t_max:
+                    conflict_obbs.append(box)
+        except KeyError:
+            pass
 
-        for i, mtv in enumerate(vertical_mtvs):
-            candidate = build_trapezoid_detour(
-                fp=fp_pleb,
-                t_anchor=t_anchor,
-                mtv=mtv,
-                conflict_obb=conflict_obb,
-            )
-            if candidate is None:
-                continue
+        if not conflict_obbs:
+            conflict_obbs = None
 
-            if self._validate_shadow(candidate, pleb_id, shadow):
-                return candidate, i + 1
+        iters_count = 0
+        for mtv in vertical_mtvs:
+            for scale in [1.0, 1.25, 1.5, 2.0]:
+                scaled_mtv = mtv * scale
+                
+                candidate = build_trapezoid_detour(
+                    fp=fp_pleb,
+                    t_anchor=t_anchor,
+                    mtv=scaled_mtv,
+                    conflict_obbs=conflict_obbs,
+                )
+                if candidate is None:
+                    continue
 
-        return None, len(vertical_mtvs)
+                iters_count += 1
+
+                if self._validate_shadow(candidate, pleb_id, shadow, conflict["time_range"][0]):
+                    return candidate, iters_count
+
+        return None, iters_count
 
     # ------------------------------------------------------------------
     # Fallback 2: Time-Shift (Hovering)
@@ -593,7 +645,7 @@ class ConflictResolver:
             candidate.postpone_from(t_anchor + WAYPOINT_TIME_EPSILON, hover_duration)
             candidate.connect_waypoints()
 
-            if self._validate_shadow(candidate, pleb_id, shadow):
+            if self._validate_shadow(candidate, pleb_id, shadow, t_anchor):
                 return candidate, iteration
 
         # Timeout — DEADLOCK

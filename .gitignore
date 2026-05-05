@@ -1,0 +1,4 @@
+# Python specific
+__pycache__/
+*.pyc
+*.pyo

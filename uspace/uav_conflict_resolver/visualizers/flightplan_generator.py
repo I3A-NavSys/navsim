@@ -84,18 +84,19 @@ _LATERAL_NOISE_FRACTION = 0.15
 # ============================================================================
 # Core Generator
 # ============================================================================
-
+### al final el utlimo wp tiene que tener velocidad 0. y el primero velocidad minima.abs
+### tener en cuenta la velocidad lineal y angular, y la direccion de los vectores. y el tiempo q tenga sentido.
 def generate_flight_plan(
-    prism: Tuple[Tuple[float, float], ...] = DEFAULT_PRISM,
-    t_start: float = 0.0,
-    t_end: float = 120.0,
-    num_waypoints: Optional[int] = None,
-    speed_range: Tuple[float, float] = DEFAULT_SPEED_RANGE,
+    prism: Tuple[Tuple[float, float], ...] = DEFAULT_PRISM, ###
+    t_start: float = 0.0, ###
+    t_end: float = 120.0, 
+    num_waypoints: Optional[int] = None, ###
+    speed_range: Tuple[float, float] = DEFAULT_SPEED_RANGE, ###
     radius: float = DEFAULT_RADIUS,
     max_lin_vel: float = DEFAULT_MAX_LIN_VEL,
     max_ang_vel: float = DEFAULT_MAX_ANG_VEL,
     uav_id: int = 0,
-    priority: int = 0,
+    priority: int = 0, ####
     seed: Optional[int] = None,
     takeoff_landing: bool = True,
 ) -> FlightPlan:
@@ -531,7 +532,7 @@ if __name__ == "__main__":
     fp = generate_flight_plan(seed=42)
     print(f"    ID: {fp.id}, Priority: {fp.priority}, Radius: {fp.radius}m")
     print(f"    Waypoints: {len(fp.waypoints)}")
-    print(f"    Time: {fp.init_time():.1f}s → {fp.finish_time():.1f}s")
+    print(f"    Time: {fp.init_time():.1f}s -> {fp.finish_time():.1f}s")
     print(f"    Duration: {fp.finish_time() - fp.init_time():.1f}s")
     print("\n    Waypoint details:")
     fp.print_waypoints()
@@ -542,7 +543,7 @@ if __name__ == "__main__":
         if np.linalg.norm(wp.jerk) > 1e-10 or np.linalg.norm(wp.snap) > 1e-10:
             has_higher_order = True
             break
-    print(f"\n    7D polynomial active (jerk/snap/crakle ≠ 0): {'✓' if has_higher_order else '✗'}")
+    print(f"\n    7D polynomial active (jerk/snap/crakle != 0): {'OK' if has_higher_order else 'FAIL'}")
 
     # --- Demo 2: Crossing pair ---
     print("\n" + "-" * 70)

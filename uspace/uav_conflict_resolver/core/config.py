@@ -86,7 +86,9 @@ ANCHOR_DELTA:           float = WCET_SECONDS + SAFETY_MARGIN_SECONDS  # = 3.0 s
 MAX_ITERATIONS:          int   = 3     # Step search iterations
 
 S1_MIN_SPEED:            float = 0.5   # Absolute minimum speed [m/s]
-RECTILINEAR_THRESHOLD:   float = 1e-6  # Guard clause: curved segment detection
+RECTILINEAR_THRESHOLD:   float = 0.1   # Guard clause: curved segment detection
+                                        # (quintic polys have small but non-zero jerk ~0.01–0.1 m/s³;
+                                        #  1e-6 was too strict and always blocked Strategy 1)
 
 MIN_SPEED_CHANGE:        float = 0.01  # Minimum Δv to bother evaluating [m/s]
 VIP_SPEED_SAMPLE_DELTA:  float = 0.1   # VIP speed fallback sample offset [s]
@@ -130,13 +132,11 @@ HOVER_TIME_STEP:   float = 0.5    # Time increment per hovering iteration [s]
 OBB_INTERVAL: float = 0.5   # Sampling interval for OBB box generation [s]
 
 # -----------------------------------------------------------------------------
-# BÉZIER CONVEX HULL — TRAPEZOID DETOUR
+# TRAPEZOID DETOUR (STRATEGY 2)
 #
-# When Strategy 2 or Fallback 1 builds a spatial detour they now create a
+# When Strategy 2 or Fallback 1 builds a spatial detour they create a
 # TRAPEZOID (anc → det1 → det2 → ret) instead of a triangle (anc → det → ret).
-# This gives the flat middle segment (det1 → det2) enough time to satisfy the
-# Bézier Convex Hull Property without requiring extreme velocities, and avoids
-# the Fly-By / Corner-Cutting problem of the two-OBB approach.
+# This gives the flat middle segment (det1 → det2) enough time to cross safely.
 #
 # Time fractions are expressed as a fraction of the available time budget
 # between t_anchor and the next original waypoint (t_to_next):
@@ -151,15 +151,18 @@ OBB_INTERVAL: float = 0.5   # Sampling interval for OBB box generation [s]
 #   (end of the flat top, start of the ramp-out leg).
 # TRAP_DETOUR_RAMP_OUT_FRACTION: time fraction at which the return waypoint
 #   (ret) is placed (end of the ramp-out leg, UAV rejoins original route).
-#
-# BEZIER_HULL_REDUCTION_FACTOR: multiplicative speed reduction applied each
-#   iteration of the velocity-reduction safety loop.
-# BEZIER_HULL_MAX_REDUCTIONS:   maximum number of speed reduction iterations
-#   before giving up and declaring the detour infeasible.
 # -----------------------------------------------------------------------------
 TRAP_DETOUR_RAMP_IN_FRACTION:   float = 0.20   # det1 at 20 % of time budget
 TRAP_DETOUR_TOP_END_FRACTION:   float = 0.60   # det2 at 60 % of time budget
 TRAP_DETOUR_RAMP_OUT_FRACTION:  float = 0.80   # ret  at 80 % of time budget
 
-BEZIER_HULL_REDUCTION_FACTOR:   float = 0.90   # 10 % speed reduction per step
-BEZIER_HULL_MAX_REDUCTIONS:     int   = 20     # Hard cap on reduction iterations
+# -----------------------------------------------------------------------------
+# SHADOW R-TREE (Forward Progress Margin)
+# Used by _validate_shadow to ensure any remaining conflicts after a maneuver
+# occur comfortably in the future, preventing immediate Temporal Domino Effects.
+# -----------------------------------------------------------------------------
+FORWARD_PROGRESS_MARGIN:        float = 5.0    # Time buffer for subsequent conflicts [s]
+
+# Constants for skipping intermediate waypoints during detour creation
+MIN_DETOUR_DURATION:     float = 5.0    # Minimum duration allocated for detour [s]
+POST_CONFLICT_BUFFER:    float = 1.0    # Time buffer after conflict end to select target waypoint [s]

@@ -59,6 +59,7 @@ from core.config import (
     MIN_SPEED_CHANGE,
     S1_MIN_SPEED,
     RECTILINEAR_THRESHOLD,
+    FORWARD_PROGRESS_MARGIN,
 )
 
 if TYPE_CHECKING:
@@ -375,24 +376,28 @@ def _validate_against_shadow(
     candidate_fp: FlightPlan,
     pleb_id: str,
     shadow: "RTreeDetector",
+    t_conflict_being_solved: float = 0.0,
 ) -> bool:
     """
     Swap the plebeian's entry in the pre-built shadow R-Tree with the
     candidate FlightPlan and check for conflicts.
 
-    register_uav() automatically removes the previous entry for pleb_id
-    (if any) before inserting the new boxes, so successive calls are safe.
-
-    This validates the COMPLETE flight plan (all OBB boxes with updated
-    timestamps) to detect Temporal Domino Effect conflicts caused by the
-    Ripple Effect.
-
-    Returns:
-        True if the candidate has no conflicts, False otherwise.
+    FORWARD PROGRESS GUARANTEE:
+    If the route still contains conflicts, the system accepts it ONLY if 
+    the earliest remaining conflict is strictly and comfortably after the 
+    one we are actively solving. This allows iterative resolution of multiple
+    conflicts without DEADLOCK.
     """
     shadow.register_uav(pleb_id, candidate_fp, interval=OBB_INTERVAL)
     conflicts = shadow.detect_all_conflicts(pleb_id)
-    return len(conflicts) == 0
+    if len(conflicts) == 0:
+        return True
+        
+    # Check for forward progress
+    conflicts.sort(key=lambda c: c["time_range"][0])
+    earliest_new_conflict = conflicts[0]["time_range"][0]
+    
+    return earliest_new_conflict >= t_conflict_being_solved + FORWARD_PROGRESS_MARGIN
 
 
 # ---------------------------------------------------------------------------
@@ -405,6 +410,7 @@ def run_strategy1(
     pleb_id:  str,
     t_anchor: float,
     manager:  "RTreeDetector",
+    t_conflict: float = 0.0,
 ) -> Optional[FlightPlan]:
     """
     Execute Strategy 1: Kinematic Bounding via ConnectURM2.
@@ -527,7 +533,7 @@ def run_strategy1(
             v=speed_candidate,
         )
 
-        if _validate_against_shadow(candidate_fp, pleb_id, shadow):
+        if _validate_against_shadow(candidate_fp, pleb_id, shadow, t_conflict):
             # Accepted — return the first valid candidate
             return candidate_fp
 

@@ -9,7 +9,7 @@ from matplotlib.backend_tools import ToolToggleBase
 from matplotlib.collections import PathCollection
 from scipy.spatial.transform import Rotation
 
-from .conflictDetection import SweptBox_AABB, SweptBox_OBB
+from detection.conflictDetection import SweptBox_AABB, SweptBox_OBB
 
 
 from .waypoint import Waypoint
@@ -263,8 +263,8 @@ class FlightPlan:
 
     def connect_waypoints(self):
         """
-        Para cada waypoint con tiempo, posición, velocidad y aceleración determinados,
-        obtiene las 3 derivadas siguientes que ejecutan dicho movimiento.
+        For each waypoint with given time, position, velocity and acceleration,
+        it computes the next 3 derivatives that execute said movement.
         """
         for i in range(len(self.waypoints) - 1):
             wpA = self.waypoints[i]
