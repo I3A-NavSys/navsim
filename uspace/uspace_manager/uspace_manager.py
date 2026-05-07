@@ -122,9 +122,9 @@ class USpaceManager:
     # ----------------------
     # --- MQTT Methods -----
     # ----------------------
-    def connect_mqtt_client(self):
+    def connect_mqtt_client(self, host, port):
         if not self.mqtt_is_connected:
-            success = MQTTService.connect_client(self.mqtt_client)
+            success = MQTTService.connect_client(self.mqtt_client, host, port)
             if success:
                 self.mqtt_is_connected = True
 
