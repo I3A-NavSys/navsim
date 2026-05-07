@@ -34,7 +34,7 @@ def parse_str_list(str_list: str) -> list:
 MAX_MISSION_MNG = int(os.getenv("MAX_MISSION_MNG", 1))
 MAX_REQUEST_TIME = parse_str_list(os.getenv("MAX_REQUEST_TIME", '[20]'))
 MISSION_MNG_SERVICE_TYPES = parse_str_list(os.getenv("MISSION_MNG_SERVICE_TYPES", '[["DELIVERY", "PASSENGER_TRANSPORT"]]'))
-MQTT_HOST_ADDRESS = os.getenv("MQTT_HOST_ADDRESS", "127.0.0.1")
+MQTT_HOST_ADDRESS = os.getenv("MQTT_HOST_ADDRESS")
 MQTT_HOST_PORT = int(os.getenv("MQTT_HOST_PORT", "1883"))
 
 # Control variables
@@ -56,7 +56,6 @@ for mng in mission_managers:
     mng.request_vertiport_operator_list()
 
 # Main Loop
-
 try:
     while True:
         time.sleep(1)

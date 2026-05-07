@@ -23,6 +23,18 @@ services:
       - MQTT_HOST_ADDRESS=${MQTT_HOST_ADDRESS}
       - MQTT_HOST_PORT=${MQTT_HOST_PORT}
 
+  vertiport_operator_dtblock:
+    build:
+      context: ../../
+      dockerfile: platgdia/dtblocks/vertiport_operator/dockerfile
+    container_name: Operador_de_vertipuertos
+    restart: unless-stopped
+    depends_on:
+      - mqtt_dtblock
+    environment:
+      - MQTT_HOST_ADDRESS=${MQTT_HOST_ADDRESS}
+      - MQTT_HOST_PORT=${MQTT_HOST_PORT}
+
 volumes:
   mosquitto-data:
   mosquitto-log:

@@ -1,5 +1,15 @@
 import os
 import json
+import sys
+from os import path
+
+
+current_file_path = path.dirname(__file__)
+project_root_path = path.abspath(path.join(current_file_path, "../../../.."))
+if project_root_path not in sys.path:
+    sys.path.append(project_root_path)
+
+from uspace.uav_operator.uav_operator import UAVOperator
 
 def parse_str_list(str_list: str) -> list:
     '''
@@ -20,7 +30,17 @@ def parse_str_list(str_list: str) -> list:
 
 # Get Configuration Variables
 MAX_UAV_OPS = int(os.getenv("MAX_UAV_OPS", 1))
-SERVICE_TYPES = parse_str_list(os.getenv("SERVICE_TYPES", '[["DELIVERY", "PASSENGER_TRANSPORT"]]'))
+UAV_OP_SERVICE_TYPES = parse_str_list(os.getenv("UAV_OP_SERVICE_TYPES", '[["DELIVERY", "PASSENGER_TRANSPORT"]]'))
 UAV_FLEET = parse_str_list(os.getenv("UAV_FLEET", '[["DELIVERY", "DELIVERY", "DELIVERY", "DELIVERY", "DELIVERY", "PASSENGER_TRANSPORT", "PASSENGER_TRANSPORT", "PASSENGER_TRANSPORT", "PASSENGER_TRANSPORT", "PASSENGER_TRANSPORT"]]'))
-MQTT_HOST_ADDRESS = os.getenv("MQTT_HOST_ADDRESS", "127.0.0.1")
+MQTT_HOST_ADDRESS = os.getenv("MQTT_HOST_ADDRESS")
 MQTT_HOST_PORT = int(os.getenv("MQTT_HOST_PORT", "1883"))
+
+# Build UAV Operators
+uav_operators = [
+    UAVOperator(
+        id=f"UAV_OP_{i}", 
+        name=f"UAV Operator {i}", 
+        service_types=UAV_OP_SERVICE_TYPES[i]
+    )
+    for i in range(MAX_UAV_OPS)
+]

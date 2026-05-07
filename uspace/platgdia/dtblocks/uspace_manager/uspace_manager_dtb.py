@@ -20,5 +20,5 @@ def parse_str_list(str_list: str) -> list:
 
 # Get Configuration Variables
 ROUTING_ALGORITHM = os.getenv("ROUTING_ALGORITHM", "GRID")
-MQTT_HOST_ADDRESS = os.getenv("MQTT_HOST_ADDRESS", "127.0.0.1")
+MQTT_HOST_ADDRESS = os.getenv("MQTT_HOST_ADDRESS")
 MQTT_HOST_PORT = int(os.getenv("MQTT_HOST_PORT", "1883"))
