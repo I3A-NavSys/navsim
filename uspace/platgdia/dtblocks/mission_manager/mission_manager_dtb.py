@@ -33,9 +33,12 @@ def parse_str_list(str_list: str) -> list:
 # Get Configuration Variables
 MAX_MISSION_MNG = int(os.getenv("MAX_MISSION_MNG", 1))
 MAX_REQUEST_TIME = parse_str_list(os.getenv("MAX_REQUEST_TIME", '[20]'))
-SERVICE_TYPES = parse_str_list(os.getenv("SERVICE_TYPES", '[["DELIVERY", "PASSENGER_TRANSPORT"]]'))
+MISSION_MNG_SERVICE_TYPES = parse_str_list(os.getenv("MISSION_MNG_SERVICE_TYPES", '[["DELIVERY", "PASSENGER_TRANSPORT"]]'))
 MQTT_HOST_ADDRESS = os.getenv("MQTT_HOST_ADDRESS", "127.0.0.1")
 MQTT_HOST_PORT = int(os.getenv("MQTT_HOST_PORT", "1883"))
+
+# Control variables
+current_time = 0
 
 # Build Mission Managers
 mission_managers = [
@@ -43,30 +46,25 @@ mission_managers = [
     for i in range(MAX_MISSION_MNG)
 ]
 
-print(f"Initialized {len(mission_managers)} Mission Managers:")
-
 # Connect to MQTT Broker
 for mng in mission_managers:
     mng.connect_mqtt_client(MQTT_HOST_ADDRESS, MQTT_HOST_PORT)
 
-# Testing connection:
-# Subscribe to 'test' topic
+# Request UAV and Vertiport operators list
 for mng in mission_managers:
-    mng.subscribe_mqtt_topic("test")
-    mng.mqtt_client.message_callback_add(
-        "test", 
-        lambda client, userdata, msg: print(f"{mng.id}: {json.loads(msg.payload.decode())}")
-    )
-# Publish test message
-for mng in mission_managers:
-    print(f"{mng.id}: Publishing test message...")
-    mng.send_mqtt_msg("test", json.dumps({"message": "Hello from Mission Manager!"}))
+    mng.request_uav_operator_list()
+    mng.request_vertiport_operator_list()
+
+# Main Loop
 
 try:
     while True:
         time.sleep(1)
+        current_time += 1
 
-except KeyboardInterrupt:
-    print("Shutting down Mission Managers...")
-    for mng in mission_managers:
-        mng.disconnect_mqtt_client()
+        for mng in mission_managers:
+            if current_time % MAX_REQUEST_TIME[0] == 0:
+                mng.request_uav_mission(current_time)
+
+except Exception as e:
+    print(f"An error occurred: {e}")
