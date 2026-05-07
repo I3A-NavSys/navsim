@@ -20,7 +20,8 @@ def parse_str_list(str_list: str) -> list:
 
 # Get Configuration Variables
 MAX_MISSION_MNG = int(os.getenv("MAX_MISSION_MNG", 1))
-MAX_REQUEST_TIME = parse_str_list(os.getenv("MAX_REQUEST_TIME", "[20]"))
+MAX_REQUEST_TIME = parse_str_list(os.getenv("MAX_REQUEST_TIME", '[20]'))
 SERVICE_TYPES = parse_str_list(os.getenv("SERVICE_TYPES", '[["DELIVERY", "PASSENGER_TRANSPORT"]]'))
 MQTT_HOST_ADDRESS = os.getenv("MQTT_HOST_ADDRESS", "127.0.0.1")
 MQTT_HOST_PORT = int(os.getenv("MQTT_HOST_PORT", "1883"))
+
