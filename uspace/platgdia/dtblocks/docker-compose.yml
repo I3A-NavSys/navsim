@@ -1,0 +1,28 @@
+version: '3.8'
+services:
+  mqtt_dtblock:
+    image: eclipse-mosquitto:2.0
+    container_name: Integrador_MQTT
+    restart: unless-stopped
+    ports:
+      - "${MQTT_HOST_ADDRESS}:${MQTT_HOST_PORT}:1883"
+    volumes:
+      - ../../mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-log:/mosquitto/log
+
+  mission_manager_dtblock:
+    build:
+      context: ../../
+      dockerfile: platgdia/dtblocks/mission_manager/dockerfile
+    container_name: Gestor_de_clientes_UAM
+    restart: unless-stopped
+    depends_on:
+      - mqtt_dtblock
+    environment:
+      - MQTT_HOST_ADDRESS=${MQTT_HOST_ADDRESS}
+      - MQTT_HOST_PORT=${MQTT_HOST_PORT}
+
+volumes:
+  mosquitto-data:
+  mosquitto-log:
