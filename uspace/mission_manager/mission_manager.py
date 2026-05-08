@@ -125,17 +125,18 @@ class MissionManager:
         self.send_mqtt_msg(topic, json.dumps(msg))
 
     def request_uav_mission(self, current_time=0):
-        self.last_mission_id += 1
-
-        mission_id = f"MISSION_{self.last_mission_id}"
-        # mission_type = random.choice([MissionType.DELIVERY, MissionType.PASSENGER_TRANSPORT])
-        mission_type = MissionType.PASSENGER_TRANSPORT
-
+        # Choose MissionType randomly and get possible operators for that type until 
+        # choosing a type with at least one possible UAV operator and one possible Vertiport operator
+        mission_type = random.choice([MissionType.DELIVERY, MissionType.PASSENGER_TRANSPORT])
         possible_uav_operators, possible_vertiport_operators = self.get_operators_by_service_type(mission_type)
 
-        if not possible_uav_operators or not possible_vertiport_operators:
-            return
+        while not possible_uav_operators or not possible_vertiport_operators:
+            mission_type = random.choice([MissionType.DELIVERY, MissionType.PASSENGER_TRANSPORT])
+            possible_uav_operators, possible_vertiport_operators = self.get_operators_by_service_type(mission_type)
         
+        self.last_mission_id += 1
+        mission_id = f"MISSION_{self.last_mission_id}"
+
         amount_stops = random.randint(1, len(possible_vertiport_operators))
 
         stop_list = random.sample(possible_vertiport_operators, amount_stops)

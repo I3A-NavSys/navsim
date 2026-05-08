@@ -64,12 +64,18 @@ class VertiportOperator:
         # MQTT Callbacks
         self.callback_topics = [
             f"{Topics.MISSION_VERTIPORT_SERVICE}/{self.id}",
+            f"{Topics.REQUEST_VERTIPORT_INFO}/{self.id}",
             f"{Topics.CANCEL_MISSION}/{self.id}",
         ]
 
         self.mqtt_client.message_callback_add(
             f"{Topics.MISSION_VERTIPORT_SERVICE}/{self.id}",
             self.on_request_vertiport_service
+        )
+
+        self.mqtt_client.message_callback_add(
+            f"{Topics.REQUEST_VERTIPORT_INFO}/{self.id}",
+            self.on_request_vertiport_info
         )
 
         self.mqtt_client.message_callback_add(
@@ -616,3 +622,24 @@ class VertiportOperator:
             flightplan=flightplan,
             pad_id=pad_id
         )
+
+    def on_request_vertiport_info(self, client, userdata, msg):
+        data = json.loads(msg.payload.decode())
+
+        # Extract mission details
+        uav_operator_id = data["id"]
+
+        topic = f"{Topics.REQUEST_VERTIPORT_INFO}/{uav_operator_id}"
+
+        msg = {
+            "id": self.id,
+            "pads": {
+                pad_id: {
+                    "type": pad.type,
+                    "location": pad.location
+                }
+                for pad_id, pad in self.pads.items()
+            }
+        }
+        self.send_mqtt_msg(topic, json.dumps(msg))
+
