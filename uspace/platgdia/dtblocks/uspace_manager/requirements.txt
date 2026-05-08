@@ -4,4 +4,3 @@ numpy==2.4.1
 matplotlib==3.10.8
 mplcursors==0.7
 scipy==1.17.0
-sortedcontainers==2.4.0

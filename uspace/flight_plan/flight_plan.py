@@ -15,8 +15,8 @@ from uspace.flight_plan.waypoint import Waypoint
 from uspace.flight_plan.command import Command
 
 
-matplotlib.use("Qt5Agg")
-plt.rcParams["toolbar"] = "toolmanager"
+# matplotlib.use("Qt5Agg")
+# plt.rcParams["toolbar"] = "toolmanager"
 
 class FlightPlan:
 

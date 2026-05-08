@@ -42,9 +42,17 @@ current_time = 0
 
 # Build Mission Managers
 mission_managers = [
-    MissionManager(f"MSSN_MNG_{i}", f"Mission Manager {i}") 
+    MissionManager(
+        id=f"MSSN_MNG_{i}", 
+        name=f"Mission Manager {i}", 
+        verbose=True
+    )
     for i in range(MAX_MISSION_MNG)
 ]
+
+# Wait a few seconds to ensure that the USpace Manager and UAV Operator DTBlocks
+# are up and running before connecting to MQTT and making requests
+time.sleep(3)
 
 # Connect to MQTT Broker
 for mng in mission_managers:
@@ -61,9 +69,11 @@ try:
         time.sleep(1)
         current_time += 1
 
-        for mng in mission_managers:
-            if current_time % MAX_REQUEST_TIME[0] == 0:
-                mng.request_uav_mission(current_time)
+        print(f"\nMission Manager DTBlock: Current Time: {current_time}")
+
+        for i in range(MAX_MISSION_MNG):
+            if current_time % MAX_REQUEST_TIME[i] == 0:
+                mission_managers[i].request_uav_mission(current_time)
 
 except Exception as e:
-    print(f"An error occurred: {e}")
+    print(f"Mission Manager DTBlock: An error has occurred: {e}")

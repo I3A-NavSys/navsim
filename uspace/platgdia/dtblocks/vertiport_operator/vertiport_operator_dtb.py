@@ -1,3 +1,5 @@
+import threading
+import time
 import os
 import json
 import sys
@@ -88,7 +90,6 @@ def build_pads(vert_op_id, amount, types, location):
     return pads
 
 
-
 # Get Configuration Variables
 MAX_VERT_OPS = int(os.getenv("MAX_VERT_OPS", 2))
 VERT_OP_ID = parse_str_list(os.getenv("VERT_OP_ID", '["VERT_OP_0", "VERT_OP_1"]'))
@@ -121,9 +122,14 @@ for i in range(MAX_VERT_OPS):
             is_private=PRIVACY[i], 
             grid_connection=vert_op_grid_connection,
             main_pad=maind_pad,
-            pads=pads
+            pads=pads,
+            verbose=True
         )
     )
+
+# Wait a few seconds to ensure that the USpace Manager DTBlock are up and running before 
+# connecting to MQTT and making requests
+time.sleep(1)
 
 # Connect to MQTT Broker
 for vert_op in vertiport_operators:
@@ -134,8 +140,9 @@ for vert_op in vertiport_operators:
     vert_op.register_into_airspace()
 
 # Main Loop
+wait_event = threading.Event()
 try:
-    while True:
-        pass
+    # Wait indefinitely until the event is set (which never happens in this case)
+    wait_event.wait()
 except Exception as e:
-    print(f"Error in Vertiport Operator: {e}")
+    print(f"Vertiport Operator DTBlock: An error has occurred: {e}")

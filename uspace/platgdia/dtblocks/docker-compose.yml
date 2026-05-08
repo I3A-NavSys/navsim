@@ -11,11 +11,11 @@ services:
       - mosquitto-data:/mosquitto/data
       - mosquitto-log:/mosquitto/log
 
-  mission_manager_dtblock:
+  uspace_manager_dtblock:
     build:
       context: ../../
-      dockerfile: platgdia/dtblocks/mission_manager/dockerfile
-    container_name: Gestor_de_clientes_UAM
+      dockerfile: platgdia/dtblocks/uspace_manager/dockerfile
+    container_name: Gestor_de_espacio_aereo
     restart: unless-stopped
     depends_on:
       - mqtt_dtblock
@@ -30,7 +30,33 @@ services:
     container_name: Operador_de_vertipuertos
     restart: unless-stopped
     depends_on:
-      - mqtt_dtblock
+      - uspace_manager_dtblock
+    environment:
+      - MQTT_HOST_ADDRESS=${MQTT_HOST_ADDRESS}
+      - MQTT_HOST_PORT=${MQTT_HOST_PORT}
+
+  uav_operator_dtblock:
+    build:
+      context: ../../
+      dockerfile: platgdia/dtblocks/uav_operator/dockerfile
+    container_name: Operador_de_UAVs
+    restart: unless-stopped
+    depends_on:
+      - uspace_manager_dtblock
+      - vertiport_operator_dtblock
+    environment:
+      - MQTT_HOST_ADDRESS=${MQTT_HOST_ADDRESS}
+      - MQTT_HOST_PORT=${MQTT_HOST_PORT}
+
+  mission_manager_dtblock:
+    build:
+      context: ../../
+      dockerfile: platgdia/dtblocks/mission_manager/dockerfile
+    container_name: Gestor_de_clientes_UAM
+    restart: unless-stopped
+    depends_on:
+      - uspace_manager_dtblock
+      - uav_operator_dtblock
     environment:
       - MQTT_HOST_ADDRESS=${MQTT_HOST_ADDRESS}
       - MQTT_HOST_PORT=${MQTT_HOST_PORT}
