@@ -8,10 +8,11 @@ from .mission import Mission
 
 
 class MissionManager:
-    def __init__(self, id=None, name=None):
+    def __init__(self, id=None, name=None, verbose=False):
         # Test
         random.seed(6)
 
+        self.verbose = verbose
         self.id: str = id
         self.name: str = name
         self.missions: dict[str, Mission] = {}
@@ -89,8 +90,9 @@ class MissionManager:
             for key, value in data.items()
         ]
 
-        print(tabulate(formatted_data, headers=headers, tablefmt="grid"))
-        print()
+        if self.verbose:
+            print(tabulate(formatted_data, headers=headers, tablefmt="grid"))
+            print()
 
     def get_operators_by_service_type(self, service_type):
         uav_operators = [
@@ -155,15 +157,16 @@ class MissionManager:
         )
 
         # Logging
-        print("----------------------------------------------")
-        print(f"[{self.id}] - Requesting new UAV mission:")
-        print(f"  Mission ID: {mission_id}")
-        print(f"  Mission Type: {mission_type}")
-        print(f"  UAV Operator ID: {uav_operator_id}")
-        print(f"  Stop List: {stop_list}")
-        print(f"  Stop Times: {stop_times}")
-        print(f"  Landing Time: {landing_time}")
-        print()
+        if self.verbose:
+            print("----------------------------------------------")
+            print(f"[{self.id}] - Requesting new UAV mission:")
+            print(f"  Mission ID: {mission_id}")
+            print(f"  Mission Type: {mission_type}")
+            print(f"  UAV Operator ID: {uav_operator_id}")
+            print(f"  Stop List: {stop_list}")
+            print(f"  Stop Times: {stop_times}")
+            print(f"  Landing Time: {landing_time}")
+            print()
         
         topic = f"{Topics.MISSION_UAV_SERVICE}/{uav_operator_id}"
         msg = {
@@ -187,10 +190,11 @@ class MissionManager:
         cancellation_reason = data.get("cancellation_reason", "")
         
         # Logging
-        # print(f"[{self.id}] - Cancelling mission:")
-        # print(f"  Mission ID: {mission_id}")
-        # print(f"  Cancellation Reason: {cancellation_reason}")
-        # print()
+        if self.verbose:
+            print(f"[{self.id}] - Cancelling mission:")
+            print(f"  Mission ID: {mission_id}")
+            print(f"  Cancellation Reason: {cancellation_reason}")
+            print()
 
         # Update mission status and cancellation reason
         self.missions[mission_id].status = MissionStatus.CANCELLED
@@ -201,16 +205,18 @@ class MissionManager:
         self.vertiport_operators = data["vertiport_operators"]
 
         # Logging
-        # print(f"[{self.id}] - Received Vertiport operator list:")
-        # self.log_dict_table(self.vertiport_operators, ["ID", "Data"])
+        if self.verbose:
+            print(f"[{self.id}] - Received Vertiport operator list:")
+            self.log_dict_table(self.vertiport_operators, ["ID", "Data"])
 
     def on_receive_uav_operator_list(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())
         self.uav_operators = data["uav_operators"]
 
         # Logging
-        # print(f"[{self.id}] - Received UAV operator list:")
-        # self.log_dict_table(self.uav_operators, ["ID", "Data"])
+        if self.verbose:
+            print(f"[{self.id}] - Received UAV operator list:")
+            self.log_dict_table(self.uav_operators, ["ID", "Data"])
 
     def on_receive_uav_mission_update(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())
@@ -224,9 +230,10 @@ class MissionManager:
         mission.status = mission_status
 
         # Logging
-        # print(f"[{self.id}] - Received mission status update:")
-        # print(f"  UAV Operator ID: {uav_operator_id}")
-        # print(f"  Mission ID: {mission_id}")
-        # print(f"  Mission Status: {mission_status}")
-        # print("----------------------------------------------")
-        # print()
+        if self.verbose:
+            print(f"[{self.id}] - Received mission status update:")
+            print(f"  UAV Operator ID: {uav_operator_id}")
+            print(f"  Mission ID: {mission_id}")
+            print(f"  Mission Status: {mission_status}")
+            print("----------------------------------------------")
+            print()

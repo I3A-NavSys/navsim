@@ -3,15 +3,14 @@ import json
 from typing import Any
 
 from uspace.flight_plan.flight_plan import FlightPlan
-from uspace.uav_operator.uav_operator import UAVOperator
-from uspace.vertiport_operator.vertiport_operator import VertiportOperator
 from uspace.grid_planner.grid_planner import GridPlanner
 from uspace.mqtt.mqtt_service import MQTTService
 from .constants import Topics, CancellationReason
 
 
 class USpaceManager:
-    def __init__(self, id=None, name=None):
+    def __init__(self, id=None, name=None, verbose=False):
+        self.verbose = verbose
         self.id: str = id
         self.name: str = name
         self.airspace = GridPlanner(max_route_length=1000)
@@ -197,11 +196,12 @@ class USpaceManager:
         cancellation_reason
     ):
         # Logging
-        # print(f"[{self.id}] - Cancelling mission:")
-        # print(f"  Mission Manager ID: {mission_manager_id}")
-        # print(f"  Mission ID: {mission_id}")
-        # print(f"  Cancellation Reason: {cancellation_reason}")
-        # print()
+        if self.verbose:
+            print(f"[{self.id}] - Cancelling mission:")
+            print(f"  Mission Manager ID: {mission_manager_id}")
+            print(f"  Mission ID: {mission_id}")
+            print(f"  Cancellation Reason: {cancellation_reason}")
+            print()
 
         # Get mission entry
         mission = self.missions[uav_operator_id][mission_manager_id][mission_id]
@@ -365,9 +365,10 @@ class USpaceManager:
         self.uav_operators[operator_id]["service_types"] = operator_service_types
 
         # Logging
-        # print(f"[{self.id}] - UAV Operator registered:")
-        # print(tabulate([[operator_id, operator_name]], headers=["ID", "Name"]))
-        # print()
+        if self.verbose:
+            print(f"[{self.id}] - UAV Operator registered:")
+            print(tabulate([[operator_id, operator_name]], headers=["ID", "Name"]))
+            print()
 
     def on_vertiport_operator_register(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())
@@ -387,9 +388,10 @@ class USpaceManager:
         self.vertiport_operators[operator_id]["is_private"] = is_private
 
         # Logging
-        # print(f"[{self.id}] - Vertiport Operator registered:")
-        # print(tabulate([[operator_id, operator_name]], headers=["ID", "Name"]))
-        # print()
+        if self.verbose:
+            print(f"[{self.id}] - Vertiport Operator registered:")
+            print(tabulate([[operator_id, operator_name]], headers=["ID", "Name"]))
+            print()
 
     def on_request_uav_operator_list(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())
@@ -443,12 +445,13 @@ class USpaceManager:
         is_last_leg = data["is_last_leg"]
 
         # Logging
-        # print(f"[{self.id}] - Request received:")
-        # print(f"  UAV Operator ID: {uav_operator_id}")
-        # print(f"  Mission ID: {mission_id}")
-        # print(f"  Origin Vertiport ID: {origin_vertiport_id}")
-        # print(f"  Destination Vertiport ID: {destination_vertiport_id}")
-        # print()
+        if self.verbose:
+            print(f"[{self.id}] - Request received:")
+            print(f"  UAV Operator ID: {uav_operator_id}")
+            print(f"  Mission ID: {mission_id}")
+            print(f"  Origin Vertiport ID: {origin_vertiport_id}")
+            print(f"  Destination Vertiport ID: {destination_vertiport_id}")
+            print()
 
         # Initialize mission processing status and missions dictionaries
         if uav_operator_id not in self.missions_processing_status:
@@ -531,17 +534,18 @@ class USpaceManager:
         flightplan.from_dict(raw_flightplan)
 
         # Logging
-        # print(f"[{self.id}] - Received takeofff flightplan:")
-        # print(f"  Vertiport Operator ID: {vertiport_operator_id}")
-        # print(f"  UAV Operator ID: {uav_operator_id}")
-        # print(f"  Mission Manager ID: {mission_manager_id}")
-        # print(f"  Mission ID: {mission_id}")
-        # print(f"  Is Landing: {is_landing}")
-        # print(f"  Is Reversed: {is_reversed}")
-        # print(f"  Pad ID: {pad_id}")
-        # print("  Flightplan waypoints:")
-        # flightplan.print_waypoints()
-        # print()
+        if self.verbose:
+            print(f"[{self.id}] - Received takeofff flightplan:")
+            print(f"  Vertiport Operator ID: {vertiport_operator_id}")
+            print(f"  UAV Operator ID: {uav_operator_id}")
+            print(f"  Mission Manager ID: {mission_manager_id}")
+            print(f"  Mission ID: {mission_id}")
+            print(f"  Is Landing: {is_landing}")
+            print(f"  Is Reversed: {is_reversed}")
+            print(f"  Pad ID: {pad_id}")
+            print("  Flightplan waypoints:")
+            flightplan.print_waypoints()
+            print()
         
         # Store flightplan in mission processing status
         mission = self.missions_processing_status[uav_operator_id][mission_manager_id][mission_id]
@@ -593,14 +597,15 @@ class USpaceManager:
         # TODO: Check begin time is not in the past
 
         # Logging
-        # print(f"[{self.id}] - Computed route:")
-        # print(f"  UAV Operator ID: {uav_operator_id}")
-        # print(f"  Mission ID: {mission_id}")
-        # print(f"  Origin Vertiport ID: {origin_vertiport_id}")
-        # print(f"  Destination Vertiport ID: {destination_vertiport_id}")
-        # print("  Flightplan waypoints:")
-        # grid_flightplan.print_waypoints()
-        # print()
+        if self.verbose:
+            print(f"[{self.id}] - Computed route:")
+            print(f"  UAV Operator ID: {uav_operator_id}")
+            print(f"  Mission ID: {mission_id}")
+            print(f"  Origin Vertiport ID: {origin_vertiport_id}")
+            print(f"  Destination Vertiport ID: {destination_vertiport_id}")
+            print("  Flightplan waypoints:")
+            grid_flightplan.print_waypoints()
+            print()
         
         # Store grid flightplan in mission processing status
         mission["grid_flightplan"] = grid_flightplan
@@ -658,17 +663,18 @@ class USpaceManager:
         flightplan.from_dict(raw_flightplan)
 
         # Logging
-        # print(f"[{self.id}] - Received landing flightplan:")
-        # print(f"  Vertiport Operator ID: {vertiport_operator_id}")
-        # print(f"  UAV Operator ID: {uav_operator_id}")
-        # print(f"  Mission Manager ID: {mission_manager_id}")
-        # print(f"  Mission ID: {mission_id}")
-        # print(f"  Is Landing: {is_landing}")
-        # print(f"  Is Reversed: {is_reversed}")
-        # print(f"  Pad ID: {pad_id}")
-        # print("  Flightplan waypoints:")
-        # flightplan.print_waypoints()
-        # print()
+        if self.verbose:
+            print(f"[{self.id}] - Received landing flightplan:")
+            print(f"  Vertiport Operator ID: {vertiport_operator_id}")
+            print(f"  UAV Operator ID: {uav_operator_id}")
+            print(f"  Mission Manager ID: {mission_manager_id}")
+            print(f"  Mission ID: {mission_id}")
+            print(f"  Is Landing: {is_landing}")
+            print(f"  Is Reversed: {is_reversed}")
+            print(f"  Pad ID: {pad_id}")
+            print("  Flightplan waypoints:")
+            flightplan.print_waypoints()
+            print()
 
         # Store flightplan in mission processing status
         mission = self.missions_processing_status[uav_operator_id][mission_manager_id][mission_id]
@@ -719,14 +725,15 @@ class USpaceManager:
             grid_flightplan = self.airspace.get_flightplan_from_route(route)
 
             # Logging
-            # print(f"[{self.id}] - Computed route:")
-            # print(f"  UAV Operator ID: {uav_operator_id}")
-            # print(f"  Mission ID: {mission_id}")
-            # print(f"  Origin Vertiport ID: {origin_vertiport_id}")
-            # print(f"  Destination Vertiport ID: {destination_vertiport_id}")
-            # print("  Flightplan waypoints:")
-            # grid_flightplan.print_waypoints()
-            # print()
+            if self.verbose:
+                print(f"[{self.id}] - Computed route:")
+                print(f"  UAV Operator ID: {uav_operator_id}")
+                print(f"  Mission ID: {mission_id}")
+                print(f"  Origin Vertiport ID: {origin_vertiport_id}")
+                print(f"  Destination Vertiport ID: {destination_vertiport_id}")
+                print("  Flightplan waypoints:")
+                grid_flightplan.print_waypoints()
+                print()
             
             # Store grid flightplan in mission processing status
             mission["grid_flightplan"] = grid_flightplan

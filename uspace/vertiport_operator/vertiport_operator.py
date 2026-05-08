@@ -17,7 +17,9 @@ class VertiportOperator:
         grid_connection=None, 
         main_pad=None, 
         pads=None,
+        verbose=False
     ):
+        self.verbose = verbose
         self.id: str = id
         self.name: str = name
         self.service_types: list[str] = service_types
@@ -198,11 +200,12 @@ class VertiportOperator:
         cancellation_reason
     ):
         # Logging
-        # print(f"[{self.id}] - Cancelling mission:")
-        # print(f"  Mission Manager ID: {mission_manager_id}")
-        # print(f"  Mission ID: {mission_id}")
-        # print(f"  Cancellation Reason: {cancellation_reason}")
-        # print()
+        if self.verbose:
+            print(f"[{self.id}] - Cancelling mission:")
+            print(f"  Mission Manager ID: {mission_manager_id}")
+            print(f"  Mission ID: {mission_id}")
+            print(f"  Cancellation Reason: {cancellation_reason}")
+            print()
 
         # Inform USpace manager about the cancellation
         topic = Topics.CANCEL_MISSION
@@ -451,11 +454,12 @@ class VertiportOperator:
         cancellation_reason = data.get("cancellation_reason", "")
         
         # Logging
-        # print(f"[{self.id}] - Cancelling mission:")
-        # print(f"  Mission Manager ID: {mission_manager_id}")
-        # print(f"  Mission ID: {mission_id}")
-        # print(f"  Cancellation Reason: {cancellation_reason}")
-        # print()
+        if self.verbose:
+            print(f"[{self.id}] - Cancelling mission:")
+            print(f"  Mission Manager ID: {mission_manager_id}")
+            print(f"  Mission ID: {mission_id}")
+            print(f"  Cancellation Reason: {cancellation_reason}")
+            print()
 
         # Free resources and update cancellation reason
         self.free_resources(
@@ -481,18 +485,19 @@ class VertiportOperator:
         stop_time = data["stop_time"]
 
         # Logging
-        # print(f"[{self.id}] - Received mission request:")
-        # print(f"  USpace Manager ID: {uspace_manager_id}")
-        # print(f"  UAV Operator ID: {uav_operator_id}")
-        # print(f"  Mission Manager ID: {mission_manager_id}")
-        # print(f"  Mission ID: {mission_id}")
-        # print(f"  Pad ID: {pad_id}")
-        # print(f"  Is Landing: {is_landing}")
-        # print(f"  Is Reversed: {is_reversed}")
-        # print(f"  Mission Type: {mission_type}")
-        # print(f"  Time: {time}")
-        # print(f"  Stop Time: {stop_time}")
-        # print()
+        if self.verbose:
+            print(f"[{self.id}] - Received mission request:")
+            print(f"  USpace Manager ID: {uspace_manager_id}")
+            print(f"  UAV Operator ID: {uav_operator_id}")
+            print(f"  Mission Manager ID: {mission_manager_id}")
+            print(f"  Mission ID: {mission_id}")
+            print(f"  Pad ID: {pad_id}")
+            print(f"  Is Landing: {is_landing}")
+            print(f"  Is Reversed: {is_reversed}")
+            print(f"  Mission Type: {mission_type}")
+            print(f"  Time: {time}")
+            print(f"  Stop Time: {stop_time}")
+            print()
 
         # Initialize mission entry if it doesn't exist
         if uav_operator_id not in self.missions:

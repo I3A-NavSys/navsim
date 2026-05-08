@@ -16,8 +16,10 @@ class UAVOperator:
         name=None, 
         service_types=None, 
         private_vertiport_operator_id=None, 
-        uavs={}
+        uavs={},
+        verbose=False
     ):
+        self.verbose = verbose
         self.time_manager = None
         self.id: str = id
         self.name: str = name
@@ -195,8 +197,9 @@ class UAVOperator:
             for key, value in data.items()
         ]
 
-        print(tabulate(formatted_data, headers=headers, tablefmt="grid"))
-        print()
+        if self.verbose:
+            print(tabulate(formatted_data, headers=headers, tablefmt="grid"))
+            print()
 
     # ----------------------
     # --- USpace Methods ---
@@ -212,11 +215,12 @@ class UAVOperator:
 
     def cancel_mission(self, mission_manager_id, mission_id, cancellation_reason):
         # Logging
-        print(f"[{self.id}] - Cancelling mission:")
-        print(f"  Mission Manager ID: {mission_manager_id}")
-        print(f"  Mission ID: {mission_id}")
-        print(f"  Cancellation Reason: {cancellation_reason}")
-        print()
+        if self.verbose:
+            print(f"[{self.id}] - Cancelling mission:")
+            print(f"  Mission Manager ID: {mission_manager_id}")
+            print(f"  Mission ID: {mission_id}")
+            print(f"  Cancellation Reason: {cancellation_reason}")
+            print()
 
         # Select topics based on cancellation reason
         topics = [f"{Topics.CANCEL_MISSION}/{mission_manager_id}"]
@@ -365,13 +369,14 @@ class UAVOperator:
         landing_time = data["landing_time"]
 
         # Logging
-        # print(f"[{self.id}] - Received request for mission:")
-        # print(f"  Mission ID: {mission_id}")
-        # print(f"  Mission Type: {mission_type}")
-        # print(f"  Stop List: {stop_list}")
-        # print(f"  Stop Times: {stop_time}")
-        # print(f"  Landing Time: {landing_time}")
-        # print()
+        if self.verbose:
+            print(f"[{self.id}] - Received request for mission:")
+            print(f"  Mission ID: {mission_id}")
+            print(f"  Mission Type: {mission_type}")
+            print(f"  Stop List: {stop_list}")
+            print(f"  Stop Times: {stop_time}")
+            print(f"  Landing Time: {landing_time}")
+            print()
 
         # Return if mission type is not supported
         if mission_type not in self.uavs or self.uavs[mission_type] == {}:
@@ -445,14 +450,15 @@ class UAVOperator:
         flightplan.from_dict(raw_flightplan)
 
         # Logging
-        # print(f"[{self.id}] - Received new leg flightplan:")
-        # print(f"  USpace Manager ID: {uspace_manager_id}")
-        # print(f"  Mission Manager ID: {mission_manager_id}")
-        # print(f"  Mission ID: {mission_id}")
-        # print(f"  Landing Pad ID: {landing_pad_id}")
-        # print("  Flightplan waypoints:")
-        # flightplan.print_waypoints()
-        # print()
+        if self.verbose:
+            print(f"[{self.id}] - Received new leg flightplan:")
+            print(f"  USpace Manager ID: {uspace_manager_id}")
+            print(f"  Mission Manager ID: {mission_manager_id}")
+            print(f"  Mission ID: {mission_id}")
+            print(f"  Landing Pad ID: {landing_pad_id}")
+            print("  Flightplan waypoints:")
+            flightplan.print_waypoints()
+            print()
         
         # Store flightplan
         self.missions[mission_manager_id][mission_id]["flightplans"].append(flightplan)
@@ -493,10 +499,11 @@ class UAVOperator:
             return
 
         # Logging
-        # print(("----------------------------------------------------------"))
-        # print(f"[{self.id}] - Leg completed ({current_stop + 1} / {last_stop + 1}) for mission {mission_id}")
-        # print(("----------------------------------------------------------"))
-        # print()
+        if self.verbose:
+            print(("----------------------------------------------------------"))
+            print(f"[{self.id}] - Leg completed ({current_stop + 1} / {last_stop + 1}) for mission {mission_id}")
+            print(("----------------------------------------------------------"))
+            print()
 
         # Ask for next route
         origin_vertiport_id = stop_list[current_stop]
@@ -609,19 +616,20 @@ class UAVOperator:
         mission_dict["flightplans"][-1] = new_flightplan
 
         # Logging
-        print(("----------------------------------------------------"))
-        print(f"[{self.id}] - Mission {mission_id} completed all legs")
-        print(("----------------------------------------------------"))
-        print()
+        if self.verbose:
+            print(("----------------------------------------------------"))
+            print(f"[{self.id}] - Mission {mission_id} completed all legs")
+            print(("----------------------------------------------------"))
+            print()
         # for i, fp in enumerate(self.missions[mission_manager_id][mission_id]["flightplans"]):
         #     print(f"Leg {i+1}:")
         #     fp.print_waypoints()
         # print()
 
-        print("\tAssigned UAV: ", mission_dict["assigned_uav_id"])
-        print("\tStart time: ", mission_dict["flightplans"][0].init_time())
-        print("\tFinish time: ", mission_dict["flightplans"][0].finish_time())
-        print("\tNext FP time: ", mission_dict["flightplans"][1].init_time())
+            print("\tAssigned UAV: ", mission_dict["assigned_uav_id"])
+            print("\tStart time: ", mission_dict["flightplans"][0].init_time())
+            print("\tFinish time: ", mission_dict["flightplans"][0].finish_time())
+            print("\tNext FP time: ", mission_dict["flightplans"][1].init_time())
 
         # All legs completed, send mission status update to mission manager
         self.send_mission_status_update(
