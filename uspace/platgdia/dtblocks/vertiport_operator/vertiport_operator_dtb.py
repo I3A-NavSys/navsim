@@ -93,7 +93,7 @@ def build_pads(vert_op_id, amount, types, location):
 # Get Configuration Variables
 MAX_VERT_OPS = int(os.getenv("MAX_VERT_OPS", 2))
 VERT_OP_ID = parse_str_list(os.getenv("VERT_OP_ID", '["VERT_OP_0", "VERT_OP_1"]'))
-PRIVACY = parse_str_list(os.getenv("PRIVACY", '[True, False]'))
+PRIVACY = parse_str_list(os.getenv("PRIVACY", '[true, false]'))
 VERT_OP_SERVICE_TYPES = parse_str_list(os.getenv("VERT_OP_SERVICE_TYPES", '[["DELIVERY", "PASSENGER_TRANSPORT"], ["DELIVERY"]]'))
 MAX_PADS = parse_str_list(os.getenv("MAX_PADS", '[10, 5]'))
 PAD_SERVICE_TYPES = parse_str_list(os.getenv("PAD_SERVICE_TYPES", '[["DELIVERY", "DELIVERY", "DELIVERY", "DELIVERY", "DELIVERY", "PASSENGER_TRANSPORT", "PASSENGER_TRANSPORT", "PASSENGER_TRANSPORT", "PASSENGER_TRANSPORT", "PASSENGER_TRANSPORT"], ["DELIVERY", "DELIVERY", "DELIVERY", "DELIVERY", "DELIVERY"]]'))

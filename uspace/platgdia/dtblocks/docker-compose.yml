@@ -19,9 +19,11 @@ services:
     restart: unless-stopped
     depends_on:
       - mqtt_dtblock
-    environment:
-      - MQTT_HOST_ADDRESS=${MQTT_HOST_ADDRESS}
-      - MQTT_HOST_PORT=${MQTT_HOST_PORT}
+    # environment:
+    #   - MQTT_HOST_ADDRESS=${MQTT_HOST_ADDRESS}
+    #   - MQTT_HOST_PORT=${MQTT_HOST_PORT}
+    env_file:
+      - .env
 
   vertiport_operator_dtblock:
     build:
@@ -31,9 +33,11 @@ services:
     restart: unless-stopped
     depends_on:
       - uspace_manager_dtblock
-    environment:
-      - MQTT_HOST_ADDRESS=${MQTT_HOST_ADDRESS}
-      - MQTT_HOST_PORT=${MQTT_HOST_PORT}
+    # environment:
+    #   - MQTT_HOST_ADDRESS=${MQTT_HOST_ADDRESS}
+    #   - MQTT_HOST_PORT=${MQTT_HOST_PORT}
+    env_file:
+      - .env
 
   uav_operator_dtblock:
     build:
@@ -44,9 +48,11 @@ services:
     depends_on:
       - uspace_manager_dtblock
       - vertiport_operator_dtblock
-    environment:
-      - MQTT_HOST_ADDRESS=${MQTT_HOST_ADDRESS}
-      - MQTT_HOST_PORT=${MQTT_HOST_PORT}
+    # environment:
+    #   - MQTT_HOST_ADDRESS=${MQTT_HOST_ADDRESS}
+    #   - MQTT_HOST_PORT=${MQTT_HOST_PORT}
+    env_file:
+      - .env
 
   mission_manager_dtblock:
     build:
@@ -57,9 +63,11 @@ services:
     depends_on:
       - uspace_manager_dtblock
       - uav_operator_dtblock
-    environment:
-      - MQTT_HOST_ADDRESS=${MQTT_HOST_ADDRESS}
-      - MQTT_HOST_PORT=${MQTT_HOST_PORT}
+    # environment:
+    #   - MQTT_HOST_ADDRESS=${MQTT_HOST_ADDRESS}
+    #   - MQTT_HOST_PORT=${MQTT_HOST_PORT}
+    env_file:
+      - .env
 
 volumes:
   mosquitto-data:
