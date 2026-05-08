@@ -8,13 +8,14 @@ from .mission import Mission
 
 
 class MissionManager:
-    def __init__(self, id=None, name=None, verbose=False):
+    def __init__(self, id=None, name=None, service_types=[MissionType.DELIVERY, MissionType.PASSENGER_TRANSPORT], verbose=False):
         # Test
         random.seed(6)
 
         self.verbose = verbose
         self.id: str = id
         self.name: str = name
+        self.service_types: list[MissionType] = service_types
         self.missions: dict[str, Mission] = {}
         self.last_mission_id: int = 0
         self.uav_operators: dict[str, str] = {}
@@ -127,11 +128,11 @@ class MissionManager:
     def request_uav_mission(self, current_time=0):
         # Choose MissionType randomly and get possible operators for that type until 
         # choosing a type with at least one possible UAV operator and one possible Vertiport operator
-        mission_type = random.choice([MissionType.DELIVERY, MissionType.PASSENGER_TRANSPORT])
+        mission_type = random.choice(self.service_types)
         possible_uav_operators, possible_vertiport_operators = self.get_operators_by_service_type(mission_type)
 
         while not possible_uav_operators or not possible_vertiport_operators:
-            mission_type = random.choice([MissionType.DELIVERY, MissionType.PASSENGER_TRANSPORT])
+            mission_type = random.choice(self.service_types)
             possible_uav_operators, possible_vertiport_operators = self.get_operators_by_service_type(mission_type)
         
         self.last_mission_id += 1
@@ -143,8 +144,8 @@ class MissionManager:
         stop_times = [random.randint(10, 60) for _ in range(amount_stops)]
         uav_operator_id = random.choice(possible_uav_operators)
         landing_time = random.randint(
-            current_time + 300, 
-            current_time + 1000
+            current_time + 900, 
+            current_time + 43200
         )
 
         self.missions[mission_id] = Mission(
