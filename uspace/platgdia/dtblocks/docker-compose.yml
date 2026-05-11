@@ -16,7 +16,7 @@ services:
       context: ../../
       dockerfile: platgdia/dtblocks/uspace_manager/dockerfile
     container_name: Gestor_de_espacio_aereo
-    restart: unless-stopped
+    restart: "no"
     depends_on:
       - mqtt_dtblock
     # environment:
@@ -24,13 +24,18 @@ services:
     #   - MQTT_HOST_PORT=${MQTT_HOST_PORT}
     env_file:
       - .env
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 500M
 
   vertiport_operator_dtblock:
     build:
       context: ../../
       dockerfile: platgdia/dtblocks/vertiport_operator/dockerfile
     container_name: Operador_de_vertipuertos
-    restart: unless-stopped
+    restart: "no"
     depends_on:
       - uspace_manager_dtblock
     # environment:
@@ -38,13 +43,18 @@ services:
     #   - MQTT_HOST_PORT=${MQTT_HOST_PORT}
     env_file:
       - .env
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 500M
 
   uav_operator_dtblock:
     build:
       context: ../../
       dockerfile: platgdia/dtblocks/uav_operator/dockerfile
     container_name: Operador_de_UAVs
-    restart: unless-stopped
+    restart: "no"
     depends_on:
       - uspace_manager_dtblock
       - vertiport_operator_dtblock
@@ -53,13 +63,18 @@ services:
     #   - MQTT_HOST_PORT=${MQTT_HOST_PORT}
     env_file:
       - .env
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 500M
 
   mission_manager_dtblock:
     build:
       context: ../../
       dockerfile: platgdia/dtblocks/mission_manager/dockerfile
     container_name: Gestor_de_clientes_UAM
-    restart: unless-stopped
+    restart: "no"
     depends_on:
       - uspace_manager_dtblock
       - uav_operator_dtblock
@@ -68,6 +83,11 @@ services:
     #   - MQTT_HOST_PORT=${MQTT_HOST_PORT}
     env_file:
       - .env
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 500M
 
 volumes:
   mosquitto-data:
