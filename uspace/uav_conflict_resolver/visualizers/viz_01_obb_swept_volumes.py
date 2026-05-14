@@ -25,7 +25,7 @@ _PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from visualizers.flightplan_generator import generate_flight_plan
+from benchmark.flightplan_generator import generate_flight_plan
 
 
 def generate_obb_faces(corners):

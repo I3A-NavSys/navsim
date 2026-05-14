@@ -1,294 +1,90 @@
 """
-path_geometry.py — Spatial Detour Constructor
-==============================================
+path_geometry.py — Rigid Shift Detour Constructor
+=================================================
 
 PURPOSE:
     Build a modified FlightPlan for the plebeian UAV that avoids a conflict zone
-    by inserting a spatial displacement (the "detour") at the anchor point.
+    by inserting a kinematically constrained rigid-shift detour (3-point topology).
 
-    This module provides TWO detour builders:
+    This module exposes a single detour builder:
 
-    build_spatial_detour()      — Legacy triangle (anc → det → ret).
-                                  Still used as a fallback when no conflict_obb
-                                  is available (e.g. degenerate geometry).
+    build_rigid_shift_detour()  — PRIMARY. Rigid Shift (anc → det → ret).
+                                  Uses kinematic boundaries and heuristic MTV
+                                  scaling to find a conflict-free route via the
+                                  Shadow R-Tree.
 
-    build_trapezoid_detour()    — PRIMARY.  Trapezoid (anc → det1 → det2 → ret).
-                                  Uses heuristic MTV scaling to find a conflict-free
-                                  route via the Shadow R-Tree.
-
-TRAPEZOID GEOMETRY:
+RIGID SHIFT GEOMETRY (3-POINT TOPOLOGY):
     Original route:
         ──────────[anc]────────────────────────────[next_wp]──
 
-    After build_trapezoid_detour():
-        ──────────[anc]──[det1]────────────[det2]──[ret]──[next_wp]──
-                       ↗  (flat top, inside safe OBB)   ↘
-              ramp-in                                  ramp-out
+    After build_rigid_shift_detour():
+        ──────────[anc]────────[det]────────[ret]──[next_wp]──
+                      ↘                    ↗
+                        (displaced by MTV)
 
-    The flat top (det1 → det2) is routed PARALLEL to the original path but
-    displaced by the MTV — exactly through the centre of the safe OBB.
-
-KINEMATIC VALIDATION:
-    Before accepting a detour, we check that the angular velocity at the turn
-    points does not exceed max_var_ang_vel (validate_curve_kinematics).
+    DESIGN CHOICE: A 3-point detour (single apex) is used instead of a 4-point 
+    trapezoid to handle detours over curved trajectories robustly. Calculating 
+    parallel offset curves in 3D space is computationally expensive and prone 
+    to topological collapse (loops/spikes) on tight turns.
+    
+    THE "TRIANGLE PROBLEM": Because we use a triangle over a bounding box, pushing 
+    only the apex by the exact Minimum Translation Vector (MTV) leaves the legs of 
+    the triangle inside the obstacle. To compensate, the MTV is multiplied by 
+    RIGID_SHIFT_MTV_SCALE (e.g., 1.5 - 2.0). This artificially pushes the apex 
+    further away, widening the legs enough to clear the safety volume entirely.
 """
 
 from __future__ import annotations
 
+import math
 import numpy as np
-from typing import Optional, TYPE_CHECKING
+from typing import List, Optional, TYPE_CHECKING
 
 from core.models.flight_plan import FlightPlan
 from core.models.waypoint import Waypoint
 from core.config import (
     NORM_ZERO_THRESHOLD,
-    DETOUR_APEX_TIME_FRACTION,
-    DETOUR_RETURN_TIME_FRACTION,
-    TRAP_DETOUR_RAMP_IN_FRACTION,
-    TRAP_DETOUR_TOP_END_FRACTION,
-    TRAP_DETOUR_RAMP_OUT_FRACTION,
     MIN_DETOUR_DURATION,
-    POST_CONFLICT_BUFFER,
+    UAV_MAX_SPEED,
+    UAV_MAX_ACCEL,
+    RIGID_SHIFT_MTV_SCALE,
+    WAYPOINT_TIME_EPSILON,
 )
 
 if TYPE_CHECKING:
     from detection.conflictDetection import SweptBox_OBB
 
-
 # ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
-
-def build_spatial_detour(
-    fp: FlightPlan,
-    t_anchor: float,
-    mtv: np.ndarray,
-) -> Optional[FlightPlan]:
-    """
-    Build a new FlightPlan with a spatial detour at t_anchor displaced by mtv.
-
-    The operation is performed on a deep copy of fp — the original is never mutated.
-
-    Strategy:
-        1. Find the anchor position: where the plebeian is at t_anchor.
-        2. Find the next waypoint after t_anchor (the "target" the drone was heading to).
-        3. Insert a detour waypoint at (anchor_pos + mtv) between t_anchor and t_target.
-        4. Insert a return waypoint that smoothly rejoins the original route.
-        5. Reconnect all waypoints with set_uniform_velocity + connect_waypoints.
-
-    Args:
-        fp:       Original FlightPlan (will NOT be mutated).
-        t_anchor: The temporal anchor point. The detour starts here.
-        mtv:      The displacement vector to apply at the apex of the detour.
-
-    Returns:
-        A new FlightPlan with the detour inserted, or None if the geometry is
-        degenerate (e.g., mtv is zero, or anchor is beyond the flight plan end).
-    """
-    # Guard: anchor must be within the flight plan window
-    if t_anchor >= fp.finish_time():
-        return None
-
-    mtv = np.array(mtv, dtype=float)
-    if np.linalg.norm(mtv) < NORM_ZERO_THRESHOLD:
-        return None  # Zero-displacement detour is meaningless
-
-    # Deep copy so we never mutate the original flight plan
-    new_fp: FlightPlan = fp.copy()
-
-    # =========================================================================
-    # Step 1: Determine key positions
-    # =========================================================================
-    # Position at the anchor time (where the drone is when the maneuver starts)
-    status_anchor = new_fp.status_at_time(t_anchor)
-    anchor_pos: np.ndarray = status_anchor.pos.copy()
-
-    # Next scheduled waypoint after t_anchor (where the drone was originally heading)
-    target_idx = new_fp.get_target_index_from_time(t_anchor)
-    if target_idx >= len(new_fp.waypoints):
-        return None  # No waypoint after anchor
-    next_wp: Waypoint = new_fp.waypoints[target_idx]
-
-    # =========================================================================
-    # Step 2: Compute detour apex and return positions
-    # =========================================================================
-    # Apex of the detour: anchor position shifted by the MTV
-    detour_pos: np.ndarray = anchor_pos + mtv
-
-    # Time budget between anchor and next waypoint
-    t_to_next: float = next_wp.t - t_anchor
-    if t_to_next <= 0:
-        return None
-
-    # Detour apex time: proportionally in the middle of the available window.
-    # We allocate 40% of the time budget to reach the apex and 60% to return,
-    # giving more time to the return leg (which is longer since it must rejoin
-    # the original route at a point ahead of the original target).
-    t_detour: float = t_anchor + DETOUR_APEX_TIME_FRACTION * t_to_next
-    t_return: float = t_anchor + DETOUR_RETURN_TIME_FRACTION * t_to_next
-
-    if t_detour <= t_anchor or t_return <= t_detour or t_return >= next_wp.t:
-        # Not enough time window to place three waypoints
-        return None
-
-    # Return position: a point on the original route slightly before next_wp
-    # so the drone re-enters the original path smoothly
-    return_pos: np.ndarray = new_fp.status_at_time(t_return).pos.copy()
-
-    # =========================================================================
-    # Step 3: Build the anchor waypoint (stop & start of maneuver)
-    # =========================================================================
-    anchor_wp = Waypoint(
-        label="anc",
-        t=t_anchor,
-        pos=anchor_pos,
-        vel=[0.0, 0.0, 0.0],  # Velocity will be corrected by set_uniform_velocity
-    )
-
-    # =========================================================================
-    # Step 4: Build the detour apex waypoint
-    # =========================================================================
-    detour_wp = Waypoint(
-        label="det",
-        t=t_detour,
-        pos=detour_pos,
-        vel=[0.0, 0.0, 0.0],
-    )
-
-    # =========================================================================
-    # Step 5: Build the return waypoint
-    # =========================================================================
-    return_wp = Waypoint(
-        label="ret",
-        t=t_return,
-        pos=return_pos,
-        vel=[0.0, 0.0, 0.0],
-    )
-
-    # =========================================================================
-    # Step 6: Insert waypoints into the copied flight plan
-    # We use set_waypoint which handles insertion at the correct sorted position.
-    # =========================================================================
-    new_fp.set_waypoint(anchor_wp)
-    new_fp.set_waypoint(detour_wp)
-    new_fp.set_waypoint(return_wp)
-
-    # =========================================================================
-    # Step 7: Recompute uniform velocities for the modified segment and
-    # reconnect all waypoints with their polynomial derivatives.
-    # =========================================================================
-    new_fp.set_uniform_velocity()
-    new_fp.connect_waypoints()
-
-    return new_fp
-
-
-def validate_curve_kinematics(
-    wp_prev: Waypoint,
-    wp_turn: Waypoint,
-    wp_next: Waypoint,
-    max_ang_vel: float,
-) -> bool:
-    """
-    Validate that the angular velocity at a turn waypoint is within physical limits.
-
-    The drone must be able to change heading direction between wp_prev→wp_turn
-    and wp_turn→wp_next without exceeding max_ang_vel.
-
-    The required angular velocity is estimated as:
-        required_ang_vel = angle_between_legs / time_available_at_turn
-
-    Where:
-        - angle_between_legs: the heading change in radians using wp_turn.angle_with(wp_prev/next)
-        - time_available_at_turn: half the average of the two leg durations
-
-    Args:
-        wp_prev:     The waypoint before the turn.
-        wp_turn:     The turn waypoint to validate.
-        wp_next:     The waypoint after the turn.
-        max_ang_vel: Maximum angular velocity of the UAV [rad/s] (fp.max_var_ang_vel).
-
-    Returns:
-        True if the turn is kinematically feasible, False otherwise.
-    """
-    if max_ang_vel <= 0:
-        return False
-
-    # Get the velocity vectors at the incoming and outgoing legs
-    vel_in  = wp_turn.pos - wp_prev.pos
-    vel_out = wp_next.pos - wp_turn.pos
-
-    norm_in  = np.linalg.norm(vel_in)
-    norm_out = np.linalg.norm(vel_out)
-
-    if norm_in < NORM_ZERO_THRESHOLD or norm_out < NORM_ZERO_THRESHOLD:
-        # One of the legs has zero length — degenerate, consider it valid
-        # (the drone is hovering, no angular constraint applies)
-        return True
-
-    # Angle between the two direction vectors (incoming and outgoing legs)
-    cos_angle = np.dot(vel_in, vel_out) / (norm_in * norm_out)
-    cos_angle = np.clip(cos_angle, -1.0, 1.0)
-    angle_rad = np.arccos(cos_angle)
-
-    # Time available at the turn: use the shorter leg duration as the constraint
-    t_in  = wp_turn.t - wp_prev.t
-    t_out = wp_next.t - wp_turn.t
-
-    if t_in <= 0 or t_out <= 0:
-        return False
-
-    # Conservative estimate: the full turn must happen within the shorter leg time
-    time_available = min(t_in, t_out)
-
-    required_ang_vel = angle_rad / time_available
-
-    return required_ang_vel <= max_ang_vel
-
-
-# ---------------------------------------------------------------------------
-# Primary detour builder: Trapezoid + Bézier hull guarantee
+# Primary detour builder: Rigid Shift strategy
 # ---------------------------------------------------------------------------
 
-def build_trapezoid_detour(
+def build_rigid_shift_detour(
     fp:           FlightPlan,
     t_anchor:     float,
     mtv:          np.ndarray,
     conflict_obbs: Optional[List["SweptBox_OBB"]] = None,
+    origin_conflict: Optional[np.ndarray] = None,
+    t_anc_override: Optional[float] = None,
+    t_ret_override: Optional[float] = None,
 ) -> Optional[FlightPlan]:
     """
-    Build a trapezoid detour (anc → det1 → det2 → ret) using a heuristic
-    translation based on the MTV.
-
-    ALGORITHM
-    ---------
-    1. Anchor position and next waypoint are retrieved.
-    2. If ``conflict_obb`` is provided, the safe center is computed (conflict_obb
-       displaced by ``mtv``) and det1/det2 are placed at the entry/exit corners
-       of that safe zone along its forward axis (axes[0]).
-       Otherwise, the function degrades gracefully to a simple single-point
-       detour (same behaviour as build_spatial_detour).
-    3. Time fractions TRAP_DETOUR_{RAMP_IN,TOP_END,RAMP_OUT}_FRACTION allocate
-       the available time budget [t_anchor, next_wp.t].
-    4. Velocity at det1 and det2 is set to the natural flat-crossing speed
-       (L / Δt_flat along axes[0]) and capped at fp.max_var_lin_vel.
-    5. The four waypoints are inserted into a copy of fp and
-       connect_waypoints() is called to commit the polynomial.
-
+    Build a Rigid Shift detour (anc → det → ret).
+    
+    Uses the kinematic approach to calculate anchor and return times (if not provided).
+    Applies the scaled MTV to the NOMINAL position of the drone at the apex time
+    to respect original trajectory curvature, and calculates a natural velocity 
+    tangent using central finite differences.
+    
     Args:
-        fp:           Original FlightPlan (not mutated).
-        t_anchor:     Temporal anchor (manoeuvre start time).
-        mtv:          Displacement vector (already SAFETY_MTV_SCALE-scaled).
-        conflict_obb: The OBB flagged as colliding (from the SAT result).
-                      If None, degrades to build_spatial_detour behaviour.
-
-    Returns:
-        A FlightPlan candidate (to be validated by the Shadow R-Tree),
-        or None if geometry is degenerate.
+        fp:                   Flight plan to modify
+        t_anchor:             Anchor time for maneuver start
+        mtv:                  Minimum translation vector (displacement)
+        conflict_obbs:        List of conflicting OBB boxes
+        origin_conflict:      Conflict origin point (optional)
+        t_anc_override:       If provided, use this anchor time instead of calculating
+        t_ret_override:       If provided, use this return time instead of calculating
     """
-    # ------------------------------------------------------------------
     # Guard: anchor must be within the flight plan window
-    # ------------------------------------------------------------------
     if t_anchor >= fp.finish_time():
         return None
 
@@ -296,197 +92,194 @@ def build_trapezoid_detour(
     if np.linalg.norm(mtv) < NORM_ZERO_THRESHOLD:
         return None
 
-    # ------------------------------------------------------------------
-    # Step 1: Retrieve anchor and next waypoint
-    # ------------------------------------------------------------------
-    status_anchor = fp.status_at_time(t_anchor)
-    anchor_pos: np.ndarray = status_anchor.pos.copy()
-    anchor_vel: np.ndarray = status_anchor.vel.copy()
-
-    if conflict_obbs:
-        t_max_conflict = conflict_obbs[-1].t_range[1]
-        t_target = max(t_anchor + MIN_DETOUR_DURATION, t_max_conflict + POST_CONFLICT_BUFFER)
-        target_idx = 0
-        for idx, wp in enumerate(fp.waypoints):
-            if wp.t >= t_target:
-                target_idx = idx
-                break
-        else:
-            target_idx = len(fp.waypoints) - 1
-    else:
-        target_idx = fp.get_target_index_from_time(t_anchor)
-
-    if target_idx >= len(fp.waypoints):
-        return None
-    next_wp: Waypoint = fp.waypoints[target_idx]
-
-    t_to_next = next_wp.t - t_anchor
-    if t_to_next <= 0:
+    if not conflict_obbs and origin_conflict is None:
         return None
 
-    # ------------------------------------------------------------------
-    # Step 2: Extract dynamic constraints & build safe center
-    # ------------------------------------------------------------------
-    v_nominal = np.linalg.norm(anchor_vel)
-    if v_nominal < NORM_ZERO_THRESHOLD:
-        v_nominal = 1.0  # Fallback minimum speed for hover states
-        
-    w_max = float(fp.max_var_ang_vel)
-    a_max = float(fp.max_var_lin_vel)
-
-    def calc_dt_turn(dir_in: np.ndarray, dir_out: np.ndarray) -> float:
-        """Algoritmo 6 (Casado et al., 2026): Turn time computation."""
-        dir_in_norm = np.linalg.norm(dir_in)
-        dir_out_norm = np.linalg.norm(dir_out)
-        if dir_in_norm < NORM_ZERO_THRESHOLD or dir_out_norm < NORM_ZERO_THRESHOLD:
-            return 0.0
-        
-        u_in = dir_in / dir_in_norm
-        u_out = dir_out / dir_out_norm
-        dot = np.clip(np.dot(u_in, u_out), -1.0, 1.0)
-        alpha = np.arccos(dot)
-        
-        dt_w = alpha / w_max if w_max > NORM_ZERO_THRESHOLD else 0.0
-        dt_a = (2.0 * v_nominal * np.sin(alpha / 2.0)) / a_max if a_max > NORM_ZERO_THRESHOLD else 0.0
-        return max(dt_w, dt_a)
-
-    safe_center = None
-    vel_anc = anchor_vel.copy()
-
-    if conflict_obbs:
-        first_obb = conflict_obbs[0]
-        last_obb = conflict_obbs[-1]
-        
-        fwd_axis: np.ndarray = first_obb.axes[0]  # unit vector
-        
-        # Aggregate the boxes along the forward axis
-        dir_vector = last_obb.center - first_obb.center
-        l_proj = np.dot(dir_vector, fwd_axis)
-        
-        half_len = (abs(l_proj) + first_obb.half_extents[0] + last_obb.half_extents[0]) / 2.0
-        composite_center = first_obb.center + fwd_axis * (l_proj / 2.0)
-
-        # Build the safe center (conflict composite center shifted by MTV)
-        safe_center = composite_center + mtv
-
-        # det1 and det2 at the entry / exit corners of the safe OBB sequence
-        det1_pos: np.ndarray = safe_center - half_len * fwd_axis
-        det2_pos: np.ndarray = safe_center + half_len * fwd_axis
-        
-        # Geometrically define ret_pos to return to original line
-        # Advance along the line by the distance of the mtv to make a symmetric ramp-out
-        line_dir = next_wp.pos - anchor_pos
-        line_len = np.linalg.norm(line_dir)
-        
-        if line_len > NORM_ZERO_THRESHOLD:
-            u_line = line_dir / line_len
-            proj_dist = np.dot(det2_pos - anchor_pos, u_line)
-            ret_dist = min(proj_dist + np.linalg.norm(mtv), line_len - 0.5)
-            ret_pos = anchor_pos + ret_dist * u_line
-        else:
-            ret_pos = det2_pos - mtv
-            
-        # ------------------------------------------------------------------
-        # Step 3: Accumulate turn & transit times dynamically
-        # ------------------------------------------------------------------
-        dir_anc_det1 = det1_pos - anchor_pos
-        dir_det1_det2 = det2_pos - det1_pos
-        dir_det2_ret = ret_pos - det2_pos
-        dir_ret_next = next_wp.pos - ret_pos
-        
-        # Turn 1 (anc)
-        v_in_anc = anchor_vel.copy()
-        if np.linalg.norm(v_in_anc) <= NORM_ZERO_THRESHOLD:
-            v_in_anc = line_dir if line_len > NORM_ZERO_THRESHOLD else mtv
-            
-        dt_turn_anc = calc_dt_turn(v_in_anc, dir_anc_det1)
-        transit_anc_det1 = np.linalg.norm(dir_anc_det1) / v_nominal
-        t_det1 = t_anchor + dt_turn_anc + transit_anc_det1
-        
-        # Turn 2 (det1)
-        dt_turn_det1 = calc_dt_turn(dir_anc_det1, dir_det1_det2)
-        transit_det1_det2 = np.linalg.norm(dir_det1_det2) / v_nominal
-        t_det2 = t_det1 + dt_turn_det1 + transit_det1_det2
-        
-        # Turn 3 (det2)
-        dt_turn_det2 = calc_dt_turn(dir_det1_det2, dir_det2_ret)
-        transit_det2_ret = np.linalg.norm(dir_det2_ret) / v_nominal
-        t_ret = t_det2 + dt_turn_det2 + transit_det2_ret
-        
-        # Turn 4 (ret)
-        dt_turn_ret = calc_dt_turn(dir_det2_ret, dir_ret_next)
-        t_post_ret = t_ret + dt_turn_ret
-        
-        # ------------------------------------------------------------------
-        # Step 4: Kinetic validation (Time budget scaling)
-        # ------------------------------------------------------------------
-        if t_post_ret >= next_wp.t:
-            # We scale the allocated deltas to fit inside the time budget
-            available_dt = next_wp.t - t_anchor
-            total_dt_needed = t_post_ret - t_anchor
-            scale = (available_dt * 0.99) / total_dt_needed
-            
-            t_det1 = t_anchor + (t_det1 - t_anchor) * scale
-            t_det2 = t_anchor + (t_det2 - t_anchor) * scale
-            t_ret  = t_anchor + (t_ret - t_anchor) * scale
-            
-            # Since we scale time, the velocity increases
-            v_safe = min(v_nominal / scale, float(fp.max_var_lin_vel))
-        else:
-            v_safe = min(v_nominal, float(fp.max_var_lin_vel))
-
-        # Velocities directed along the trapezoid segments
-        vel_det1 = fwd_axis * v_safe
-        vel_det2 = fwd_axis * v_safe
-
-        norm_to_next = np.linalg.norm(dir_ret_next)
-        vel_ret = (dir_ret_next / norm_to_next * v_safe
-                   if norm_to_next > NORM_ZERO_THRESHOLD else np.zeros(3))
-
-    else:
-        # Degraded mode: single displaced point (identical to build_spatial_detour)
-        det1_pos = anchor_pos + mtv
-        det2_pos = anchor_pos + mtv
-        ret_pos = fp.status_at_time(t_anchor + TRAP_DETOUR_RAMP_OUT_FRACTION * t_to_next).pos.copy()
-        
-        t_det1 = t_anchor + TRAP_DETOUR_RAMP_IN_FRACTION * t_to_next
-        t_det2 = t_anchor + TRAP_DETOUR_TOP_END_FRACTION * t_to_next
-        t_ret  = t_anchor + TRAP_DETOUR_RAMP_OUT_FRACTION * t_to_next
-        
-        vel_det1 = np.zeros(3)
-        vel_det2 = np.zeros(3)
-        vel_ret = np.zeros(3)
-
-    # ------------------------------------------------------------------
-    # Step 6: Build the four waypoints
-    # ------------------------------------------------------------------
-    wp_anc  = Waypoint(label="anc",  t=t_anchor, pos=anchor_pos, vel=vel_anc)
-    wp_det1 = Waypoint(label="det1", t=t_det1,   pos=det1_pos,   vel=vel_det1)
-    wp_det2 = Waypoint(label="det2", t=t_det2,   pos=det2_pos,   vel=vel_det2)
-    wp_ret  = Waypoint(label="ret",  t=t_ret,    pos=ret_pos,     vel=vel_ret)
-
-    # ------------------------------------------------------------------
-    # Step 7: Insert waypoints into a copy of fp and commit the polynomial
-    # ------------------------------------------------------------------
     new_fp: FlightPlan = fp.copy()
 
-    # Filter out waypoints that fall inside the detour interval
-    filtered_wps = []
+    # Get state at maneuver start (t_anchor)
+    status_anchor = new_fp.status_at_time(t_anchor)
+    anchor_vel: np.ndarray = status_anchor.vel.copy()
+
+    # v_cruise = current actual speed of the drone at t_anchor.
+    # We use this instead of UAV_MAX_SPEED for two reasons:
+    #   1. More realistic: the drone may not be flying at maximum speed.
+    #   2. Preserves flight plan intent: maneuver timing adapts to actual velocity,
+    #      not an arbitrary constant.
+    # If the drone is hovering (v ≈ 0), default to UAV_MAX_SPEED as a fallback.
+    v_cruise = np.linalg.norm(anchor_vel)
+    if v_cruise < NORM_ZERO_THRESHOLD:
+        v_cruise = float(UAV_MAX_SPEED)
+
+    # Determine t_anc and t_ret: either use overrides or calculate from conflict_obbs
+    if t_anc_override is not None and t_ret_override is not None:
+        t_anc = t_anc_override
+        t_ret = t_ret_override
+    else:
+        # Fallback: calculate from conflict_obbs (original behavior)
+        # Calculate kinematic anchor distance
+        # Heuristic: the higher the cruise speed, the longer the maneuver preparation.
+        d_anc = (v_cruise ** 2) / float(UAV_MAX_SPEED)
+        if d_anc < MIN_DETOUR_DURATION:
+            d_anc = MIN_DETOUR_DURATION
+
+        # Calculate temporal anchors based on the original route
+        t_conflict_start = conflict_obbs[0].t_range[0]
+        t_anc = t_conflict_start - (d_anc / v_cruise)
+        t_anc = max(t_anc, new_fp.init_time() + WAYPOINT_TIME_EPSILON)
+        
+        # We must ensure t_anc starts at or after t_anchor
+        t_anc = max(t_anc, t_anchor)
+
+        t_ret_base = conflict_obbs[-1].t_range[1]
+        t_ret = t_ret_base + (d_anc / v_cruise)
+        t_ret = min(t_ret, new_fp.finish_time() - WAYPOINT_TIME_EPSILON)
+    
+    # Validate t_anc and t_ret bounds
+    t_anc = max(t_anc, fp.init_time() + WAYPOINT_TIME_EPSILON)
+    t_anc = max(t_anc, t_anchor)
+    t_ret = min(t_ret, fp.finish_time() - WAYPOINT_TIME_EPSILON)
+    
+    if t_anc >= t_ret:
+        return None
+    
+    status_anc = fp.status_at_time(t_anc)  # Use fp (original), not new_fp
+    pos_anc = status_anc.pos.copy()
+    vel_anc = status_anc.vel.copy()
+
+    status_ret = fp.status_at_time(t_ret)  # Use fp (original), not new_fp
+    pos_ret = status_ret.pos.copy()
+    vel_ret = status_ret.vel.copy()
+    
+    # CRITICAL: Store the ORIGINAL pos_ret and vel_ret (based on original t_ret)
+    # These represent the fixed return-to-path point and will NOT change
+    pos_ret_fixed = pos_ret.copy()
+    vel_ret_fixed = vel_ret.copy()
+
+    # Remove interior waypoints in the affected segment
+    to_remove = []
     for wp in new_fp.waypoints:
-        if wp.t <= t_anchor or wp.t >= next_wp.t:
-            filtered_wps.append(wp)
-    new_fp.waypoints = filtered_wps
+        if t_anc < wp.t < t_ret:
+            to_remove.append(wp.t)
+            
+    for t in to_remove:
+        new_fp.remove_waypoint_at_time(t)
+
+    # Store the original t_ret (before any extensions) for postponement calculation
+    t_ret_original = t_ret
+
+    # Apex Time Calculation
+    t_det = (t_anc + t_ret) / 2.0
+
+    # FIX 2: True Nominal Position from original flight plan
+    status_nominal = fp.status_at_time(t_det)
+    pos_nominal = status_nominal.pos.copy()
+
+    # Apply the MTV directly to the drone's intended flight path
+    # IMPORTANT: The MTV from SAT is already a sufficient separation.
+    # Do NOT multiply by RIGID_SHIFT_MTV_SCALE - that causes unrealistic displacements.
+    # The MTV magnitude is calibrated by SAT for collision-free separation.
+    mtv_scaled = mtv  # Use MTV as-is, no scaling
+    pos_det = pos_nominal + mtv_scaled
+    
+    # print(f"[DEBUG MTV] mtv={mtv}, norm={np.linalg.norm(mtv):.3f}")
+    # print(f"[DEBUG MTV] Using MTV directly (no scaling)")
+    # print(f"[DEBUG POS] pos_nominal={pos_nominal}")
+    # print(f"[DEBUG POS] pos_anc={pos_anc}")
+    # print(f"[DEBUG POS] pos_det={pos_det}")
+    # print(f"[DEBUG POS] pos_ret_fixed={pos_ret_fixed}")
+
+    # Kinematic feasibility guard: Min time required to cover the spatial distances
+    dist1 = np.linalg.norm(pos_det - pos_anc)
+    dist2 = np.linalg.norm(pos_ret_fixed - pos_det)
+    
+    # Required time for segment 1 (anc -> det)
+    v1 = np.linalg.norm(vel_anc)
+    t1 = (-v1 + math.sqrt(max(0, v1**2 + 2 * UAV_MAX_ACCEL * dist1))) / (UAV_MAX_ACCEL + NORM_ZERO_THRESHOLD)
+    
+    # Required time for segment 2 (det -> ret)
+    v2 = v_cruise 
+    t2 = (-v2 + math.sqrt(max(0, v2**2 + 2 * UAV_MAX_ACCEL * dist2))) / (UAV_MAX_ACCEL + NORM_ZERO_THRESHOLD)
+    
+    # Total minimum time needed (use max to ensure both segments have enough time)
+    min_time_needed = 2.0 * max(t1, t2)
+    time_available = t_ret - t_anc
+
+    if min_time_needed > time_available:
+        # Extension strategy: extend t_ret to give more travel time to the SAME FIXED POINT
+        # pos_ret_fixed remains the same - it's the point where we return to the original path
+        extra = min_time_needed - time_available + WAYPOINT_TIME_EPSILON
+        print(f"[INFO] Extending detour time: {time_available:.2f}s -> {time_available + extra:.2f}s (needed {min_time_needed:.2f}s for dist1={dist1:.1f}m, dist2={dist2:.1f}m)")
+        
+        # Extend t_ret only - this gives more time to reach pos_ret_fixed
+        t_ret = t_ret + extra
+        t_ret = min(t_ret, fp.finish_time() - WAYPOINT_TIME_EPSILON)
+        
+        # Recalculate t_det to maintain approximate symmetry
+        t_det = (t_anc + t_ret) / 2.0
+        
+        # Recalculate nominal position and apex
+        status_nominal = fp.status_at_time(t_det)
+        pos_nominal = status_nominal.pos.copy()
+        pos_det = pos_nominal + mtv_scaled
+        
+        # pos_ret remains FIXED - it's the return point, not a moving target
+        # vel_ret also remains FIXED from the original calculation
+    else:
+        # No extension needed - use the calculated values
+        vel_ret = vel_ret_fixed
+        pos_ret = pos_ret_fixed
+    
+    # Ensure pos_ret and vel_ret use the fixed return point
+    pos_ret = pos_ret_fixed
+    vel_ret = vel_ret_fixed
+
+    # FIX 3: Central Finite Difference Velocity (Raw Magnitude)
+    # We calculate a natural curve tangent by averaging the incoming and outgoing 
+    # segment vectors. We DO NOT force this to be `v_cruise`. If the detour is sharp,
+    # v_in and v_out will partially cancel out, yielding a lower velocity. 
+    # This correctly allows the drone to slow down at the apex, preventing 
+    # the polynomial spline from overshooting and creating loops.
+    v_in_vec = (pos_det - pos_anc) / (t_det - t_anc)
+    v_out_vec = (pos_ret - pos_det) / (t_ret - t_det)
+    vel_det = (v_in_vec + v_out_vec) / 2.0
+
+    # Insert maneuver waypoints
+    wp_anc = Waypoint(label="anc", t=t_anc, pos=pos_anc, vel=vel_anc)
+    wp_det = Waypoint(label="det", t=t_det, pos=pos_det, vel=vel_det)
+    wp_ret = Waypoint(label="ret", t=t_ret, pos=pos_ret, vel=vel_ret)
 
     new_fp.set_waypoint(wp_anc)
-    new_fp.set_waypoint(wp_det1)
-    new_fp.set_waypoint(wp_det2)
+    new_fp.set_waypoint(wp_det)
     new_fp.set_waypoint(wp_ret)
 
-    # If we didn't set velocities explicitly, let the plan compute them
-    if safe_center is None:
-        new_fp.set_uniform_velocity()
+    # FIX 4: Removed set_uniform_velocity()
+    # We deliberately omit new_fp.set_uniform_velocity() here so it doesn't overwrite 
+    # the carefully calculated `vel_det` (which needs to be lower than v_cruise 
+    # to prevent Runge's phenomenon / overshoot loops).
+    
+    # Trust connect_to() to generate smooth quintic polynomials that satisfy
+    # all kinematic constraints. If any segment is infeasible, strict=True
+    # will raise ValueError, which we propagate back to the caller.
+    try:
+        new_fp.connect_waypoints(strict=True)
+    except ValueError as e:
+        err_str = str(e).encode('utf-8', 'ignore').decode('utf-8')
+        print(f"[DEBUG] connect_waypoints failed: {err_str}")
+        print(f"[DEBUG] Maneuver params:")
+        print(f"       t_anc={t_anc:.2f}s, t_det={t_det:.2f}s, t_ret={t_ret:.2f}s")
+        print(f"       dist(anc->det)={np.linalg.norm(pos_det - pos_anc):.2f}m")
+        print(f"       dist(det->ret)={np.linalg.norm(pos_ret - pos_det):.2f}m")
+        print(f"       vel_anc={np.linalg.norm(vel_anc):.2f} m/s")
+        print(f"       vel_det={np.linalg.norm(vel_det):.2f} m/s")
+        print(f"       vel_ret={np.linalg.norm(vel_ret):.2f} m/s")
+        return None
 
-    # commit the quintic polynomial for every segment (= connect_to per pair)
-    new_fp.connect_waypoints()
+    # CRITICAL: After inserting the detour, postpone all waypoints after t_ret_original
+    # This compensates for the extra time the detour takes (if any was added)
+    if t_ret > t_ret_original:
+        extra_time = t_ret - t_ret_original
+        print(f"[INFO] Postponing waypoints after t_ret: extra_time={extra_time:.2f}s")
+        new_fp.postpone_from(t_ret_original, extra_time)
 
     return new_fp

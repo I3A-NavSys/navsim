@@ -1,5 +1,6 @@
 from tabulate import tabulate
 import copy
+import logging
 from typing import List, Optional
 import numpy as np
 import matplotlib
@@ -10,14 +11,17 @@ from matplotlib.collections import PathCollection
 from scipy.spatial.transform import Rotation
 
 from detection.conflictDetection import SweptBox_AABB, SweptBox_OBB
+from core.config import UAV_MAX_SPEED, UAV_MAX_ACCEL
 
 
 from .waypoint import Waypoint
 from .command import Command
 
 
-matplotlib.use("Qt5Agg")
+matplotlib.use("TkAgg")
 plt.rcParams["toolbar"] = "toolmanager"
+
+log = logging.getLogger(__name__)
 
 class FlightPlan:
 
@@ -261,14 +265,61 @@ class FlightPlan:
     #------------------------------------------------------------------------------------------------------------------
     # ROUTE MANAGEMENT
 
-    def connect_waypoints(self):
+    def connect_waypoints(
+        self,
+        v_max: float = UAV_MAX_SPEED,
+        a_max: float | None = UAV_MAX_ACCEL,
+        strict: bool = False,
+    ):
         """
-        For each waypoint with given time, position, velocity and acceleration,
-        it computes the next 3 derivatives that execute said movement.
+        Computes the quintic-polynomial coefficients (jerk, snap, crakle) for
+        every segment in the flight plan so that the trajectory passes exactly
+        through each waypoint with the prescribed position, velocity, and
+        acceleration.
+
+        Before interpolating each segment, an optional kinematic feasibility
+        check is performed via Waypoint.check_kinematic_feasibility().
+        If the check fails:
+          - In *strict* mode  (strict=True)  a ValueError is raised immediately,
+            aborting the whole plan.  Use this during plan construction to catch
+            impossible schedules early.
+          - In *lenient* mode (strict=False) a WARNING is logged and the
+            polynomial is computed anyway.  The resulting trajectory will respect
+            the boundary conditions mathematically but may violate hardware
+            limits at runtime.  This is the default to preserve backward
+            compatibility with existing callers.
+
+        Args:
+            v_max  (float):      Maximum drone speed [m/s].
+                                 Defaults to UAV_MAX_SPEED from config.
+            a_max  (float|None): Maximum linear acceleration [m/s²].
+                                 Defaults to UAV_MAX_ACCEL from config.
+                                 Pass None to skip Guard 3.
+            strict (bool):       If True, raise ValueError on infeasible
+                                 segments instead of warning.  Default: False.
         """
         for i in range(len(self.waypoints) - 1):
             wpA = self.waypoints[i]
             wpB = self.waypoints[i + 1]
+
+            # ------------------------------------------------------------------
+            # Kinematic feasibility check
+            # Verifies that the drone can physically travel from wpA to wpB
+            # within the allotted time window given the hardware limits.
+            # ------------------------------------------------------------------
+            ok, reason = wpA.check_kinematic_feasibility(wpB, v_max=v_max, a_max=a_max)
+            if not ok:
+                msg = (
+                    f"[connect_waypoints] Infeasible segment "
+                    f"{wpA.label!r} → {wpB.label!r}: {reason}"
+                )
+                if strict:
+                    raise ValueError(msg)
+                else:
+                    log.warning(msg)
+
+            # Compute the polynomial regardless (lenient mode) or after the
+            # check has already confirmed feasibility (strict mode).
             wpA.connect_to(wpB)
 
     def smooth_waypoint_speed(self, wp, angVel):

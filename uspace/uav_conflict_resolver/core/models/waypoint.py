@@ -93,20 +93,133 @@ class Waypoint:
     # DYNAMICS MANAGEMENT
 
     def set_uniform_velocity(self, wp2):
-        # Set uniform straight velocity from wp1 to wp2
+        # Set uniform straight-line velocity from this waypoint to wp2.
+        # Zeroes all higher-order derivatives (acceleration, jerk, …) so that
+        # the motion is Uniform Rectilinear Motion (MRU) from this point.
         self.stop()
 
-        # Time between wp1 and wp2
+        # Elapsed time between the two waypoints
         t12 = self.time_to(wp2)
         if t12 != 0:
             self.vel = (wp2.pos - self.pos) / t12
             self.vel = np.round(self.vel, 2)
 
+    def check_kinematic_feasibility(
+        self,
+        wp2,
+        v_max: float,
+        a_max: float | None = None,
+    ) -> tuple[bool, str]:
+        """
+        Checks whether the drone can physically travel from this waypoint (wp1)
+        to *wp2* given the imposed kinematic limits.
+
+        Three progressive guards are applied in order:
+
+        Guard 1 — Positive time window
+            The time gap Δt = t2 – t1 must be strictly positive.  A zero or
+            negative Δt makes the segment undefined.
+
+        Guard 2 — Average speed vs. maximum speed
+            The drone must cover *dist* metres in Δt seconds, so its average
+            speed must not exceed the hardware top speed v_max:
+
+                v_avg = dist / Δt  ≤  v_max
+
+        Guard 3 (optional) — Reachable distance under maximum acceleration
+            Assuming the drone starts at its current scalar speed v1 and
+            accelerates at the maximum rate a_max for the entire duration Δt,
+            the furthest it can reach is:
+
+                d_max = v1 · Δt + ½ · a_max · Δt²
+
+            If *dist* > d_max, the segment is infeasible even under this
+            optimistic scenario.
+
+            IMPORTANT — This is a *necessary* condition, not sufficient.
+            The formula assumes full-throttle acceleration throughout the whole
+            segment with no deceleration at the end.  In practice, if wp2
+            requires a lower exit speed than v_max, the drone must brake before
+            arrival, so the actual reachable distance is smaller.  Guard 3 is
+            therefore an upper-bound test: passing it does not guarantee
+            feasibility, but failing it guarantees infeasibility.
+
+        Args:
+            wp2     (Waypoint):  Destination waypoint.
+            v_max   (float):     Maximum admissible drone speed [m/s].
+            a_max   (float|None): Maximum linear acceleration [m/s²].
+                                  If None, Guard 3 is skipped.
+
+        Returns:
+            (True,  "ok")          — segment is kinematically feasible.
+            (False, reason_str)    — segment is infeasible; reason_str
+                                     describes which guard failed and why.
+        """
+        dist = self.distance_to(wp2)
+        dt   = self.time_to(wp2)          # wp2.t – self.t
+
+        # ------------------------------------------------------------------
+        # Guard 1: time window must be strictly positive
+        # ------------------------------------------------------------------
+        if dt <= 0:
+            return False, (
+                f"Non-positive time window: Δt={dt:.3f} s "
+                f"(wp1.t={self.t:.3f}, wp2.t={wp2.t:.3f})"
+            )
+
+        # Trivial case: no spatial displacement — always feasible
+        if dist == 0:
+            return True, "ok"
+
+        # ------------------------------------------------------------------
+        # Guard 2: required average speed must not exceed the hardware limit
+        # ------------------------------------------------------------------
+        v_avg = dist / dt
+        if v_avg > v_max:
+            return False, (
+                f"Required average speed {v_avg:.2f} m/s exceeds v_max={v_max:.2f} m/s "
+                f"(dist={dist:.1f} m, Δt={dt:.2f} s)"
+            )
+
+        # ------------------------------------------------------------------
+        # Guard 3 (optional): reachable distance under maximum acceleration
+        # ------------------------------------------------------------------
+        if a_max is not None:
+            v1    = float(np.linalg.norm(self.vel))   # scalar departure speed
+            d_max = v1 * dt + 0.5 * a_max * dt ** 2  # optimistic upper bound
+            if dist > d_max:
+                return False, (
+                    f"Segment unreachable under max acceleration: "
+                    f"dist={dist:.1f} m > d_max={d_max:.1f} m "
+                    f"(v1={v1:.2f} m/s, a_max={a_max:.2f} m/s², Δt={dt:.2f} s)"
+                )
+
+        return True, "ok"
+
     def connect_to(self, wp2):
-        # Dados dos waypoints con 
-        #   t1 pos1 vel1 acel1
-        #   t2 pos2 vel2 acel2
-        # obtiene jerk1, snap1 y crkl1 para ejecutar dicho movimiento
+        """
+        Given two waypoints that each specify (t, pos, vel, acel), computes
+        the three higher-order derivatives (jerk, snap, crakle) of *this*
+        waypoint so that the resulting quintic polynomial exactly satisfies
+        the boundary conditions at both ends:
+
+            t1, pos1, vel1, acel1  ←  this waypoint
+            t2, pos2, vel2, acel2  ←  wp2
+
+        The polynomial is solved per coordinate axis (x, y, z) via a 3×3
+        linear system derived from the Taylor expansion of position:
+
+            r(t) = r1 + v1·τ + ½·a1·τ² + (1/6)·j·τ³ + (1/24)·s·τ⁴ + (1/120)·c·τ⁵
+
+        where τ = t – t1.  Matching position, velocity, and acceleration at
+        τ = Δt = t2 – t1 gives the system A·[j, s, c]ᵀ = B.
+
+        NOTE: This method is a pure mathematical interpolator.  It does NOT
+        validate whether the resulting trajectory is physically achievable
+        (e.g., whether peak speed or acceleration stay within hardware limits).
+        Use check_kinematic_feasibility() before calling this method if such
+        validation is required.
+        """
         r1 = self.pos
         v1 = self.vel
         a1 = self.acel
@@ -114,12 +227,21 @@ class Waypoint:
         v2 = wp2.vel
         a2 = wp2.acel
 
+        # Trivial case: no displacement — keep the waypoint stationary
         if np.linalg.norm(r2 - r1) == 0:
             self.stop()
             return
-        
-        t12 = self.time_to(wp2)
 
+        t12 = self.time_to(wp2)   # Δt = t2 – t1  [s]
+
+        # ------------------------------------------------------------------
+        # Build the 3×3 coefficient matrix A and right-hand side B.
+        # Each row enforces one boundary condition at t = t12:
+        #   row 0  →  position match:    r1 + integral → r2
+        #   row 1  →  velocity match:    v1 + integral → v2
+        #   row 2  →  acceleration match: a1 + integral → a2
+        # Columns correspond to [jerk, snap, crakle] contributions.
+        # ------------------------------------------------------------------
         A = np.array([
             [t12**3 / 6,   t12**4 / 24,   t12**5 / 120],
             [t12**2 / 2,   t12**3 / 6,    t12**4 / 24],
@@ -127,18 +249,22 @@ class Waypoint:
         ])
 
         B = np.array([
-            r2 - r1 - v1 * t12,
-            v2 - v1,
-            a2 - a1
+            r2 - r1 - v1 * t12,   # residual position
+            v2 - v1,               # residual velocity
+            a2 - a1                # residual acceleration
         ])
 
         try:
-            X = np.linalg.solve(A,B)
+            X = np.linalg.solve(A, B)
         except np.linalg.LinAlgError:
-            raise ValueError('Error. Interpolation not possible')
+            raise ValueError(
+                f"connect_to: linear system is singular for segment "
+                f"{self.label!r}→{wp2.label!r} (Δt={t12:.3f} s). "
+                "Check that t1 ≠ t2."
+            )
 
-        self.jerk = X[0]
-        self.snap = X[1]
+        self.jerk   = X[0]
+        self.snap   = X[1]
         self.crakle = X[2]
 
     def set_JS0_T(self, wp2):

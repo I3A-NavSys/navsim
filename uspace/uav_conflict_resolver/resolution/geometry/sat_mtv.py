@@ -73,6 +73,9 @@ class SATResult:
 def generate_mtv_candidates(
     conflict: dict,
     manager:  "RTreeDetector",
+    flight_plan_pleb=None,
+    min_perpendicularity: float = 0.3,
+    t_ref: float | None = None,
 ) -> SATResult:
     """
     Extract all per-axis MTVs from the SAT computation for a confirmed conflict.
@@ -93,6 +96,13 @@ def generate_mtv_candidates(
     Args:
         conflict: Conflict dict from detect_all_conflicts().
         manager:  Active RTreeDetector holding all registered OBB boxes.
+        flight_plan_pleb: Optional FlightPlan of plebeian UAV to filter MTVs by 
+                         perpendicularity to instantaneous velocity at conflict time.
+        min_perpendicularity: Minimum perpendicularity threshold (|dot product| < this value).
+                             MTVs with |dot(mtv, velocity)| >= this are discarded.
+                             Default: 0.3 (rejects MTVs more aligned than ~73° to flight direction).
+        t_ref: Optional evaluation time for the velocity vector. If not provided, defaults to 
+               the temporal midpoint of the conflict (matching the detour apex time).
 
     Returns:
         SATResult with ranked horizontal and vertical MTV lists.
@@ -100,12 +110,44 @@ def generate_mtv_candidates(
     pleb_id = conflict["uav_a"]
     vip_id  = conflict["uav_b"]
 
+    # Determine evaluation time (apex time)
+    if t_ref is not None:
+        t_eval = t_ref
+    else:
+        # Default to the temporal midpoint of the conflict window, which
+        # is mathematically equivalent to the initial apex time (t_det)
+        # calculated in build_rigid_shift_detour.
+        t_start, t_end = conflict["time_range"]
+        t_eval = (t_start + t_end) / 2.0
+
     # =========================================================================
     # Step 1: Retrieve the OBB objects that collided
+    # GEOMETRIC REFINEMENT: Attempt to retrieve the specific OBB pair active at
+    # the evaluation time (apex) rather than blindly using conflict["box_a_idx"].
+    # This guarantees that the resulting MTV is derived from the true geometry
+    # at the apex of the conflict.
     # =========================================================================
     try:
+        # Baseline fallback: original colliding boxes
         box_pleb = manager.uavs[pleb_id]["boxes"][conflict["box_a_idx"]]
         box_vip  = manager.uavs[vip_id]["boxes"][conflict["box_b_idx"]]
+        
+        # Dynamic lookup for the OBB pair active at t_eval (apex)
+        best_box_pleb = None
+        for box in manager.uavs[pleb_id]["boxes"]:
+            if box.t_range[0] <= t_eval <= box.t_range[1]:
+                best_box_pleb = box
+                break
+        
+        if best_box_pleb is not None:
+            for v_box in manager.uavs[vip_id]["boxes"]:
+                # Temporal overlap check
+                if not (v_box.t_range[1] <= best_box_pleb.t_range[0] or v_box.t_range[0] >= best_box_pleb.t_range[1]):
+                    collides, _ = best_box_pleb.collides_with(v_box)
+                    if collides:
+                        box_pleb = best_box_pleb
+                        box_vip = v_box
+                        break
     except (KeyError, IndexError):
         return SATResult(success=False)
 
@@ -165,6 +207,38 @@ def generate_mtv_candidates(
     if not raw_mtvs:
         # Edge case: no valid axis found (shouldn't happen after confirmed collision)
         return SATResult(success=False)
+
+    # =========================================================================
+    # Step 4a: FILTER MTVs BY PERPENDICULARITY TO INSTANTANEOUS VELOCITY
+    # An MTV parallel to the plebeian's current velocity is not a true evasion—
+    # it just asks the drone to accelerate/decelerate along its current direction.
+    # We filter to keep only MTVs that are sufficiently perpendicular to the
+    # instantaneous velocity vector at the conflict evaluation time.
+    # =========================================================================
+    if flight_plan_pleb is not None:
+        velocity_at_conflict = flight_plan_pleb.status_at_time(t_eval).vel
+        
+        if velocity_at_conflict is not None:
+            velocity = np.array(velocity_at_conflict)
+            vel_norm = np.linalg.norm(velocity)
+            
+            # Only filter if the UAV is actually moving at conflict time
+            if vel_norm > EPSILON_ABSOLUTE:
+                vel_direction = velocity / vel_norm
+                
+                # Keep only MTVs that are sufficiently perpendicular to velocity
+                filtered_mtvs = []
+                for mtv in raw_mtvs:
+                    mtv_norm = mtv / np.linalg.norm(mtv)
+                    alignment = abs(np.dot(mtv_norm, vel_direction))
+                    
+                    # Discard if too aligned with velocity (|dot| >= threshold)
+                    if alignment < min_perpendicularity:
+                        filtered_mtvs.append(mtv)
+                
+                # Use filtered list if non-empty, otherwise keep all
+                if filtered_mtvs:
+                    raw_mtvs = filtered_mtvs
 
     # =========================================================================
     # Step 4: Split into Horizontal (XY-dominant) and Vertical (Z-dominant)

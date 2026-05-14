@@ -25,9 +25,12 @@ TYPICAL USAGE:
         new_pleb_fp = cm.get_flight_plan("PLEB_01")
 
 PRIORITY CONVENTION:
+    Only 3 priority levels are used internally: 0 = LOW, 1 = MEDIUM, 2 = HIGH.
     Higher numeric priority wins (VIP > Plebeian). In a conflict between two UAVs,
     the one with LOWER priority is the Plebeian whose plan gets modified.
-    Ties are broken by UAV ID (lexicographic order — smaller ID becomes plebeian).
+    If both UAVs share the same priority, the tie is broken deterministically by
+    UAV ID: the lexicographically smaller ID becomes the VIP and the larger ID
+    becomes the Plebeian.
 """
 
 from __future__ import annotations
@@ -60,6 +63,16 @@ class CentralManager:
         self._flight_plans: Dict[str, FlightPlan] = {}
         self._priorities:   Dict[str, int]         = {}
 
+    @staticmethod
+    def _normalize_priority(priority: int) -> int:
+        """
+        Clamp any external priority input to the three supported levels.
+
+        External callers may still pass legacy values (for example 5 or 10),
+        but internally the system only keeps 0, 1, or 2.
+        """
+        return max(0, min(2, int(priority)))
+
     # ------------------------------------------------------------------
     # Registration
     # ------------------------------------------------------------------
@@ -81,14 +94,18 @@ class CentralManager:
         Args:
             uav_id:      Unique UAV identifier string.
             flight_plan: The UAV's FlightPlan object.
-            priority:    Integer priority (higher = more important / VIP).
-                         Default 0 (all UAVs equal — first-registered wins ties).
+            priority:    Integer priority. Internally clamped to 0, 1, or 2.
+                         Default 0 (LOW).
             interval:    OBB sampling interval [s] for R-Tree box generation.
         """
         self._flight_plans[uav_id] = flight_plan
-        self._priorities[uav_id]   = priority
+        normalized_priority = self._normalize_priority(priority)
+        self._priorities[uav_id]   = normalized_priority
         self._rtree_detector.register_uav(uav_id, flight_plan, interval=interval)
-        logger.debug(f"[CentralManager] Registered UAV '{uav_id}' (priority={priority})")
+        logger.debug(
+            f"[CentralManager] Registered UAV '{uav_id}' "
+            f"(priority={priority} -> {normalized_priority})"
+        )
 
     def get_flight_plan(self, uav_id: str) -> Optional[FlightPlan]:
         """
@@ -156,7 +173,7 @@ class CentralManager:
         priority_b = self._priorities.get(uav_b_id, 0)
 
         if priority_a >= priority_b:
-            # UAV A is the VIP (higher or equal priority → lexicographic tiebreak)
+            # UAV A is the VIP unless both priorities are equal and B wins by ID.
             if priority_a == priority_b and uav_a_id > uav_b_id:
                 vip_id,  pleb_id  = uav_b_id, uav_a_id
             else:

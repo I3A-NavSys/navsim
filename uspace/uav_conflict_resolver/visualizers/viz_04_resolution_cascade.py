@@ -23,7 +23,7 @@ if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
 from central_manager import CentralManager
-from visualizers.flightplan_generator import generate_crossing_pair
+from benchmark.flightplan_generator import generate_crossing_pair
 
 BG = "#0f1117"
 
@@ -35,8 +35,8 @@ def run_visualizer():
 
     # ── 1. Generate a guaranteed crossing conflict ─────────────────────
     fp1, fp2 = generate_crossing_pair(seed=42)
-    fp1.priority = 10   # VIP
-    fp2.priority = 5    # Plebeian
+    fp1.priority = 2    # VIP
+    fp2.priority = 0    # Plebeian
 
     # ── 2. Capture BEFORE traces ───────────────────────────────────────
     trace1_before = fp1.trace(1.0)
@@ -44,8 +44,8 @@ def run_visualizer():
 
     # ── 3. Register UAVs with priorities ──────────────────────────────
     manager = CentralManager()
-    manager.register_uav("UAV_1", fp1, priority=10)
-    manager.register_uav("UAV_2", fp2, priority=5)
+    manager.register_uav("UAV_1", fp1, priority=2)
+    manager.register_uav("UAV_2", fp2, priority=0)
 
     # ── 4. Detect & resolve via the correct API ────────────────────────
     print("\nRunning check_and_resolve for plebeian UAV_2 …")

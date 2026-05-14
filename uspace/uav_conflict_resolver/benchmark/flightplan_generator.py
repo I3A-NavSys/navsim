@@ -56,6 +56,7 @@ if _PROJECT_ROOT not in sys.path:
 
 from core.models.flight_plan import FlightPlan
 from core.models.waypoint import Waypoint
+from core.config import UAV_MAX_SPEED, UAV_MAX_ACCEL
 
 
 # ============================================================================
@@ -68,35 +69,36 @@ DEFAULT_PRISM = (
     (20.0, 200.0),   # z range [m] — realistic flight altitude band
 )
 
-DEFAULT_SPEED_RANGE = (5.0, 20.0)    # min/max cruise speed [m/s]
-DEFAULT_RADIUS = 2.0                 # safety radius [m]
-DEFAULT_MAX_LIN_VEL = 20.0           # maximum linear velocity [m/s]
-DEFAULT_MAX_ANG_VEL = 1.0            # maximum angular velocity [rad/s]
+DEFAULT_SPEED_RANGE = (5.0, UAV_MAX_SPEED)  # min/max cruise speed [m/s]
+DEFAULT_RADIUS = 2.0                        # safety radius [m]
+DEFAULT_MAX_LIN_VEL = UAV_MAX_SPEED         # maximum linear velocity [m/s]
+DEFAULT_MAX_ANG_VEL = 1.0                   # maximum angular velocity [rad/s]
 
 # Takeoff / landing altitude offset from the prism floor
 _TAKEOFF_ALTITUDE = 30.0             # [m] above prism z_min
 _LANDING_ALTITUDE = 30.0             # [m] above prism z_min
 
 # Lateral perturbation scale for intermediate waypoints (fraction of prism size)
-_LATERAL_NOISE_FRACTION = 0.15
+# MUCH lower value (0.03) for realistic, professional-looking trajectories
+_LATERAL_NOISE_FRACTION = 0.03
 
 
 # ============================================================================
 # Core Generator
 # ============================================================================
-### al final el utlimo wp tiene que tener velocidad 0. y el primero velocidad minima.abs
-### tener en cuenta la velocidad lineal y angular, y la direccion de los vectores. y el tiempo q tenga sentido.
 def generate_flight_plan(
-    prism: Tuple[Tuple[float, float], ...] = DEFAULT_PRISM, ###
-    t_start: float = 0.0, ###
-    t_end: float = 120.0, 
-    num_waypoints: Optional[int] = None, ###
-    speed_range: Tuple[float, float] = DEFAULT_SPEED_RANGE, ###
+    prism: Tuple[Tuple[float, float], ...] = DEFAULT_PRISM,
+    t_start: float = 0.0,
+    t_end: float = 120.0,
+    num_waypoints: Optional[int] = None,
+    speed_range: Tuple[float, float] = DEFAULT_SPEED_RANGE,
     radius: float = DEFAULT_RADIUS,
-    max_lin_vel: float = DEFAULT_MAX_LIN_VEL,
+    max_lin_vel: float = UAV_MAX_SPEED,
     max_ang_vel: float = DEFAULT_MAX_ANG_VEL,
+    v_max: float = UAV_MAX_SPEED,
+    a_max: Optional[float] = UAV_MAX_ACCEL,
     uav_id: int = 0,
-    priority: int = 0, ####
+    priority: int = 0,
     seed: Optional[int] = None,
     takeoff_landing: bool = True,
 ) -> FlightPlan:
@@ -104,7 +106,13 @@ def generate_flight_plan(
     Generate a single, kinematically-valid FlightPlan within a rectangular prism.
 
     The generated trajectory mimics a realistic UAV mission:
-        Takeoff (v=0) → Cruise (URM segments) → Landing (v=0)
+        Takeoff (v_min) → Cruise (URM segments, capped at max_lin_vel) → Landing (v=0)
+
+    Velocity behavior:
+        - First waypoint: minimum cruise speed toward next waypoint (directional)
+        - Intermediate waypoints: URM velocity capped at max_lin_vel
+        - Last waypoint: zero velocity (landing/hover)
+        - All velocities are directed toward the next waypoint for smooth transitions
 
     Args:
         prism:           Bounding volume as ((x_min, x_max), (y_min, y_max), (z_min, z_max)).
@@ -114,12 +122,14 @@ def generate_flight_plan(
                          If None, randomly chosen between 4 and 7.
         speed_range:     (min_speed, max_speed) for cruise segments [m/s].
         radius:          UAV safety radius [m].
-        max_lin_vel:     Maximum linear velocity [m/s].
+        max_lin_vel:     Maximum linear velocity [m/s]. Cruise velocities capped to this value.
         max_ang_vel:     Maximum angular velocity [rad/s].
+        v_max:           Maximum speed for kinematic feasibility check [m/s].
+        a_max:           Maximum acceleration for kinematic feasibility check [m/s²]. Pass None to skip.
         uav_id:          FlightPlan ID.
         priority:        FlightPlan priority (higher = VIP).
         seed:            Random seed for reproducibility.
-        takeoff_landing: If True, start and end with zero velocity (hover).
+        takeoff_landing: If True, start with minimum cruise speed and end with zero velocity.
 
     Returns:
         A fully-connected FlightPlan with 7D polynomial interpolation.
@@ -129,10 +139,10 @@ def generate_flight_plan(
     x_range, y_range, z_range = prism
 
     # ------------------------------------------------------------------
-    # Step 1: Decide number of waypoints
+    # Step 1: Decide number of waypoints (5-6 for consistency/realism)
     # ------------------------------------------------------------------
     if num_waypoints is None:
-        num_waypoints = rng.integers(4, 8)  # 4 to 7 waypoints
+        num_waypoints = rng.integers(5, 7)  # 5 to 6 waypoints for realistic missions
     num_waypoints = max(3, num_waypoints)   # minimum 3 (start, mid, end)
 
     # ------------------------------------------------------------------
@@ -181,7 +191,10 @@ def generate_flight_plan(
     # ------------------------------------------------------------------
     # Step 5: Check and cap cruise speed within speed_range
     # ------------------------------------------------------------------
+    # Enforce speed limits with smooth time scaling
     max_speed = speed_range[1]
+    min_speed = speed_range[0]
+    
     for i in range(len(positions) - 1):
         dt = times[i+1] - times[i]
         if dt <= 0:
@@ -190,9 +203,14 @@ def generate_flight_plan(
         if seg_speed > max_speed:
             # Stretch total time proportionally to cap speed
             scale = seg_speed / max_speed
-            # Rescale all remaining time intervals
+            # Rescale all remaining time intervals from this point forward
             for j in range(i+1, len(times)):
                 times[j] = times[i] + (times[j] - times[i]) * scale
+        elif seg_speed < min_speed and distances[i] > 1e-6:
+            # Compress time if speed is too slow (minimum cruising speed)
+            scale = min_speed / seg_speed
+            for j in range(i+1, len(times)):
+                times[j] = times[i] + (times[j] - times[i]) / scale
 
     # ------------------------------------------------------------------
     # Step 6: Build the FlightPlan
@@ -211,19 +229,35 @@ def generate_flight_plan(
         elif i == len(positions) - 1:
             label = "END"
 
-        # Compute velocity: URM between consecutive waypoints
-        if i < len(positions) - 1:
+        # Compute velocity: direction toward next waypoint
+        # Último wp: velocidad 0 (landing)
+        # Primero wp: velocidad mínima hacia el siguiente
+        if i == len(positions) - 1:
+            # Last waypoint: zero velocity (landing)
+            vel = np.zeros(3)
+        elif i == 0 and takeoff_landing:
+            # First waypoint: minimum cruise speed toward next waypoint
             dt = times[i+1] - times[i]
-            if dt > 0:
-                vel = (positions[i+1] - positions[i]) / dt
+            direction = (positions[i+1] - positions[i])
+            direction_norm = np.linalg.norm(direction)
+            
+            if direction_norm > 1e-6 and dt > 0:
+                # Normalized direction scaled by minimum cruise speed
+                min_speed = speed_range[0]
+                vel = (direction / direction_norm) * min_speed
             else:
                 vel = np.zeros(3)
         else:
-            vel = np.zeros(3)  # Last waypoint: zero velocity (landing)
-
-        # Takeoff/landing: zero velocity at start and end
-        if takeoff_landing and (i == 0 or i == len(positions) - 1):
-            vel = np.zeros(3)
+            # Intermediate waypoints: URM velocity toward next waypoint
+            dt = times[i+1] - times[i]
+            if dt > 0:
+                vel = (positions[i+1] - positions[i]) / dt
+                # Cap to max linear velocity if needed
+                vel_magnitude = np.linalg.norm(vel)
+                if vel_magnitude > max_lin_vel and vel_magnitude > 1e-6:
+                    vel = vel / vel_magnitude * max_lin_vel
+            else:
+                vel = np.zeros(3)
 
         wp = Waypoint(
             label=label,
@@ -236,7 +270,7 @@ def generate_flight_plan(
     # ------------------------------------------------------------------
     # Step 7: Connect waypoints — computes jerk, snap, crakle (7D model)
     # ------------------------------------------------------------------
-    fp.connect_waypoints()
+    fp.connect_waypoints(v_max=v_max, a_max=a_max)
 
     return fp
 
@@ -250,6 +284,8 @@ def generate_crossing_pair(
     t_start: float = 0.0,
     t_end: float = 100.0,
     radius: float = DEFAULT_RADIUS,
+    v_max: float = UAV_MAX_SPEED,
+    a_max: Optional[float] = UAV_MAX_ACCEL,
     seed: Optional[int] = None,
 ) -> Tuple[FlightPlan, FlightPlan]:
     """
@@ -264,6 +300,8 @@ def generate_crossing_pair(
         t_start: Mission start time.
         t_end:   Mission end time.
         radius:  UAV safety radius.
+        v_max:   Maximum speed for kinematic feasibility check [m/s]. Defaults to UAV_MAX_SPEED from config.
+        a_max:   Maximum acceleration for kinematic feasibility check [m/s²]. Defaults to UAV_MAX_ACCEL from config. Pass None to skip.
         seed:    Random seed.
 
     Returns:
@@ -336,7 +374,7 @@ def generate_crossing_pair(
                               vel=vel2_cruise))
 
     fp1.set_waypoint(Waypoint(label="END", t=t_end, pos=fp1_end.tolist(), vel=[0,0,0]))
-    fp1.connect_waypoints()
+    fp1.connect_waypoints(v_max=v_max, a_max=a_max)
 
     # Build FlightPlan 2
     fp2 = FlightPlan()
@@ -362,7 +400,7 @@ def generate_crossing_pair(
                               vel=vel2b_cruise))
 
     fp2.set_waypoint(Waypoint(label="END", t=t_end, pos=fp2_end.tolist(), vel=[0,0,0]))
-    fp2.connect_waypoints()
+    fp2.connect_waypoints(v_max=v_max, a_max=a_max)
 
     return fp1, fp2
 
@@ -373,6 +411,8 @@ def generate_random_fleet(
     t_start: float = 0.0,
     t_end: float = 120.0,
     radius: float = DEFAULT_RADIUS,
+    v_max: float = UAV_MAX_SPEED,
+    a_max: Optional[float] = UAV_MAX_ACCEL,
     seed: Optional[int] = None,
 ) -> List[FlightPlan]:
     """
@@ -388,6 +428,8 @@ def generate_random_fleet(
         t_start: Earliest mission start time.
         t_end:   Latest mission end time.
         radius:  UAV safety radius.
+        v_max:   Maximum speed for kinematic feasibility check [m/s].
+        a_max:   Maximum acceleration for kinematic feasibility check [m/s²]. Pass None to skip.
         seed:    Random seed.
 
     Returns:
@@ -410,6 +452,8 @@ def generate_random_fleet(
             t_start=round(uav_t_start, 1),
             t_end=round(uav_t_end, 1),
             radius=radius,
+            v_max=v_max,
+            a_max=a_max,
             uav_id=i + 1,
             priority=i,
             seed=rng.integers(0, 2**31) if seed is not None else None,
@@ -462,12 +506,11 @@ def _generate_smooth_path(
     noise_fraction: float,
 ) -> List[np.ndarray]:
     """
-    Generate a smooth path from start to end with intermediate waypoints.
+    Generate a smooth path from start to end with minimal perturbations.
 
-    Uses a momentum-biased random walk: each intermediate point is placed
-    along the line from start to end (at uniform progress fractions) with
-    a random lateral perturbation.  The perturbation magnitude decreases
-    as we approach the destination, producing natural-looking flight corridors.
+    Creates a mostly linear path with subtle, smooth lateral variations.
+    Each waypoint is mostly along the direct line (start→end) with minimal
+    deviation for realism without erratic behavior.
 
     Args:
         rng:            Random number generator.
@@ -478,7 +521,7 @@ def _generate_smooth_path(
         noise_fraction: Maximum lateral noise as a fraction of prism size.
 
     Returns:
-        List of num_waypoints 3D positions.
+        List of num_waypoints 3D positions, mostly linear with smooth curves.
     """
     if num_waypoints <= 2:
         return [start.copy(), end.copy()]
@@ -488,23 +531,45 @@ def _generate_smooth_path(
     # Direction vector from start to end
     direction = end - start
     total_dist = np.linalg.norm(direction)
+    
+    if total_dist < 1e-6:
+        # Degenerate case: start ≈ end, distribute uniformly
+        return [start + (end - start) * (i / (num_waypoints - 1)) for i in range(num_waypoints)]
 
-    # Compute prism dimensions for noise scaling
-    prism_size = np.array([hi - lo for (lo, hi) in prism])
+    direction_normalized = direction / total_dist
+
+    # Generate ONE consistent random direction for all lateral perturbations
+    # This creates smooth, coherent curves instead of random zigzags
+    lateral_dir = rng.normal(0, 1, 3)
+    # Make orthogonal to main direction
+    lateral_dir = lateral_dir - np.dot(lateral_dir, direction_normalized) * direction_normalized
+    lateral_mag = np.linalg.norm(lateral_dir)
+    if lateral_mag > 1e-6:
+        lateral_dir = lateral_dir / lateral_mag
+    else:
+        # Fallback if orthogonalization fails
+        lateral_dir = np.array([1, 0, 0]) if abs(direction_normalized[0]) < 0.9 else np.array([0, 1, 0])
+
+    # Compute prism diagonal for noise scaling
+    prism_diag = np.sqrt(sum((hi - lo)**2 for (lo, hi) in prism))
 
     for i in range(1, num_waypoints - 1):
-        # Progress fraction along the start→end line
+        # Progress fraction along the start→end line (0 to 1)
         progress = i / (num_waypoints - 1)
 
-        # Base position: linear interpolation
-        base_pos = _lerp(start, end, progress)
+        # Main position: simple linear interpolation (STRAIGHT PATH)
+        base_pos = start + direction * progress
 
-        # Lateral perturbation: perpendicular to the main direction
-        # Magnitude decreases near start and end (bell-shaped envelope)
-        envelope = np.sin(progress * np.pi)  # peaks at 0.5, zero at 0 and 1
-        max_noise = noise_fraction * prism_size * envelope
-
-        perturbation = rng.uniform(-1, 1, 3) * max_noise
+        # Smooth bell-shaped envelope: peaks at 0.5, zero at 0 and 1
+        # This ensures waypoints at start and end have zero perturbation
+        envelope = np.sin(progress * np.pi)
+        
+        # Single smooth sine wave for very subtle lateral motion
+        # amplitude decreases: high at middle, low at ends
+        amplitude = noise_fraction * prism_diag * envelope
+        
+        # Apply perturbation: coherent smooth curve in one lateral direction
+        perturbation = lateral_dir * amplitude
 
         # Compute the waypoint position
         wp_pos = base_pos + perturbation

@@ -25,7 +25,7 @@ if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
 from detection.rtree_detector import RTreeDetector
-from visualizers.flightplan_generator import generate_random_fleet
+from benchmark.flightplan_generator import generate_random_fleet
 
 
 # ──────────────────────────────────────────────────────────────────────────────
