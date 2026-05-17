@@ -311,7 +311,7 @@ class FlightPlan:
             if not ok:
                 msg = (
                     f"[connect_waypoints] Infeasible segment "
-                    f"{wpA.label!r} → {wpB.label!r}: {reason}"
+                    f"{wpA.label!r} -> {wpB.label!r}: {reason}"
                 )
                 if strict:
                     raise ValueError(msg)

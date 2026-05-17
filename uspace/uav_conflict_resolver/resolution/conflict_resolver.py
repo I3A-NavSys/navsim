@@ -15,7 +15,7 @@ PURPOSE:
            ↓ fail
         FB1 (Vertical MTVs)         ← Z-shift is implicit: a vertical MTV
            ↓ fail                     displaces the drone in Z automatically.
-        FB2 (Time-Shift / Hovering)
+        FB2 (Hover)
            ↓ fail
         DEADLOCK (Mission Abort)
 
@@ -275,7 +275,7 @@ class ConflictResolver:
         # Step 4: Strategy 2 — Horizontal Path Stretch
         # =================================================================
         print(f"[DEBUG S2] Attempting Strategy 2 (Horizontal Path Stretch) for {pleb_id}...")
-        s2_result, iters = self._strategy2_horizontal(
+        s2_result, iters = self._strategy2_horizontal_mtvs(
             fp_pleb=fp_pleb,
             fp_vip=fp_vip,
             pleb_id=pleb_id,
@@ -330,9 +330,9 @@ class ConflictResolver:
             )
 
         # =================================================================
-        # Step 6: Fallback 2 — Time-Shift (Hovering)
+        # Step 6: Fallback 2 — Hover
         # =================================================================
-        fb2_result, iters = self._fallback2_timeshift(
+        fb2_result, iters = self._fallback2_hover(
             fp_pleb=fp_pleb,
             fp_vip=fp_vip,
             pleb_id=pleb_id,
@@ -349,7 +349,7 @@ class ConflictResolver:
                 new_fp_pleb=fb2_result,
                 new_fp_vip=fp_vip_released,
                 iterations=total_iterations,
-                message="Fallback 2 (Time-Shift / Hovering) succeeded.",
+                message="Fallback 2 (Hover) succeeded.",
             )
 
         # =================================================================
@@ -568,7 +568,7 @@ class ConflictResolver:
     # Strategy 2: Horizontal Path Stretch
     # ------------------------------------------------------------------
 
-    def _strategy2_horizontal(
+    def _strategy2_horizontal_mtvs(
         self,
         fp_pleb:         FlightPlan,
         fp_vip:          FlightPlan,
@@ -630,7 +630,7 @@ class ConflictResolver:
         # Longer conflicts get more temporal margin to accommodate the detour
         conflict_duration = t_conflict_end - t_conflict_start
         mtv_scale_time_buffer = conflict_duration * MTV_SCALE_TIME_BUFFER_FACTOR
-        print(f"[DEBUG S2] Conflict duration: {conflict_duration:.1f}s → dynamic buffer: {mtv_scale_time_buffer:.1f}s per MTV scale")
+        print(f"[DEBUG S2] Conflict duration: {conflict_duration:.1f}s -> dynamic buffer: {mtv_scale_time_buffer:.1f}s per MTV scale")
         
         iters_count = 0
         for mtv_idx, mtv in enumerate(horizontal_mtvs):
@@ -747,7 +747,7 @@ class ConflictResolver:
         # Longer conflicts get more temporal margin to accommodate the detour
         conflict_duration = t_conflict_end - t_conflict_start
         mtv_scale_time_buffer = conflict_duration * MTV_SCALE_TIME_BUFFER_FACTOR
-        print(f"[DEBUG FB1] Conflict duration: {conflict_duration:.1f}s → dynamic buffer: {mtv_scale_time_buffer:.1f}s per MTV scale")
+        print(f"[DEBUG FB1] Conflict duration: {conflict_duration:.1f}s -> dynamic buffer: {mtv_scale_time_buffer:.1f}s per MTV scale")
         
         iters_count = 0
         for mtv_idx, mtv in enumerate(vertical_mtvs):
@@ -795,10 +795,10 @@ class ConflictResolver:
         return None, iters_count
 
     # ------------------------------------------------------------------
-    # Fallback 2: Time-Shift (Hovering)
+    # Fallback 2: Hover
     # ------------------------------------------------------------------
 
-    def _fallback2_timeshift(
+    def _fallback2_hover(
         self,
         fp_pleb:  FlightPlan,
         fp_vip:   FlightPlan,

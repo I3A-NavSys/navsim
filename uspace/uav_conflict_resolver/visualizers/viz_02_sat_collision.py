@@ -34,11 +34,11 @@ C_BOX_A      = "#2ecc71"   # green
 C_BOX_A_EDGE = "#1a8a4a"
 C_BOX_B      = "#e74c3c"   # red
 C_BOX_B_EDGE = "#9b1c1c"
-C_MTV        = "#f1c40f"   # gold
+C_MTV        = "#d4ac0d"   # dark gold
 C_AX_A       = "#3498db"   # blue   -- 3 face-normal axes of A
 C_AX_B       = "#e67e22"   # orange -- 3 face-normal axes of B
 C_AX_CROSS   = "#9b59b6"   # purple -- 9 cross-product edge axes
-C_BG         = "#1a1a2e"   # dark navy background
+C_BG         = "#ffffff"   # white background
 
 
 # ------------------------------------------------------------------------------
@@ -208,7 +208,7 @@ def run_visualizer():
     fig = plt.figure(figsize=(16, 9), facecolor=C_BG)
     fig.suptitle(
         "Narrow-Phase SAT  |  15 Axes Tested  |  MTV Extraction",
-        color="white", fontsize=16, fontweight="bold", y=0.97
+        color="black", fontsize=16, fontweight="bold", y=0.97
     )
 
     # Left: 3D scene
@@ -217,11 +217,11 @@ def run_visualizer():
     ax3d.patch.set_alpha(0)
     for pane in (ax3d.xaxis.pane, ax3d.yaxis.pane, ax3d.zaxis.pane):
         pane.fill = False
-        pane.set_edgecolor("#444466")
+        pane.set_edgecolor("black")
 
     # Right: overlap chart
     ax_bar = fig.add_axes([0.67, 0.10, 0.30, 0.80])
-    ax_bar.set_facecolor("#0f0f1e")
+    ax_bar.set_facecolor("white")
 
     # -- 4a. Draw OBBs ---------------------------------------------------------
     poly_a = Poly3DCollection(
@@ -284,15 +284,15 @@ def run_visualizer():
     ax3d.set_xlim(-12, 15)
     ax3d.set_ylim(-12, 14)
     ax3d.set_zlim(-10, 12)
-    ax3d.set_xlabel("X", color="white", labelpad=6)
-    ax3d.set_ylabel("Y", color="white", labelpad=6)
-    ax3d.set_zlabel("Z", color="white", labelpad=6)
-    ax3d.tick_params(colors="#888899", labelsize=7)
-    ax3d.xaxis.label.set_color("#aaaacc")
-    ax3d.yaxis.label.set_color("#aaaacc")
-    ax3d.zaxis.label.set_color("#aaaacc")
+    ax3d.set_xlabel("X", color="black", labelpad=6)
+    ax3d.set_ylabel("Y", color="black", labelpad=6)
+    ax3d.set_zlabel("Z", color="black", labelpad=6)
+    ax3d.tick_params(colors="black", labelsize=7)
+    ax3d.xaxis.label.set_color("black")
+    ax3d.yaxis.label.set_color("black")
+    ax3d.zaxis.label.set_color("black")
     ax3d.set_title("3D Scene -- OBBs & all 15 SAT axes",
-                   color="white", fontsize=11, pad=10)
+                   color="black", fontsize=11, pad=10)
 
     # Legend patches
     legend_patches = [
@@ -304,8 +304,8 @@ def run_visualizer():
         mpatches.Patch(color=C_MTV,      label=f"MTV  |{np.linalg.norm(mtv):.2f} m|"),
     ]
     ax3d.legend(handles=legend_patches, loc="upper left",
-                facecolor="#0d0d1f", edgecolor="#555577",
-                labelcolor="white", fontsize=8, framealpha=0.85)
+                facecolor="white", edgecolor="black",
+                labelcolor="black", fontsize=8, framealpha=0.85)
 
     # -- 5. Overlap bar chart --------------------------------------------------
     labels   = [e["label"] for e in axes_info]
@@ -319,12 +319,12 @@ def run_visualizer():
 
     overlaps_arr = np.array(overlaps)
     bar_colors = [
-        "#555566" if o < 0 else c          # grey if separated, group colour if overlapping
+        "#cccccc" if o < 0 else c          # grey if separated, group colour if overlapping
         for o, c in zip(overlaps_arr, colors)
     ]
 
     bars = ax_bar.barh(labels, overlaps_arr, color=bar_colors,
-                       edgecolor="#333344", height=0.65, zorder=3)
+                       edgecolor="black", height=0.65, zorder=3)
 
     # Highlight MTV axis (minimum positive overlap)
     if collision:
@@ -341,17 +341,17 @@ def run_visualizer():
             va="center"
         )
 
-    ax_bar.axvline(0, color="#aaaacc", linewidth=0.8, linestyle="--")
+    ax_bar.axvline(0, color="black", linewidth=0.8, linestyle="--")
     ax_bar.set_xlabel(
         "Overlap depth (m)\n(negative = separation = no collision)",
-        color="#aaaacc", fontsize=8
+        color="black", fontsize=8
     )
     ax_bar.set_title("Overlap on Each of the 15 SAT Axes",
-                     color="white", fontsize=10, pad=8)
-    ax_bar.tick_params(colors="#aaaacc", labelsize=8)
-    ax_bar.set_facecolor("#0f0f1e")
-    ax_bar.spines[:].set_color("#444466")
-    ax_bar.grid(axis="x", color="#333344", linewidth=0.6, zorder=0)
+                     color="black", fontsize=10, pad=8)
+    ax_bar.tick_params(colors="black", labelsize=8)
+    ax_bar.set_facecolor("white")
+    ax_bar.spines[:].set_color("black")
+    ax_bar.grid(axis="x", color="#dddddd", linewidth=0.6, zorder=0)
     ax_bar.invert_yaxis()
 
     # Colour the y-tick labels to match axis groups
@@ -365,19 +365,19 @@ def run_visualizer():
         mtv_str     = (f"MTV = ({mtv[0]:+.2f}, {mtv[1]:+.2f}, {mtv[2]:+.2f})\n"
                        f"|MTV| = {mtv_norm:.4f} m")
         box_edge    = C_MTV
-        box_face    = "#1a1a3e"
+        box_face    = "white"
     else:
         result_str  = "SAT result: SEPARATED"
         mtv_str     = "No MTV (boxes do not overlap)"
-        box_edge    = "#555566"
-        box_face    = "#1a1a2e"
+        box_edge    = "black"
+        box_face    = "white"
 
     ax_bar.text(
         0.98, 0.02,
         f"{result_str}\n{mtv_str}",
         transform=ax_bar.transAxes,
         ha="right", va="bottom", fontsize=8,
-        color="white",
+        color="black",
         bbox=dict(boxstyle="round,pad=0.5",
                   facecolor=box_face,
                   edgecolor=box_edge,

@@ -163,8 +163,8 @@ class Waypoint:
         # ------------------------------------------------------------------
         if dt <= 0:
             return False, (
-                f"Non-positive time window: Δt={dt:.3f} s "
-                f"(wp1.t={self.t:.3f}, wp2.t={wp2.t:.3f})"
+                f"Non-positive time window: dt={dt:.3f} s "
+                f"(t1={self.t:.3f}, t2={wp2.t:.3f})"
             )
 
         # Trivial case: no spatial displacement — always feasible
@@ -177,8 +177,8 @@ class Waypoint:
         v_avg = dist / dt
         if v_avg > v_max:
             return False, (
-                f"Required average speed {v_avg:.2f} m/s exceeds v_max={v_max:.2f} m/s "
-                f"(dist={dist:.1f} m, Δt={dt:.2f} s)"
+                f"Required average speed ({v_avg:.2f} m/s) exceeds maximum ({v_max:.2f} m/s) "
+                f"(dist={dist:.1f} m, dt={dt:.2f} s)"
             )
 
         # ------------------------------------------------------------------
@@ -189,10 +189,9 @@ class Waypoint:
             d_max = v1 * dt + 0.5 * a_max * dt ** 2  # optimistic upper bound
             if dist > d_max:
                 return False, (
-                    f"Segment unreachable under max acceleration: "
-                    f"dist={dist:.1f} m > d_max={d_max:.1f} m "
-                    f"(v1={v1:.2f} m/s, a_max={a_max:.2f} m/s², Δt={dt:.2f} s)"
-                )
+                f"Segment unreachable under max acceleration: dist={dist:.1f} m > d_max={d_max:.1f} m "
+                f"(v1={v1:.2f} m/s, a_max={a_max:.2f} m/s^2, dt={dt:.2f} s)"
+            )
 
         return True, "ok"
 
@@ -256,11 +255,11 @@ class Waypoint:
 
         try:
             X = np.linalg.solve(A, B)
-        except np.linalg.LinAlgError:
+        except np.linalg.LinAlgError as e:
             raise ValueError(
-                f"connect_to: linear system is singular for segment "
-                f"{self.label!r}→{wp2.label!r} (Δt={t12:.3f} s). "
-                "Check that t1 ≠ t2."
+                f"Cannot compute coefficients for segment "
+                f"{self.label!r}->{wp2.label!r} (dt={t12:.3f} s). "
+                f"LinAlgError: {e}"
             )
 
         self.jerk   = X[0]
