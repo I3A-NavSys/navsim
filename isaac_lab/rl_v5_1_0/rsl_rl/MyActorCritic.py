@@ -49,7 +49,8 @@ class ActorCritic(nn.Module):
             num_critic_obs += obs[obs_group].shape[-1]
 
         # actor
-        dropout_val = 0.2
+        dropout_val = 0 # 0.2 en env_14, 0 en env_13
+        
         self.actor = MLP(num_actor_obs, num_actions, actor_hidden_dims, activation,dropout=dropout_val)
         # actor observation normalization
         self.actor_obs_normalization = actor_obs_normalization
