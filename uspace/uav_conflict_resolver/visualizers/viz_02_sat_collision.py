@@ -204,6 +204,9 @@ def run_visualizer():
     assert len(axes_info) == 15, f"Expected 15 axes, got {len(axes_info)}"
     print_sat_table(axes_info, box_a, box_b, mtv)
 
+    # Midpoint used as the visual origin for cross-product axes
+    mid = (box_a.center + box_b.center) / 2.0
+
     # -- 4. Figure layout: main 3D + inset overlap bar chart -------------------
     fig = plt.figure(figsize=(16, 9), facecolor=C_BG)
     fig.suptitle(
@@ -266,13 +269,9 @@ def run_visualizer():
             color=C_MTV, linewidth=3.5, arrow_length_ratio=0.12,
             label=f"MTV  |{np.linalg.norm(mtv):.2f} m|"
         )
-        # Mark the resolved position of B
-        resolved_center = center_b + mtv
-        ax3d.scatter(*resolved_center, s=80, c=C_MTV, marker="*", zorder=5,
-                     label="B resolved centre")
-        ax3d.text(resolved_center[0] + 0.3, resolved_center[1] + 0.3,
-                  resolved_center[2] + 0.3,
-                  "B'", color=C_MTV, fontsize=9, fontweight="bold")
+        # Note: the resolved centre marker (star) will be drawn later
+        # at the MTV axis origin + MTV direction so it aligns with the
+        # SAT axis visualisation (e.g. among the cross-product arrows).
 
     # -- 4d. Box centre labels -------------------------------------------------
     ax3d.text(*center_a, "A", color=C_BOX_A, fontsize=12, fontweight="bold",
@@ -340,6 +339,27 @@ def run_visualizer():
             arrowprops=dict(arrowstyle="->", color=C_MTV, lw=1.5),
             va="center"
         )
+
+        # Draw the MTV tip (star) at the origin of the selected SAT axis
+        # so it appears among the corresponding arrows (cross-product axes).
+        try:
+            mtv_norm = np.linalg.norm(mtv)
+            if mtv_norm > 0:
+                mtv_dir = mtv / mtv_norm
+            else:
+                mtv_dir = axes_info[min_idx]["axis"]
+            # Place the star in the cross-product area (midpoint), so it
+            # appears among the cross-product arrows regardless of which
+            # axis was chosen as the MTV.
+            star_origin = mid
+            star_pos = star_origin + mtv_dir * mtv_norm
+            ax3d.scatter(*star_pos, s=120, c=C_MTV, marker="*", zorder=10,
+                         label="MTV tip")
+            ax3d.text(star_pos[0] + 0.3, star_pos[1] + 0.3, star_pos[2] + 0.3,
+                      "MTV", color=C_MTV, fontsize=9, fontweight="bold")
+        except Exception:
+            # If anything fails, skip drawing the star rather than crash the visualiser
+            pass
 
     ax_bar.axvline(0, color="black", linewidth=0.8, linestyle="--")
     ax_bar.set_xlabel(

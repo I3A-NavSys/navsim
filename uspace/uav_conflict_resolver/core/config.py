@@ -81,6 +81,9 @@ S1_TIME_SHIFTS: list = [1.0, 2.5, 5.0, 10.0]   # Candidate time shifts [s]
 # -----------------------------------------------------------------------------
 UAV_MAX_SPEED: float = 20.0   # Maximum drone speed                  [m/s]
 UAV_MAX_ACCEL: float = 5.0    # Maximum drone linear acceleration     [m/s²]
+# Fallback cruise speed used when the flight plan reports no/zero speed
+# (prevents divisions by zero and provides a reasonable heuristic).
+CRUISE_SPEED_FALLBACK: float = 10.0  # [m/s]
 
 # -----------------------------------------------------------------------------
 # STRATEGY 2 / FALLBACK 1: SAT MTV Generation
@@ -144,7 +147,7 @@ OBB_INTERVAL: float = 0.5   # Sampling interval for OBB box generation [s]
 #   on long conflicts by scaling the temporal margins with conflict length.
 # 
 # EXAMPLE: If conflict lasts 30s and factor=0.15, buffer = 4.5s per scale unit.
-# For scale=1.5: t_anc delayed by 2.25s, t_ret advanced by 2.25s.
+# For scale=1.5: t_detour_start delayed by 2.25s, t_detour_end advanced by 2.25s.
 # ---
 RIGID_SHIFT_MTV_SCALE:          float = 3.0   # Internal MTV scale in Rigid Shift detour [dimensionless]
 MTV_SCALE_TIME_BUFFER_FACTOR:   float = 0.15  # Temporal buffer = conflict_duration * this factor

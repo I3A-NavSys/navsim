@@ -68,6 +68,7 @@ from core.config import (
     WAYPOINT_TIME_EPSILON,
     FORWARD_PROGRESS_MARGIN,
     UAV_MAX_SPEED,
+    CRUISE_SPEED_FALLBACK,
     MIN_DETOUR_DURATION,
     MTV_SCALE_TIME_BUFFER_FACTOR,
 )
@@ -526,21 +527,25 @@ class ConflictResolver:
 
         # Pre-calculate base t_anc and t_ret from conflict
         v_cruise = fp_pleb.status_at_time(t_anchor).vel
-        v_cruise_norm = np.linalg.norm(v_cruise) if v_cruise is not None else 10.0
+        v_cruise_norm = np.linalg.norm(v_cruise) if v_cruise is not None else CRUISE_SPEED_FALLBACK
         if v_cruise_norm < 0.1:
-            v_cruise_norm = 10.0
-        
-        d_anc = (v_cruise_norm ** 2) / float(UAV_MAX_SPEED)
-        if d_anc < MIN_DETOUR_DURATION:
-            d_anc = MIN_DETOUR_DURATION
-        
+            v_cruise_norm = CRUISE_SPEED_FALLBACK
+
+        # Compute a minimum detour duration (seconds) based on available
+        # cruise speed and maximum acceleration. This reserves a symmetric
+        # time window before and after the conflict for the maneuver.
+        detour_time = max(v_cruise_norm / float(UAV_MAX_ACCEL), MIN_DETOUR_DURATION)
+
         t_conflict_start = conflict_obbs[0].t_range[0]
         t_conflict_end = conflict_obbs[-1].t_range[1]
-        t_anc_base = t_conflict_start - (d_anc / v_cruise_norm)
-        t_anc_base = max(t_anc_base, fp_pleb.init_time() + WAYPOINT_TIME_EPSILON)
-        t_anc_base = max(t_anc_base, t_anchor)
-        
-        t_ret_base = t_conflict_end + (d_anc / v_cruise_norm)
+
+        # Set the detour start at t_anchor (or init floor) and compute a
+        # symmetric separation delta to apply to the conflict end. The
+        # separation is at least `detour_time` to guarantee minimum duration
+        # for the maneuver.
+        t_anc_base = max(t_anchor, fp_pleb.init_time() + WAYPOINT_TIME_EPSILON)
+        separation = max(t_conflict_start - t_anc_base, detour_time)
+        t_ret_base = t_conflict_end + separation
         t_ret_base = min(t_ret_base, fp_pleb.finish_time() - WAYPOINT_TIME_EPSILON)
         
         # Dynamic temporal buffer: scale with conflict duration
@@ -557,22 +562,22 @@ class ConflictResolver:
             for scale_idx, scale in enumerate([1.0, 1.25, 1.5, 2.0]):
                 scaled_mtv = mtv * scale
                 
-                # Adjust t_anc and t_ret proportionally to MTV scale
-                # Larger MTV → earlier start, later end (more time to maneuver)
+                # Expand detour window symmetrically: both start and end move outward.
+                # Larger MTV → earlier start, later end (more time to maneuver, smoother curves).
                 time_buffer_extra = (scale - 1.0) * mtv_scale_time_buffer
-                t_anc_adj = t_anc_base - time_buffer_extra
-                t_ret_adj = t_ret_base + time_buffer_extra
+                t_detour_start_adj = t_detour_start_base - time_buffer_extra
+                t_detour_end_adj = t_detour_end_base + time_buffer_extra
                 
-                # Validate bounds
-                t_anc_adj = max(t_anc_adj, fp_pleb.init_time() + WAYPOINT_TIME_EPSILON)
-                t_anc_adj = max(t_anc_adj, t_anchor)
-                t_ret_adj = min(t_ret_adj, fp_pleb.finish_time() - WAYPOINT_TIME_EPSILON)
+                # Validate bounds: start >= anchor (WCET floor), end <= finish
+                t_detour_start_adj = max(t_detour_start_adj, fp_pleb.init_time() + WAYPOINT_TIME_EPSILON)
+                t_detour_start_adj = max(t_detour_start_adj, t_anchor)
+                t_detour_end_adj = min(t_detour_end_adj, fp_pleb.finish_time() - WAYPOINT_TIME_EPSILON)
                 
-                if t_anc_adj >= t_ret_adj:
-                    print(f"[DEBUG S2]     Scale {scale_idx+1}/4 (scale={scale}): t_anc_adj exceeds t_ret_adj after bounds check, SKIPPED")
+                if t_detour_start_adj >= t_detour_end_adj:
+                    print(f"[DEBUG S2]     Scale {scale_idx+1}/4 (scale={scale}): t_detour_start_adj exceeds t_detour_end_adj after bounds check, SKIPPED")
                     continue
                 
-                print(f"[DEBUG S2]     Scale {scale_idx+1}/4 (scale={scale}): scaled_mtv = {scaled_mtv}, t_anc={t_anc_adj:.2f}s, t_ret={t_ret_adj:.2f}s")
+                print(f"[DEBUG S2]     Scale {scale_idx+1}/4 (scale={scale}): scaled_mtv = {scaled_mtv}, t_start={t_detour_start_adj:.2f}s, t_end={t_detour_end_adj:.2f}s")
                 
                 # Build the trapezoid detour with adjusted times
                 candidate = build_rigid_shift_detour(
@@ -581,8 +586,8 @@ class ConflictResolver:
                     mtv=scaled_mtv,
                     conflict_obbs=conflict_obbs,
                     origin_conflict=origin_conflict,
-                    t_anc_override=t_anc_adj,
-                    t_ret_override=t_ret_adj,
+                    t_detour_start_override=t_detour_start_adj,
+                    t_detour_end_override=t_detour_end_adj,
                 )
                 if candidate is None:
                     print(f"[DEBUG S2]       -> Detour generation FAILED")
@@ -641,23 +646,27 @@ class ConflictResolver:
         # reference matches the real detour geometry.
         origin_conflict = self._compute_conflict_origin(conflict=conflict, pleb_id=pleb_id)
 
-        # Pre-calculate base t_anc and t_ret from conflict (same as S2)
+        # Pre-calculate base t_detour_start and t_detour_end from conflict (same as S2)
         v_cruise = fp_pleb.status_at_time(t_anchor).vel
-        v_cruise_norm = np.linalg.norm(v_cruise) if v_cruise is not None else 10.0
+        v_cruise_norm = np.linalg.norm(v_cruise) if v_cruise is not None else CRUISE_SPEED_FALLBACK
         if v_cruise_norm < 0.1:
-            v_cruise_norm = 10.0
-        
-        d_anc = (v_cruise_norm ** 2) / float(UAV_MAX_SPEED)
-        if d_anc < MIN_DETOUR_DURATION:
-            d_anc = MIN_DETOUR_DURATION
-        
+            v_cruise_norm = CRUISE_SPEED_FALLBACK
+
+        # Compute a minimum detour duration (seconds) based on available
+        # cruise speed and maximum acceleration. This reserves a symmetric
+        # time window before and after the conflict for the maneuver.
+        detour_time = max(v_cruise_norm / float(UAV_MAX_ACCEL), MIN_DETOUR_DURATION)
+
         t_conflict_start = conflict_obbs[0].t_range[0]
         t_conflict_end = conflict_obbs[-1].t_range[1]
-        t_anc_base = t_conflict_start - (d_anc / v_cruise_norm)
-        t_anc_base = max(t_anc_base, fp_pleb.init_time() + WAYPOINT_TIME_EPSILON)
-        t_anc_base = max(t_anc_base, t_anchor)
-        
-        t_ret_base = t_conflict_end + (d_anc / v_cruise_norm)
+
+        # Set the detour start at t_anchor (or init floor) and compute a
+        # symmetric separation delta to apply to the conflict end. The
+        # separation is at least `detour_time` to guarantee minimum duration
+        # for the maneuver.
+        t_anc_base = max(t_anchor, fp_pleb.init_time() + WAYPOINT_TIME_EPSILON)
+        separation = max(t_conflict_start - t_anc_base, detour_time)
+        t_ret_base = t_conflict_end + separation
         t_ret_base = min(t_ret_base, fp_pleb.finish_time() - WAYPOINT_TIME_EPSILON)
         
         # Dynamic temporal buffer: scale with conflict duration
@@ -672,21 +681,22 @@ class ConflictResolver:
             for scale_idx, scale in enumerate([1.0, 1.25, 1.5, 2.0]):
                 scaled_mtv = mtv * scale
                 
-                # Adjust t_anc and t_ret proportionally to MTV scale
+                # Expand detour window symmetrically: both start and end move outward.
+                # Larger MTV → earlier start, later end (more time to maneuver, smoother curves).
                 time_buffer_extra = (scale - 1.0) * mtv_scale_time_buffer
-                t_anc_adj = t_anc_base - time_buffer_extra
-                t_ret_adj = t_ret_base + time_buffer_extra
+                t_detour_start_adj = t_detour_start_base - time_buffer_extra
+                t_detour_end_adj = t_detour_end_base + time_buffer_extra
                 
-                # Validate bounds
-                t_anc_adj = max(t_anc_adj, fp_pleb.init_time() + WAYPOINT_TIME_EPSILON)
-                t_anc_adj = max(t_anc_adj, t_anchor)
-                t_ret_adj = min(t_ret_adj, fp_pleb.finish_time() - WAYPOINT_TIME_EPSILON)
+                # Validate bounds: start >= anchor (WCET floor), end <= finish
+                t_detour_start_adj = max(t_detour_start_adj, fp_pleb.init_time() + WAYPOINT_TIME_EPSILON)
+                t_detour_start_adj = max(t_detour_start_adj, t_anchor)
+                t_detour_end_adj = min(t_detour_end_adj, fp_pleb.finish_time() - WAYPOINT_TIME_EPSILON)
                 
-                if t_anc_adj >= t_ret_adj:
-                    print(f"[DEBUG FB1]     Scale {scale_idx+1}/4 (scale={scale}): t_anc_adj exceeds t_ret_adj after bounds check, SKIPPED")
+                if t_detour_start_adj >= t_detour_end_adj:
+                    print(f"[DEBUG FB1]     Scale {scale_idx+1}/4 (scale={scale}): t_detour_start_adj exceeds t_detour_end_adj after bounds check, SKIPPED")
                     continue
                 
-                print(f"[DEBUG FB1]     Scale {scale_idx+1}/4 (scale={scale}): scaled_mtv = {scaled_mtv}, t_anc={t_anc_adj:.2f}s, t_ret={t_ret_adj:.2f}s")
+                print(f"[DEBUG FB1]     Scale {scale_idx+1}/4 (scale={scale}): scaled_mtv = {scaled_mtv}, t_start={t_detour_start_adj:.2f}s, t_end={t_detour_end_adj:.2f}s")
                 
                 candidate = build_rigid_shift_detour(
                     fp=fp_pleb,
@@ -694,8 +704,8 @@ class ConflictResolver:
                     mtv=scaled_mtv,
                     conflict_obbs=conflict_obbs,
                     origin_conflict=origin_conflict,
-                    t_anc_override=t_anc_adj,
-                    t_ret_override=t_ret_adj,
+                    t_detour_start_override=t_detour_start_adj,
+                    t_detour_end_override=t_detour_end_adj,
                 )
                 if candidate is None:
                     print(f"[DEBUG FB1]       -> Detour generation FAILED")
@@ -786,11 +796,11 @@ class ConflictResolver:
                 Validate the kinematic feasibility of the turn corners introduced by
                 the rigid-shift detour:
 
-                    Rigid Shift (build_rigid_shift_detour): "anc" → "det" → "ret"
+                    Rigid Shift (build_rigid_shift_detour): "detour_start" → "det" → "detour_end"
 
         The checks are symmetric:
-          - First  turn:  [anc-1] → anc → first_detour_wp
-          - Last   turn:  last_detour_wp → ret → [ret+1]
+          - First  turn:  [detour_start-1] → detour_start → first_detour_wp
+          - Last   turn:  last_detour_wp → detour_end → [detour_end+1]
         """
         max_ang_vel = fp_orig.max_var_ang_vel
 
