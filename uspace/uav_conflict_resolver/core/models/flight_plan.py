@@ -1,3 +1,12 @@
+import sys
+from os import path
+
+current_file_path = path.dirname(__file__)
+project_root_path = path.abspath(path.join(current_file_path, "../.."))
+
+if project_root_path not in sys.path:
+    sys.path.append(project_root_path)
+
 from tabulate import tabulate
 import copy
 import logging
@@ -18,7 +27,7 @@ from .waypoint import Waypoint
 from .command import Command
 
 
-matplotlib.use("TkAgg")
+# matplotlib.use("TkAgg")
 plt.rcParams["toolbar"] = "toolmanager"
 
 log = logging.getLogger(__name__)
@@ -34,7 +43,7 @@ class FlightPlan:
         self.target_yaw = None
         self.waypoints: List[Waypoint] = []
 
-    def set_waypoint(self, wp=None, label="", time=None, pos=None, vel=None, heading=None):
+    def set_waypoint(self, wp=None, label="", time=None, pos=None, vel=None, heading=[0,0]):
         numWPs = len(self.waypoints)
 
         if wp is None:
@@ -167,6 +176,18 @@ class FlightPlan:
                 heading=wp_data.get("heading", None)
             )
             self.waypoints.append(wp)
+
+    def to_lists(self):
+        times = [wp.t for wp in self.waypoints]
+        positions = [wp.pos for wp in self.waypoints]
+        velocities = [wp.vel for wp in self.waypoints]
+        accelerations = [wp.acel for wp in self.waypoints]
+        jerks = [wp.jerk for wp in self.waypoints]
+        snaps = [wp.snap for wp in self.waypoints]
+        crackels = [wp.crakle for wp in self.waypoints]
+        headings = [wp.heading for wp in self.waypoints]
+        
+        return [times, positions, velocities, accelerations, jerks, snaps, crackels, headings]
 
     #------------------------------------------------------------------------------------------------------------------
     # TIME MANAGEMENT
