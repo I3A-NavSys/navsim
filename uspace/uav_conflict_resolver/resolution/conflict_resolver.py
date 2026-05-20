@@ -68,6 +68,7 @@ from core.config import (
     WAYPOINT_TIME_EPSILON,
     FORWARD_PROGRESS_MARGIN,
     UAV_MAX_SPEED,
+    CRUISE_SPEED_FALLBACK,
     MIN_DETOUR_DURATION,
     MTV_SCALE_TIME_BUFFER_FACTOR,
 )
@@ -609,21 +610,27 @@ class ConflictResolver:
 
         # Pre-calculate base t_anc and t_ret from conflict
         v_cruise = fp_pleb.status_at_time(t_anchor).vel
-        v_cruise_norm = np.linalg.norm(v_cruise) if v_cruise is not None else 10.0
+        v_cruise_norm = np.linalg.norm(v_cruise) if v_cruise is not None else CRUISE_SPEED_FALLBACK
         if v_cruise_norm < 0.1:
-            v_cruise_norm = 10.0
-        
-        d_anc = (v_cruise_norm ** 2) / float(UAV_MAX_SPEED)
-        if d_anc < MIN_DETOUR_DURATION:
-            d_anc = MIN_DETOUR_DURATION
-        
+            v_cruise_norm = CRUISE_SPEED_FALLBACK
+
+        # Compute a minimum detour duration (seconds) based on available
+        # cruise speed and maximum acceleration. This reserves a symmetric
+        # time window before and after the conflict for the maneuver.
+        detour_time = max(v_cruise_norm / float(UAV_MAX_ACCEL), MIN_DETOUR_DURATION)
+
         t_conflict_start = conflict_obbs[0].t_range[0]
         t_conflict_end = conflict_obbs[-1].t_range[1]
-        t_anc_base = t_conflict_start - (d_anc / v_cruise_norm)
-        t_anc_base = max(t_anc_base, fp_pleb.init_time() + WAYPOINT_TIME_EPSILON)
-        t_anc_base = max(t_anc_base, t_anchor)
-        
-        t_ret_base = t_conflict_end + (d_anc / v_cruise_norm)
+
+        # Force the detour to START at t_anchor as requested. To preserve
+        # the original reservation size we compute the total detour duration
+        # that was previously allocated around the conflict and shift it so
+        # it begins at t_anchor.
+        conflict_duration = t_conflict_end - t_conflict_start
+        total_detour = conflict_duration + 2.0 * detour_time
+
+        t_anc_base = max(t_anchor, fp_pleb.init_time() + WAYPOINT_TIME_EPSILON)
+        t_ret_base = t_anc_base + total_detour
         t_ret_base = min(t_ret_base, fp_pleb.finish_time() - WAYPOINT_TIME_EPSILON)
         
         # Dynamic temporal buffer: scale with conflict duration
@@ -726,21 +733,27 @@ class ConflictResolver:
 
         # Pre-calculate base t_anc and t_ret from conflict (same as S2)
         v_cruise = fp_pleb.status_at_time(t_anchor).vel
-        v_cruise_norm = np.linalg.norm(v_cruise) if v_cruise is not None else 10.0
+        v_cruise_norm = np.linalg.norm(v_cruise) if v_cruise is not None else CRUISE_SPEED_FALLBACK
         if v_cruise_norm < 0.1:
-            v_cruise_norm = 10.0
-        
-        d_anc = (v_cruise_norm ** 2) / float(UAV_MAX_SPEED)
-        if d_anc < MIN_DETOUR_DURATION:
-            d_anc = MIN_DETOUR_DURATION
-        
+            v_cruise_norm = CRUISE_SPEED_FALLBACK
+
+        # Compute a minimum detour duration (seconds) based on available
+        # cruise speed and maximum acceleration. This reserves a symmetric
+        # time window before and after the conflict for the maneuver.
+        detour_time = max(v_cruise_norm / float(UAV_MAX_ACCEL), MIN_DETOUR_DURATION)
+
         t_conflict_start = conflict_obbs[0].t_range[0]
         t_conflict_end = conflict_obbs[-1].t_range[1]
-        t_anc_base = t_conflict_start - (d_anc / v_cruise_norm)
-        t_anc_base = max(t_anc_base, fp_pleb.init_time() + WAYPOINT_TIME_EPSILON)
-        t_anc_base = max(t_anc_base, t_anchor)
-        
-        t_ret_base = t_conflict_end + (d_anc / v_cruise_norm)
+
+        # Force the detour to START at t_anchor as requested. To preserve
+        # the original reservation size we compute the total detour duration
+        # that was previously allocated around the conflict and shift it so
+        # it begins at t_anchor.
+        conflict_duration = t_conflict_end - t_conflict_start
+        total_detour = conflict_duration + 2.0 * detour_time
+
+        t_anc_base = max(t_anchor, fp_pleb.init_time() + WAYPOINT_TIME_EPSILON)
+        t_ret_base = t_anc_base + total_detour
         t_ret_base = min(t_ret_base, fp_pleb.finish_time() - WAYPOINT_TIME_EPSILON)
         
         # Dynamic temporal buffer: scale with conflict duration

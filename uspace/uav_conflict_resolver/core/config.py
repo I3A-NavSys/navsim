@@ -81,6 +81,9 @@ S1_TIME_SHIFTS: list = [1.0, 2.5, 5.0, 10.0]   # Candidate time shifts [s]
 # -----------------------------------------------------------------------------
 UAV_MAX_SPEED: float = 20.0   # Maximum drone speed                  [m/s]
 UAV_MAX_ACCEL: float = 5.0    # Maximum drone linear acceleration     [m/s²]
+# Fallback cruise speed used when the flight plan reports no/zero speed
+# (prevents divisions by zero and provides a reasonable heuristic).
+CRUISE_SPEED_FALLBACK: float = 10.0  # [m/s]
 
 # -----------------------------------------------------------------------------
 # STRATEGY 2 / FALLBACK 1: SAT MTV Generation
