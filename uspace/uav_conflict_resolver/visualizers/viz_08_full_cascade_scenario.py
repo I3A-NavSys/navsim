@@ -31,9 +31,9 @@ def generate_straight_fleet(n_uavs: int = 5) -> list[FlightPlan]:
     # (start_pos, mid_pos, end_pos, speed)
     routes = [
         ([0, 200, 100],   [200, 200, 100], [400, 200, 0], 10.0),       # W -> E
-        ([200, 0, 100],   [200, 200, 100], [200, 400, 200], 10.0),       # S -> N
-        ([0, 0, 100],     [200, 200, 100], [400, 400, 100], 14.14),      # SW -> NE
-        ([400, 0, 0],   [200, 200, 100], [0, 400, 200],   14.14),      # SE -> NW
+        ([200, 0, 100],   [200, 200, 100], [200, 400, 100], 10.0),       # S -> N
+        ([0, 0, 100],     [200, 200, 100], [400, 400, 100], 10.0),      # SW -> NE
+        ([200, 0, 0],     [200, 200, 100], [200, 400, 200],   10.0),      # SE -> NW
         ([200, 200, 200], [200, 200, 100], [200, 200, 0],   5.0)         # Drop down
     ]
     
@@ -158,19 +158,22 @@ def run_visualizer():
         for i, (uid, fp) in enumerate(plan_dict.items()):
             if fp is None:
                 continue
-            
+
             trace = fp.trace(0.1)
             # Colors for 5 drones
             colors_list = ["#2ecc71", "#e74c3c", "#3498db", "#f1c40f", "#9b59b6"]
             color = colors_list[i % len(colors_list)]
             linestyle = "-" if col == 0 else ("-" if not hasattr(fp, "resolved") else "--")
-            
-            ax.plot(trace[:, 1], trace[:, 2], trace[:, 3],
-                    color=color, linewidth=1.5, linestyle=linestyle, alpha=0.8)
+
+            # Apply tiny vertical offset per UAV index to avoid exact overlap hiding traces
+            z_offset = i * 0.1
+            z_plot = trace[:, 3] + z_offset
+            ax.plot(trace[:, 1], trace[:, 2], z_plot,
+                    color=color, linewidth=1.5, linestyle=linestyle, alpha=0.9)
 
             # Start and End markers (no waypoints to avoid extreme clutter)
-            ax.scatter(*trace[0, 1:4], color=color, s=20, marker="o", zorder=5)
-            ax.scatter(*trace[-1, 1:4], color=color, s=20, marker="^", zorder=5)
+            ax.scatter(trace[0, 1], trace[0, 2], trace[0, 3] + z_offset, color=color, s=20, marker="o", zorder=5)
+            ax.scatter(trace[-1, 1], trace[-1, 2], trace[-1, 3] + z_offset, color=color, s=20, marker="^", zorder=5)
 
         ax.set_xlabel("X (m)", color="white", labelpad=4)
         ax.set_ylabel("Y (m)", color="white", labelpad=4)

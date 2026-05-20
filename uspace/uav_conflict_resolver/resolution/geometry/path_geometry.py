@@ -245,9 +245,9 @@ def build_rigid_shift_detour(
     vel_det = (v_in_vec + v_out_vec) / 2.0
 
     # Insert maneuver waypoints
-    wp_anc = Waypoint(label="anc", t=t_anc, pos=pos_anc, vel=vel_anc)
-    wp_det = Waypoint(label="det", t=t_det, pos=pos_det, vel=vel_det)
-    wp_ret = Waypoint(label="ret", t=t_ret, pos=pos_ret, vel=vel_ret)
+    wp_anc = Waypoint(label="anc", t=t_anc, pos=pos_anc, vel=vel_anc, heading=[0, 0])
+    wp_det = Waypoint(label="det", t=t_det, pos=pos_det, vel=vel_det, heading=[0, 0])
+    wp_ret = Waypoint(label="ret", t=t_ret, pos=pos_ret, vel=vel_ret, heading=[0, 0])
 
     new_fp.set_waypoint(wp_anc)
     new_fp.set_waypoint(wp_det)

@@ -95,7 +95,7 @@ class ResolveResult:
         strategy_used: Which phase solved the conflict.
                        One of: "S1", "S2", "FB1", "FB2", "DEADLOCK".
         new_fp_pleb:   The new FlightPlan for the plebeian UAV (None on DEADLOCK).
-        new_fp_vip:    The VIP FlightPlan with HOLD cleared (None on DEADLOCK).
+        new_fp_vip:    Always None. The VIP is never modified (only the plebeian).
         iterations:    Total number of candidate plans evaluated across all phases.
         message:       Human-readable summary for logging / debugging.
     """
@@ -204,14 +204,7 @@ class ConflictResolver:
             )
 
         # =================================================================
-        # Step 1: HOLD the VIP — Semaphore (Delayed Clearance)
-        # The VIP is postponed from t_anchor onwards so it waits in place
-        # while the plebeian computes and commits to its new plan.
-        # =================================================================
-        fp_vip_held = self._hold_vip(fp_vip, t_anchor)
-
-        # =================================================================
-        # Build shadow R-Tree ONCE for all strategies (S1/S2/FB1/FB2).
+        # Step 1: Build shadow R-Tree ONCE for all strategies (S1/S2/FB1/FB2).
         # This avoids re-registering every other UAV for each candidate.
         # register_uav() already removes old boxes before inserting new
         # ones, so successive candidate swaps are safe.
@@ -233,12 +226,11 @@ class ConflictResolver:
         total_iterations += 1  # strategy 1 counts as a single "attempt unit"
 
         if result_s1 is not None:
-            fp_vip_released = self._release_vip(fp_vip_held, t_anchor)
             return ResolveResult(
                 success=True,
                 strategy_used="S1",
                 new_fp_pleb=result_s1,
-                new_fp_vip=fp_vip_released,
+                new_fp_vip=None,
                 iterations=total_iterations,
                 message="Strategy 1 (Kinematic Bounding) succeeded.",
             )
@@ -288,12 +280,11 @@ class ConflictResolver:
 
         if s2_result is not None:
             print(f"[DEBUG S2] SUCCESS! Resolved {pleb_id} with S2 after {iters} iterations")
-            fp_vip_released = self._release_vip(fp_vip_held, t_anchor)
             return ResolveResult(
                 success=True,
                 strategy_used="S2",
                 new_fp_pleb=s2_result,
-                new_fp_vip=fp_vip_released,
+                new_fp_vip=None,
                 iterations=total_iterations,
                 message="Strategy 2 (Horizontal Path Stretch) succeeded.",
             )
@@ -319,12 +310,11 @@ class ConflictResolver:
 
         if fb1_result is not None:
             print(f"[DEBUG FB1] SUCCESS! Resolved {pleb_id} with FB1 after {iters} iterations")
-            fp_vip_released = self._release_vip(fp_vip_held, t_anchor)
             return ResolveResult(
                 success=True,
                 strategy_used="FB1",
                 new_fp_pleb=fb1_result,
-                new_fp_vip=fp_vip_released,
+                new_fp_vip=None,
                 iterations=total_iterations,
                 message="Fallback 1 (Vertical MTVs) succeeded.",
             )
@@ -342,12 +332,11 @@ class ConflictResolver:
         total_iterations += iters
 
         if fb2_result is not None:
-            fp_vip_released = self._release_vip(fp_vip_held, t_anchor)
             return ResolveResult(
                 success=True,
                 strategy_used="FB2",
                 new_fp_pleb=fb2_result,
-                new_fp_vip=fp_vip_released,
+                new_fp_vip=None,
                 iterations=total_iterations,
                 message="Fallback 2 (Hover) succeeded.",
             )
@@ -366,78 +355,6 @@ class ConflictResolver:
                 f"vs VIP '{vip_id}'. Mission abort required."
             ),
         )
-
-    # ------------------------------------------------------------------
-    # VIP Semaphore (HOLD / RELEASE)
-    # ------------------------------------------------------------------
-
-    def _hold_vip(self, fp_vip: FlightPlan, t_anchor: float) -> FlightPlan:
-        """
-        Create a copy of the VIP FlightPlan with HOLD applied from t_anchor.
-
-        The VIP's waypoints from t_anchor onwards are pushed into the future
-        by inserting a hover waypoint at t_anchor (same position, zero velocity).
-        This implements the Delayed Clearance semaphore: the VIP will not enter
-        the conflict zone until we explicitly release it.
-
-        The hold duration is left open-ended here. The _release_vip() method
-        will restore the normal schedule once the plebeian's plan is confirmed.
-
-        Args:
-            fp_vip:   Original VIP FlightPlan (not mutated).
-            t_anchor: Time from which the VIP must hold.
-
-        Returns:
-            Modified copy of the VIP FlightPlan with HOLD applied.
-        """
-        fp_held = fp_vip.copy()
-
-        # Position of VIP at t_anchor
-        status_at_anchor = fp_held.status_at_time(t_anchor)
-        hold_pos = status_at_anchor.pos.copy()
-
-        # Insert a zero-velocity waypoint at t_anchor to force the VIP to hold
-        hold_wp = Waypoint(
-            label="HOLD",
-            t=t_anchor,
-            pos=hold_pos,
-            vel=[0.0, 0.0, 0.0],
-        )
-        fp_held.set_waypoint(hold_wp)
-        # Postpone all waypoints after t_anchor by a large sentinel value.
-        # The actual hold duration will be corrected during release.
-        # We use a sentinel of HOVER_MAX_TIMEOUT to ensure the VIP does not
-        # accidentally depart during the resolution computation window.
-        fp_held.postpone_from(t_anchor + WAYPOINT_TIME_EPSILON, HOVER_MAX_TIMEOUT)
-        fp_held.connect_waypoints()
-
-        return fp_held
-
-    def _release_vip(self, fp_vip_held: FlightPlan, t_anchor: float) -> FlightPlan:
-        """
-        Create a clean copy of the VIP FlightPlan with the HOLD waypoint removed
-        and the postpone offset reversed.
-
-        This is called after the plebeian has committed to a new plan, signaling
-        that the airspace ahead is safe.
-
-        Args:
-            fp_vip_held: The held VIP FlightPlan (from _hold_vip).
-            t_anchor:    The hold start time.
-
-        Returns:
-            VIP FlightPlan with HOLD cleared.
-        """
-        fp_released = fp_vip_held.copy()
-
-        # Remove the HOLD waypoint
-        fp_released.remove_waypoint_at_time(t_anchor)
-
-        # Reverse the sentinel postpone
-        fp_released.postpone_from(t_anchor + WAYPOINT_TIME_EPSILON, -HOVER_MAX_TIMEOUT)
-        fp_released.connect_waypoints()
-
-        return fp_released
 
     # ------------------------------------------------------------------
     # Internal: R-Tree Shadow Validation
@@ -832,6 +749,7 @@ class ConflictResolver:
                 t=t_anchor,
                 pos=position_at_anchor,
                 vel=[0.0, 0.0, 0.0],
+                heading=[0, 0],
             )
             # Insert hover end waypoint (same position, velocity = 0)
             hover_end = Waypoint(
@@ -839,6 +757,7 @@ class ConflictResolver:
                 t=round(t_resume, 3),
                 pos=position_at_anchor,
                 vel=[0.0, 0.0, 0.0],
+                heading=[0, 0],
             )
 
             candidate.set_waypoint(hover_start)

@@ -380,13 +380,13 @@ class FlightPlan:
         pos = wp2.pos - wp1.vel * step
         vel = wp1.vel
         t = wp2.t - step
-        wp2A = Waypoint(label=label, t=t, pos=pos, vel=vel)
+        wp2A = Waypoint(label=label, t=t, pos=pos, vel=vel, heading=[0, 0])
         # wp2A.t = wp2.t - step
 
         label = wp2.label + "_B"
         pos = wp2.pos + wp2.vel * step
         vel = wp2.vel
-        wp2B = Waypoint(label=label, pos=pos, vel=vel)
+        wp2B = Waypoint(label=label, pos=pos, vel=vel, heading=[0, 0])
         wp2BTinit = wp2.t + step
 
         T2Min = wp2A.t + angle/angVel
@@ -889,6 +889,89 @@ class FlightPlan:
         yPosTimePlot.set_ylim(yMidValue - addition, yMidValue + addition)
 
         # Show the plots
+        plt.show(block=False)
+
+    @staticmethod
+    def compare_velocity_flight_plans(flight_plans: List['FlightPlan'], figName: str, timeStep: float = 0.1) -> None:
+        """
+        Visualize velocity (magnitude and components) for multiple flight plans in the same figure.
+
+        Args:
+            flight_plans (List[FlightPlan]): List of flight plans to visualize
+            figName (str): Title of the figure
+            timeStep (float): Time step for trajectory sampling (default: 0.1)
+        """
+
+        if not flight_plans or len(flight_plans) == 0:
+            print("No flight plans to visualize")
+            return
+
+        for i, fp in enumerate(flight_plans):
+            if not fp.waypoints:
+                print(f'Flight plan {i} is empty')
+                return
+
+        colors = [
+            [0, 0.7, 1],
+            [1, 0, 0],
+            [0, 1, 0],
+            [1, 1, 0],
+            [1, 0, 1],
+            [0, 1, 1],
+            [1, 0.5, 0],
+            [0.5, 0, 1],
+        ]
+
+        fig = plt.figure(figName)
+        # Top: speed magnitude
+        speedPlot = fig.add_subplot(4, 1, 1)
+        speedPlot.set_title("Speed magnitude versus time")
+        speedPlot.set_ylabel("speed [m/s]")
+        speedPlot.grid(True)
+
+        # Components: vx, vy, vz
+        vxPlot = fig.add_subplot(4, 1, 2)
+        vyPlot = fig.add_subplot(4, 1, 3)
+        vzPlot = fig.add_subplot(4, 1, 4)
+
+        vxPlot.set_ylabel("vx [m/s]")
+        vyPlot.set_ylabel("vy [m/s]")
+        vzPlot.set_ylabel("vz [m/s]")
+        vzPlot.set_xlabel("t [s]")
+
+        vxPlot.grid(True)
+        vyPlot.grid(True)
+        vzPlot.grid(True)
+
+        for idx, fp in enumerate(flight_plans):
+            color = colors[idx % len(colors)]
+            tr = fp.trace(timeStep)
+            tr_t = tr[:, 0]
+            vx = tr[:, 4]
+            vy = tr[:, 5]
+            vz = tr[:, 6]
+            speed = np.sqrt(vx**2 + vy**2 + vz**2)
+
+            speedPlot.plot(tr_t, speed, linewidth=2, color=color, zorder=1, label=f"FP {idx+1}")
+            vxPlot.plot(tr_t, vx, linewidth=2, color=color, zorder=1, label=f"FP {idx+1}")
+            vyPlot.plot(tr_t, vy, linewidth=2, color=color, zorder=1)
+            vzPlot.plot(tr_t, vz, linewidth=2, color=color, zorder=1)
+
+            # Highlight waypoints velocities
+            wp_vx = [wp.vel[0] for wp in fp.waypoints]
+            wp_vy = [wp.vel[1] for wp in fp.waypoints]
+            wp_vz = [wp.vel[2] for wp in fp.waypoints]
+            wp_t = [wp.t for wp in fp.waypoints]
+
+            wp_speeds = [np.linalg.norm(wp.vel) for wp in fp.waypoints]
+            speedPlot.scatter(wp_t, wp_speeds, marker="o", color=color, s=25, zorder=3)
+            vxPlot.scatter(wp_t, wp_vx, marker="o", color=color, s=25, zorder=3)
+            vyPlot.scatter(wp_t, wp_vy, marker="o", color=color, s=25, zorder=3)
+            vzPlot.scatter(wp_t, wp_vz, marker="o", color=color, s=25, zorder=3)
+
+        speedPlot.legend(loc='upper right')
+        vxPlot.legend(loc='upper right')
+
         plt.show(block=False)
 
     def velocity_figure(self, figName, timeStep):

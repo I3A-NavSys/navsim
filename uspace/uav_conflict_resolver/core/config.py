@@ -156,7 +156,7 @@ MTV_SCALE_TIME_BUFFER_FACTOR:   float = 0.15  # Temporal buffer = conflict_durat
 # Must be strictly greater than the maximum S1_TIME_SHIFTS to prevent S1 
 # from accepting secondary conflicts caused by its own time-shift.
 # -----------------------------------------------------------------------------
-FORWARD_PROGRESS_MARGIN:        float = 15.0    # Time buffer for subsequent conflicts [s]
+FORWARD_PROGRESS_MARGIN:        float = 3.0    # Time buffer for subsequent conflicts [s]
 
 # Constants for skipping intermediate waypoints during detour creation
 MIN_DETOUR_DURATION:     float = 5.0    # Minimum duration allocated for detour [s]
