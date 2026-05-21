@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 
 import omni.ext
@@ -7,14 +9,27 @@ import omni.kit.app
 import omni.physx
 from isaacsim.core.prims import RigidPrim
 
+from isaacsim.util.debug_draw import _debug_draw
+
 from .uav_control import UAVControl
-from uspace.uav_conflict_resolver.core.models.flight_plan import FlightPlan
+from uspace.uav_conflict_resolver.visualizers.viz_08_scenario_data import get_viz08_flightplans
+
+
+VIZ08_COLORS = [
+    (0x2e / 255.0, 0xcc / 255.0, 0x71 / 255.0, 1.0),
+    (0xe7 / 255.0, 0x4c / 255.0, 0x3c / 255.0, 1.0),
+    (0x34 / 255.0, 0x98 / 255.0, 0xdb / 255.0, 1.0),
+    (0xf1 / 255.0, 0xc4 / 255.0, 0x0f / 255.0, 1.0),
+    (0x9b / 255.0, 0x59 / 255.0, 0xb6 / 255.0, 1.0),
+]
 
 class UAVControlBridge(omni.ext.IExt):
     def on_startup(self, ext_id):
         self.initialize_variables()
 
     def on_shutdown(self):
+        if hasattr(self, "debug_draw") and self.debug_draw is not None:
+            self.debug_draw.clear_lines()
         self.on_physics_step_sub = None
         self.op_stop_sub = None
         self.on_play_sub = None
@@ -22,118 +37,35 @@ class UAVControlBridge(omni.ext.IExt):
         self.on_command_request_event_sub = None
 
     def build_flightplans(self):
+        # Build the bridge data from whatever UAV prims exist in the scene.
+        # This removes the old two-UAV assumption and keeps the code aligned with
+        # the number of UAVs that Isaac Sim actually spawned.
+        ordered_uavs = self._get_ordered_uav_entries()
+        uav_physics_indices = [entry[0] for entry in ordered_uavs]
+
+        # Generate the same number of flight plans as live UAVs, then load the
+        # selected Viz 08 case (original vs resolved) for that exact fleet size.
+        selected_flightplans = get_viz08_flightplans(
+            case=self.viz08_case,
+            n_uavs=len(ordered_uavs),
+        )
+
         flightplan_as_lists = []
+        for _, _, uav_id in ordered_uavs:
+            plan_id = self._get_viz08_plan_id_for_uav_id(uav_id)
+            if plan_id not in selected_flightplans:
+                raise KeyError(
+                    f"No Viz 08 flight plan was generated for UAV id '{uav_id}' ({plan_id})."
+                )
+            start_pos = selected_flightplans[plan_id].waypoints[0].pos
+            print(f"[UAVControlBridge] Mapped prim {uav_id} -> {plan_id} (start: {start_pos})")
+            flightplan_as_lists.append(selected_flightplans[plan_id].to_lists())
 
-        uav_physics_indices = [
-            self.uav_ids_to_physics_buffer["UAV_OPERATOR_0"]["UAV_0"],
-            self.uav_ids_to_physics_buffer["UAV_OPERATOR_0"]["UAV_1"]
-        ]
-
-        # UAV_0 FlightPlan (VIP_UAV)
-        positions = np.array([
-            [100.0, 519.7, 93.8],
-            [223.3, 513.1, 102.9],
-            [511.0, 497.6, 124.3],
-            [783.3, 532.6, 121.6],
-            [900.0, 547.6, 120.4]
-        ])
-        times = np.array([0.0, 15.0, 50.0, 85.0, 100.0])
-        
-        # Calculate velocities based on position changes over time
-        velocities = np.zeros((5, 3))
-        for i in range(4):
-            time_delta = times[i + 1] - times[i]
-            velocities[i] = (positions[i + 1] - positions[i]) / time_delta
-        velocities[4] = velocities[3]  # Last velocity same as previous
-        
-        fp0 = FlightPlan()
-        fp0.set_waypoint(
-            label="START",
-            time=times[0],
-            pos=positions[0],
-            vel=velocities[0],
-            heading=[velocities[0][0], velocities[0][1]]
-        )
-        fp0.set_waypoint(
-            label="WP_1",
-            time=times[1],
-            pos=positions[1],
-            vel=velocities[1],
-        )
-        fp0.set_waypoint(
-            label="CROSS",
-            time=times[2],
-            pos=positions[2],
-            vel=velocities[2],
-        )
-        fp0.set_waypoint(
-            label="WP_3",
-            time=times[3],
-            pos=positions[3],
-            vel=velocities[3],
-        )
-        fp0.set_waypoint(
-            label="END",
-            time=times[4],
-            pos=positions[4],
-            vel=velocities[4],
-        )
-      
-        fp0.connect_waypoints()
-
-        # UAV_1 FlightPlan (PLEB_UAV)
-        positions = np.array([
-            [528.6, 100.0, 95.1],
-            [523.3, 219.3, 103.9],
-            [511.0, 497.6, 124.3],
-            [499.8, 779.3, 110.7],
-            [495.0, 900.0, 104.8]
-        ])
-        times = np.array([0.0, 15.0, 50.0, 85.0, 100.0])
-        
-        # Calculate velocities based on position changes over time
-        velocities = np.zeros((5, 3))
-        for i in range(4):
-            time_delta = times[i + 1] - times[i]
-            velocities[i] = (positions[i + 1] - positions[i]) / time_delta
-        velocities[4] = velocities[3]  # Last velocity same as previous
-
-        fp1 = FlightPlan()
-        fp1.set_waypoint(
-            label="START",
-            time=times[0],
-            pos=positions[0],
-            vel=velocities[0],
-            heading=[velocities[0][0], velocities[0][1]]
-        )
-        fp1.set_waypoint(
-            label="WP_1",
-            time=times[1],
-            pos=positions[1],
-            vel=velocities[1],
-        )
-        fp1.set_waypoint(
-            label="CROSS",
-            time=times[2],
-            pos=positions[2],
-            vel=velocities[2],
-        )
-        fp1.set_waypoint(
-            label="WP_3",
-            time=times[3],
-            pos=positions[3],
-            vel=velocities[3],
-        )
-        fp1.set_waypoint(
-            label="END",
-            time=times[4],
-            pos=positions[4],
-            vel=velocities[4],
-        )
-        fp1.connect_waypoints()
-
-        flightplan_as_lists.append(fp0.to_lists())
-        flightplan_as_lists.append(fp1.to_lists())
+        if len(flightplan_as_lists) != len(uav_physics_indices):
+            raise ValueError(
+                "The number of generated flight plans does not match the UAVs "
+                "present in the Isaac Sim scene."
+            )
 
         times = [fp[0] for fp in flightplan_as_lists]
         positions = [fp[1] for fp in flightplan_as_lists]
@@ -155,20 +87,87 @@ class UAVControlBridge(omni.ext.IExt):
             headings
         ]
 
+        self._draw_viz08_flightplans(selected_flightplans, ordered_uavs)
+
         return uav_physics_indices, current_flightplans
+
+    def _heading_to_quaternion(self, heading):
+        if heading is None:
+            return [1.0, 0.0, 0.0, 0.0]
+
+        heading_x, heading_y = float(heading[0]), float(heading[1])
+        if abs(heading_x) < 1e-9 and abs(heading_y) < 1e-9:
+            return [1.0, 0.0, 0.0, 0.0]
+
+        yaw = float(np.arctan2(heading_y, heading_x))
+        half_yaw = yaw * 0.5
+        return [float(np.cos(half_yaw)), 0.0, 0.0, float(np.sin(half_yaw))]
+
+    def _draw_viz08_flightplans(self, selected_flightplans, ordered_uavs):
+        if not hasattr(self, "debug_draw") or self.debug_draw is None:
+            return
+
+        self.debug_draw.clear_lines()
+
+        for idx, (_, _, uav_id) in enumerate(ordered_uavs):
+            plan_id = self._get_viz08_plan_id_for_uav_id(uav_id)
+            flight_plan = selected_flightplans.get(plan_id)
+            if flight_plan is None:
+                continue
+
+            fp_trace = flight_plan.trace(0.1)
+            color = VIZ08_COLORS[idx % len(VIZ08_COLORS)]
+            self.debug_draw.draw_lines_spline(
+                fp_trace[:, 1:4],
+                color,
+                5,
+                False,
+            )
+
+    def _sort_viz08_plan_id(self, plan_id: str):
+        # Viz 08 plans are named UAV_1, UAV_2, ..., so we sort them numerically
+        # before pairing them with the UAV prims found in the scene.
+        return int(plan_id.split("_")[-1])
+
+    def _get_viz08_plan_id_for_uav_id(self, uav_id):
+        # The scene-side UAV IDs are zero-based (_0.._4), while Viz 08 flight
+        # plans are one-based (UAV_1..UAV_5).
+        if isinstance(uav_id, str):
+            suffix = uav_id.split("_")[-1]
+            return f"UAV_{int(suffix) + 1}"
+
+        return f"UAV_{int(uav_id) + 1}"
+
+    def _get_ordered_uav_entries(self):
+        # Flatten the nested {operator_id: {uav_id: physics_index}} structure into
+        # a single ordered list so the simulator-side UAV order is deterministic.
+        entries = []
+        for operator_id, uavs in self.uav_ids_to_physics_buffer.items():
+            for uav_id, physics_index in uavs.items():
+                entries.append((physics_index, operator_id, uav_id))
+
+        entries.sort(key=lambda entry: entry[0])
+        return entries
+
+    def _get_viz08_case(self):
+        # Keep the runtime selection lightweight: an environment variable is easy
+        # to document and avoids adding extra UI plumbing for this bridge.
+        case = os.getenv("UAV_CONTROL_BRIDGE_VIZ08_CASE", "original")
+        case = case.strip().lower()
+        if case not in {"original", "resolved"}:
+            return "resolved"
+        return case
 
     def on_physics_step(self, step_size: int):
         if self.is_simulation_running:
             # Get current time
             current_time = self.timeline.get_current_time()
 
-            uav_physics_indices, current_flightplans = self.build_flightplans()
-
             # Update UAV control
-            if uav_physics_indices:
+            if self.uav_physics_indices:
                 self.uav_control.update(
-                    uav_physics_indices, 
-                    current_flightplans, 
+                    self.uav_physics_indices, 
+                    self.current_flightplans, 
                     current_time, 
                     step_size
                 )
@@ -176,6 +175,8 @@ class UAVControlBridge(omni.ext.IExt):
     def on_timeline_stop(self, event):
         if self.is_simulation_running:
             self.rigid_prim = None
+            if hasattr(self, "debug_draw") and self.debug_draw is not None:
+                self.debug_draw.clear_lines()
 
             self.is_simulation_running = False
 
@@ -194,6 +195,15 @@ class UAVControlBridge(omni.ext.IExt):
                 self.uav_ids_to_physics_buffer
             )
 
+            # Load the selected Viz 08 scenario once, instead of rebuilding it on
+            # every physics step. That keeps the control loop deterministic and
+            # cheaper when the UAV count grows.
+            self.uav_physics_indices, self.current_flightplans = self.build_flightplans()
+
+            # Make sure the simulated UAVs start exactly at the first waypoint
+            # of their assigned flight plans.
+            self._reset_uav_poses_to_flightplan_starts()
+
             # Set simulation as running
             self.is_simulation_running = True
 
@@ -201,9 +211,16 @@ class UAVControlBridge(omni.ext.IExt):
     # -------- INITIALIZATION ----------
     # ----------------------------------
     def initialize_variables(self):
-        # Control
+
+        self.debug_draw = _debug_draw.acquire_debug_draw_interface()
+        # Control state is initialized here so the bridge can be restarted cleanly
+        # without keeping stale UAV mappings from a previous simulation run.
         self.is_simulation_running = False
         self.uav_control = None
+        self.uav_physics_indices = None
+        self.current_flightplans = None
+        # Force the Viz08 scenario to the original (unresolved) plans for testing collisions
+        self.viz08_case = "original"
         self.uav_ids_to_physics_buffer = {} # {operator_id: {uav_id: physics_buffer_index}}
 
         # Event stream
@@ -257,6 +274,19 @@ class UAVControlBridge(omni.ext.IExt):
                 self.uav_ids_to_physics_buffer[uav_operator_id] = {}
 
             self.uav_ids_to_physics_buffer[uav_operator_id][uav_id] = idx
+
+    def _reset_uav_poses_to_flightplan_starts(self):
+        if not self.current_flightplans or not self.uav_physics_indices:
+            return
+
+        start_positions = [plan_positions[0] for plan_positions in self.current_flightplans[1]]
+        start_headings = [plan_headings[0] for plan_headings in self.current_flightplans[7]]
+        start_orientations = [self._heading_to_quaternion(heading) for heading in start_headings]
+        self.rigid_prim.set_world_poses(
+            positions=start_positions,
+            orientations=start_orientations,
+            indices=self.uav_physics_indices,
+        )
             
 
     # -----------------------------
