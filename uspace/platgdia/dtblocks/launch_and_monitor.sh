@@ -22,3 +22,5 @@ for SERVICE in $SERVICES; do
 done
 
 echo "All log windows successfully opened."
+
+gnome-terminal -- bash -c "echo '=== Validator Script ==='; echo ''; /bin/python3.14 /home/tetemo/Escritorio/UCLM/TRABAJO/navsim/uspace/platgdia/dtblocks/validation/validator.py; exec bash"
