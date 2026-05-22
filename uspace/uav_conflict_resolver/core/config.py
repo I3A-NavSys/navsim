@@ -47,7 +47,7 @@ DIV_EPSILON: float = 1e-12
 # the new plan before the maneuver is physically needed.
 # NEVER plan a maneuver at t=0 or before the UAV's scheduled departure (t_start).
 # -----------------------------------------------------------------------------
-WCET_SECONDS:           float = 2.0   # Worst-Case Execution Time of the resolver [s]
+WCET_SECONDS:           float = 3.0   # Worst-Case Execution Time of the resolver [s]
 SAFETY_MARGIN_SECONDS:  float = 1.0   # Additional buffer on top of WCET [s]
 ANCHOR_DELTA:           float = WCET_SECONDS + SAFETY_MARGIN_SECONDS  # = 3.0 s
 
@@ -62,7 +62,7 @@ ANCHOR_DELTA:           float = WCET_SECONDS + SAFETY_MARGIN_SECONDS  # = 3.0 s
 # With velocity-adaptive scaling, these base deltas are multiplied by
 # (reference_speed / actual_speed), providing broader coverage across UAV speeds.
 # -----------------------------------------------------------------------------
-S1_TIME_SHIFTS: list = [1.0, 2.5, 5.0, 10.0]   # Candidate time shifts [s]
+S1_TIME_SHIFTS: list = [1.0, 2.0, 5.0, 10.0]   # Candidate time shifts [s]
 
 # -----------------------------------------------------------------------------
 # PHYSICAL UAV LIMITS
@@ -121,6 +121,10 @@ HOVER_TIME_STEP:   float = 0.5    # Time increment per hovering iteration [s]
 # Smaller = more boxes = more precise detection but higher memory usage.
 # -----------------------------------------------------------------------------
 OBB_INTERVAL: float = 0.5   # Sampling interval for OBB box generation [s]
+
+# Default physical radius used when generating swept OBBs and AABBs
+# Represents the UAV's safety radius (half-width/half-height of OBB lateral axes) [m]
+UAV_RADIUS: float = 3
 
 # -----------------------------------------------------------------------------
 

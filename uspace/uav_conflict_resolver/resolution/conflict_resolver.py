@@ -68,6 +68,7 @@ from core.config import (
     WAYPOINT_TIME_EPSILON,
     FORWARD_PROGRESS_MARGIN,
     UAV_MAX_SPEED,
+    UAV_MAX_ACCEL,
     CRUISE_SPEED_FALLBACK,
     MIN_DETOUR_DURATION,
     MTV_SCALE_TIME_BUFFER_FACTOR,
@@ -565,8 +566,8 @@ class ConflictResolver:
                 # Expand detour window symmetrically: both start and end move outward.
                 # Larger MTV → earlier start, later end (more time to maneuver, smoother curves).
                 time_buffer_extra = (scale - 1.0) * mtv_scale_time_buffer
-                t_detour_start_adj = t_detour_start_base - time_buffer_extra
-                t_detour_end_adj = t_detour_end_base + time_buffer_extra
+                t_detour_start_adj = t_anc_base - time_buffer_extra
+                t_detour_end_adj = t_ret_base + time_buffer_extra
                 
                 # Validate bounds: start >= anchor (WCET floor), end <= finish
                 t_detour_start_adj = max(t_detour_start_adj, fp_pleb.init_time() + WAYPOINT_TIME_EPSILON)
@@ -582,7 +583,7 @@ class ConflictResolver:
                 # Build the trapezoid detour with adjusted times
                 candidate = build_rigid_shift_detour(
                     fp=fp_pleb,
-                    t_anchor=t_anchor,
+                    t_detour_starthor=t_anchor,
                     mtv=scaled_mtv,
                     conflict_obbs=conflict_obbs,
                     origin_conflict=origin_conflict,
@@ -684,8 +685,8 @@ class ConflictResolver:
                 # Expand detour window symmetrically: both start and end move outward.
                 # Larger MTV → earlier start, later end (more time to maneuver, smoother curves).
                 time_buffer_extra = (scale - 1.0) * mtv_scale_time_buffer
-                t_detour_start_adj = t_detour_start_base - time_buffer_extra
-                t_detour_end_adj = t_detour_end_base + time_buffer_extra
+                t_detour_start_adj = t_anc_base - time_buffer_extra
+                t_detour_end_adj = t_ret_base + time_buffer_extra
                 
                 # Validate bounds: start >= anchor (WCET floor), end <= finish
                 t_detour_start_adj = max(t_detour_start_adj, fp_pleb.init_time() + WAYPOINT_TIME_EPSILON)
@@ -700,7 +701,7 @@ class ConflictResolver:
                 
                 candidate = build_rigid_shift_detour(
                     fp=fp_pleb,
-                    t_anchor=t_anchor,
+                    t_detour_starthor=t_anchor,
                     mtv=scaled_mtv,
                     conflict_obbs=conflict_obbs,
                     origin_conflict=origin_conflict,
@@ -753,6 +754,16 @@ class ConflictResolver:
             # Build a modified FlightPlan: hover at anchor, then resume
             candidate = fp_pleb.copy()
 
+            # First, postpone the future trajectory to open a hover window.
+            # Doing this before inserting hover WPs avoids accidental
+            # replacement of existing waypoints with equal timestamps.
+            candidate.postpone_from(t_anchor + WAYPOINT_TIME_EPSILON, hover_duration)
+
+            hover_end_t = round(t_resume, 3)
+            idx = candidate.get_target_index_from_time(hover_end_t)
+            if idx < len(candidate.waypoints) and abs(candidate.waypoints[idx].t - hover_end_t) < WAYPOINT_TIME_EPSILON:
+                hover_end_t += WAYPOINT_TIME_EPSILON
+
             # Insert hover start waypoint (velocity = 0)
             hover_start = Waypoint(
                 label="HOV_S",
@@ -764,7 +775,7 @@ class ConflictResolver:
             # Insert hover end waypoint (same position, velocity = 0)
             hover_end = Waypoint(
                 label="HOV_E",
-                t=round(t_resume, 3),
+                t=hover_end_t,
                 pos=position_at_anchor,
                 vel=[0.0, 0.0, 0.0],
                 heading=[0, 0],
@@ -772,9 +783,15 @@ class ConflictResolver:
 
             candidate.set_waypoint(hover_start)
             candidate.set_waypoint(hover_end)
-            # Postpone all waypoints after t_anchor by hover_duration
-            candidate.postpone_from(t_anchor + WAYPOINT_TIME_EPSILON, hover_duration)
-            candidate.connect_waypoints()
+            try:
+                candidate.connect_waypoints()
+            except ValueError as exc:
+                # This hover duration is physically infeasible (typically
+                # insufficient accel/decel margin to rejoin next segment).
+                # Continue trying longer hover durations instead of aborting
+                # the whole cascade with an exception.
+                print(f"[DEBUG FB2] Iter {iteration}: infeasible hover candidate -> {exc}")
+                continue
 
             if self._validate_shadow(candidate, pleb_id, shadow, t_anchor):
                 return candidate, iteration
