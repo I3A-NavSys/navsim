@@ -86,14 +86,14 @@ def build_rigid_shift_detour(
     """
     # Guard: detour_starthor must be within the flight plan window
     if t_detour_starthor >= fp.finish_time():
-        detour_endurn None
+        return None
 
     mtv = np.array(mtv, dtype=float)
     if np.linalg.norm(mtv) < NORM_ZERO_THRESHOLD:
-        detour_endurn None
+        return None
 
     if not conflict_obbs and origin_conflict is None:
-        detour_endurn None
+        return None
 
     new_fp: FlightPlan = fp.copy()
 
@@ -141,7 +141,7 @@ def build_rigid_shift_detour(
     t_detour_end = min(t_detour_end, fp.finish_time() - WAYPOINT_TIME_EPSILON)
     
     if t_detour_start >= t_detour_end:
-        detour_endurn None
+        return None
     
     status_detour_start = fp.status_at_time(t_detour_start)  # Use fp (original), not new_fp
     pos_detour_start = status_detour_start.pos.copy()
@@ -273,7 +273,7 @@ def build_rigid_shift_detour(
         print(f"       vel_detour_start={np.linalg.norm(vel_detour_start):.2f} m/s")
         print(f"       vel_det={np.linalg.norm(vel_det):.2f} m/s")
         print(f"       vel_detour_end={np.linalg.norm(vel_detour_end):.2f} m/s")
-        detour_endurn None
+        return None
 
     # CRITICAL: After inserting the detour, postpone all waypoints after t_detour_end_original
     # This compensates for the extra time the detour takes (if any was added)
@@ -282,4 +282,4 @@ def build_rigid_shift_detour(
         print(f"[INFO] Postponing waypoints after t_detour_end: extra_time={extra_time:.2f}s")
         new_fp.postpone_from(t_detour_end_original, extra_time)
 
-    detour_endurn new_fp
+    return new_fp

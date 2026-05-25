@@ -33,7 +33,7 @@ def generate_straight_fleet(n_uavs: int = 5) -> list[FlightPlan]:
         ([0, 200, 100],   [200, 200, 100], [400, 200, 0], 10.0),       # W -> E
         ([200, 0, 100],   [200, 200, 100], [200, 400, 100], 10.0),       # S -> N
         ([0, 0, 100],     [200, 200, 100], [400, 400, 100], 10.0),      # SW -> NE
-        ([200, 0, 0],     [200, 200, 100], [200, 400, 200],   10.0),      # SE -> NW
+        ([400, 0, 100],     [200, 200, 100], [0, 400, 100],   10.0),      # SE -> NW
         ([200, 200, 200], [200, 200, 100], [200, 200, 0],   5.0)         # Drop down
     ]
     
@@ -65,6 +65,8 @@ def generate_straight_fleet(n_uavs: int = 5) -> list[FlightPlan]:
     return SPACE
 
 BG = "#0f1117"
+MID_POS = np.array([200.0, 200.0, 100.0])
+MID_TIME = 20.0
 
 def run_visualizer():
     # Configure logging to show only Strategy 1 and Manager logs (silence noisy modules)

@@ -62,7 +62,7 @@ ANCHOR_DELTA:           float = WCET_SECONDS + SAFETY_MARGIN_SECONDS  # = 3.0 s
 # With velocity-adaptive scaling, these base deltas are multiplied by
 # (reference_speed / actual_speed), providing broader coverage across UAV speeds.
 # -----------------------------------------------------------------------------
-S1_TIME_SHIFTS: list = [1.0, 2.5, 5.0, 10.0]   # Candidate time shifts [s]
+S1_TIME_SHIFTS: list = [1.0]   # Candidate time shifts [s]
 
 # -----------------------------------------------------------------------------
 # PHYSICAL UAV LIMITS

@@ -68,6 +68,7 @@ from core.config import (
     WAYPOINT_TIME_EPSILON,
     FORWARD_PROGRESS_MARGIN,
     UAV_MAX_SPEED,
+    UAV_MAX_ACCEL,
     CRUISE_SPEED_FALLBACK,
     MIN_DETOUR_DURATION,
     MTV_SCALE_TIME_BUFFER_FACTOR,
@@ -427,7 +428,7 @@ class ConflictResolver:
         geometric overlap, which is a more relevant signal than just time
         coexistence.
 
-        If no SAT-confirmed pair is found, the helper falls back to the average
+                    t_detour_starthor=t_anchor,
         center of the plebeian boxes in the time window.
         """
         pleb_id_key = conflict.get("uav_a", pleb_id)
@@ -565,8 +566,8 @@ class ConflictResolver:
                 # Expand detour window symmetrically: both start and end move outward.
                 # Larger MTV → earlier start, later end (more time to maneuver, smoother curves).
                 time_buffer_extra = (scale - 1.0) * mtv_scale_time_buffer
-                t_detour_start_adj = t_detour_start_base - time_buffer_extra
-                t_detour_end_adj = t_detour_end_base + time_buffer_extra
+                t_detour_start_adj = t_anc_base - time_buffer_extra
+                t_detour_end_adj = t_ret_base + time_buffer_extra
                 
                 # Validate bounds: start >= anchor (WCET floor), end <= finish
                 t_detour_start_adj = max(t_detour_start_adj, fp_pleb.init_time() + WAYPOINT_TIME_EPSILON)
@@ -582,7 +583,7 @@ class ConflictResolver:
                 # Build the trapezoid detour with adjusted times
                 candidate = build_rigid_shift_detour(
                     fp=fp_pleb,
-                    t_anchor=t_anchor,
+                    t_detour_starthor=t_anchor,
                     mtv=scaled_mtv,
                     conflict_obbs=conflict_obbs,
                     origin_conflict=origin_conflict,
@@ -684,8 +685,8 @@ class ConflictResolver:
                 # Expand detour window symmetrically: both start and end move outward.
                 # Larger MTV → earlier start, later end (more time to maneuver, smoother curves).
                 time_buffer_extra = (scale - 1.0) * mtv_scale_time_buffer
-                t_detour_start_adj = t_detour_start_base - time_buffer_extra
-                t_detour_end_adj = t_detour_end_base + time_buffer_extra
+                t_detour_start_adj = t_anc_base - time_buffer_extra
+                t_detour_end_adj = t_ret_base + time_buffer_extra
                 
                 # Validate bounds: start >= anchor (WCET floor), end <= finish
                 t_detour_start_adj = max(t_detour_start_adj, fp_pleb.init_time() + WAYPOINT_TIME_EPSILON)
@@ -700,7 +701,7 @@ class ConflictResolver:
                 
                 candidate = build_rigid_shift_detour(
                     fp=fp_pleb,
-                    t_anchor=t_anchor,
+                    t_detour_starthor=t_anchor,
                     mtv=scaled_mtv,
                     conflict_obbs=conflict_obbs,
                     origin_conflict=origin_conflict,
