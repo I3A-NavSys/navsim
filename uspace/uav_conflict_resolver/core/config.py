@@ -47,8 +47,8 @@ DIV_EPSILON: float = 1e-12
 # the new plan before the maneuver is physically needed.
 # NEVER plan a maneuver at t=0 or before the UAV's scheduled departure (t_start).
 # -----------------------------------------------------------------------------
-WCET_SECONDS:           float = 2.0   # Worst-Case Execution Time of the resolver [s]
-SAFETY_MARGIN_SECONDS:  float = 1.0   # Additional buffer on top of WCET [s]
+WCET_SECONDS:           float = 3.0   # Worst-Case Execution Time of the resolver [s]
+SAFETY_MARGIN_SECONDS:  float = 3.0   # Additional buffer on top of WCET [s]
 ANCHOR_DELTA:           float = WCET_SECONDS + SAFETY_MARGIN_SECONDS  # = 3.0 s
 
 # -----------------------------------------------------------------------------
@@ -62,7 +62,7 @@ ANCHOR_DELTA:           float = WCET_SECONDS + SAFETY_MARGIN_SECONDS  # = 3.0 s
 # With velocity-adaptive scaling, these base deltas are multiplied by
 # (reference_speed / actual_speed), providing broader coverage across UAV speeds.
 # -----------------------------------------------------------------------------
-S1_TIME_SHIFTS: list = [1.0]   # Candidate time shifts [s]
+S1_TIME_SHIFTS: list = [1.0, 2.0, 5.0, 10.0]   # Candidate time shifts [s]
 
 # -----------------------------------------------------------------------------
 # PHYSICAL UAV LIMITS
@@ -122,6 +122,10 @@ HOVER_TIME_STEP:   float = 0.5    # Time increment per hovering iteration [s]
 # -----------------------------------------------------------------------------
 OBB_INTERVAL: float = 0.5   # Sampling interval for OBB box generation [s]
 
+# Default physical radius used when generating swept OBBs and AABBs
+# Represents the UAV's safety radius (half-width/half-height of OBB lateral axes) [m]
+UAV_RADIUS: float = 3.5
+
 # -----------------------------------------------------------------------------
 
 
@@ -134,7 +138,7 @@ OBB_INTERVAL: float = 0.5   # Sampling interval for OBB box generation [s]
 #   Internal multiplier applied to the raw SAT MTV before displacing the
 #   detour point.  The SAT MTV is the *minimum* geometric separation; the
 #   quintic polynomial can reduce effective clearance by curving the path back
-#   toward the obstacle.  A factor of 3.0 adds a large safety margin on top
+#   toward the obstacle.  A factor of 2.0 adds a large safety margin on top
 #   of the bare minimum, reducing the risk of residual overlap after smoothing.
 #
 # MTV_SCALE_TIME_BUFFER_FACTOR:
@@ -149,7 +153,7 @@ OBB_INTERVAL: float = 0.5   # Sampling interval for OBB box generation [s]
 # EXAMPLE: If conflict lasts 30s and factor=0.15, buffer = 4.5s per scale unit.
 # For scale=1.5: t_detour_start delayed by 2.25s, t_detour_end advanced by 2.25s.
 # ---
-RIGID_SHIFT_MTV_SCALE:          float = 3.0   # Internal MTV scale in Rigid Shift detour [dimensionless]
+RIGID_SHIFT_MTV_SCALE:          float = 2.0   # Internal MTV scale in Rigid Shift detour [dimensionless]
 MTV_SCALE_TIME_BUFFER_FACTOR:   float = 0.15  # Temporal buffer = conflict_duration * this factor
 
 # -----------------------------------------------------------------------------

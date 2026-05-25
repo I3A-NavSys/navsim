@@ -1,6 +1,7 @@
 import numpy as np
 
 from isaacsim.core.prims import RigidPrim
+from uspace.uav_conflict_resolver.core.config import UAV_MAX_SPEED
 
 class UAVControl:
     def __init__(self, rigid_prim_view: RigidPrim, uav_ids_to_physics_buffer: dict):
@@ -116,6 +117,7 @@ class UAVControl:
             running_data[6],  # crackels
         )
 
+        
         cmd_world_linear_vel, cmd_yaw_rotation = self.get_command(
             expected_pos,
             expected_vel,
@@ -542,12 +544,16 @@ class UAVControl:
         headings, 
         t_to_solve
     ):
-        correction_vel = (expected_pos - current_pos) / t_to_solve
+        correction_gain = 0.5
+        correction_vel = correction_gain * (expected_pos - current_pos) / max(t_to_solve, 1e-6)
 
         command_linear_vel = expected_vel + correction_vel
 
-        variation_vel = command_linear_vel - current_lin_vel
-        command_linear_vel = current_lin_vel + variation_vel
+        command_speed = np.linalg.norm(command_linear_vel, axis=1)
+        over_limit = command_speed > UAV_MAX_SPEED
+        if np.any(over_limit):
+            scale = (UAV_MAX_SPEED / np.maximum(command_speed[over_limit], 1e-9))[:, np.newaxis]
+            command_linear_vel[over_limit] = command_linear_vel[over_limit] * scale
 
         # Replace any [0,0] heading with the expected velocity direction
         mask = (headings[:, 0] == 0) & (headings[:, 1] == 0)

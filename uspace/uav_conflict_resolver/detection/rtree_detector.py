@@ -202,7 +202,8 @@ class RTreeDetector:
                     other_box = self.uavs[other_uav_id]["boxes"][other_box_idx]
                     
                     # Perform precise SAT collision detection
-                    if my_box.collides_with(other_box):
+                    is_collision, _ = my_box.collides_with(other_box)
+                    if is_collision:
                         conflicts.append({
                             "uav_a": current_uav_id,
                             "uav_b": other_uav_id,

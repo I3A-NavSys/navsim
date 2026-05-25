@@ -20,7 +20,7 @@ from matplotlib.collections import PathCollection
 from scipy.spatial.transform import Rotation
 
 from detection.conflictDetection import SweptBox_AABB, SweptBox_OBB
-from core.config import UAV_MAX_SPEED, UAV_MAX_ACCEL
+from core.config import UAV_MAX_SPEED, UAV_MAX_ACCEL, UAV_RADIUS
 
 
 from .waypoint import Waypoint
@@ -37,7 +37,7 @@ class FlightPlan:
     def __init__(self):
         self.id: int = 0
         self.priority: int = 0
-        self.radius: float = 1
+        self.radius: float = UAV_RADIUS
         self.max_var_lin_vel = 5        # maximum variation in linear  velocity   [  m/s]
         self.max_var_ang_vel = 1        # maximum variation in angular velocity   [rad/s]
         self.target_yaw = None
@@ -157,7 +157,7 @@ class FlightPlan:
     def from_dict(self, data: dict):
         self.id = data.get("id", 0)
         self.priority = data.get("priority", 0)
-        self.radius = data.get("radius", 1)
+        self.radius = data.get("radius", UAV_RADIUS)
         self.max_var_lin_vel = data.get("max_var_lin_vel", 5)
         self.max_var_ang_vel = data.get("max_var_ang_vel", 1)
         self.target_yaw = data.get("target_yaw", None)
@@ -185,7 +185,7 @@ class FlightPlan:
         jerks = [wp.jerk for wp in self.waypoints]
         snaps = [wp.snap for wp in self.waypoints]
         crackels = [wp.crakle for wp in self.waypoints]
-        headings = [wp.heading for wp in self.waypoints]
+        headings = [wp.heading if wp.heading is not None else [0, 0] for wp in self.waypoints]
         
         return [times, positions, velocities, accelerations, jerks, snaps, crackels, headings]
 
@@ -269,10 +269,28 @@ class FlightPlan:
         # Find the first waypoint with time greater than or equal to startTime
         index = self.get_target_index_from_time(startTime)
 
-        if index > 0 and timeStep < self.waypoints[index].time_to(self.waypoints[index-1]):
-            return  # Not enough time in the past
+        # If the requested postponement would move the waypoint earlier than
+        # the previous waypoint (overlap), abort. The original condition
+        # mistakenly returned when `timeStep` was *smaller* than the existing
+        # gap, producing a no-op and leaving subsequent waypoints too close
+        # to newly inserted ones (see hover detour failures). Use a more
+        # intuitive guard: if postponing by `timeStep` would make the target
+        # waypoint earlier than or equal to the previous one, abort.
+        if index > 0:
+            gap = self.waypoints[index].time_to(self.waypoints[index-1])
+            if timeStep < 0 and abs(timeStep) >= gap:
+                # Trying to move waypoint earlier beyond the previous waypoint
+                return
 
         for i in range(index, len(self.waypoints)):
+            # Do not postpone resolver-inserted hover markers; these are
+            # intentionally placed by the resolver and should keep their
+            # scheduled times relative to the anchor. Skipping labels that
+            # start with 'HOV_' avoids double-postponement when callers
+            # insert hover waypoints before calling postpone_from().
+            wp = self.waypoints[i]
+            if isinstance(wp.label, str) and wp.label.startswith("HOV_"):
+                continue
             self.waypoints[i].postpone(timeStep)
 
     def postpone(self, timeStep: float) -> None:
@@ -290,7 +308,7 @@ class FlightPlan:
         self,
         v_max: float = UAV_MAX_SPEED,
         a_max: float | None = UAV_MAX_ACCEL,
-        strict: bool = False,
+        strict: bool = True,
     ):
         """
         Computes the quintic-polynomial coefficients (jerk, snap, crakle) for
