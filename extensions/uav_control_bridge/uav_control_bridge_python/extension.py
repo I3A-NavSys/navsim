@@ -160,7 +160,7 @@ class UAVControlBridge(omni.ext.IExt):
     def _get_viz08_case(self):
         # Keep the runtime selection lightweight: an environment variable is easy
         # to document and avoids adding extra UI plumbing for this bridge.
-        case = os.getenv("UAV_CONTROL_BRIDGE_VIZ08_CASE", "original")
+        case = os.getenv("UAV_CONTROL_BRIDGE_VIZ08_CASE", "resolved")
         case = case.strip().lower()
         if case not in {"original", "resolved"}:
             return "original"

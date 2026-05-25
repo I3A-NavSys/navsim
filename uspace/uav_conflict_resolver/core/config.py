@@ -48,7 +48,7 @@ DIV_EPSILON: float = 1e-12
 # NEVER plan a maneuver at t=0 or before the UAV's scheduled departure (t_start).
 # -----------------------------------------------------------------------------
 WCET_SECONDS:           float = 3.0   # Worst-Case Execution Time of the resolver [s]
-SAFETY_MARGIN_SECONDS:  float = 1.0   # Additional buffer on top of WCET [s]
+SAFETY_MARGIN_SECONDS:  float = 3.0   # Additional buffer on top of WCET [s]
 ANCHOR_DELTA:           float = WCET_SECONDS + SAFETY_MARGIN_SECONDS  # = 3.0 s
 
 # -----------------------------------------------------------------------------
@@ -124,7 +124,7 @@ OBB_INTERVAL: float = 0.5   # Sampling interval for OBB box generation [s]
 
 # Default physical radius used when generating swept OBBs and AABBs
 # Represents the UAV's safety radius (half-width/half-height of OBB lateral axes) [m]
-UAV_RADIUS: float = 3
+UAV_RADIUS: float = 3.5
 
 # -----------------------------------------------------------------------------
 
@@ -138,7 +138,7 @@ UAV_RADIUS: float = 3
 #   Internal multiplier applied to the raw SAT MTV before displacing the
 #   detour point.  The SAT MTV is the *minimum* geometric separation; the
 #   quintic polynomial can reduce effective clearance by curving the path back
-#   toward the obstacle.  A factor of 3.0 adds a large safety margin on top
+#   toward the obstacle.  A factor of 2.0 adds a large safety margin on top
 #   of the bare minimum, reducing the risk of residual overlap after smoothing.
 #
 # MTV_SCALE_TIME_BUFFER_FACTOR:
@@ -153,7 +153,7 @@ UAV_RADIUS: float = 3
 # EXAMPLE: If conflict lasts 30s and factor=0.15, buffer = 4.5s per scale unit.
 # For scale=1.5: t_detour_start delayed by 2.25s, t_detour_end advanced by 2.25s.
 # ---
-RIGID_SHIFT_MTV_SCALE:          float = 3.0   # Internal MTV scale in Rigid Shift detour [dimensionless]
+RIGID_SHIFT_MTV_SCALE:          float = 2.0   # Internal MTV scale in Rigid Shift detour [dimensionless]
 MTV_SCALE_TIME_BUFFER_FACTOR:   float = 0.15  # Temporal buffer = conflict_duration * this factor
 
 # -----------------------------------------------------------------------------
