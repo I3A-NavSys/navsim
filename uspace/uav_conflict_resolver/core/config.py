@@ -158,12 +158,14 @@ MTV_SCALE_TIME_BUFFER_FACTOR:   float = 0.15  # Temporal buffer = conflict_durat
 
 # -----------------------------------------------------------------------------
 # SHADOW R-TREE (Forward Progress Margin)
-# Used by _validate_shadow to ensure any remaining conflicts after a maneuver
-# occur comfortably in the future, preventing immediate Temporal Domino Effects.
-# Must be strictly greater than the maximum S1_TIME_SHIFTS to prevent S1 
-# from accepting secondary conflicts caused by its own time-shift.
+# Used by _validate_temporary_swap to ensure any remaining conflicts after a
+# maneuver occur comfortably in the future, preventing immediate Temporal
+# Domino Effects.
+# This value must stay strictly greater than the largest S1_TIME_SHIFTS entry
+# so S1 does not accept a secondary conflict that is still too close to the
+# conflict being solved.
 # -----------------------------------------------------------------------------
-FORWARD_PROGRESS_MARGIN:        float = 3.0    # Time buffer for subsequent conflicts [s]
+FORWARD_PROGRESS_MARGIN:        float = max(S1_TIME_SHIFTS) + 2.0   # Time buffer for subsequent conflicts [s]
 
 # Constants for skipping intermediate waypoints during detour creation
 MIN_DETOUR_DURATION:     float = 5.0    # Minimum duration allocated for detour [s]

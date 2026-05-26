@@ -13,7 +13,7 @@ larger deltas to achieve the same spatial separation.
 
 from __future__ import annotations
 
-from typing import Optional, Callable
+from typing import Optional, Callable, Tuple
 import numpy as np
 import logging
 
@@ -93,7 +93,7 @@ def run_strategy1(
     fp_pleb:      FlightPlan,
     t_conflict:   float,
     validator_fn: Callable[[FlightPlan], bool],
-) -> Optional[FlightPlan]:
+) -> Tuple[Optional[FlightPlan], int]:
     """
     Shift the nearest waypoint timestamp by ±delta and call connect_waypoints().
     
@@ -104,13 +104,16 @@ def run_strategy1(
     Tries each base delta in S1_TIME_SHIFTS, computes its variable version based
     on UAV speed, then tries both ± directions.
     
-    Returns the first conflict-free plan found, or None.
+    Returns the first conflict-free plan found, or None, plus the number of
+    candidate plans that were actually evaluated.
     """
     if len(fp_pleb.waypoints) < 2:
-        return None
+        return None, 0
 
     nearest_idx = _find_nearest_waypoint(fp_pleb, t_conflict)
     log.debug(f"[S1] UAV {fp_pleb.id}: nearest WP={nearest_idx} at t={fp_pleb.waypoints[nearest_idx].t:.2f}s")
+
+    iterations = 0
 
     for base_delta in S1_TIME_SHIFTS:
         # Calculate velocity-adaptive delta
@@ -118,6 +121,7 @@ def run_strategy1(
         
         # Try both positive and negative shifts
         for sign_val, time_shift in [("+", variable_delta), ("-", -variable_delta)]:
+            iterations += 1
             candidate = fp_pleb.copy()
             old_t = candidate.waypoints[nearest_idx].t
             candidate.waypoints[nearest_idx].t += time_shift
@@ -131,9 +135,9 @@ def run_strategy1(
             if validator_fn(candidate):
                 log.info(f"[S1] ✓ UAV {fp_pleb.id}: WP[{nearest_idx}] shifted {sign_val}{variable_delta:.2f}s "
                          f"(t: {old_t:.2f}s → {candidate.waypoints[nearest_idx].t:.2f}s)")
-                return candidate
+                return candidate, iterations
             else:
                 log.debug(f"[S1] UAV {fp_pleb.id}: {sign_val}{variable_delta:.2f}s failed R-Tree validation")
 
     log.debug(f"[S1] UAV {fp_pleb.id}: all attempts exhausted")
-    return None
+    return None, iterations

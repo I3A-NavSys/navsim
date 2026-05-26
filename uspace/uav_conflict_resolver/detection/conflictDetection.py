@@ -11,8 +11,6 @@
 # If the UAV follows a curved path, we might need to sample points along the curve and create multiple SweptBoxes 
 # to better approximate the swept volume.
 
-# In the future, we could use the 7D formula for more exact sampling along curved trajectories.
-
 # We ended up using OBBs for better accuracy, but the AABB version is still available for comparison and visualization purposes.
 
 import numpy as np
@@ -23,6 +21,7 @@ from core.config import (
     SAT_EPSILON,
 )
 
+# This module about AABBs was considered at the begining of the project, it's not used currently.
 
 class SweptBox_AABB:
     def __init__(self, p_min, p_max, t_start, t_end):
@@ -244,27 +243,3 @@ class SweptBox_OBB:
         # If the loop finishes without returning False, they collide on all axes, so they collide.
         mtv_vector = mtv_axis * min_overlap
         return True, mtv_vector
-
-    def contains_point(self, point):
-        """
-        Checks if a given 3D point is strictly inside this Oriented Bounding Box.
-        
-        Args:
-            point: [x, y, z] coordinates of the point to check.
-            
-        Returns:
-            bool: True if the point is inside the OBB, False otherwise.
-        """
-        # Vector from the OBB's center to the target point
-        local_dir = np.array(point) - self.center
-        
-        for i in range(3):
-            # Project the distance vector onto the local axis of the OBB
-            projection = abs(np.dot(local_dir, self.axes[i]))
-            
-            # If the projection is larger than the box's half-length on this axis, 
-            # the point is outside the box. (Adding epsilon for floating-point safety)
-            if projection > self.half_extents[i] + EPSILON_ABSOLUTE:
-                return False
-                
-        return True

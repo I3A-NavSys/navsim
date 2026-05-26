@@ -48,15 +48,17 @@ INVARIANTS ENFORCED BY THIS CLASS:
        No while-true loops exist. The Fallback 2 hovering loop is explicitly
        capped at HOVER_MAX_TIMEOUT / HOVER_TIME_STEP iterations.
 
-    4. SHADOW VALIDATION: All candidate plans are validated in a shadow R-Tree
-       (never the live one) before acceptance.
+     4. TEMPORARY-SWAP VALIDATION: All candidate plans are validated against
+         the live detector by swapping the plebeian in and out safely before
+         acceptance.
 """
 
 from __future__ import annotations
 
+import time
 import numpy as np
 from dataclasses import dataclass, field
-from typing import Optional, TYPE_CHECKING
+from typing import Dict, Optional, TYPE_CHECKING
 
 from core.models.flight_plan import FlightPlan
 from core.models.waypoint import Waypoint
@@ -72,6 +74,7 @@ from core.config import (
     CRUISE_SPEED_FALLBACK,
     MIN_DETOUR_DURATION,
     MTV_SCALE_TIME_BUFFER_FACTOR,
+    S1_TIME_SHIFTS,
 )
 from resolution.geometry.sat_mtv import generate_mtv_candidates, SATResult
 from resolution.geometry.path_geometry import (
@@ -99,14 +102,19 @@ class ResolveResult:
         new_fp_pleb:   The new FlightPlan for the plebeian UAV (None on DEADLOCK).
         new_fp_vip:    Always None. The VIP is never modified (only the plebeian).
         iterations:    Total number of candidate plans evaluated across all phases.
+        phase_iterations:
+                       Per-phase candidate counts used by the resolver.
         message:       Human-readable summary for logging / debugging.
+        phase_times:   Breakdown of the resolve time by phase in milliseconds.
     """
     success:       bool                  = False
     strategy_used: str                   = "NONE"
     new_fp_pleb:   Optional[FlightPlan]  = None
     new_fp_vip:    Optional[FlightPlan]  = None
     iterations:    int                   = 0
+    phase_iterations: Dict[str, int]     = field(default_factory=dict)
     message:       str                   = ""
+    phase_times:   Dict[str, float]      = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -156,6 +164,21 @@ class ConflictResolver:
             ResolveResult with the outcome and the new FlightPlans (if successful).
         """
         total_iterations = 0
+        resolve_t0 = time.perf_counter()
+        phase_times: Dict[str, float] = {}
+        phase_iterations: Dict[str, int] = {}
+
+        def _finalize(result: ResolveResult) -> ResolveResult:
+            # Merge last validation metrics if available (populated by temporary-swap)
+            if hasattr(self, "_last_validation_info") and isinstance(self._last_validation_info, dict):
+                phase_times.update(self._last_validation_info)
+                # Clear it to avoid leaking between resolves
+                delattr(self, "_last_validation_info")
+
+            phase_times["resolve_total_ms"] = (time.perf_counter() - resolve_t0) * 1000.0
+            result.phase_times = dict(phase_times)
+            result.phase_iterations = dict(phase_iterations)
+            return result
 
         # =================================================================
         # Step 0: Compute anchor time (WCET invariant)
@@ -206,36 +229,38 @@ class ConflictResolver:
             )
 
         # =================================================================
-        # Step 1: Build shadow R-Tree ONCE for all strategies (S1/S2/FB1/FB2).
-        # This avoids re-registering every other UAV for each candidate.
-        # register_uav() already removes old boxes before inserting new
-        # ones, so successive candidate swaps are safe.
+        # Step 1: Validation uses a temporary swap on the live R-Tree.
+        # We do NOT build a separate shadow index anymore.
         # =================================================================
-        shadow = self._build_shadow_rtree(pleb_id)
+        shadow = self._manager
+        phase_times["shadow_build_ms"] = 0.0
 
         def _check_valid(candidate: FlightPlan) -> bool:
-            return self._validate_shadow(candidate, pleb_id, shadow, t_conflict)
+            return self._validate_temporary_swap(candidate, pleb_id, shadow, t_conflict)
 
         # =================================================================
         # Step 2: Strategy 1 — Kinematic Bounding (velocity-only)
         # =================================================================
-        result_s1 = run_strategy1(
+        phase_t0 = time.perf_counter()
+        result_s1, s1_iterations = run_strategy1(
             fp_pleb=fp_pleb,
             t_conflict=t_conflict,
             validator_fn=_check_valid,
         )
-
-        total_iterations += 1  # strategy 1 counts as a single "attempt unit"
+        phase_times["s1_ms"] = (time.perf_counter() - phase_t0) * 1000.0
+        phase_iterations["s1"] = s1_iterations
+        total_iterations += s1_iterations
 
         if result_s1 is not None:
-            return ResolveResult(
+            return _finalize(ResolveResult(
                 success=True,
                 strategy_used="S1",
                 new_fp_pleb=result_s1,
                 new_fp_vip=None,
                 iterations=total_iterations,
+                phase_iterations=dict(phase_iterations),
                 message="Strategy 1 (Kinematic Bounding) succeeded.",
-            )
+            ))
         else:
             print(f"[DEBUG S1] Kinematic Bounding FAILED for {pleb_id}")
             print(f"[DEBUG S1] Could not resolve conflict by velocity adjustments alone")
@@ -243,11 +268,13 @@ class ConflictResolver:
         # =================================================================
         # Step 3: Generate SAT MTV candidates for spatial strategies
         # =================================================================
+        phase_t0 = time.perf_counter()
         sat_result: SATResult = generate_mtv_candidates(
             conflict=conflict,
             manager=self._manager,
             flight_plan_pleb=fp_pleb,
         )
+        phase_times["sat_ms"] = (time.perf_counter() - phase_t0) * 1000.0
 
         if not sat_result.success:
             # SAT did not find a meaningful MTV — fall through to Fallback 2
@@ -269,6 +296,7 @@ class ConflictResolver:
         # Step 4: Strategy 2 — Horizontal Path Stretch
         # =================================================================
         print(f"[DEBUG S2] Attempting Strategy 2 (Horizontal Path Stretch) for {pleb_id}...")
+        phase_t0 = time.perf_counter()
         s2_result, iters = self._strategy2_horizontal_mtvs(
             fp_pleb=fp_pleb,
             fp_vip=fp_vip,
@@ -278,18 +306,21 @@ class ConflictResolver:
             conflict=conflict,
             shadow=shadow,
         )
+        phase_times["s2_ms"] = (time.perf_counter() - phase_t0) * 1000.0
+        phase_iterations["s2"] = iters
         total_iterations += iters
 
         if s2_result is not None:
             print(f"[DEBUG S2] SUCCESS! Resolved {pleb_id} with S2 after {iters} iterations")
-            return ResolveResult(
+            return _finalize(ResolveResult(
                 success=True,
                 strategy_used="S2",
                 new_fp_pleb=s2_result,
                 new_fp_vip=None,
                 iterations=total_iterations,
+                phase_iterations=dict(phase_iterations),
                 message="Strategy 2 (Horizontal Path Stretch) succeeded.",
-            )
+            ))
         else:
             print(f"[DEBUG S2] FAILED! No valid horizontal detour found after {iters} iterations")
 
@@ -299,6 +330,7 @@ class ConflictResolver:
         # horizontal ones: the flat top is displaced vertically.
         # =================================================================
         print(f"[DEBUG FB1] Attempting Fallback 1 (Vertical MTVs) for {pleb_id}...")
+        phase_t0 = time.perf_counter()
         fb1_result, iters = self._fallback1_vertical_mtvs(
             fp_pleb=fp_pleb,
             fp_vip=fp_vip,
@@ -308,22 +340,26 @@ class ConflictResolver:
             conflict=conflict,
             shadow=shadow,
         )
+        phase_times["fb1_ms"] = (time.perf_counter() - phase_t0) * 1000.0
+        phase_iterations["fb1"] = iters
         total_iterations += iters
 
         if fb1_result is not None:
             print(f"[DEBUG FB1] SUCCESS! Resolved {pleb_id} with FB1 after {iters} iterations")
-            return ResolveResult(
+            return _finalize(ResolveResult(
                 success=True,
                 strategy_used="FB1",
                 new_fp_pleb=fb1_result,
                 new_fp_vip=None,
                 iterations=total_iterations,
+                phase_iterations=dict(phase_iterations),
                 message="Fallback 1 (Vertical MTVs) succeeded.",
-            )
+            ))
 
         # =================================================================
         # Step 6: Fallback 2 — Hover
         # =================================================================
+        phase_t0 = time.perf_counter()
         fb2_result, iters = self._fallback2_hover(
             fp_pleb=fp_pleb,
             fp_vip=fp_vip,
@@ -331,57 +367,52 @@ class ConflictResolver:
             t_anchor=t_anchor,
             shadow=shadow,
         )
+        phase_times["fb2_ms"] = (time.perf_counter() - phase_t0) * 1000.0
+        phase_iterations["fb2"] = iters
         total_iterations += iters
 
         if fb2_result is not None:
-            return ResolveResult(
+            return _finalize(ResolveResult(
                 success=True,
                 strategy_used="FB2",
                 new_fp_pleb=fb2_result,
                 new_fp_vip=None,
                 iterations=total_iterations,
+                phase_iterations=dict(phase_iterations),
                 message="Fallback 2 (Hover) succeeded.",
-            )
+            ))
 
         # =================================================================
         # Step 7: DEADLOCK — all strategies exhausted
         # =================================================================
-        return ResolveResult(
+        return _finalize(ResolveResult(
             success=False,
             strategy_used="DEADLOCK",
             new_fp_pleb=None,
             new_fp_vip=None,
             iterations=total_iterations,
+            phase_iterations=dict(phase_iterations),
             message=(
                 f"DEADLOCK: All resolution strategies failed for plebeian '{pleb_id}' "
                 f"vs VIP '{vip_id}'. Mission abort required."
             ),
-        )
+        ))
 
     # ------------------------------------------------------------------
-    # Internal: R-Tree Shadow Validation
+    # Internal: Temporary Swap Validation
     # ------------------------------------------------------------------
 
-    def _build_shadow_rtree(self, pleb_id: str) -> "RTreeDetector":
-        """
-        Build a shadow R-Tree containing ALL UAVs EXCEPT the plebeian.
+    def _insert_boxes_into_index(
+        self,
+        detector: "RTreeDetector",
+        uav_id: str,
+        boxes,
+    ) -> None:
+        for i, box in enumerate(boxes):
+            entry_id = hash(f"{uav_id}_{i}")
+            detector.tree_index.insert(entry_id, box.get_4d_bounds(), obj=(uav_id, i))
 
-        This is created ONCE per resolve() call and reused across all
-        strategies (S2, FB1, FB2).  Only the plebeian's entry is swapped
-        in/out via register_uav(), which already removes old boxes before
-        inserting new ones — so no state leaks between candidates.
-
-        Returns:
-            A RTreeDetector with every UAV except pleb_id registered.
-        """
-        from detection.rtree_detector import RTreeDetector
-        shadow = RTreeDetector()
-        for uid, data in self._manager.uavs.items():
-            if uid != pleb_id:
-                shadow.register_uav(uid, data["fp"], interval=OBB_INTERVAL)
-        return shadow
-
-    def _validate_shadow(
+    def _validate_temporary_swap(
         self,
         candidate_fp: FlightPlan,
         pleb_id: str,
@@ -389,8 +420,8 @@ class ConflictResolver:
         t_conflict_being_solved: float = 0.0,
     ) -> bool:
         """
-        Swap the plebeian's entry in the pre-built shadow R-Tree with the
-        candidate FlightPlan and check for conflicts.
+        Temporarily swap the plebeian's plan into the live detector and
+        check conflicts against the rest of the already-registered UAVs.
 
         FORWARD PROGRESS GUARANTEE:
         If the route still contains conflicts, the system accepts it ONLY if 
@@ -398,18 +429,102 @@ class ConflictResolver:
         one we are actively solving. This allows CentralManager to resolve 
         multi-conflict scenarios iteratively without DEADLOCK.
         """
-        shadow.register_uav(pleb_id, candidate_fp, interval=OBB_INTERVAL)
-        conflicts = shadow.detect_all_conflicts(pleb_id)
-        if len(conflicts) == 0:
-            return True
-            
-        # Check for forward progress
-        conflicts.sort(key=lambda c: c["time_range"][0])
-        earliest_new_conflict = conflicts[0]["time_range"][0]
-        
-        # Accept if the earliest remaining conflict is further in the future
-        # (with safety margin)
-        return earliest_new_conflict >= t_conflict_being_solved + FORWARD_PROGRESS_MARGIN
+        manager = self._manager
+        original_data = manager.uavs.get(pleb_id)
+
+        if original_data is None:
+            t0 = time.perf_counter()
+            manager.register_uav(pleb_id, candidate_fp, interval=OBB_INTERVAL)
+            t_reg = (time.perf_counter() - t0) * 1000.0
+            try:
+                candidate_boxes_count = len(manager.uavs.get(pleb_id, {}).get("boxes", []))
+                print(f"[VALIDATION] live-swap: pleb={pleb_id} (was unregistered). register_time={t_reg:.1f}ms boxes={candidate_boxes_count}")
+                t0 = time.perf_counter()
+                conflicts = manager.detect_all_conflicts(pleb_id)
+                t_detect = (time.perf_counter() - t0) * 1000.0
+                print(f"[VALIDATION] detect_time={t_detect:.1f}ms conflicts={len(conflicts)}")
+
+                # store validation metrics for benchmark aggregation
+                self._last_validation_info = {
+                    "validation_method": "live-swap",
+                    "candidate_boxes": int(candidate_boxes_count),
+                    "original_boxes": 0,
+                    "candidate_gen_ms": 0.0,
+                    "candidate_register_ms": float(t_reg),
+                    "detect_ms": float(t_detect),
+                }
+
+                if len(conflicts) == 0:
+                    return True
+
+                conflicts.sort(key=lambda c: c["time_range"][0])
+                earliest_new_conflict = conflicts[0]["time_range"][0]
+                return earliest_new_conflict >= t_conflict_being_solved + FORWARD_PROGRESS_MARGIN
+            finally:
+                manager._remove_from_index(pleb_id)
+                manager.uavs.pop(pleb_id, None)
+
+        original_fp = original_data["fp"]
+        original_boxes = original_data["boxes"]
+
+        t0 = time.perf_counter()
+        candidate_boxes = candidate_fp.generate_swept_boxes_obb(interval=OBB_INTERVAL)
+        t_gen = (time.perf_counter() - t0) * 1000.0
+
+        candidate_inserted = False
+        try:
+            # remove original pleb boxes
+            t0 = time.perf_counter()
+            manager._remove_from_index(pleb_id)
+            t_rm = (time.perf_counter() - t0) * 1000.0
+
+            # insert candidate boxes
+            t0 = time.perf_counter()
+            manager.uavs[pleb_id] = {"boxes": candidate_boxes, "fp": candidate_fp}
+            self._insert_boxes_into_index(manager, pleb_id, candidate_boxes)
+            t_ins = (time.perf_counter() - t0) * 1000.0
+            candidate_inserted = True
+
+            print(f"[VALIDATION] pleb={pleb_id} live-swap: gen={len(candidate_boxes)}boxes {t_gen:.1f}ms, rm_orig={len(original_boxes)}boxes rm_time={t_rm:.1f}ms, ins_time={t_ins:.1f}ms")
+
+            t0 = time.perf_counter()
+            conflicts = manager.detect_all_conflicts(pleb_id)
+            t_detect = (time.perf_counter() - t0) * 1000.0
+            print(f"[VALIDATION] detect_time={t_detect:.1f}ms conflicts={len(conflicts)}")
+
+            # store validation metrics for benchmark aggregation
+            self._last_validation_info = {
+                "validation_method": "live-swap",
+                "candidate_boxes": int(len(candidate_boxes)),
+                "original_boxes": int(len(original_boxes)),
+                "candidate_gen_ms": float(t_gen),
+                "remove_original_ms": float(t_rm),
+                "candidate_insert_ms": float(t_ins),
+                "detect_ms": float(t_detect),
+            }
+
+            if len(conflicts) == 0:
+                return True
+
+            # Check for forward progress
+            conflicts.sort(key=lambda c: c["time_range"][0])
+            earliest_new_conflict = conflicts[0]["time_range"][0]
+            return earliest_new_conflict >= t_conflict_being_solved + FORWARD_PROGRESS_MARGIN
+        finally:
+            if candidate_inserted:
+                t0 = time.perf_counter()
+                manager._remove_from_index(pleb_id)
+                t_restore_rm = (time.perf_counter() - t0) * 1000.0
+            # restore original
+            t0 = time.perf_counter()
+            manager.uavs[pleb_id] = {"boxes": original_boxes, "fp": original_fp}
+            self._insert_boxes_into_index(manager, pleb_id, original_boxes)
+            t_restore_ins = (time.perf_counter() - t0) * 1000.0
+            print(f"[VALIDATION] restore: rm_time={locals().get('t_restore_rm', 0):.1f}ms reinsertion_time={t_restore_ins:.1f}ms")
+            # also expose restore times in last_validation_info if present
+            if hasattr(self, "_last_validation_info") and isinstance(self._last_validation_info, dict):
+                self._last_validation_info.setdefault("restore_remove_ms", float(locals().get('t_restore_rm', 0)))
+                self._last_validation_info.setdefault("restore_insert_ms", float(t_restore_ins))
 
     def _compute_conflict_origin(
         self,
@@ -597,11 +712,11 @@ class ConflictResolver:
                 iters_count += 1
 
                 # Global R-Tree validation (shadow)
-                if self._validate_shadow(candidate, pleb_id, shadow, conflict["time_range"][0]):
-                    print(f"[DEBUG S2]       -> Shadow validation SUCCESS! Detour is conflict-free.")
+                if self._validate_temporary_swap(candidate, pleb_id, shadow, conflict["time_range"][0]):
+                    print(f"[DEBUG S2]       -> Live validation SUCCESS! Detour is conflict-free.")
                     return candidate, iters_count
                 else:
-                    print(f"[DEBUG S2]       -> Shadow validation FAILED (detour causes secondary conflicts)")
+                    print(f"[DEBUG S2]       -> Live validation FAILED (detour causes secondary conflicts)")
 
         return None, iters_count
 
@@ -714,11 +829,11 @@ class ConflictResolver:
 
                 iters_count += 1
 
-                if self._validate_shadow(candidate, pleb_id, shadow, conflict["time_range"][0]):
-                    print(f"[DEBUG FB1]       -> Shadow validation SUCCESS! Vertical detour is conflict-free.")
+                if self._validate_temporary_swap(candidate, pleb_id, shadow, conflict["time_range"][0]):
+                    print(f"[DEBUG FB1]       -> Live validation SUCCESS! Vertical detour is conflict-free.")
                     return candidate, iters_count
                 else:
-                    print(f"[DEBUG FB1]       -> Shadow validation FAILED (vertical detour causes secondary conflicts)")
+                    print(f"[DEBUG FB1]       -> Live validation FAILED (vertical detour causes secondary conflicts)")
 
         return None, iters_count
 
@@ -793,7 +908,7 @@ class ConflictResolver:
                 print(f"[DEBUG FB2] Iter {iteration}: infeasible hover candidate -> {exc}")
                 continue
 
-            if self._validate_shadow(candidate, pleb_id, shadow, t_anchor):
+            if self._validate_temporary_swap(candidate, pleb_id, shadow, t_anchor):
                 return candidate, iteration
 
         # Timeout — DEADLOCK
