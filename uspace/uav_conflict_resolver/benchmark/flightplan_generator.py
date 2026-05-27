@@ -83,6 +83,47 @@ _LANDING_ALTITUDE = 30.0             # [m] above prism z_min
 _LATERAL_NOISE_FRACTION = 0.03
 
 
+def _pick_perimeter_anchor(
+    rng: np.random.Generator,
+    x_range: Tuple[float, float],
+    y_range: Tuple[float, float],
+    z_range: Tuple[float, float],
+    uav_id: int,
+    phase: str,
+) -> np.ndarray:
+    """Pick a start/end anchor on the prism perimeter to reduce endpoint clustering."""
+    x_span = x_range[1] - x_range[0]
+    y_span = y_range[1] - y_range[0]
+    x_margin = max(25.0, 0.08 * x_span)
+    y_margin = max(25.0, 0.08 * y_span)
+
+    lane_count = 12
+    x_lanes = np.linspace(x_range[0] + x_margin, x_range[1] - x_margin, lane_count)
+    y_lanes = np.linspace(y_range[0] + y_margin, y_range[1] - y_margin, lane_count)
+
+    # Use a stable side pattern so different UAVs do not all start/end on the same face.
+    base = uav_id if phase == "start" else uav_id + 3
+    side = base % 4
+    lane_idx = base % lane_count
+
+    z_anchor = z_range[0] + (_TAKEOFF_ALTITUDE if phase == "start" else _LANDING_ALTITUDE)
+    z_anchor = float(np.clip(z_anchor, z_range[0] + 1.0, z_range[1] - 1.0))
+
+    if side == 0:
+        point = np.array([x_range[0] + x_margin, y_lanes[lane_idx], z_anchor])
+    elif side == 1:
+        point = np.array([x_range[1] - x_margin, y_lanes[lane_idx], z_anchor])
+    elif side == 2:
+        point = np.array([x_lanes[lane_idx], y_range[0] + y_margin, z_anchor])
+    else:
+        point = np.array([x_lanes[lane_idx], y_range[1] - y_margin, z_anchor])
+
+    # Small jitter keeps different plans from being perfectly stacked on the lane.
+    point[0] = float(np.clip(point[0] + rng.uniform(-0.15, 0.15) * x_margin, x_range[0], x_range[1]))
+    point[1] = float(np.clip(point[1] + rng.uniform(-0.15, 0.15) * y_margin, y_range[0], y_range[1]))
+    return point
+
+
 # ============================================================================
 # Core Generator
 # ============================================================================
@@ -148,8 +189,15 @@ def generate_flight_plan(
     # ------------------------------------------------------------------
     # Step 2: Generate start and end positions
     # ------------------------------------------------------------------
-    start_pos = _random_point_in_prism(rng, x_range, y_range, z_range)
-    end_pos   = _random_point_in_prism(rng, x_range, y_range, z_range)
+    # For takeoff/landing missions, anchor the endpoints on separated
+    # perimeter lanes so the first and last segments are less likely to
+    # collide across different UAVs.
+    if takeoff_landing:
+        start_pos = _pick_perimeter_anchor(rng, x_range, y_range, z_range, uav_id, "start")
+        end_pos = _pick_perimeter_anchor(rng, x_range, y_range, z_range, uav_id, "end")
+    else:
+        start_pos = _random_point_in_prism(rng, x_range, y_range, z_range)
+        end_pos = _random_point_in_prism(rng, x_range, y_range, z_range)
 
     # Ensure minimum separation between start and end (at least 20% of prism diagonal)
     prism_diagonal = np.sqrt(
@@ -403,6 +451,259 @@ def generate_crossing_pair(
     fp2.connect_waypoints(v_max=v_max, a_max=a_max)
 
     return fp1, fp2
+
+
+def generate_straight_layered_flight_plan(
+    prism: Tuple[Tuple[float, float], ...] = DEFAULT_PRISM,
+    t_start: float = 0.0,
+    t_end: float = 120.0,
+    num_waypoints: Optional[int] = None,
+    speed_range: Tuple[float, float] = DEFAULT_SPEED_RANGE,
+    radius: float = DEFAULT_RADIUS,
+    max_lin_vel: float = UAV_MAX_SPEED,
+    max_ang_vel: float = DEFAULT_MAX_ANG_VEL,
+    v_max: float = UAV_MAX_SPEED,
+    a_max: Optional[float] = UAV_MAX_ACCEL,
+    uav_id: int = 0,
+    priority: int = 0,
+    seed: Optional[int] = None,
+    z_level: Optional[float] = None,
+    lane_y: Optional[float] = None,
+    parallel_axis: str = "x",
+    reverse: bool = False,
+    takeoff_landing: bool = True,
+    lateral_noise_fraction: float = 0.0,
+) -> FlightPlan:
+    """
+    Generate a mostly straight FlightPlan constrained to a cruise Z level.
+
+    The route is deliberately less erratic than generate_flight_plan():
+    - XY path is a straight corridor, either along X or along Y
+    - cruise happens at one fixed Z level
+    - waypoints are ALWAYS connected with strict=True
+    """
+    rng = np.random.default_rng(seed)
+
+    x_range, y_range, z_range = prism
+    if num_waypoints is None:
+        num_waypoints = 4
+    num_waypoints = max(3, num_waypoints)
+
+    total_time = max(t_end - t_start, 1.0)
+    max_route_distance = max_lin_vel * total_time * 0.65
+    xy_diag = np.sqrt((x_range[1] - x_range[0])**2 + (y_range[1] - y_range[0])**2)
+
+    # Pick a cruise level inside the prism bounds (with a small safety margin).
+    z_margin = 5.0
+    z_lo = z_range[0] + z_margin
+    z_hi = z_range[1] - z_margin
+    if z_level is None:
+        z_cruise = rng.uniform(z_lo, z_hi)
+    else:
+        z_cruise = float(np.clip(z_level, z_lo, z_hi))
+
+    if parallel_axis not in {"x", "y"}:
+        parallel_axis = "x"
+
+    if parallel_axis == "x":
+        start_xy = np.array([x_range[0] + 250.0, lane_y if lane_y is not None else rng.uniform(y_range[0] + 250.0, y_range[1] - 250.0)])
+        end_xy = np.array([x_range[1] - 250.0, start_xy[1]])
+    else:
+        start_xy = np.array([lane_y if lane_y is not None else rng.uniform(x_range[0] + 250.0, x_range[1] - 250.0), y_range[0] + 250.0])
+        end_xy = np.array([start_xy[0], y_range[1] - 250.0])
+
+    if reverse:
+        # Swap start and end to reverse direction along the corridor
+        start_xy, end_xy = end_xy.copy(), start_xy.copy()
+
+    # Keep the route inside the prism while preserving a straight corridor.
+    start_xy[0] = float(np.clip(start_xy[0], x_range[0] + 10.0, x_range[1] - 10.0))
+    start_xy[1] = float(np.clip(start_xy[1], y_range[0] + 10.0, y_range[1] - 10.0))
+    end_xy[0] = float(np.clip(end_xy[0], x_range[0] + 10.0, x_range[1] - 10.0))
+    end_xy[1] = float(np.clip(end_xy[1], y_range[0] + 10.0, y_range[1] - 10.0))
+
+    z_start = z_range[0] + _TAKEOFF_ALTITUDE if takeoff_landing else z_cruise
+    z_end = z_range[0] + _LANDING_ALTITUDE if takeoff_landing else z_cruise
+    z_start = float(np.clip(z_start, z_range[0], z_range[1]))
+    z_end = float(np.clip(z_end, z_range[0], z_range[1]))
+
+    start = np.array([start_xy[0], start_xy[1], z_start])
+    end = np.array([end_xy[0], end_xy[1], z_end])
+
+    # Build near-straight positions. Intermediate WPs stay at z_cruise.
+    positions: List[np.ndarray] = [start.copy()]
+    route_vec_xy = end_xy - start_xy
+    route_norm_xy = np.linalg.norm(route_vec_xy)
+
+    if route_norm_xy > 1e-6:
+        perp_xy = np.array([-route_vec_xy[1], route_vec_xy[0]]) / route_norm_xy
+    else:
+        perp_xy = np.array([1.0, 0.0])
+
+    for i in range(1, num_waypoints - 1):
+        progress = i / (num_waypoints - 1)
+        base_xy = start_xy + route_vec_xy * progress
+        envelope = np.sin(np.pi * progress)
+        offset_xy = perp_xy * (lateral_noise_fraction * xy_diag * envelope)
+        pos_xy = base_xy + offset_xy
+        wp_pos = np.array([
+            np.clip(pos_xy[0], x_range[0], x_range[1]),
+            np.clip(pos_xy[1], y_range[0], y_range[1]),
+            z_cruise,
+        ])
+        positions.append(wp_pos)
+
+    positions.append(end.copy())
+
+    # Time allocation by segment distance for near-constant cruise speed.
+    distances = [
+        np.linalg.norm(positions[i + 1] - positions[i])
+        for i in range(len(positions) - 1)
+    ]
+    total_distance = sum(distances)
+    min_feasible_time = total_distance / max_lin_vel if max_lin_vel > 1e-6 else total_time
+    if total_time < min_feasible_time:
+        total_time = min_feasible_time * 1.05
+
+    if total_distance < 1e-6:
+        times = np.linspace(t_start, t_end, len(positions)).tolist()
+    else:
+        times = [t_start]
+        for d in distances:
+            times.append(times[-1] + (d / total_distance) * total_time)
+        times[-1] = t_start + total_time
+
+    fp = FlightPlan()
+    fp.id = uav_id
+    fp.priority = priority
+    fp.radius = radius
+    fp.max_var_lin_vel = max_lin_vel
+    fp.max_var_ang_vel = max_ang_vel
+
+    for i, (pos, t) in enumerate(zip(positions, times)):
+        label = f"WP_{i}"
+        if i == 0:
+            label = "START"
+        elif i == len(positions) - 1:
+            label = "END"
+
+        if i == len(positions) - 1:
+            vel = np.zeros(3)
+        else:
+            dt = times[i + 1] - times[i]
+            direction = positions[i + 1] - positions[i]
+            norm = np.linalg.norm(direction)
+
+            if dt <= 0 or norm < 1e-6:
+                vel = np.zeros(3)
+            else:
+                if i == 0 and takeoff_landing:
+                    target_speed = min(speed_range[0], norm / dt, max_lin_vel)
+                else:
+                    target_speed = float(np.clip(norm / dt, speed_range[0], speed_range[1]))
+                vel = direction / norm * min(target_speed, max_lin_vel)
+
+        fp.set_waypoint(
+            Waypoint(
+                label=label,
+                t=round(t, 3),
+                pos=pos.tolist(),
+                vel=vel.tolist(),
+            )
+        )
+
+    # Required by caller: always enforce strict kinematic feasibility.
+    fp.connect_waypoints(v_max=v_max, a_max=a_max, strict=True)
+    return fp
+
+
+def generate_layered_straight_fleet(
+    n_uavs: int = 4,
+    prism: Tuple[Tuple[float, float], ...] = DEFAULT_PRISM,
+    t_start: float = 0.0,
+    t_end: float = 120.0,
+    radius: float = DEFAULT_RADIUS,
+    v_max: float = UAV_MAX_SPEED,
+    a_max: Optional[float] = UAV_MAX_ACCEL,
+    seed: Optional[int] = None,
+    levels: Optional[List[float]] = None,
+    num_waypoints: int = 4,
+    conflict_mode: bool = False,
+) -> List[FlightPlan]:
+    """
+    Generate a fleet with straight-ish routes distributed by Z levels.
+
+    Each UAV is assigned a cruise altitude in round-robin order from `levels`.
+    The routes are laid out as parallel corridors along X with one fixed Y lane
+    per UAV so the resulting fleet is organized, straight, and easy to read.
+    """
+    rng = np.random.default_rng(seed)
+    x_range, y_range, z_range = prism
+
+    if levels is None:
+        z_lo = z_range[0] + 15.0
+        z_hi = z_range[1] - 10.0
+        levels = [float(z) for z in np.arange(z_lo, z_hi + 1e-6, 20.0)]
+        if not levels:
+            levels = [float((z_range[0] + z_range[1]) * 0.5)]
+
+    # In conflict_mode we want fewer lanes and stronger temporal overlap
+    if conflict_mode:
+        # Collapse the fleet into a single altitude layer so XY crossings stay in 4D conflict space.
+        levels = [float((z_range[0] + z_range[1]) * 0.5)]
+        lane_count = max(2, int(np.ceil(n_uavs / 8)))
+        lane_positions = np.linspace(y_range[0] + 120.0, y_range[1] - 120.0, lane_count)
+        cross_positions = np.linspace(x_range[0] + 120.0, x_range[1] - 120.0, lane_count)
+    else:
+        lane_count = max(1, int(np.ceil(n_uavs / len(levels))))
+        lane_positions = np.linspace(y_range[0] + 300.0, y_range[1] - 300.0, lane_count)
+        cross_positions = np.linspace(x_range[0] + 300.0, x_range[1] - 300.0, lane_count)
+
+    fleet: List[FlightPlan] = []
+    mission_span = max(1.0, t_end - t_start)
+
+    for i in range(n_uavs):
+        if conflict_mode:
+            # Force the same mission window so temporal overlap is guaranteed.
+            uav_t_start = t_start
+            uav_t_end = t_end
+        else:
+            stagger = rng.uniform(0, 0.2) * mission_span
+            uav_t_start = t_start + stagger
+            uav_t_end = t_end - rng.uniform(0, 0.1) * mission_span
+
+        if uav_t_end <= uav_t_start + 10.0:
+            uav_t_end = uav_t_start + 60.0
+
+        level = float(levels[i % len(levels)])
+        lane_index = i // len(levels)
+        if conflict_mode:
+            lane_index = i % len(lane_positions)
+        lane_y = float(lane_positions[lane_index])
+        lane_x = float(cross_positions[lane_index])
+        parallel_axis = "x" if (i % 2 == 0) else "y"
+        reverse = bool(rng.random() < 0.5)
+        fp = generate_straight_layered_flight_plan(
+            prism=prism,
+            t_start=round(uav_t_start, 1),
+            t_end=round(uav_t_end, 1),
+            num_waypoints=num_waypoints,
+            radius=radius,
+            v_max=v_max,
+            a_max=a_max,
+            uav_id=i + 1,
+            priority=i,
+            seed=int(rng.integers(0, 2**31 - 1)),
+            z_level=level,
+            lane_y=lane_y if parallel_axis == "x" else lane_x,
+            parallel_axis=parallel_axis,
+            reverse=reverse,
+            takeoff_landing=False,
+            lateral_noise_fraction=0.0,
+        )
+        fleet.append(fp)
+
+    return fleet
 
 
 def generate_random_fleet(

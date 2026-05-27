@@ -402,16 +402,6 @@ class ConflictResolver:
     # Internal: Temporary Swap Validation
     # ------------------------------------------------------------------
 
-    def _insert_boxes_into_index(
-        self,
-        detector: "RTreeDetector",
-        uav_id: str,
-        boxes,
-    ) -> None:
-        for i, box in enumerate(boxes):
-            entry_id = hash(f"{uav_id}_{i}")
-            detector.tree_index.insert(entry_id, box.get_4d_bounds(), obj=(uav_id, i))
-
     def _validate_temporary_swap(
         self,
         candidate_fp: FlightPlan,
@@ -420,8 +410,8 @@ class ConflictResolver:
         t_conflict_being_solved: float = 0.0,
     ) -> bool:
         """
-        Temporarily swap the plebeian's plan into the live detector and
-        check conflicts against the rest of the already-registered UAVs.
+        Validate a candidate plebeian plan against the live detector without
+        physically inserting the candidate into the index.
 
         FORWARD PROGRESS GUARANTEE:
         If the route still contains conflicts, the system accepts it ONLY if 
@@ -431,100 +421,42 @@ class ConflictResolver:
         """
         manager = self._manager
         original_data = manager.uavs.get(pleb_id)
-
-        if original_data is None:
-            t0 = time.perf_counter()
-            manager.register_uav(pleb_id, candidate_fp, interval=OBB_INTERVAL)
-            t_reg = (time.perf_counter() - t0) * 1000.0
-            try:
-                candidate_boxes_count = len(manager.uavs.get(pleb_id, {}).get("boxes", []))
-                print(f"[VALIDATION] live-swap: pleb={pleb_id} (was unregistered). register_time={t_reg:.1f}ms boxes={candidate_boxes_count}")
-                t0 = time.perf_counter()
-                conflicts = manager.detect_all_conflicts(pleb_id)
-                t_detect = (time.perf_counter() - t0) * 1000.0
-                print(f"[VALIDATION] detect_time={t_detect:.1f}ms conflicts={len(conflicts)}")
-
-                # store validation metrics for benchmark aggregation
-                self._last_validation_info = {
-                    "validation_method": "live-swap",
-                    "candidate_boxes": int(candidate_boxes_count),
-                    "original_boxes": 0,
-                    "candidate_gen_ms": 0.0,
-                    "candidate_register_ms": float(t_reg),
-                    "detect_ms": float(t_detect),
-                }
-
-                if len(conflicts) == 0:
-                    return True
-
-                conflicts.sort(key=lambda c: c["time_range"][0])
-                earliest_new_conflict = conflicts[0]["time_range"][0]
-                return earliest_new_conflict >= t_conflict_being_solved + FORWARD_PROGRESS_MARGIN
-            finally:
-                manager._remove_from_index(pleb_id)
-                manager.uavs.pop(pleb_id, None)
-
-        original_fp = original_data["fp"]
-        original_boxes = original_data["boxes"]
+        original_boxes_count = len(original_data["boxes"]) if original_data is not None else 0
 
         t0 = time.perf_counter()
         candidate_boxes = candidate_fp.generate_swept_boxes_obb(interval=OBB_INTERVAL)
         t_gen = (time.perf_counter() - t0) * 1000.0
 
-        candidate_inserted = False
-        try:
-            # remove original pleb boxes
-            t0 = time.perf_counter()
-            manager._remove_from_index(pleb_id)
-            t_rm = (time.perf_counter() - t0) * 1000.0
+        t0 = time.perf_counter()
+        conflicts = manager.detect_candidate_conflicts(
+            candidate_boxes=candidate_boxes,
+            candidate_uav_id=pleb_id,
+            early_exit=False,
+        )
+        t_detect = (time.perf_counter() - t0) * 1000.0
 
-            # insert candidate boxes
-            t0 = time.perf_counter()
-            manager.uavs[pleb_id] = {"boxes": candidate_boxes, "fp": candidate_fp}
-            self._insert_boxes_into_index(manager, pleb_id, candidate_boxes)
-            t_ins = (time.perf_counter() - t0) * 1000.0
-            candidate_inserted = True
+        print(
+            f"[VALIDATION] pleb={pleb_id} candidate-query: "
+            f"gen={len(candidate_boxes)}boxes {t_gen:.1f}ms, "
+            f"detect_time={t_detect:.1f}ms conflicts={len(conflicts)}"
+        )
 
-            print(f"[VALIDATION] pleb={pleb_id} live-swap: gen={len(candidate_boxes)}boxes {t_gen:.1f}ms, rm_orig={len(original_boxes)}boxes rm_time={t_rm:.1f}ms, ins_time={t_ins:.1f}ms")
+        # Store validation metrics for benchmark aggregation.
+        self._last_validation_info = {
+            "validation_method": "candidate-query",
+            "candidate_boxes": int(len(candidate_boxes)),
+            "original_boxes": int(original_boxes_count),
+            "candidate_gen_ms": float(t_gen),
+            "detect_ms": float(t_detect),
+        }
 
-            t0 = time.perf_counter()
-            conflicts = manager.detect_all_conflicts(pleb_id)
-            t_detect = (time.perf_counter() - t0) * 1000.0
-            print(f"[VALIDATION] detect_time={t_detect:.1f}ms conflicts={len(conflicts)}")
+        if len(conflicts) == 0:
+            return True
 
-            # store validation metrics for benchmark aggregation
-            self._last_validation_info = {
-                "validation_method": "live-swap",
-                "candidate_boxes": int(len(candidate_boxes)),
-                "original_boxes": int(len(original_boxes)),
-                "candidate_gen_ms": float(t_gen),
-                "remove_original_ms": float(t_rm),
-                "candidate_insert_ms": float(t_ins),
-                "detect_ms": float(t_detect),
-            }
-
-            if len(conflicts) == 0:
-                return True
-
-            # Check for forward progress
-            conflicts.sort(key=lambda c: c["time_range"][0])
-            earliest_new_conflict = conflicts[0]["time_range"][0]
-            return earliest_new_conflict >= t_conflict_being_solved + FORWARD_PROGRESS_MARGIN
-        finally:
-            if candidate_inserted:
-                t0 = time.perf_counter()
-                manager._remove_from_index(pleb_id)
-                t_restore_rm = (time.perf_counter() - t0) * 1000.0
-            # restore original
-            t0 = time.perf_counter()
-            manager.uavs[pleb_id] = {"boxes": original_boxes, "fp": original_fp}
-            self._insert_boxes_into_index(manager, pleb_id, original_boxes)
-            t_restore_ins = (time.perf_counter() - t0) * 1000.0
-            print(f"[VALIDATION] restore: rm_time={locals().get('t_restore_rm', 0):.1f}ms reinsertion_time={t_restore_ins:.1f}ms")
-            # also expose restore times in last_validation_info if present
-            if hasattr(self, "_last_validation_info") and isinstance(self._last_validation_info, dict):
-                self._last_validation_info.setdefault("restore_remove_ms", float(locals().get('t_restore_rm', 0)))
-                self._last_validation_info.setdefault("restore_insert_ms", float(t_restore_ins))
+        # Check for forward progress
+        conflicts.sort(key=lambda c: c["time_range"][0])
+        earliest_new_conflict = conflicts[0]["time_range"][0]
+        return earliest_new_conflict >= t_conflict_being_solved + FORWARD_PROGRESS_MARGIN
 
     def _compute_conflict_origin(
         self,

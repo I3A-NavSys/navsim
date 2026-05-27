@@ -168,7 +168,7 @@ def build_viz08_plans(n_uavs: int = 5) -> Tuple[Dict[str, FlightPlan], Dict[str,
         if not conflicts:
             break
 
-        sweep_results = manager.check_and_resolve_all()
+        sweep_results = manager.single_solve_sweep()
         if not sweep_results:
             break
 

@@ -215,7 +215,7 @@ def run_visualizer():
             break
 
         print(f"  Sweep {sweep_idx + 1}: {len(conflicts)} unique conflicts")
-        sweep_results = manager.check_and_resolve_all()
+        sweep_results = manager.single_solve_sweep()
 
         if not sweep_results:
             print(f"  Sweep {sweep_idx + 1}: no successful resolutions in this pass.")

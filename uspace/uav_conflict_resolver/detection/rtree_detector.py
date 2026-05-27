@@ -23,6 +23,7 @@ class RTreeDetector:
         # This allows us to perform spatial-temporal queries efficiently
         p = index.Property()
         p.dimension = 4  # 4D index: X, Y, Z (spatial), T (temporal)
+        self._properties = p
         self.tree_index = index.Index(properties=p)
         
         # Dictionary to store all registered UAVs in the system
@@ -30,6 +31,76 @@ class RTreeDetector:
         # - "boxes": list of swept-volume bounding boxes for the UAV's trajectory
         # - "fp": the FlightPlan object containing waypoints and trajectory data
         self.uavs = {}
+        # entry_id -> (uav_id, box_index, bounds)
+        self.entry_map = {}
+        # uav_id -> [entry_id, ...]
+        self.uav_entry_ids = {}
+        # Monotonic deterministic id generator for R-Tree entries
+        self._next_entry_id = 1
+
+    def _new_entry_id(self):
+        entry_id = self._next_entry_id
+        self._next_entry_id += 1
+        return entry_id
+
+    def _validate_bounds(self, bounds):
+        if bounds is None or len(bounds) != 8:
+            raise ValueError(f"Invalid 4D bounds length: expected 8 values, got {bounds}")
+
+        if not all(float("-inf") < float(v) < float("inf") for v in bounds):
+            raise ValueError(f"Invalid 4D bounds: non-finite values found {bounds}")
+
+        if bounds[0] > bounds[4] or bounds[1] > bounds[5] or bounds[2] > bounds[6] or bounds[3] > bounds[7]:
+            raise ValueError(f"Invalid 4D bounds ordering (min > max): {bounds}")
+
+    def _resolve_entry(self, entry_id):
+        meta = self.entry_map.get(entry_id)
+        if meta is None:
+            return None
+
+        other_uav_id, other_box_idx, _ = meta
+        other_data = self.uavs.get(other_uav_id)
+        if other_data is None:
+            return None
+
+        if other_box_idx < 0 or other_box_idx >= len(other_data["boxes"]):
+            return None
+
+        return other_uav_id, other_box_idx
+
+    def bulk_register_uavs(self, uav_entries, interval=0.5):
+        """
+        Bulk-register multiple UAVs in one shot and rebuild the index using STR bulk-load.
+
+        Args:
+            uav_entries: iterable of (uav_id, flight_plan)
+            interval: interval used to generate OBB swept boxes
+        """
+        self.uavs = {}
+        self.entry_map = {}
+        self.uav_entry_ids = {}
+        self._next_entry_id = 1
+
+        bulk_items = []
+        for uav_id, flight_plan in uav_entries:
+            boxes = flight_plan.generate_swept_boxes_obb(interval=interval)
+            self.uavs[uav_id] = {"boxes": boxes, "fp": flight_plan}
+            self.uav_entry_ids[uav_id] = []
+
+            for i, box in enumerate(boxes):
+                bounds = box.get_4d_bounds()
+                self._validate_bounds(bounds)
+                entry_id = self._new_entry_id()
+                # libspatialindex bulk stream expects (id, bounds, obj)
+                # We keep obj=None to avoid storing per-entry Python metadata in the index.
+                bulk_items.append((entry_id, bounds, None))
+                self.entry_map[entry_id] = (uav_id, i, bounds)
+                self.uav_entry_ids[uav_id].append(entry_id)
+
+        if bulk_items:
+            self.tree_index = index.Index(bulk_items, properties=self._properties)
+        else:
+            self.tree_index = index.Index(properties=self._properties)
 
     def register_uav(self, uav_id, flight_plan, interval=0.5):
         """
@@ -55,15 +126,17 @@ class RTreeDetector:
         
         # Store the UAV's data in our internal dictionary for quick access
         self.uavs[uav_id] = {"boxes": boxes, "fp": flight_plan}
+        self.uav_entry_ids[uav_id] = []
         
         # Insert each swept box into the 4D R-Tree spatial index for later collision queries
         for i, box in enumerate(boxes):
-            # Generate a unique entry ID by combining UAV ID and box index with hash()
-            entry_id = hash(f"{uav_id}_{i}")
-            
-            # Insert into R-Tree with 4D bounds (x_min, y_min, z_min, t_min, x_max, y_max, z_max, t_max)
-            # obj parameter stores metadata: (uav_id, box_index) for later reference
-            self.tree_index.insert(entry_id, box.get_4d_bounds(), obj=(uav_id, i))
+            bounds = box.get_4d_bounds()
+            self._validate_bounds(bounds)
+
+            entry_id = self._new_entry_id()
+            self.tree_index.insert(entry_id, bounds)
+            self.entry_map[entry_id] = (uav_id, i, bounds)
+            self.uav_entry_ids[uav_id].append(entry_id)
 
     def _remove_from_index(self, uav_id):
         """
@@ -74,17 +147,16 @@ class RTreeDetector:
             uav_id: The unique identifier of the UAV whose boxes should be removed
         """
         # Safety check: ensure the UAV exists in our tracking dictionary
-        if uav_id not in self.uavs: 
-            return
-        
-        # Iterate through all swept boxes of this UAV and remove them from the R-Tree
-        for i, box in enumerate(self.uavs[uav_id]["boxes"]):
-            # Reconstruct the same entry ID used during insertion
-            entry_id = hash(f"{uav_id}_{i}")
-            
-            # Delete the entry from the R-Tree using its ID and 4D bounds
-            # This prevents orphaned entries when updating flight plans
-            self.tree_index.delete(entry_id, box.get_4d_bounds())
+        entry_ids = self.uav_entry_ids.get(uav_id, [])
+        for entry_id in entry_ids:
+            meta = self.entry_map.get(entry_id)
+            if meta is None:
+                continue
+            _, _, bounds = meta
+            self.tree_index.delete(entry_id, bounds)
+            del self.entry_map[entry_id]
+
+        self.uav_entry_ids[uav_id] = []
 
     def detect_all_conflicts(self, target_uav_id):
         """
@@ -122,13 +194,14 @@ class RTreeDetector:
             # ========== PHASE 1: BROAD-PHASE FILTERING ==========
             # Query the R-Tree to find all boxes that spatially overlap with my_box
             # in 4D space (x, y, z, time). This is very fast due to R-Tree efficiency.
-            # The objects=True parameter returns associated metadata with each hit
-            potential_hits = self.tree_index.intersection(my_box.get_4d_bounds(), objects=True)
+            potential_hits = self.tree_index.intersection(my_box.get_4d_bounds())
             
             # Process each object that passed the broad-phase filter
-            for item in potential_hits:
-                # Extract the stored metadata: (uav_id, box_index) from the R-Tree entry
-                other_uav_id, other_box_idx = item.object
+            for entry_id in potential_hits:
+                resolved = self._resolve_entry(entry_id)
+                if resolved is None:
+                    continue
+                other_uav_id, other_box_idx = resolved
                 
                 # Skip self-collision: don't check a UAV against itself
                 if other_uav_id == target_uav_id: 
@@ -156,6 +229,58 @@ class RTreeDetector:
                     })
         
         return conflicts
+
+    def detect_candidate_conflicts(self, candidate_boxes, candidate_uav_id=None, early_exit: bool = True):
+        """
+        Detect conflicts between a set of candidate OBBs and the currently indexed UAVs
+        WITHOUT inserting the candidate boxes into the R-Tree.
+
+        This is intended for validating a proposed route/strategy quickly: for each
+        candidate swept box we query the existing R-Tree for potential overlaps and
+        run the narrow-phase SAT check only on hits. Optionally returns immediately on
+        the first detected conflict (`early_exit=True`).
+
+        Args:
+            candidate_boxes: iterable/list of SweptBox_OBB for the candidate route
+            candidate_uav_id: optional id of the candidate UAV (used to skip self-hits)
+            early_exit: if True return as soon as any conflict is found
+
+        Returns:
+            List of conflict dicts (same format as `detect_all_conflicts`) — empty if none.
+        """
+        conflicts = []
+
+        for i, my_box in enumerate(candidate_boxes):
+            potential_hits = self.tree_index.intersection(my_box.get_4d_bounds())
+
+            for entry_id in potential_hits:
+                resolved = self._resolve_entry(entry_id)
+                if resolved is None:
+                    continue
+                other_uav_id, other_box_idx = resolved
+
+                # Skip if the hit corresponds to the same UAV (when candidate is an update)
+                if candidate_uav_id is not None and str(other_uav_id) == str(candidate_uav_id):
+                    continue
+
+                # Narrow-phase: precise SAT collision test
+                other_box = self.uavs[other_uav_id]["boxes"][other_box_idx]
+                is_collision, mtv_vector = my_box.collides_with(other_box)
+
+                if is_collision:
+                    conflicts.append({
+                        "uav_a": candidate_uav_id if candidate_uav_id is not None else "candidate",
+                        "uav_b": other_uav_id,
+                        "box_a_idx": i,
+                        "box_b_idx": other_box_idx,
+                        "time_range": my_box.t_range,
+                        "mtv": mtv_vector,
+                    })
+
+                    if early_exit:
+                        return conflicts
+
+        return conflicts
     
     def detect_all_conflicts_system_wide(self):
         """
@@ -180,11 +305,14 @@ class RTreeDetector:
             for box_idx, my_box in enumerate(current_boxes):
                 # ========== PHASE 1: BROAD-PHASE FILTERING ==========
                 # Use R-Tree to find only nearby boxes in space-time (efficient O(log N))
-                potential_hits = self.tree_index.intersection(my_box.get_4d_bounds(), objects=True)
+                potential_hits = self.tree_index.intersection(my_box.get_4d_bounds())
                 
                 # Process each candidate found by R-Tree
-                for item in potential_hits:
-                    other_uav_id, other_box_idx = item.object
+                for entry_id in potential_hits:
+                    resolved = self._resolve_entry(entry_id)
+                    if resolved is None:
+                        continue
+                    other_uav_id, other_box_idx = resolved
                     
                     # Skip self-collisions
                     if other_uav_id == current_uav_id:

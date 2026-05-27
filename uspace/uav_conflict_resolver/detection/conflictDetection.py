@@ -111,9 +111,20 @@ class SweptBox_OBB:
         p_min = self.center - r
         p_max = self.center + r
         
+        bounds = (
+            float(p_min[0]), float(p_min[1]), float(p_min[2]), float(self.t_range[0]),
+            float(p_max[0]), float(p_max[1]), float(p_max[2]), float(self.t_range[1])
+        )
+
+        # Defensive validation: invalid bounds can silently break broad-phase detection.
+        if not np.all(np.isfinite(bounds)):
+            raise ValueError(f"Invalid 4D bounds: non-finite values found {bounds}")
+
+        if bounds[0] > bounds[4] or bounds[1] > bounds[5] or bounds[2] > bounds[6] or bounds[3] > bounds[7]:
+            raise ValueError(f"Invalid 4D bounds ordering (min > max): {bounds}")
+
         # Return (xmin, ymin, zmin, tmin, xmax, ymax, zmax, tmax)
-        return (p_min[0], p_min[1], p_min[2], self.t_range[0],
-                p_max[0], p_max[1], p_max[2], self.t_range[1])
+        return bounds
     
     def get_corners(self): # JUST FOR VISUALIZATION PURPOSES
         """Get the 8 corners of the OBB."""

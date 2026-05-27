@@ -157,7 +157,7 @@ RIGID_SHIFT_MTV_SCALE:          float = 2.0   # Internal MTV scale in Rigid Shif
 MTV_SCALE_TIME_BUFFER_FACTOR:   float = 0.15  # Temporal buffer = conflict_duration * this factor
 
 # -----------------------------------------------------------------------------
-# SHADOW R-TREE (Forward Progress Margin)
+# Forward Progress Margin
 # Used by _validate_temporary_swap to ensure any remaining conflicts after a
 # maneuver occur comfortably in the future, preventing immediate Temporal
 # Domino Effects.

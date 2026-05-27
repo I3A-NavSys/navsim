@@ -122,6 +122,7 @@ class CentralManager:
     def check_and_resolve(
         self,
         target_uav_id: str,
+        interval: float = OBB_INTERVAL,
     ) -> Optional[ResolveResult]:
         """
         Detect all conflicts for target_uav_id and, if any are found,
@@ -214,12 +215,14 @@ class CentralManager:
                     pleb_id,
                     result.new_fp_pleb,
                     priority=self._priorities.get(pleb_id, 0),
+                    interval=interval,
                 )
             if result.new_fp_vip is not None:
                 self.register_uav(
                     vip_id,
                     result.new_fp_vip,
                     priority=self._priorities.get(vip_id, 0),
+                    interval=interval,
                 )
         else:
             logger.error(
@@ -233,7 +236,7 @@ class CentralManager:
     # Convenience: system-wide sweep
     # ------------------------------------------------------------------
 
-    def check_and_resolve_all(self) -> Dict[str, ResolveResult]:
+    def single_solve_sweep(self, interval: float = OBB_INTERVAL) -> Dict[str, ResolveResult]:
         """
         Run check_and_resolve for every registered UAV in priority order
         (lowest priority first, so VIPs are never the target of modification).
@@ -249,8 +252,61 @@ class CentralManager:
 
         results: Dict[str, Optional[ResolveResult]] = {}
         for uav_id in ordered_ids:
-            result = self.check_and_resolve(uav_id)
+            result = self.check_and_resolve(uav_id, interval=interval)
             if result is not None:
                 results[uav_id] = result
 
         return results
+
+    def solve_all(self, max_sweeps: int = 300, interval: float = OBB_INTERVAL) -> dict:
+        """
+        Iteratively resolve system-wide conflicts until the airspace stabilizes.
+
+        The manager performs repeated global sweeps. Each sweep checks whether
+        any conflicts remain, then runs a priority-ordered resolution pass. The
+        loop stops when the system is clear, when a sweep makes no progress, or
+        when the sweep limit is reached.
+        """
+        import time
+
+        summary = {
+            "sweeps": 0,
+            "attempted": 0,
+            "resolved": 0,
+            "deadlocks": 0,
+            "remaining_conflicts": 0,
+            "stabilized": False,
+        }
+
+        t0 = time.perf_counter()
+
+        for _ in range(max_sweeps):
+            conflicts = self._rtree_detector.detect_all_conflicts_system_wide()
+            if not conflicts:
+                summary["stabilized"] = True
+                break
+
+            summary["sweeps"] += 1
+            sweep_results = self.single_solve_sweep(interval=interval)
+
+            if not sweep_results:
+                break
+
+            resolved_this_sweep = 0
+            for result in sweep_results.values():
+                summary["attempted"] += 1
+                if result.success:
+                    summary["resolved"] += 1
+                    resolved_this_sweep += 1
+                else:
+                    summary["deadlocks"] += 1
+
+            if resolved_this_sweep == 0:
+                break
+
+        summary["remaining_conflicts"] = len(self._rtree_detector.detect_all_conflicts_system_wide())
+        summary["stabilized"] = summary["remaining_conflicts"] == 0
+        summary["time_s"] = time.perf_counter() - t0
+        summary["max_sweeps"] = max_sweeps
+        summary["interval"] = interval
+        return summary
