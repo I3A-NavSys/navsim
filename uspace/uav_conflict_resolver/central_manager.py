@@ -36,7 +36,7 @@ PRIORITY CONVENTION:
 from __future__ import annotations
 
 import logging
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from core.models.flight_plan import FlightPlan
 from core.config import OBB_INTERVAL
@@ -107,6 +107,29 @@ class CentralManager:
             f"(priority={priority} -> {normalized_priority})"
         )
 
+    def bulk_register_uavs(
+        self,
+        uav_entries,
+        priority_map: Optional[Dict[str, int]] = None,
+        interval: float = OBB_INTERVAL,
+    ) -> None:
+        """
+        Register a complete fleet in one shot and rebuild the detector index.
+
+        Args:
+            uav_entries: iterable of (uav_id, flight_plan) pairs.
+            priority_map: optional uav_id -> priority mapping.
+            interval: OBB sampling interval [s] for all flight plans.
+        """
+        entries = list(uav_entries)
+        self._flight_plans = {uav_id: flight_plan for uav_id, flight_plan in entries}
+        self._priorities = {
+            uav_id: self._normalize_priority((priority_map or {}).get(uav_id, 0))
+            for uav_id, _ in entries
+        }
+        self._rtree_detector.bulk_register_uavs(entries, interval=interval)
+        logger.debug(f"[CentralManager] Bulk registered {len(entries)} UAVs.")
+
     def get_flight_plan(self, uav_id: str) -> Optional[FlightPlan]:
         """
         Retrieve the current (possibly updated) FlightPlan for a UAV.
@@ -114,6 +137,16 @@ class CentralManager:
         Returns None if the UAV is not registered.
         """
         return self._flight_plans.get(uav_id)
+
+    def remove_uav(self, uav_id: str) -> None:
+        """
+        Remove a UAV from the manager and the detector.
+
+        This is used when a newly inserted route cannot be accepted.
+        """
+        self._flight_plans.pop(uav_id, None)
+        self._priorities.pop(uav_id, None)
+        self._rtree_detector.remove_uav(uav_id)
 
     # ------------------------------------------------------------------
     # Conflict Detection + Resolution
@@ -153,7 +186,6 @@ class CentralManager:
         # 1. Detect all conflicts for this UAV
         # ------------------------------------------------------------------
         conflicts = self._rtree_detector.detect_all_conflicts(target_uav_id)
-
         if not conflicts:
             logger.debug(f"[CentralManager] No conflicts detected for '{target_uav_id}'.")
             return None
@@ -163,7 +195,6 @@ class CentralManager:
         # ------------------------------------------------------------------
         conflicts.sort(key=lambda c: c["time_range"][0])
         conflict = conflicts[0]
-
         uav_a_id = conflict["uav_a"]
         uav_b_id = conflict["uav_b"]
 
@@ -174,15 +205,14 @@ class CentralManager:
         priority_b = self._priorities.get(uav_b_id, 0)
 
         if priority_a >= priority_b:
-            # UAV A is the VIP unless both priorities are equal and B wins by ID.
             if priority_a == priority_b and uav_a_id > uav_b_id:
-                vip_id,  pleb_id  = uav_b_id, uav_a_id
+                vip_id, pleb_id = uav_b_id, uav_a_id
             else:
-                vip_id,  pleb_id  = uav_a_id, uav_b_id
+                vip_id, pleb_id = uav_a_id, uav_b_id
         else:
-            vip_id,  pleb_id  = uav_b_id, uav_a_id
+            vip_id, pleb_id = uav_b_id, uav_a_id
 
-        fp_vip  = self._flight_plans[vip_id]
+        fp_vip = self._flight_plans[vip_id]
         fp_pleb = self._flight_plans[pleb_id]
 
         logger.info(
@@ -209,7 +239,6 @@ class CentralManager:
                 f"[CentralManager] Resolved via {result.strategy_used} "
                 f"in {result.iterations} iteration(s). {result.message}"
             )
-            # Update registry and R-Tree with the new conflict-free plans
             if result.new_fp_pleb is not None:
                 self.register_uav(
                     pleb_id,
@@ -231,6 +260,102 @@ class CentralManager:
             )
 
         return result
+
+    def resolve_until_clear(
+        self,
+        target_uav_id: str,
+        interval: float = OBB_INTERVAL,
+        max_passes: int = 300,
+    ) -> Optional[ResolveResult]:
+        """
+        Keep resolving the target UAV until it has no remaining conflicts.
+
+        This is the entry point to use when a newly inserted flight plan may
+        contain several separated conflict periods. The method resolves the
+        earliest conflict first, commits the updated plan, and then re-checks
+        the same UAV again until the route is fully clean or a safety cap is
+        reached.
+        """
+        if target_uav_id not in self._flight_plans:
+            logger.warning(
+                f"[CentralManager] resolve_until_clear called for unknown UAV "
+                f"'{target_uav_id}'. Returning None."
+            )
+            return None
+
+        last_result: Optional[ResolveResult] = None
+        pass_history: List[Dict[str, object]] = []
+
+        for pass_idx in range(max_passes):
+            # Re-evaluate the same UAV after each committed fix so separated
+            # conflict windows can be handled one by one until the route is clean.
+            conflicts = self._rtree_detector.detect_all_conflicts(target_uav_id)
+            if not conflicts:
+                if last_result is None:
+                    logger.debug(f"[CentralManager] No conflicts detected for '{target_uav_id}'.")
+                else:
+                    logger.info(
+                        f"[CentralManager] '{target_uav_id}' is now conflict-free after "
+                        f"{pass_idx} pass(es)."
+                    )
+                    if last_result is not None:
+                        last_result.pass_history = list(pass_history)
+                return last_result
+
+            last_result = self.check_and_resolve(target_uav_id, interval=interval)
+            if last_result is None:
+                return None
+
+            remaining_conflicts = self._rtree_detector.detect_all_conflicts(target_uav_id)
+            phase_times = dict(last_result.phase_times)
+            pass_history.append(
+                {
+                    "pass_index": pass_idx + 1,
+                    "conflicts_before": len(conflicts),
+                    "remaining_conflicts_after": len(remaining_conflicts),
+                    "strategy_used": last_result.strategy_used,
+                    "success": last_result.success,
+                    "iterations": last_result.iterations,
+                    "phase_iterations": dict(last_result.phase_iterations),
+                    "phase_times": phase_times,
+                    "resolve_total_ms": float(phase_times.get("resolve_total_ms", 0.0)),
+                    "resolve_phase_sum_ms": float(
+                        phase_times.get("s1_ms", 0.0)
+                        + phase_times.get("sat_ms", 0.0)
+                        + phase_times.get("s2_ms", 0.0)
+                        + phase_times.get("fb1_ms", 0.0)
+                        + phase_times.get("fb2_ms", 0.0)
+                    ),
+                    "validation_total_ms": float(
+                        phase_times.get("candidate_gen_ms", 0.0)
+                        + phase_times.get("detect_ms", 0.0)
+                    ),
+                    "message": last_result.message,
+                }
+            )
+            last_result.pass_history = list(pass_history)
+
+            if not last_result.success:
+                return last_result
+
+        remaining_conflicts = self._rtree_detector.detect_all_conflicts(target_uav_id)
+        if remaining_conflicts:
+            capped_result = ResolveResult(
+                success=False,
+                strategy_used="DEADLOCK",
+                message=(
+                    f"Safety cap reached before '{target_uav_id}' became conflict-free. "
+                    f"Remaining conflicts: {len(remaining_conflicts)}"
+                ),
+            )
+            capped_result.pass_history = list(pass_history)
+            logger.error(
+                f"[CentralManager] Safety cap reached while resolving '{target_uav_id}'. "
+                f"Remaining conflicts: {len(remaining_conflicts)}"
+            )
+            return capped_result
+
+        return last_result
 
     # ------------------------------------------------------------------
     # Convenience: system-wide sweep
@@ -274,6 +399,8 @@ class CentralManager:
             "attempted": 0,
             "resolved": 0,
             "deadlocks": 0,
+            "anchor_deadlocks": 0,
+            "hover_deadlocks": 0,
             "remaining_conflicts": 0,
             "stabilized": False,
         }
@@ -300,6 +427,11 @@ class CentralManager:
                     resolved_this_sweep += 1
                 else:
                     summary["deadlocks"] += 1
+                    deadlock_type = str(getattr(result, "deadlock_type", "unknown"))
+                    if deadlock_type in {"anchor_before_conflict", "anchor_after_finish"}:
+                        summary["anchor_deadlocks"] += 1
+                    elif deadlock_type == "hover_timeout":
+                        summary["hover_deadlocks"] += 1
 
             if resolved_this_sweep == 0:
                 break

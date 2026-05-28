@@ -158,6 +158,20 @@ class RTreeDetector:
 
         self.uav_entry_ids[uav_id] = []
 
+    def remove_uav(self, uav_id):
+        """
+        Remove a UAV completely from the detection system.
+
+        This deletes both the swept boxes from the R-Tree and the cached flight
+        plan entry so the UAV no longer participates in future conflict checks.
+        """
+        if uav_id not in self.uavs:
+            return
+
+        self._remove_from_index(uav_id)
+        self.uavs.pop(uav_id, None)
+        self.uav_entry_ids.pop(uav_id, None)
+
     def detect_all_conflicts(self, target_uav_id):
         """
         Detect all conflicts for a specific UAV against all other aircraft in the system.

@@ -115,6 +115,7 @@ DETOUR_RETURN_TIME_FRACTION: float = 0.75  # 75% to return point
 HOVER_MAX_TIMEOUT: float = 60.0   # Maximum hovering duration before DEADLOCK [s]
 HOVER_TIME_STEP:   float = 0.5    # Time increment per hovering iteration [s]
 
+
 # -----------------------------------------------------------------------------
 # R-TREE / OBB SAMPLING
 # Interval used when (re)generating swept OBB boxes for R-Tree registration.
@@ -158,7 +159,7 @@ MTV_SCALE_TIME_BUFFER_FACTOR:   float = 0.15  # Temporal buffer = conflict_durat
 
 # -----------------------------------------------------------------------------
 # Forward Progress Margin
-# Used by _validate_temporary_swap to ensure any remaining conflicts after a
+# Used by _validate_candidate_query to ensure any remaining conflicts after a
 # maneuver occur comfortably in the future, preventing immediate Temporal
 # Domino Effects.
 # This value must stay strictly greater than the largest S1_TIME_SHIFTS entry

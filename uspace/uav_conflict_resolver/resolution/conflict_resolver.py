@@ -37,20 +37,20 @@ TEMPORAL CONCEPTS — IMPORTANT DISTINCTION:
                within this class. It is NOT the same as t_start.
 
 INVARIANTS ENFORCED BY THIS CLASS:
-    1. SEMAPHORE (Delayed Clearance): The VIP is put on HOLD at t_anchor before
-       any maneuver is computed. It is only released (HOLD cleared) once the
-       plebeian has a confirmed conflict-free plan.
+     1. VIP IMMUTABILITY: The VIP flight plan is never modified by
+         the resolver. All resolution actions apply only to the plebeian's plan. 
+         However, it can be aborted if no valid plebeian maneuver exists (DEADLOCK).
 
-    2. WCET ANCHOR: All maneuvers start at t_anchor >= t_start + ANCHOR_DELTA.
-       The resolver never operates before the UAV's scheduled departure time.
+     2. WCET ANCHOR: All maneuvers start at t_anchor >= t_start + ANCHOR_DELTA.
+         The resolver never operates before the UAV's scheduled departure time.
 
-    3. BOUNDED LOOPS: Every loop in this module has a hard iteration cap.
-       No while-true loops exist. The Fallback 2 hovering loop is explicitly
-       capped at HOVER_MAX_TIMEOUT / HOVER_TIME_STEP iterations.
+     3. BOUNDED LOOPS: Every loop in this module has a hard iteration cap.
+         No while-true loops exist. The Fallback 2 hovering loop is explicitly
+         capped at HOVER_MAX_TIMEOUT / HOVER_TIME_STEP iterations.
 
-     4. TEMPORARY-SWAP VALIDATION: All candidate plans are validated against
-         the live detector by swapping the plebeian in and out safely before
-         acceptance.
+     4. CANDIDATE-QUERY VALIDATION: All candidate plans are validated against
+         the live detector by generating candidate swept boxes in memory and
+         querying the active detector without modifying the live index.
 """
 
 from __future__ import annotations
@@ -58,7 +58,7 @@ from __future__ import annotations
 import time
 import numpy as np
 from dataclasses import dataclass, field
-from typing import Dict, Optional, TYPE_CHECKING
+from typing import Dict, List, Optional, TYPE_CHECKING
 
 from core.models.flight_plan import FlightPlan
 from core.models.waypoint import Waypoint
@@ -99,6 +99,9 @@ class ResolveResult:
         success:       True if a conflict-free plan was found.
         strategy_used: Which phase solved the conflict.
                        One of: "S1", "S2", "FB1", "FB2", "DEADLOCK".
+        deadlock_type: Cause of a DEADLOCK outcome, when applicable.
+                       One of: "anchor_before_conflict", "anchor_after_finish",
+                       "strategy_exhausted", "hover_timeout".
         new_fp_pleb:   The new FlightPlan for the plebeian UAV (None on DEADLOCK).
         new_fp_vip:    Always None. The VIP is never modified (only the plebeian).
         iterations:    Total number of candidate plans evaluated across all phases.
@@ -106,15 +109,18 @@ class ResolveResult:
                        Per-phase candidate counts used by the resolver.
         message:       Human-readable summary for logging / debugging.
         phase_times:   Breakdown of the resolve time by phase in milliseconds.
+        pass_history:  Per-pass timing snapshots when a caller resolves until clear.
     """
     success:       bool                  = False
     strategy_used: str                   = "NONE"
+    deadlock_type: str                   = "none"
     new_fp_pleb:   Optional[FlightPlan]  = None
     new_fp_vip:    Optional[FlightPlan]  = None
     iterations:    int                   = 0
     phase_iterations: Dict[str, int]     = field(default_factory=dict)
     message:       str                   = ""
     phase_times:   Dict[str, float]      = field(default_factory=dict)
+    pass_history:  List[Dict[str, object]] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -169,7 +175,7 @@ class ConflictResolver:
         phase_iterations: Dict[str, int] = {}
 
         def _finalize(result: ResolveResult) -> ResolveResult:
-            # Merge last validation metrics if available (populated by temporary-swap)
+                # Merge last validation metrics if available (populated by candidate-query validation)
             if hasattr(self, "_last_validation_info") and isinstance(self._last_validation_info, dict):
                 phase_times.update(self._last_validation_info)
                 # Clear it to avoid leaking between resolves
@@ -214,6 +220,7 @@ class ConflictResolver:
                 return ResolveResult(
                     success=False,
                     strategy_used="DEADLOCK",
+                    deadlock_type="anchor_before_conflict",
                     message=f"t_anchor cannot be placed before t_conflict={t_conflict:.2f}s "
                             f"(t_start={t_start:.2f}s, ANCHOR_DELTA={ANCHOR_DELTA}s). "
                             f"Mission abort.",
@@ -224,19 +231,22 @@ class ConflictResolver:
             return ResolveResult(
                 success=False,
                 strategy_used="DEADLOCK",
+                deadlock_type="anchor_after_finish",
                 message=f"t_anchor={t_anchor:.2f}s is beyond plebeian flight end "
                         f"({fp_pleb.finish_time():.2f}s). Mission abort.",
             )
 
         # =================================================================
-        # Step 1: Validation uses a temporary swap on the live R-Tree.
-        # We do NOT build a separate shadow index anymore.
+        # Step 1: Validation uses a candidate-query against the live R-Tree.
+        # Candidate flight plans are generated in memory and validated by
+        # querying the active detector; no entries are inserted into or
+        # removed from the live index during validation.
         # =================================================================
         shadow = self._manager
         phase_times["shadow_build_ms"] = 0.0
 
         def _check_valid(candidate: FlightPlan) -> bool:
-            return self._validate_temporary_swap(candidate, pleb_id, shadow, t_conflict)
+            return self._validate_candidate_query(candidate, pleb_id, shadow, t_conflict)
 
         # =================================================================
         # Step 2: Strategy 1 — Kinematic Bounding (velocity-only)
@@ -388,6 +398,7 @@ class ConflictResolver:
         return _finalize(ResolveResult(
             success=False,
             strategy_used="DEADLOCK",
+            deadlock_type="hover_timeout",
             new_fp_pleb=None,
             new_fp_vip=None,
             iterations=total_iterations,
@@ -399,10 +410,10 @@ class ConflictResolver:
         ))
 
     # ------------------------------------------------------------------
-    # Internal: Temporary Swap Validation
+    # Internal: Validate candidate by querying the live R-Tree (no modifications to the index)
     # ------------------------------------------------------------------
 
-    def _validate_temporary_swap(
+    def _validate_candidate_query(
         self,
         candidate_fp: FlightPlan,
         pleb_id: str,
@@ -410,14 +421,19 @@ class ConflictResolver:
         t_conflict_being_solved: float = 0.0,
     ) -> bool:
         """
-        Validate a candidate plebeian plan against the live detector without
-        physically inserting the candidate into the index.
+        Validate a candidate plebeian plan by query-only validation against the live detector.
 
-        FORWARD PROGRESS GUARANTEE:
-        If the route still contains conflicts, the system accepts it ONLY if 
-        the earliest remaining conflict is strictly and comfortably after the 
-        one we are actively solving. This allows CentralManager to resolve 
-        multi-conflict scenarios iteratively without DEADLOCK.
+        The candidate's swept boxes are generated in memory and checked against
+        the currently registered UAVs using broad-phase R-Tree queries followed
+        by narrow-phase SAT checks. No insertion or deletion is performed on
+        the live R-Tree during validation; collisions against the plebeian's
+        own currently registered route are explicitly ignored.
+
+        Forward progress guarantee:
+        If the route still contains conflicts, the system accepts it only when
+        the earliest remaining conflict is comfortably after the one currently
+        being solved. This lets CentralManager resolve separated conflict
+        periods in the same flight plan iteratively without deadlock.
         """
         manager = self._manager
         original_data = manager.uavs.get(pleb_id)
@@ -453,7 +469,7 @@ class ConflictResolver:
         if len(conflicts) == 0:
             return True
 
-        # Check for forward progress
+        # Check for forward progress.
         conflicts.sort(key=lambda c: c["time_range"][0])
         earliest_new_conflict = conflicts[0]["time_range"][0]
         return earliest_new_conflict >= t_conflict_being_solved + FORWARD_PROGRESS_MARGIN
@@ -644,7 +660,7 @@ class ConflictResolver:
                 iters_count += 1
 
                 # Global R-Tree validation (shadow)
-                if self._validate_temporary_swap(candidate, pleb_id, shadow, conflict["time_range"][0]):
+                if self._validate_candidate_query(candidate, pleb_id, shadow, conflict["time_range"][0]):
                     print(f"[DEBUG S2]       -> Live validation SUCCESS! Detour is conflict-free.")
                     return candidate, iters_count
                 else:
@@ -761,7 +777,7 @@ class ConflictResolver:
 
                 iters_count += 1
 
-                if self._validate_temporary_swap(candidate, pleb_id, shadow, conflict["time_range"][0]):
+                if self._validate_candidate_query(candidate, pleb_id, shadow, conflict["time_range"][0]):
                     print(f"[DEBUG FB1]       -> Live validation SUCCESS! Vertical detour is conflict-free.")
                     return candidate, iters_count
                 else:
@@ -782,132 +798,47 @@ class ConflictResolver:
         shadow:   "RTreeDetector" = None,
     ) -> tuple[Optional[FlightPlan], int]:
         """
-        Brake the plebeian to 0 m/s at t_anchor and progressively advance the
-        hover duration until the R-Tree detects no conflict.
+        Fallback 2 (Hover) implementation.
 
-        Hard cap: HOVER_MAX_TIMEOUT / HOVER_TIME_STEP iterations.
-        Each iteration inserts a hover waypoint and postpones the remainder by
-        HOVER_TIME_STEP, then validates. Returns the first valid plan found.
+        Instead of inserting explicit hover waypoints (`HOV_S`/`HOV_E`) and
+        postponing only the remainder of the plan, this simpler approach
+        postpones the whole flight plan by increasing amounts until the
+        candidate is conflict-free or the maximum hover timeout is reached.
+
+        Rationale / notes:
+        - Simpler codepath: avoids waypoint label/epsilon bookkeeping.
+        - Semantically this delays the UAV departure (shifts `init_time`).
+          That may interact differently with other UAVs (global temporal
+          ripple), so this behaviour is intentionally different from the
+          previous local-hover semantics.
+        - We keep the same iteration caps (`HOVER_MAX_TIMEOUT`,
+          `HOVER_TIME_STEP`) and the same kinematic validation via
+          `connect_waypoints()`.
 
         Returns: (accepted_flight_plan | None, iteration_count)
         """
         max_iters = int(HOVER_MAX_TIMEOUT / HOVER_TIME_STEP)
-        position_at_anchor = fp_pleb.status_at_time(t_anchor).pos.copy()
 
         for iteration in range(1, max_iters + 1):
             hover_duration = iteration * HOVER_TIME_STEP
-            t_resume       = t_anchor + hover_duration
 
-            # Build a modified FlightPlan: hover at anchor, then resume
+            # Build a modified FlightPlan: postpone entire plan by hover_duration
             candidate = fp_pleb.copy()
+            candidate.postpone(hover_duration)
 
-            # First, postpone the future trajectory to open a hover window.
-            # Doing this before inserting hover WPs avoids accidental
-            # replacement of existing waypoints with equal timestamps.
-            candidate.postpone_from(t_anchor + WAYPOINT_TIME_EPSILON, hover_duration)
-
-            hover_end_t = round(t_resume, 3)
-            idx = candidate.get_target_index_from_time(hover_end_t)
-            if idx < len(candidate.waypoints) and abs(candidate.waypoints[idx].t - hover_end_t) < WAYPOINT_TIME_EPSILON:
-                hover_end_t += WAYPOINT_TIME_EPSILON
-
-            # Insert hover start waypoint (velocity = 0)
-            hover_start = Waypoint(
-                label="HOV_S",
-                t=t_anchor,
-                pos=position_at_anchor,
-                vel=[0.0, 0.0, 0.0],
-                heading=[0, 0],
-            )
-            # Insert hover end waypoint (same position, velocity = 0)
-            hover_end = Waypoint(
-                label="HOV_E",
-                t=hover_end_t,
-                pos=position_at_anchor,
-                vel=[0.0, 0.0, 0.0],
-                heading=[0, 0],
-            )
-
-            candidate.set_waypoint(hover_start)
-            candidate.set_waypoint(hover_end)
             try:
-                candidate.connect_waypoints()
+                candidate.connect_waypoints(strict=True)
             except ValueError as exc:
-                # This hover duration is physically infeasible (typically
-                # insufficient accel/decel margin to rejoin next segment).
-                # Continue trying longer hover durations instead of aborting
-                # the whole cascade with an exception.
-                print(f"[DEBUG FB2] Iter {iteration}: infeasible hover candidate -> {exc}")
+                # Physically infeasible to rejoin the original timing with this
+                # postponement (insufficient accel/decel margins). Try a longer
+                # postponement instead of aborting the cascade.
+                print(f"[DEBUG FB2-SIMPLE] Iter {iteration}: infeasible postponed candidate -> {exc}")
                 continue
 
-            if self._validate_temporary_swap(candidate, pleb_id, shadow, t_anchor):
+            # Validate candidate against live detector (candidate-query)
+            if self._validate_candidate_query(candidate, pleb_id, shadow, t_anchor):
                 return candidate, iteration
 
         # Timeout — DEADLOCK
         return None, max_iters
 
-    # ------------------------------------------------------------------
-    # Helper: validate turn kinematics after a detour insertion
-    # ------------------------------------------------------------------
-
-    def _validate_detour_kinematics(
-        self,
-        candidate: FlightPlan,
-        t_anchor:  float,
-        fp_orig:   FlightPlan,
-    ) -> bool:
-        """
-                Validate the kinematic feasibility of the turn corners introduced by
-                the rigid-shift detour:
-
-                    Rigid Shift (build_rigid_shift_detour): "detour_start" → "det" → "detour_end"
-
-        The checks are symmetric:
-          - First  turn:  [detour_start-1] → detour_start → first_detour_wp
-          - Last   turn:  last_detour_wp → detour_end → [detour_end+1]
-        """
-        max_ang_vel = fp_orig.max_var_ang_vel
-
-        anc_idx  = candidate.get_index_from_label("anc")
-        det_idx  = candidate.get_index_from_label("det")    # legacy triangle
-        det1_idx = candidate.get_index_from_label("det1")   # trapezoid
-        det2_idx = candidate.get_index_from_label("det2")   # trapezoid
-        ret_idx  = candidate.get_index_from_label("ret")
-
-        # Determine whether we have the new rigid shift or the legacy triangle
-        if det_idx is not None:
-            first_det_idx = det_idx
-            last_det_idx  = det_idx
-        else:
-            # No recognised labels — accept conservatively
-            return True
-
-        if anc_idx is None or ret_idx is None:
-            return True
-
-        wps = candidate.waypoints
-
-        # Validate first turn: [anc-1] → [anc] → [first_det]
-        # TODO: implement validate_curve_kinematics
-        # if anc_idx > 0:
-        #     ok1 = validate_curve_kinematics(
-        #         wp_prev=wps[anc_idx - 1],
-        #         wp_turn=wps[anc_idx],
-        #         wp_next=wps[first_det_idx],
-        #         max_ang_vel=max_ang_vel,
-        #     )
-        #     if not ok1:
-        #         return False
-
-        # Validate last turn: [last_det] → [ret] → [ret+1]
-        # if ret_idx < len(wps) - 1:
-        #     ok2 = validate_curve_kinematics(
-        #         wp_prev=wps[last_det_idx],
-        #         wp_turn=wps[ret_idx],
-        #         wp_next=wps[ret_idx + 1],
-        #         max_ang_vel=max_ang_vel,
-        #     )
-        #     if not ok2:
-        #         return False
-
-        return True

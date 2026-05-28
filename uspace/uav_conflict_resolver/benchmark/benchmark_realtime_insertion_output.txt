@@ -5,146 +5,66 @@
 █                   20 km x 20 km x 90 m airspace, insert-one-by-one workload                  █
 █                                                                                              █
 ████████████████████████████████████████████████████████████████████████████████████████████████
-Run config: max_uavs=100, interval=0.500s, seed=42
-UAV 0001 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    1.70 ms | insert=  796.56 ms | detect=   59.89 ms | resolve=    0.00 ms | total=  858.16 ms
-UAV 0002 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    3.85 ms | insert= 1720.22 ms | detect=   78.64 ms | resolve=    0.00 ms | total= 1802.71 ms
-UAV 0003 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.47 ms | insert= 1973.66 ms | detect=   75.78 ms | resolve=    0.00 ms | total= 2049.91 ms
-UAV 0004 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.58 ms | insert= 1893.57 ms | detect=   71.44 ms | resolve=    0.00 ms | total= 1965.59 ms
-UAV 0005 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.48 ms | insert= 1581.62 ms | detect=  103.94 ms | resolve=    0.00 ms | total= 1686.04 ms
-UAV 0006 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.61 ms | insert= 2176.01 ms | detect=   92.13 ms | resolve=    0.00 ms | total= 2268.75 ms
-UAV 0007 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.60 ms | insert= 1687.78 ms | detect=   87.47 ms | resolve=    0.00 ms | total= 1775.85 ms
-UAV 0008 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.66 ms | insert= 1862.13 ms | detect=   90.77 ms | resolve=    0.00 ms | total= 1953.56 ms
-UAV 0009 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.60 ms | insert= 1868.91 ms | detect=   67.85 ms | resolve=    0.00 ms | total= 1937.36 ms
-UAV 0010 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.49 ms | insert= 1938.75 ms | detect=   87.10 ms | resolve=    0.00 ms | total= 2026.33 ms
-UAV 0011 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.60 ms | insert= 1718.07 ms | detect=   89.81 ms | resolve=    0.00 ms | total= 1808.48 ms
-UAV 0012 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.51 ms | insert= 1565.37 ms | detect=  103.26 ms | resolve=    0.00 ms | total= 1669.14 ms
-UAV 0013 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.55 ms | insert= 1932.54 ms | detect=   91.85 ms | resolve=    0.00 ms | total= 2024.94 ms
-UAV 0014 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.44 ms | insert= 2273.39 ms | detect=  126.69 ms | resolve=    0.00 ms | total= 2400.52 ms
-UAV 0015 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.56 ms | insert= 1948.60 ms | detect=   98.69 ms | resolve=    0.00 ms | total= 2047.85 ms
-UAV 0016 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.47 ms | insert= 2066.40 ms | detect=   97.97 ms | resolve=    0.00 ms | total= 2164.84 ms
-UAV 0017 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.79 ms | insert= 1859.18 ms | detect=   97.82 ms | resolve=    0.00 ms | total= 1957.79 ms
-UAV 0018 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.60 ms | insert= 1897.91 ms | detect=   92.01 ms | resolve=    0.00 ms | total= 1990.53 ms
-UAV 0019 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.48 ms | insert= 1739.12 ms | detect=   92.59 ms | resolve=    0.00 ms | total= 1832.20 ms
-UAV 0020 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.50 ms | insert= 1656.14 ms | detect=  102.54 ms | resolve=    0.00 ms | total= 1759.18 ms
-UAV 0021 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.57 ms | insert= 1583.74 ms | detect=   87.75 ms | resolve=    0.00 ms | total= 1672.06 ms
-UAV 0022 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.69 ms | insert= 2009.32 ms | detect=  102.62 ms | resolve=    0.00 ms | total= 2112.63 ms
-UAV 0023 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.59 ms | insert= 1956.43 ms | detect=  104.30 ms | resolve=    0.00 ms | total= 2061.32 ms
-UAV 0024 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.68 ms | insert= 2000.45 ms | detect=  110.02 ms | resolve=    0.00 ms | total= 2111.15 ms
-UAV 0025 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.45 ms | insert= 2827.67 ms | detect=   97.91 ms | resolve=    0.00 ms | total= 2926.03 ms
-UAV 0026 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.51 ms | insert= 2115.94 ms | detect=  116.96 ms | resolve=    0.00 ms | total= 2233.41 ms
-UAV 0027 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.60 ms | insert= 1723.23 ms | detect=   79.71 ms | resolve=    0.00 ms | total= 1803.55 ms
-UAV 0028 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.53 ms | insert= 1773.35 ms | detect=  104.29 ms | resolve=    0.00 ms | total= 1878.17 ms
-UAV 0029 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.52 ms | insert= 2044.78 ms | detect=   94.35 ms | resolve=    0.00 ms | total= 2139.65 ms
-UAV 0030 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.65 ms | insert= 1672.17 ms | detect=   95.50 ms | resolve=    0.00 ms | total= 1768.32 ms
-UAV 0031 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.63 ms | insert= 1808.26 ms | detect=   92.12 ms | resolve=    0.00 ms | total= 1901.01 ms
-UAV 0032 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.64 ms | insert= 1903.46 ms | detect=  112.10 ms | resolve=    0.00 ms | total= 2016.19 ms
-UAV 0033 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.52 ms | insert= 1681.56 ms | detect=  101.07 ms | resolve=    0.00 ms | total= 1783.14 ms
-UAV 0034 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.65 ms | insert= 1800.04 ms | detect=  104.81 ms | resolve=    0.00 ms | total= 1905.49 ms
-UAV 0035 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.62 ms | insert= 2082.65 ms | detect=   99.57 ms | resolve=    0.00 ms | total= 2182.83 ms
-UAV 0036 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.63 ms | insert= 2051.98 ms | detect=  117.42 ms | resolve=    0.00 ms | total= 2170.02 ms
-UAV 0037 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.49 ms | insert= 1987.09 ms | detect=  125.08 ms | resolve=    0.00 ms | total= 2112.66 ms
-UAV 0038 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.60 ms | insert= 1457.27 ms | detect=  106.09 ms | resolve=    0.00 ms | total= 1563.96 ms
-UAV 0039 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.61 ms | insert= 1957.18 ms | detect=  114.21 ms | resolve=    0.00 ms | total= 2072.00 ms
-UAV 0040 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    1.01 ms | insert= 1907.43 ms | detect=  127.67 ms | resolve=    0.00 ms | total= 2036.11 ms
-UAV 0041 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.50 ms | insert= 1768.26 ms | detect=  104.80 ms | resolve=    0.00 ms | total= 1873.57 ms
-UAV 0042 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.74 ms | insert= 1828.76 ms | detect=  112.54 ms | resolve=    0.00 ms | total= 1942.03 ms
-UAV 0043 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.55 ms | insert= 1995.33 ms | detect=  123.39 ms | resolve=    0.00 ms | total= 2119.26 ms
-UAV 0044 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.57 ms | insert= 1594.45 ms | detect=  109.72 ms | resolve=    0.00 ms | total= 1704.75 ms
-UAV 0045 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.74 ms | insert= 1815.60 ms | detect=  109.95 ms | resolve=    0.00 ms | total= 1926.29 ms
-UAV 0046 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.51 ms | insert= 1723.11 ms | detect=  116.95 ms | resolve=    0.00 ms | total= 1840.58 ms
-UAV 0047 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.57 ms | insert= 2080.36 ms | detect=  152.12 ms | resolve=    0.00 ms | total= 2233.06 ms
-UAV 0048 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.65 ms | insert= 2578.83 ms | detect=  128.70 ms | resolve=    0.00 ms | total= 2708.18 ms
-UAV 0049 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.53 ms | insert= 2180.35 ms | detect=  107.35 ms | resolve=    0.00 ms | total= 2288.23 ms
-UAV 0050 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.51 ms | insert= 1383.50 ms | detect=   72.17 ms | resolve=    0.00 ms | total= 1456.18 ms
-UAV 0051 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    1.28 ms | insert= 1928.64 ms | detect=   91.96 ms | resolve=    0.00 ms | total= 2021.88 ms
-UAV 0052 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.51 ms | insert= 1905.03 ms | detect=   97.27 ms | resolve=    0.00 ms | total= 2002.80 ms
-UAV 0053 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.50 ms | insert= 1092.09 ms | detect=   76.23 ms | resolve=    0.00 ms | total= 1168.81 ms
-UAV 0054 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.50 ms | insert= 2256.06 ms | detect=  107.90 ms | resolve=    0.00 ms | total= 2364.46 ms
-UAV 0055 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.55 ms | insert= 1179.38 ms | detect=   74.60 ms | resolve=    0.00 ms | total= 1254.53 ms
-UAV 0056 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.63 ms | insert= 1056.29 ms | detect=   72.67 ms | resolve=    0.00 ms | total= 1129.60 ms
-UAV 0057 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.46 ms | insert= 1974.13 ms | detect=  102.38 ms | resolve=    0.00 ms | total= 2076.98 ms
-UAV 0058 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.48 ms | insert= 2002.51 ms | detect=  118.82 ms | resolve=    0.00 ms | total= 2121.81 ms
-UAV 0059 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.56 ms | insert= 1508.87 ms | detect=  139.77 ms | resolve=    0.00 ms | total= 1649.20 ms
-UAV 0060 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.54 ms | insert= 2116.56 ms | detect=  134.51 ms | resolve=    0.00 ms | total= 2251.61 ms
-UAV 0061 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.65 ms | insert= 1850.09 ms | detect=  114.54 ms | resolve=    0.00 ms | total= 1965.28 ms
-UAV 0062 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.49 ms | insert= 1522.35 ms | detect=  114.07 ms | resolve=    0.00 ms | total= 1636.91 ms
-UAV 0063 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.57 ms | insert= 1262.28 ms | detect=  119.29 ms | resolve=    0.00 ms | total= 1382.14 ms
-UAV 0064 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.58 ms | insert= 1404.83 ms | detect=  109.59 ms | resolve=    0.00 ms | total= 1515.01 ms
-[VALIDATION] pleb=65 candidate-query: gen=2628boxes 302.5ms, detect_time=86.6ms conflicts=4
-[VALIDATION] pleb=65 candidate-query: gen=2628boxes 297.1ms, detect_time=85.2ms conflicts=1
-[VALIDATION] pleb=65 candidate-query: gen=2628boxes 297.2ms, detect_time=83.6ms conflicts=0
-UAV 0065 | RESOLVED | strategy=S1       | iters_total=  3 | S1=  3 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.59 ms | insert= 1025.56 ms | detect=   87.22 ms | resolve= 1157.75 ms | total= 2271.12 ms
-    resolve breakdown: shadow=    0.00 ms | S1= 1157.70 ms | SAT=    0.00 ms | S2=    0.00 ms | FB1=    0.00 ms | FB2=    0.00 ms
-    validation: val_method=candidate-query boxes_c=2628 boxes_o=2628 gen=297.2ms ins=0.0ms det=83.6ms
-UAV 0066 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.53 ms | insert= 2156.76 ms | detect=  108.42 ms | resolve=    0.00 ms | total= 2265.71 ms
-UAV 0067 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.53 ms | insert= 1870.29 ms | detect=  130.80 ms | resolve=    0.00 ms | total= 2001.62 ms
-UAV 0068 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.48 ms | insert= 1336.94 ms | detect=  119.31 ms | resolve=    0.00 ms | total= 1456.73 ms
-UAV 0069 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.67 ms | insert= 2466.27 ms | detect=  105.34 ms | resolve=    0.00 ms | total= 2572.28 ms
-UAV 0070 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.51 ms | insert= 2121.13 ms | detect=  111.58 ms | resolve=    0.00 ms | total= 2233.22 ms
-UAV 0071 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.45 ms | insert= 2189.24 ms | detect=  106.93 ms | resolve=    0.00 ms | total= 2296.62 ms
-UAV 0072 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.44 ms | insert= 1643.48 ms | detect=   88.55 ms | resolve=    0.00 ms | total= 1732.48 ms
-UAV 0073 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.73 ms | insert= 1883.50 ms | detect=  115.30 ms | resolve=    0.00 ms | total= 1999.54 ms
-UAV 0074 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.52 ms | insert= 1786.16 ms | detect=  114.71 ms | resolve=    0.00 ms | total= 1901.39 ms
-UAV 0075 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.47 ms | insert= 1509.26 ms | detect=   84.18 ms | resolve=    0.00 ms | total= 1593.90 ms
-UAV 0076 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.77 ms | insert= 1652.44 ms | detect=  116.03 ms | resolve=    0.00 ms | total= 1769.24 ms
-UAV 0077 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.63 ms | insert=  995.92 ms | detect=   77.70 ms | resolve=    0.00 ms | total= 1074.25 ms
-UAV 0078 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.52 ms | insert= 2011.88 ms | detect=  110.98 ms | resolve=    0.00 ms | total= 2123.38 ms
-UAV 0079 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.81 ms | insert= 1416.50 ms | detect=  112.48 ms | resolve=    0.00 ms | total= 1529.80 ms
-[VALIDATION] pleb=80 candidate-query: gen=3600boxes 423.2ms, detect_time=121.0ms conflicts=0
-UAV 0080 | RESOLVED | strategy=S1       | iters_total=  1 | S1=  1 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.57 ms | insert= 1693.83 ms | detect=  127.32 ms | resolve=  546.05 ms | total= 2367.76 ms
-    resolve breakdown: shadow=    0.00 ms | S1=  546.02 ms | SAT=    0.00 ms | S2=    0.00 ms | FB1=    0.00 ms | FB2=    0.00 ms
-    validation: val_method=candidate-query boxes_c=3600 boxes_o=3600 gen=423.2ms ins=0.0ms det=121.0ms
-UAV 0081 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.57 ms | insert= 1983.04 ms | detect=  112.11 ms | resolve=    0.00 ms | total= 2095.72 ms
-UAV 0082 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.49 ms | insert= 1661.83 ms | detect=  113.89 ms | resolve=    0.00 ms | total= 1776.21 ms
-UAV 0083 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.57 ms | insert= 1174.70 ms | detect=  116.64 ms | resolve=    0.00 ms | total= 1291.91 ms
-UAV 0084 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.51 ms | insert= 1762.97 ms | detect=  125.75 ms | resolve=    0.00 ms | total= 1889.24 ms
-UAV 0085 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.84 ms | insert= 1879.05 ms | detect=  129.14 ms | resolve=    0.00 ms | total= 2009.03 ms
-UAV 0086 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.49 ms | insert= 1749.29 ms | detect=  139.46 ms | resolve=    0.00 ms | total= 1889.24 ms
-UAV 0087 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.76 ms | insert= 2487.30 ms | detect=  122.24 ms | resolve=    0.00 ms | total= 2610.30 ms
-UAV 0088 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.58 ms | insert= 1994.08 ms | detect=  132.96 ms | resolve=    0.00 ms | total= 2127.62 ms
-UAV 0089 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.51 ms | insert= 2530.37 ms | detect=  115.19 ms | resolve=    0.00 ms | total= 2646.06 ms
-UAV 0090 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.68 ms | insert= 1784.94 ms | detect=  116.04 ms | resolve=    0.00 ms | total= 1901.66 ms
-UAV 0091 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.46 ms | insert= 1687.79 ms | detect=  114.00 ms | resolve=    0.00 ms | total= 1802.24 ms
-UAV 0092 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.64 ms | insert= 1634.46 ms | detect=   98.07 ms | resolve=    0.00 ms | total= 1733.17 ms
-UAV 0093 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.56 ms | insert= 1666.63 ms | detect=  108.79 ms | resolve=    0.00 ms | total= 1775.98 ms
-UAV 0094 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.65 ms | insert= 2098.35 ms | detect=  128.20 ms | resolve=    0.00 ms | total= 2227.20 ms
-UAV 0095 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.53 ms | insert= 2036.56 ms | detect=  142.41 ms | resolve=    0.00 ms | total= 2179.50 ms
-UAV 0096 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.98 ms | insert= 2183.77 ms | detect=  117.64 ms | resolve=    0.00 ms | total= 2302.39 ms
-UAV 0097 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.49 ms | insert= 1805.77 ms | detect=  141.49 ms | resolve=    0.00 ms | total= 1947.75 ms
-UAV 0098 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.62 ms | insert= 1929.43 ms | detect=  266.97 ms | resolve=    0.00 ms | total= 2197.02 ms
-UAV 0099 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    1.06 ms | insert= 2601.61 ms | detect=  102.09 ms | resolve=    0.00 ms | total= 2704.76 ms
-UAV 0100 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.51 ms | insert= 1687.60 ms | detect=  137.10 ms | resolve=    0.00 ms | total= 1825.21 ms
+Run config: max_uavs=20, interval=0.500s, seed=42
+UAV 0001 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    1.76 ms | insert= 1631.78 ms | detect=  109.70 ms | resolve_loop=    0.00 ms | last_pass=    0.00 ms | total= 1743.24 ms
+UAV 0002 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.81 ms | insert= 2720.22 ms | detect=  108.28 ms | resolve_loop=    0.00 ms | last_pass=    0.00 ms | total= 2829.31 ms
+UAV 0003 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.64 ms | insert= 2435.27 ms | detect=  113.56 ms | resolve_loop=    0.00 ms | last_pass=    0.00 ms | total= 2549.48 ms
+UAV 0004 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.94 ms | insert= 2552.69 ms | detect=  137.94 ms | resolve_loop=    0.00 ms | last_pass=    0.00 ms | total= 2691.57 ms
+UAV 0005 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.77 ms | insert= 2299.51 ms | detect=  110.82 ms | resolve_loop=    0.00 ms | last_pass=    0.00 ms | total= 2411.10 ms
+UAV 0006 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.74 ms | insert= 2774.70 ms | detect=  108.67 ms | resolve_loop=    0.00 ms | last_pass=    0.00 ms | total= 2884.11 ms
+UAV 0007 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.90 ms | insert= 2521.57 ms | detect=  112.59 ms | resolve_loop=    0.00 ms | last_pass=    0.00 ms | total= 2635.06 ms
+UAV 0008 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.61 ms | insert= 2414.44 ms | detect=  110.50 ms | resolve_loop=    0.00 ms | last_pass=    0.00 ms | total= 2525.55 ms
+UAV 0009 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.80 ms | insert= 2588.13 ms | detect=  129.55 ms | resolve_loop=    0.00 ms | last_pass=    0.00 ms | total= 2718.48 ms
+UAV 0010 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.85 ms | insert= 2751.05 ms | detect=  114.30 ms | resolve_loop=    0.00 ms | last_pass=    0.00 ms | total= 2866.19 ms
+UAV 0011 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.94 ms | insert= 2314.90 ms | detect=  117.91 ms | resolve_loop=    0.00 ms | last_pass=    0.00 ms | total= 2433.76 ms
+UAV 0012 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.82 ms | insert= 2733.52 ms | detect=  121.41 ms | resolve_loop=    0.00 ms | last_pass=    0.00 ms | total= 2855.76 ms
+UAV 0013 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.78 ms | insert= 2095.68 ms | detect=  120.03 ms | resolve_loop=    0.00 ms | last_pass=    0.00 ms | total= 2216.49 ms
+UAV 0014 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.84 ms | insert= 1951.57 ms | detect=  117.59 ms | resolve_loop=    0.00 ms | last_pass=    0.00 ms | total= 2069.99 ms
+UAV 0015 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.81 ms | insert= 1804.44 ms | detect=  119.22 ms | resolve_loop=    0.00 ms | last_pass=    0.00 ms | total= 1924.48 ms
+UAV 0016 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.89 ms | insert= 1943.65 ms | detect=  115.04 ms | resolve_loop=    0.00 ms | last_pass=    0.00 ms | total= 2059.59 ms
+UAV 0017 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.86 ms | insert= 1749.49 ms | detect=  118.39 ms | resolve_loop=    0.00 ms | last_pass=    0.00 ms | total= 1868.74 ms
+[VALIDATION] pleb=6 candidate-query: gen=3639boxes 482.7ms, detect_time=125.9ms conflicts=0
+UAV 0018 | RESOLVED | strategy=S1       | iters_total=  1 | S1=  1 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.76 ms | insert= 2259.38 ms | detect=  125.76 ms | resolve_loop= 7766.21 ms | last_pass=  610.45 ms | total=10152.11 ms
+    resolve items: loop= 7766.21 ms | last_pass=  610.45 ms | phase_sum=  610.42 ms | 
+    resolve breakdown (last pass): S1=  610.42 ms | SAT=    0.00 ms | S2=    0.00 ms | FB1=    0.00 ms | FB2=    0.00 ms
+    validation items: total=  608.60 ms | val_method=candidate-query boxes_c=3639 boxes_o=3600 gen=482.7ms ins=0.0ms det=125.9ms
+    passes: 1
+      pass 01 | conf_before=  5 | conf_after=  0 | strategy=S1       | iters=  1 | total=  610.45 ms | phase_sum=  610.42 ms | validation=  608.60 ms
+        phases: S1= 610.42 | SAT=   0.00 | S2=   0.00 | FB1=   0.00 | FB2=   0.00 | S1i=  1 | S2i=  0 | FB1i=  0 | FB2i=  0
+UAV 0019 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.63 ms | insert= 2115.58 ms | detect=  127.73 ms | resolve_loop=    0.00 ms | last_pass=    0.00 ms | total= 2243.95 ms
+UAV 0020 | CLEAR    | strategy=NONE     | iters_total=  0 | S1=  0 | S2=  0 | FB1=  0 | FB2=  0 | create=    0.77 ms | insert= 2256.82 ms | detect=  128.25 ms | resolve_loop=    0.00 ms | last_pass=    0.00 ms | total= 2385.85 ms
 
 ================================================================================================
 SUMMARY
 ================================================================================================
-Inserted UAVs:           100
-Clear insertions:        98
-Resolved conflicts:      2
-Hover failures:          0
+Inserted UAVs:           20
+Clear insertions:        19
+Resolved conflicts:      1
+FB2 cases:               0
 Deadlocks:               0
-Average per insertion:   1951.84 ms
-Median per insertion:    1965.44 ms
-95th percentile:         2574.18 ms
-Worst case:              2926.03 ms
-Avg creation time:       0.64 ms
-Avg insertion time:      1826.06 ms
-Avg detection time:      108.10 ms
-Avg resolution time (all insertions): 17.04 ms
-Avg resolve total (all insertions):    17.04 ms
-Avg resolve total (conflicts only):    851.89 ms
-Avg shadow build:        0.00 ms
-Avg S1 time:             17.04 ms
-Avg S1 iterations:       0.04
-Avg SAT time:            0.00 ms
-Avg S2 time:             0.00 ms
-Avg S2 iterations:       0.00
-Avg FB1 time:            0.00 ms
-Avg FB1 iterations:      0.00
-Avg FB2 time:            0.00 ms
-Avg FB2 iterations:      0.00
-Total elapsed:           195183.83 ms
-Memory delta:            433.92 MB
+  anchor:                0
+  hover timeout:         0
+Average per insertion:   2803.24 ms
+Median per insertion:    2479.65 ms
+95th percentile:         3247.51 ms
+Worst case:              10152.11 ms
+Avg creation time:       0.85 ms
+Avg insertion time:      2295.72 ms
+Avg detection time:      118.36 ms
+Avg last-pass resolve time (conflicts only): 610.45 ms
+Avg resolution loop time (conflicts only): 7766.21 ms
+Avg passes per conflict insertion: 1.00
+Avg S1 time (conflicts only): 610.42 ms
+Avg S1 iterations (conflicts only): 1.00
+Avg SAT time (conflicts only): 0.00 ms
+Avg S2 time (conflicts only): 0.00 ms
+Avg S2 iterations (conflicts only): 0.00
+Avg FB1 time (conflicts only): 0.00 ms
+Avg FB1 iterations (conflicts only): 0.00
+Avg FB2 time (conflicts only): 0.00 ms
+Avg FB2 iterations (conflicts only): 0.00
+Total elapsed:           56064.81 ms
+Memory delta:            93.41 MB
 Run ended because:       max_uavs
-Inserted / target:       100 / 100
+Inserted / target:       20 / 20
 ================================================================================================

@@ -1,0 +1,765 @@
+
+████████████████████████████████████████████████████████████████████████████████████████████████
+█                                                                                              █
+█                            SEQUENTIAL CONFLICT REAL-TIME BENCHMARK                           █
+█                 Forced conflict at every insertion — 20 km × 20 km × 30–120 m                █
+█                                                                                              █
+████████████████████████████████████████████████████████████████████████████████████████████████
+Run config: max_uavs=500, interval=0.500s, seed=42
+UAV 0001 | CLEAR    | conflicts=  0 | create=   0.75 ms | insert= 805.96 ms | detect=  66.99 ms | resolve=   0.00 ms | total= 873.70 ms
+UAV 0002 | CLEAR    | conflicts=  0 | create=   0.61 ms | insert= 620.06 ms | detect=  34.64 ms | resolve=   0.00 ms | total= 655.30 ms
+UAV 0003 | CLEAR    | conflicts=  0 | create=   0.40 ms | insert=1350.13 ms | detect=  61.52 ms | resolve=   0.00 ms | total=1412.05 ms
+UAV 0004 | CLEAR    | conflicts=  0 | create=   1.04 ms | insert= 920.84 ms | detect=  61.39 ms | resolve=   0.00 ms | total= 983.27 ms
+UAV 0005 | CLEAR    | conflicts=  0 | create=   0.53 ms | insert= 697.61 ms | detect=  46.50 ms | resolve=   0.00 ms | total= 744.64 ms
+UAV 0006 | CLEAR    | conflicts=  0 | create=   0.58 ms | insert= 959.69 ms | detect=  66.25 ms | resolve=   0.00 ms | total=1026.52 ms
+UAV 0007 | CLEAR    | conflicts=  0 | create=   0.59 ms | insert=1621.30 ms | detect=  80.96 ms | resolve=   0.00 ms | total=1702.85 ms
+UAV 0008 | CLEAR    | conflicts=  0 | create=   0.67 ms | insert=1679.47 ms | detect=  74.78 ms | resolve=   0.00 ms | total=1754.92 ms
+UAV 0009 | CLEAR    | conflicts=  0 | create=   0.70 ms | insert=1122.35 ms | detect=  66.87 ms | resolve=   0.00 ms | total=1189.92 ms
+UAV 0010 | CLEAR    | conflicts=  0 | create=   0.51 ms | insert=1062.76 ms | detect=  71.37 ms | resolve=   0.00 ms | total=1134.64 ms
+UAV 0011 | CLEAR    | conflicts=  0 | create=   0.56 ms | insert= 813.96 ms | detect=  53.21 ms | resolve=   0.00 ms | total= 867.74 ms
+UAV 0012 | CLEAR    | conflicts=  0 | create=   0.47 ms | insert=1120.21 ms | detect=  67.59 ms | resolve=   0.00 ms | total=1188.27 ms
+UAV 0013 | CLEAR    | conflicts=  0 | create=   0.57 ms | insert= 725.74 ms | detect=  50.89 ms | resolve=   0.00 ms | total= 777.20 ms
+UAV 0014 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert=1444.28 ms | detect=  77.99 ms | resolve=   0.00 ms | total=1522.71 ms
+UAV 0015 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert=1072.02 ms | detect=  67.97 ms | resolve=   0.00 ms | total=1140.52 ms
+UAV 0016 | CLEAR    | conflicts=  0 | create=   0.67 ms | insert=1372.50 ms | detect=  88.13 ms | resolve=   0.00 ms | total=1461.29 ms
+UAV 0017 | CLEAR    | conflicts=  0 | create=   0.60 ms | insert= 708.02 ms | detect=  59.81 ms | resolve=   0.00 ms | total= 768.43 ms
+UAV 0018 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 906.42 ms | detect=  60.05 ms | resolve=   0.00 ms | total= 967.00 ms
+UAV 0019 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert= 516.06 ms | detect=  52.45 ms | resolve=   0.00 ms | total= 568.96 ms
+UAV 0020 | CLEAR    | conflicts=  0 | create=   0.55 ms | insert=1171.89 ms | detect=  60.31 ms | resolve=   0.00 ms | total=1232.75 ms
+UAV 0021 | CLEAR    | conflicts=  0 | create=   0.44 ms | insert= 630.44 ms | detect=  74.43 ms | resolve=   0.00 ms | total= 705.31 ms
+UAV 0022 | CLEAR    | conflicts=  0 | create=   0.44 ms | insert= 960.47 ms | detect=  48.32 ms | resolve=   0.00 ms | total=1009.24 ms
+UAV 0023 | CLEAR    | conflicts=  0 | create=   0.49 ms | insert= 857.74 ms | detect=  60.34 ms | resolve=   0.00 ms | total= 918.57 ms
+UAV 0024 | CLEAR    | conflicts=  0 | create=   0.48 ms | insert= 804.37 ms | detect=  51.54 ms | resolve=   0.00 ms | total= 856.39 ms
+UAV 0025 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 990.31 ms | detect=  60.45 ms | resolve=   0.00 ms | total=1051.30 ms
+UAV 0026 | CLEAR    | conflicts=  0 | create=   0.44 ms | insert=1197.89 ms | detect=  65.44 ms | resolve=   0.00 ms | total=1263.77 ms
+UAV 0027 | CLEAR    | conflicts=  0 | create=   0.65 ms | insert=1019.08 ms | detect=  64.56 ms | resolve=   0.00 ms | total=1084.29 ms
+UAV 0028 | CLEAR    | conflicts=  0 | create=   0.61 ms | insert=1031.14 ms | detect=  66.97 ms | resolve=   0.00 ms | total=1098.71 ms
+UAV 0029 | CLEAR    | conflicts=  0 | create=   0.56 ms | insert=1436.84 ms | detect=  87.06 ms | resolve=   0.00 ms | total=1524.46 ms
+UAV 0030 | CLEAR    | conflicts=  0 | create=   0.64 ms | insert= 813.08 ms | detect=  67.30 ms | resolve=   0.00 ms | total= 881.01 ms
+UAV 0031 | CLEAR    | conflicts=  0 | create=   0.51 ms | insert= 754.89 ms | detect=  60.41 ms | resolve=   0.00 ms | total= 815.81 ms
+UAV 0032 | CLEAR    | conflicts=  0 | create=   0.57 ms | insert= 688.25 ms | detect=  61.56 ms | resolve=   0.00 ms | total= 750.38 ms
+UAV 0033 | CLEAR    | conflicts=  0 | create=   0.53 ms | insert= 772.95 ms | detect=  50.78 ms | resolve=   0.00 ms | total= 824.27 ms
+UAV 0034 | CLEAR    | conflicts=  0 | create=   0.52 ms | insert=1519.40 ms | detect=  70.71 ms | resolve=   0.00 ms | total=1590.64 ms
+UAV 0035 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 800.00 ms | detect=  59.07 ms | resolve=   0.00 ms | total= 859.62 ms
+UAV 0036 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 819.24 ms | detect=  57.99 ms | resolve=   0.00 ms | total= 877.77 ms
+UAV 0037 | CLEAR    | conflicts=  0 | create=   0.51 ms | insert= 676.04 ms | detect=  82.81 ms | resolve=   0.00 ms | total= 759.36 ms
+UAV 0038 | CLEAR    | conflicts=  0 | create=   0.53 ms | insert= 740.31 ms | detect=  49.34 ms | resolve=   0.00 ms | total= 790.18 ms
+UAV 0039 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert=1145.43 ms | detect=  73.85 ms | resolve=   0.00 ms | total=1219.73 ms
+UAV 0040 | CLEAR    | conflicts=  0 | create=   0.50 ms | insert= 639.19 ms | detect=  56.68 ms | resolve=   0.00 ms | total= 696.37 ms
+UAV 0041 | CLEAR    | conflicts=  0 | create=   0.56 ms | insert= 403.39 ms | detect=  48.10 ms | resolve=   0.00 ms | total= 452.04 ms
+UAV 0042 | CLEAR    | conflicts=  0 | create=   0.81 ms | insert= 853.03 ms | detect=  60.35 ms | resolve=   0.00 ms | total= 914.19 ms
+UAV 0043 | CLEAR    | conflicts=  0 | create=   0.46 ms | insert= 600.16 ms | detect=  52.57 ms | resolve=   0.00 ms | total= 653.19 ms
+UAV 0044 | CLEAR    | conflicts=  0 | create=   0.49 ms | insert= 988.37 ms | detect=  78.83 ms | resolve=   0.00 ms | total=1067.70 ms
+UAV 0045 | CLEAR    | conflicts=  0 | create=   0.49 ms | insert=1480.63 ms | detect= 113.71 ms | resolve=   0.00 ms | total=1594.83 ms
+UAV 0046 | CLEAR    | conflicts=  0 | create=   0.63 ms | insert= 652.25 ms | detect=  58.21 ms | resolve=   0.00 ms | total= 711.08 ms
+UAV 0047 | CLEAR    | conflicts=  0 | create=   0.53 ms | insert=1399.91 ms | detect=  75.68 ms | resolve=   0.00 ms | total=1476.13 ms
+UAV 0048 | CLEAR    | conflicts=  0 | create=   0.76 ms | insert= 823.83 ms | detect=  56.26 ms | resolve=   0.00 ms | total= 880.85 ms
+UAV 0049 | CLEAR    | conflicts=  0 | create=   0.51 ms | insert= 607.16 ms | detect=  67.06 ms | resolve=   0.00 ms | total= 674.73 ms
+UAV 0050 | CLEAR    | conflicts=  0 | create=   0.50 ms | insert=1022.94 ms | detect=  74.95 ms | resolve=   0.00 ms | total=1098.39 ms
+UAV 0051 | CLEAR    | conflicts=  0 | create=   0.65 ms | insert= 495.62 ms | detect=  53.32 ms | resolve=   0.00 ms | total= 549.59 ms
+UAV 0052 | CLEAR    | conflicts=  0 | create=   0.55 ms | insert=1161.96 ms | detect=  85.91 ms | resolve=   0.00 ms | total=1248.41 ms
+UAV 0053 | CLEAR    | conflicts=  0 | create=   1.26 ms | insert= 939.64 ms | detect=  78.96 ms | resolve=   0.00 ms | total=1019.86 ms
+UAV 0054 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert=1122.13 ms | detect=  92.87 ms | resolve=   0.00 ms | total=1215.45 ms
+UAV 0055 | CLEAR    | conflicts=  0 | create=   0.49 ms | insert=1092.57 ms | detect=  75.39 ms | resolve=   0.00 ms | total=1168.45 ms
+UAV 0056 | CLEAR    | conflicts=  0 | create=   0.50 ms | insert= 505.70 ms | detect=  57.82 ms | resolve=   0.00 ms | total= 564.03 ms
+UAV 0057 | CLEAR    | conflicts=  0 | create=   0.59 ms | insert= 414.04 ms | detect=  53.50 ms | resolve=   0.00 ms | total= 468.13 ms
+UAV 0058 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert= 624.63 ms | detect=  77.61 ms | resolve=   0.00 ms | total= 702.69 ms
+UAV 0059 | CLEAR    | conflicts=  0 | create=   0.60 ms | insert= 450.81 ms | detect=  64.35 ms | resolve=   0.00 ms | total= 515.76 ms
+UAV 0060 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 537.08 ms | detect=  65.28 ms | resolve=   0.00 ms | total= 602.90 ms
+UAV 0061 | CLEAR    | conflicts=  0 | create=   0.58 ms | insert=1165.36 ms | detect=  83.51 ms | resolve=   0.00 ms | total=1249.45 ms
+UAV 0062 | CLEAR    | conflicts=  0 | create=   0.47 ms | insert=1379.14 ms | detect=  97.32 ms | resolve=   0.00 ms | total=1476.93 ms
+UAV 0063 | CLEAR    | conflicts=  0 | create=   0.56 ms | insert= 844.37 ms | detect=  75.78 ms | resolve=   0.00 ms | total= 920.70 ms
+UAV 0064 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert=1037.74 ms | detect=  79.48 ms | resolve=   0.00 ms | total=1117.75 ms
+UAV 0065 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 966.97 ms | detect=  83.17 ms | resolve=   0.00 ms | total=1050.67 ms
+UAV 0066 | CLEAR    | conflicts=  0 | create=   0.58 ms | insert= 943.02 ms | detect=  61.50 ms | resolve=   0.00 ms | total=1005.11 ms
+UAV 0067 | CLEAR    | conflicts=  0 | create=   0.76 ms | insert= 628.85 ms | detect=  54.40 ms | resolve=   0.00 ms | total= 684.01 ms
+UAV 0068 | CLEAR    | conflicts=  0 | create=   0.53 ms | insert= 826.13 ms | detect=  69.07 ms | resolve=   0.00 ms | total= 895.74 ms
+UAV 0069 | CLEAR    | conflicts=  0 | create=   0.53 ms | insert=1908.05 ms | detect=  90.40 ms | resolve=   0.00 ms | total=1998.99 ms
+UAV 0070 | CLEAR    | conflicts=  0 | create=   0.67 ms | insert= 958.11 ms | detect=  68.86 ms | resolve=   0.00 ms | total=1027.64 ms
+UAV 0071 | CLEAR    | conflicts=  0 | create=   0.46 ms | insert=1641.85 ms | detect= 104.33 ms | resolve=   0.00 ms | total=1746.64 ms
+UAV 0072 | CLEAR    | conflicts=  0 | create=   0.52 ms | insert=1012.37 ms | detect=  68.90 ms | resolve=   0.00 ms | total=1081.80 ms
+UAV 0073 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert=1103.85 ms | detect=  58.43 ms | resolve=   0.00 ms | total=1162.73 ms
+UAV 0074 | CLEAR    | conflicts=  0 | create=   0.58 ms | insert= 853.39 ms | detect=  74.85 ms | resolve=   0.00 ms | total= 928.82 ms
+UAV 0075 | CLEAR    | conflicts=  0 | create=   0.57 ms | insert= 973.08 ms | detect= 118.12 ms | resolve=   0.00 ms | total=1091.77 ms
+UAV 0076 | CLEAR    | conflicts=  0 | create=   0.43 ms | insert= 342.55 ms | detect=  55.50 ms | resolve=   0.00 ms | total= 398.48 ms
+UAV 0077 | CLEAR    | conflicts=  0 | create=   0.55 ms | insert= 579.24 ms | detect=  69.86 ms | resolve=   0.00 ms | total= 649.65 ms
+UAV 0078 | CLEAR    | conflicts=  0 | create=   0.82 ms | insert= 572.88 ms | detect=  61.83 ms | resolve=   0.00 ms | total= 635.53 ms
+UAV 0079 | CLEAR    | conflicts=  0 | create=   0.48 ms | insert= 786.70 ms | detect=  62.29 ms | resolve=   0.00 ms | total= 849.47 ms
+UAV 0080 | CLEAR    | conflicts=  0 | create=   0.44 ms | insert= 401.74 ms | detect=  48.38 ms | resolve=   0.00 ms | total= 450.56 ms
+UAV 0081 | CLEAR    | conflicts=  0 | create=   0.65 ms | insert= 957.11 ms | detect=  66.55 ms | resolve=   0.00 ms | total=1024.31 ms
+UAV 0082 | CLEAR    | conflicts=  0 | create=   0.95 ms | insert= 611.35 ms | detect=  66.13 ms | resolve=   0.00 ms | total= 678.42 ms
+UAV 0083 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 886.82 ms | detect=  57.89 ms | resolve=   0.00 ms | total= 945.25 ms
+UAV 0084 | CLEAR    | conflicts=  0 | create=   0.57 ms | insert= 914.99 ms | detect=  55.65 ms | resolve=   0.00 ms | total= 971.20 ms
+[VALIDATION] pleb=48 candidate-query: gen=1858boxes 217.0ms, detect_time=57.3ms conflicts=0
+UAV 0085 | RESOLVED | conflicts=  9 | create=   0.47 ms | insert= 756.54 ms | detect=  83.24 ms | resolve=2505.15 ms | total=3345.39 ms
+UAV 0086 | CLEAR    | conflicts=  0 | create=   1.30 ms | insert=1145.46 ms | detect=  85.93 ms | resolve=   0.00 ms | total=1232.70 ms
+UAV 0087 | CLEAR    | conflicts=  0 | create=   0.47 ms | insert= 651.18 ms | detect=  65.55 ms | resolve=   0.00 ms | total= 717.20 ms
+UAV 0088 | CLEAR    | conflicts=  0 | create=   0.48 ms | insert= 639.12 ms | detect=  73.62 ms | resolve=   0.00 ms | total= 713.22 ms
+UAV 0089 | CLEAR    | conflicts=  0 | create=   0.46 ms | insert= 788.98 ms | detect=  60.26 ms | resolve=   0.00 ms | total= 849.70 ms
+UAV 0090 | CLEAR    | conflicts=  0 | create=   0.49 ms | insert= 561.28 ms | detect=  49.71 ms | resolve=   0.00 ms | total= 611.48 ms
+UAV 0091 | CLEAR    | conflicts=  0 | create=   0.79 ms | insert=1186.24 ms | detect=  90.71 ms | resolve=   0.00 ms | total=1277.75 ms
+UAV 0092 | CLEAR    | conflicts=  0 | create=   0.86 ms | insert=1227.09 ms | detect= 103.29 ms | resolve=   0.00 ms | total=1331.24 ms
+UAV 0093 | CLEAR    | conflicts=  0 | create=   1.20 ms | insert= 583.58 ms | detect=  69.30 ms | resolve=   0.00 ms | total= 654.08 ms
+UAV 0094 | CLEAR    | conflicts=  0 | create=   0.63 ms | insert= 912.86 ms | detect=  77.09 ms | resolve=   0.00 ms | total= 990.58 ms
+UAV 0095 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 583.27 ms | detect=  65.66 ms | resolve=   0.00 ms | total= 649.47 ms
+UAV 0096 | CLEAR    | conflicts=  0 | create=   0.73 ms | insert=1148.81 ms | detect=  89.33 ms | resolve=   0.00 ms | total=1238.87 ms
+[VALIDATION] pleb=97 candidate-query: gen=2105boxes 224.5ms, detect_time=64.8ms conflicts=3
+[VALIDATION] pleb=97 candidate-query: gen=2105boxes 222.4ms, detect_time=65.1ms conflicts=0
+UAV 0097 | RESOLVED | conflicts=  3 | create=   0.62 ms | insert= 718.81 ms | detect=  65.10 ms | resolve=3674.68 ms | total=4459.22 ms
+UAV 0098 | CLEAR    | conflicts=  0 | create=   0.61 ms | insert= 779.22 ms | detect= 158.08 ms | resolve=   0.00 ms | total= 937.91 ms
+UAV 0099 | CLEAR    | conflicts=  0 | create=   0.55 ms | insert= 789.44 ms | detect=  61.14 ms | resolve=   0.00 ms | total= 851.13 ms
+UAV 0100 | CLEAR    | conflicts=  0 | create=   0.57 ms | insert= 886.55 ms | detect=  61.50 ms | resolve=   0.00 ms | total= 948.63 ms
+[VALIDATION] pleb=74 candidate-query: gen=2419boxes 258.3ms, detect_time=78.7ms conflicts=5
+[VALIDATION] pleb=74 candidate-query: gen=2419boxes 254.6ms, detect_time=76.2ms conflicts=0
+UAV 0101 | RESOLVED | conflicts=  2 | create=   0.55 ms | insert=1330.15 ms | detect=  94.51 ms | resolve=3855.03 ms | total=5280.24 ms
+UAV 0102 | CLEAR    | conflicts=  0 | create=   0.62 ms | insert=1024.20 ms | detect=  80.83 ms | resolve=   0.00 ms | total=1105.66 ms
+UAV 0103 | CLEAR    | conflicts=  0 | create=   0.47 ms | insert= 623.31 ms | detect=  68.36 ms | resolve=   0.00 ms | total= 692.14 ms
+UAV 0104 | CLEAR    | conflicts=  0 | create=   0.58 ms | insert= 879.27 ms | detect=  71.71 ms | resolve=   0.00 ms | total= 951.56 ms
+UAV 0105 | CLEAR    | conflicts=  0 | create=   0.51 ms | insert=1471.23 ms | detect=  94.78 ms | resolve=   0.00 ms | total=1566.52 ms
+UAV 0106 | CLEAR    | conflicts=  0 | create=   0.53 ms | insert= 470.25 ms | detect=  67.96 ms | resolve=   0.00 ms | total= 538.75 ms
+UAV 0107 | CLEAR    | conflicts=  0 | create=   0.59 ms | insert=1348.73 ms | detect=  97.59 ms | resolve=   0.00 ms | total=1446.91 ms
+UAV 0108 | CLEAR    | conflicts=  0 | create=   0.69 ms | insert= 823.65 ms | detect=  60.16 ms | resolve=   0.00 ms | total= 884.50 ms
+UAV 0109 | CLEAR    | conflicts=  0 | create=   0.73 ms | insert= 848.97 ms | detect=  61.53 ms | resolve=   0.00 ms | total= 911.23 ms
+UAV 0110 | CLEAR    | conflicts=  0 | create=   1.35 ms | insert=1513.64 ms | detect=  86.40 ms | resolve=   0.00 ms | total=1601.40 ms
+UAV 0111 | CLEAR    | conflicts=  0 | create=   0.56 ms | insert= 837.33 ms | detect=  90.77 ms | resolve=   0.00 ms | total= 928.66 ms
+UAV 0112 | CLEAR    | conflicts=  0 | create=   0.48 ms | insert= 778.83 ms | detect= 106.97 ms | resolve=   0.00 ms | total= 886.28 ms
+UAV 0113 | CLEAR    | conflicts=  0 | create=   0.48 ms | insert= 576.81 ms | detect=  58.85 ms | resolve=   0.00 ms | total= 636.14 ms
+UAV 0114 | CLEAR    | conflicts=  0 | create=   0.44 ms | insert= 831.49 ms | detect=  97.46 ms | resolve=   0.00 ms | total= 929.40 ms
+UAV 0115 | CLEAR    | conflicts=  0 | create=   0.46 ms | insert= 643.60 ms | detect=  63.55 ms | resolve=   0.00 ms | total= 707.61 ms
+UAV 0116 | CLEAR    | conflicts=  0 | create=   0.62 ms | insert= 726.73 ms | detect=  82.97 ms | resolve=   0.00 ms | total= 810.32 ms
+UAV 0117 | CLEAR    | conflicts=  0 | create=   0.51 ms | insert= 660.68 ms | detect=  53.24 ms | resolve=   0.00 ms | total= 714.43 ms
+[VALIDATION] pleb=118 candidate-query: gen=2426boxes 271.6ms, detect_time=80.9ms conflicts=3
+[VALIDATION] pleb=118 candidate-query: gen=2426boxes 271.9ms, detect_time=78.1ms conflicts=0
+UAV 0118 | RESOLVED | conflicts=  3 | create=   0.50 ms | insert= 775.95 ms | detect=  82.22 ms | resolve=5110.97 ms | total=5969.64 ms
+UAV 0119 | CLEAR    | conflicts=  0 | create=   0.63 ms | insert=1410.87 ms | detect= 106.63 ms | resolve=   0.00 ms | total=1518.13 ms
+UAV 0120 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 832.92 ms | detect=  62.04 ms | resolve=   0.00 ms | total= 895.50 ms
+[VALIDATION] pleb=121 candidate-query: gen=1675boxes 189.9ms, detect_time=109.8ms conflicts=120
+[VALIDATION] pleb=121 candidate-query: gen=1675boxes 189.1ms, detect_time=55.5ms conflicts=0
+UAV 0121 | RESOLVED | conflicts= 22 | create=   0.46 ms | insert= 524.61 ms | detect=  75.10 ms | resolve=2634.59 ms | total=3234.76 ms
+UAV 0122 | CLEAR    | conflicts=  0 | create=   0.49 ms | insert= 680.22 ms | detect=  64.86 ms | resolve=   0.00 ms | total= 745.57 ms
+UAV 0123 | CLEAR    | conflicts=  0 | create=   0.59 ms | insert= 803.69 ms | detect=  65.44 ms | resolve=   0.00 ms | total= 869.71 ms
+UAV 0124 | CLEAR    | conflicts=  0 | create=   0.51 ms | insert=1418.03 ms | detect=  89.70 ms | resolve=   0.00 ms | total=1508.24 ms
+UAV 0125 | CLEAR    | conflicts=  0 | create=   0.92 ms | insert= 816.79 ms | detect=  74.97 ms | resolve=   0.00 ms | total= 892.69 ms
+UAV 0126 | CLEAR    | conflicts=  0 | create=   0.56 ms | insert= 887.37 ms | detect=  71.68 ms | resolve=   0.00 ms | total= 959.61 ms
+UAV 0127 | CLEAR    | conflicts=  0 | create=   0.43 ms | insert= 767.57 ms | detect=  80.33 ms | resolve=   0.00 ms | total= 848.34 ms
+[VALIDATION] pleb=32 candidate-query: gen=2088boxes 228.4ms, detect_time=76.7ms conflicts=1
+[VALIDATION] pleb=32 candidate-query: gen=2088boxes 230.2ms, detect_time=75.6ms conflicts=0
+UAV 0128 | RESOLVED | conflicts=  5 | create=   0.45 ms | insert= 702.12 ms | detect=  87.58 ms | resolve=2929.89 ms | total=3720.04 ms
+UAV 0129 | CLEAR    | conflicts=  0 | create=   0.59 ms | insert=1258.86 ms | detect=  99.05 ms | resolve=   0.00 ms | total=1358.50 ms
+UAV 0130 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 505.27 ms | detect=  51.54 ms | resolve=   0.00 ms | total= 557.36 ms
+UAV 0131 | CLEAR    | conflicts=  0 | create=   0.47 ms | insert= 913.29 ms | detect=  79.34 ms | resolve=   0.00 ms | total= 993.10 ms
+UAV 0132 | CLEAR    | conflicts=  0 | create=   0.42 ms | insert= 509.81 ms | detect=  47.38 ms | resolve=   0.00 ms | total= 557.61 ms
+UAV 0133 | CLEAR    | conflicts=  0 | create=   0.49 ms | insert= 603.26 ms | detect=  61.53 ms | resolve=   0.00 ms | total= 665.27 ms
+UAV 0134 | CLEAR    | conflicts=  0 | create=   0.40 ms | insert= 808.15 ms | detect=  78.42 ms | resolve=   0.00 ms | total= 886.97 ms
+UAV 0135 | CLEAR    | conflicts=  0 | create=   0.67 ms | insert=1282.75 ms | detect=  90.91 ms | resolve=   0.00 ms | total=1374.33 ms
+UAV 0136 | CLEAR    | conflicts=  0 | create=   0.43 ms | insert=1306.69 ms | detect=  87.33 ms | resolve=   0.00 ms | total=1394.45 ms
+UAV 0137 | CLEAR    | conflicts=  0 | create=   0.53 ms | insert= 886.56 ms | detect=  73.88 ms | resolve=   0.00 ms | total= 960.96 ms
+UAV 0138 | CLEAR    | conflicts=  0 | create=   0.66 ms | insert= 808.57 ms | detect=  68.58 ms | resolve=   0.00 ms | total= 877.82 ms
+UAV 0139 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert= 639.94 ms | detect=  48.17 ms | resolve=   0.00 ms | total= 688.56 ms
+UAV 0140 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert=1740.26 ms | detect=  82.00 ms | resolve=   0.00 ms | total=1822.71 ms
+UAV 0141 | CLEAR    | conflicts=  0 | create=   0.61 ms | insert=1136.29 ms | detect=  76.76 ms | resolve=   0.00 ms | total=1213.66 ms
+UAV 0142 | CLEAR    | conflicts=  0 | create=   0.44 ms | insert= 678.60 ms | detect=  53.61 ms | resolve=   0.00 ms | total= 732.65 ms
+UAV 0143 | CLEAR    | conflicts=  0 | create=   0.70 ms | insert= 783.66 ms | detect=  69.45 ms | resolve=   0.00 ms | total= 853.81 ms
+UAV 0144 | CLEAR    | conflicts=  0 | create=   0.50 ms | insert= 990.45 ms | detect=  73.21 ms | resolve=   0.00 ms | total=1064.16 ms
+UAV 0145 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 639.77 ms | detect=  61.81 ms | resolve=   0.00 ms | total= 702.12 ms
+[VALIDATION] pleb=146 candidate-query: gen=2380boxes 262.0ms, detect_time=80.9ms conflicts=3
+[VALIDATION] pleb=146 candidate-query: gen=2380boxes 265.5ms, detect_time=81.2ms conflicts=2
+[VALIDATION] pleb=146 candidate-query: gen=2380boxes 263.1ms, detect_time=78.3ms conflicts=3
+[VALIDATION] pleb=146 candidate-query: gen=2380boxes 262.8ms, detect_time=76.7ms conflicts=0
+UAV 0146 | RESOLVED | conflicts=  3 | create=   0.43 ms | insert= 808.44 ms | detect=  80.40 ms | resolve=4324.81 ms | total=5214.08 ms
+UAV 0147 | CLEAR    | conflicts=  0 | create=   1.06 ms | insert=1312.80 ms | detect= 103.43 ms | resolve=   0.00 ms | total=1417.29 ms
+UAV 0148 | CLEAR    | conflicts=  0 | create=   0.52 ms | insert= 566.67 ms | detect=  57.00 ms | resolve=   0.00 ms | total= 624.20 ms
+UAV 0149 | CLEAR    | conflicts=  0 | create=   0.48 ms | insert= 982.57 ms | detect=  81.13 ms | resolve=   0.00 ms | total=1064.18 ms
+UAV 0150 | CLEAR    | conflicts=  0 | create=   0.61 ms | insert= 409.47 ms | detect=  56.92 ms | resolve=   0.00 ms | total= 467.00 ms
+UAV 0151 | CLEAR    | conflicts=  0 | create=   0.56 ms | insert= 764.89 ms | detect=  85.67 ms | resolve=   0.00 ms | total= 851.12 ms
+UAV 0152 | CLEAR    | conflicts=  0 | create=   0.48 ms | insert= 491.47 ms | detect=  85.73 ms | resolve=   0.00 ms | total= 577.68 ms
+[VALIDATION] pleb=153 candidate-query: gen=3022boxes 303.5ms, detect_time=89.3ms conflicts=4
+[VALIDATION] pleb=153 candidate-query: gen=3022boxes 298.4ms, detect_time=92.0ms conflicts=0
+UAV 0153 | RESOLVED | conflicts= 10 | create=   0.50 ms | insert=1325.47 ms | detect= 100.01 ms | resolve=4836.51 ms | total=6262.49 ms
+UAV 0154 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 596.36 ms | detect=  73.58 ms | resolve=   0.00 ms | total= 670.48 ms
+UAV 0155 | CLEAR    | conflicts=  0 | create=   0.49 ms | insert=1131.39 ms | detect=  82.95 ms | resolve=   0.00 ms | total=1214.83 ms
+UAV 0156 | CLEAR    | conflicts=  0 | create=   0.60 ms | insert= 842.03 ms | detect=  67.09 ms | resolve=   0.00 ms | total= 909.72 ms
+UAV 0157 | CLEAR    | conflicts=  0 | create=   0.56 ms | insert= 771.08 ms | detect=  71.89 ms | resolve=   0.00 ms | total= 843.53 ms
+UAV 0158 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert= 666.92 ms | detect=  62.29 ms | resolve=   0.00 ms | total= 729.66 ms
+[VALIDATION] pleb=97 candidate-query: gen=2105boxes 238.6ms, detect_time=79.5ms conflicts=2
+[VALIDATION] pleb=97 candidate-query: gen=2105boxes 235.9ms, detect_time=79.6ms conflicts=3
+[VALIDATION] pleb=97 candidate-query: gen=2105boxes 236.7ms, detect_time=77.9ms conflicts=0
+UAV 0159 | RESOLVED | conflicts=  2 | create=   0.44 ms | insert= 810.87 ms | detect=  56.08 ms | resolve=3637.08 ms | total=4504.47 ms
+UAV 0160 | CLEAR    | conflicts=  0 | create=   0.65 ms | insert= 739.65 ms | detect=  62.19 ms | resolve=   0.00 ms | total= 802.49 ms
+UAV 0161 | CLEAR    | conflicts=  0 | create=   0.48 ms | insert= 486.27 ms | detect=  61.45 ms | resolve=   0.00 ms | total= 548.20 ms
+UAV 0162 | CLEAR    | conflicts=  0 | create=   0.67 ms | insert= 664.21 ms | detect=  61.49 ms | resolve=   0.00 ms | total= 726.37 ms
+UAV 0163 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert= 588.03 ms | detect=  67.61 ms | resolve=   0.00 ms | total= 656.09 ms
+UAV 0164 | CLEAR    | conflicts=  0 | create=   0.93 ms | insert= 609.83 ms | detect=  64.04 ms | resolve=   0.00 ms | total= 674.81 ms
+UAV 0165 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert= 982.39 ms | detect=  88.46 ms | resolve=   0.00 ms | total=1071.30 ms
+UAV 0166 | CLEAR    | conflicts=  0 | create=   0.96 ms | insert= 862.77 ms | detect=  81.93 ms | resolve=   0.00 ms | total= 945.65 ms
+UAV 0167 | CLEAR    | conflicts=  0 | create=   0.47 ms | insert= 374.67 ms | detect=  52.98 ms | resolve=   0.00 ms | total= 428.12 ms
+UAV 0168 | CLEAR    | conflicts=  0 | create=   0.70 ms | insert= 766.79 ms | detect=  83.47 ms | resolve=   0.00 ms | total= 850.95 ms
+UAV 0169 | CLEAR    | conflicts=  0 | create=   0.50 ms | insert= 616.67 ms | detect=  61.22 ms | resolve=   0.00 ms | total= 678.38 ms
+UAV 0170 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert= 995.86 ms | detect=  94.84 ms | resolve=   0.00 ms | total=1091.15 ms
+UAV 0171 | CLEAR    | conflicts=  0 | create=   0.46 ms | insert= 779.87 ms | detect=  68.50 ms | resolve=   0.00 ms | total= 848.83 ms
+UAV 0172 | CLEAR    | conflicts=  0 | create=   0.44 ms | insert= 629.40 ms | detect=  78.15 ms | resolve=   0.00 ms | total= 707.98 ms
+UAV 0173 | CLEAR    | conflicts=  0 | create=   0.48 ms | insert= 603.12 ms | detect=  59.72 ms | resolve=   0.00 ms | total= 663.32 ms
+UAV 0174 | CLEAR    | conflicts=  0 | create=   0.48 ms | insert= 508.83 ms | detect=  61.26 ms | resolve=   0.00 ms | total= 570.57 ms
+UAV 0175 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert= 554.55 ms | detect=  73.96 ms | resolve=   0.00 ms | total= 628.96 ms
+UAV 0176 | CLEAR    | conflicts=  0 | create=   0.47 ms | insert= 416.05 ms | detect=  54.97 ms | resolve=   0.00 ms | total= 471.49 ms
+UAV 0177 | CLEAR    | conflicts=  0 | create=   0.74 ms | insert= 777.14 ms | detect=  76.78 ms | resolve=   0.00 ms | total= 854.66 ms
+[VALIDATION] pleb=178 candidate-query: gen=2261boxes 250.7ms, detect_time=75.0ms conflicts=0
+UAV 0178 | RESOLVED | conflicts= 20 | create=   0.46 ms | insert= 825.94 ms | detect=  84.49 ms | resolve=3336.36 ms | total=4247.26 ms
+UAV 0179 | CLEAR    | conflicts=  0 | create=   0.78 ms | insert= 457.44 ms | detect=  67.44 ms | resolve=   0.00 ms | total= 525.66 ms
+UAV 0180 | CLEAR    | conflicts=  0 | create=   0.64 ms | insert=1204.36 ms | detect=  96.78 ms | resolve=   0.00 ms | total=1301.79 ms
+UAV 0181 | CLEAR    | conflicts=  0 | create=   0.44 ms | insert= 566.84 ms | detect=  79.65 ms | resolve=   0.00 ms | total= 646.93 ms
+UAV 0182 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert= 545.46 ms | detect=  70.04 ms | resolve=   0.00 ms | total= 615.94 ms
+UAV 0183 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert= 510.81 ms | detect=  67.54 ms | resolve=   0.00 ms | total= 578.80 ms
+UAV 0184 | CLEAR    | conflicts=  0 | create=   0.47 ms | insert= 775.29 ms | detect=  99.95 ms | resolve=   0.00 ms | total= 875.71 ms
+UAV 0185 | CLEAR    | conflicts=  0 | create=   0.57 ms | insert= 798.34 ms | detect=  90.39 ms | resolve=   0.00 ms | total= 889.31 ms
+UAV 0186 | CLEAR    | conflicts=  0 | create=   0.46 ms | insert= 497.81 ms | detect=  62.72 ms | resolve=   0.00 ms | total= 560.98 ms
+UAV 0187 | CLEAR    | conflicts=  0 | create=   0.97 ms | insert=1057.41 ms | detect= 104.42 ms | resolve=   0.00 ms | total=1162.80 ms
+UAV 0188 | CLEAR    | conflicts=  0 | create=   1.02 ms | insert= 680.02 ms | detect=  89.08 ms | resolve=   0.00 ms | total= 770.11 ms
+UAV 0189 | CLEAR    | conflicts=  0 | create=   0.70 ms | insert= 425.04 ms | detect=  69.16 ms | resolve=   0.00 ms | total= 494.90 ms
+UAV 0190 | CLEAR    | conflicts=  0 | create=   0.60 ms | insert= 785.43 ms | detect=  99.35 ms | resolve=   0.00 ms | total= 885.39 ms
+UAV 0191 | CLEAR    | conflicts=  0 | create=   0.51 ms | insert= 965.15 ms | detect= 107.79 ms | resolve=   0.00 ms | total=1073.45 ms
+UAV 0192 | CLEAR    | conflicts=  0 | create=   0.51 ms | insert= 650.63 ms | detect= 100.96 ms | resolve=   0.00 ms | total= 752.10 ms
+UAV 0193 | CLEAR    | conflicts=  0 | create=   0.44 ms | insert= 480.93 ms | detect=  76.84 ms | resolve=   0.00 ms | total= 558.21 ms
+UAV 0194 | CLEAR    | conflicts=  0 | create=   0.80 ms | insert= 576.40 ms | detect=  72.49 ms | resolve=   0.00 ms | total= 649.69 ms
+[VALIDATION] pleb=195 candidate-query: gen=1880boxes 204.7ms, detect_time=169.2ms conflicts=0
+UAV 0195 | RESOLVED | conflicts=  2 | create=   0.80 ms | insert= 388.41 ms | detect=  68.89 ms | resolve=2605.24 ms | total=3063.35 ms
+UAV 0196 | CLEAR    | conflicts=  0 | create=   0.64 ms | insert= 642.01 ms | detect=  94.26 ms | resolve=   0.00 ms | total= 736.91 ms
+UAV 0197 | CLEAR    | conflicts=  0 | create=   0.71 ms | insert= 661.67 ms | detect=  71.60 ms | resolve=   0.00 ms | total= 733.98 ms
+UAV 0198 | CLEAR    | conflicts=  0 | create=   0.46 ms | insert= 641.08 ms | detect=  67.04 ms | resolve=   0.00 ms | total= 708.59 ms
+UAV 0199 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert= 450.95 ms | detect=  64.31 ms | resolve=   0.00 ms | total= 515.71 ms
+UAV 0200 | CLEAR    | conflicts=  0 | create=   0.48 ms | insert= 632.82 ms | detect=  74.63 ms | resolve=   0.00 ms | total= 707.93 ms
+[VALIDATION] pleb=201 candidate-query: gen=2373boxes 252.7ms, detect_time=85.6ms conflicts=9
+[VALIDATION] pleb=201 candidate-query: gen=2373boxes 255.6ms, detect_time=82.7ms conflicts=6
+[VALIDATION] pleb=90 candidate-query: gen=1770boxes 169.6ms, detect_time=57.0ms conflicts=12
+[VALIDATION] pleb=90 candidate-query: gen=1770boxes 177.3ms, detect_time=57.4ms conflicts=6
+[VALIDATION] pleb=90 candidate-query: gen=1770boxes 176.5ms, detect_time=60.0ms conflicts=14
+[VALIDATION] pleb=90 candidate-query: gen=1770boxes 176.2ms, detect_time=60.0ms conflicts=5
+[VALIDATION] pleb=90 candidate-query: gen=1770boxes 177.1ms, detect_time=56.5ms conflicts=6
+[VALIDATION] pleb=90 candidate-query: gen=1770boxes 176.1ms, detect_time=56.2ms conflicts=0
+UAV 0201 | RESOLVED | conflicts=  7 | create=   0.46 ms | insert= 632.79 ms | detect=  88.10 ms | resolve=7015.12 ms | total=7736.48 ms
+UAV 0202 | CLEAR    | conflicts=  0 | create=   0.60 ms | insert= 439.62 ms | detect=  58.26 ms | resolve=   0.00 ms | total= 498.49 ms
+UAV 0203 | CLEAR    | conflicts=  0 | create=   0.60 ms | insert= 554.48 ms | detect=  70.91 ms | resolve=   0.00 ms | total= 625.99 ms
+[VALIDATION] pleb=48 candidate-query: gen=1858boxes 196.2ms, detect_time=68.6ms conflicts=1
+[VALIDATION] pleb=48 candidate-query: gen=1858boxes 197.7ms, detect_time=71.7ms conflicts=0
+UAV 0204 | RESOLVED | conflicts=  7 | create=   0.52 ms | insert= 485.22 ms | detect=  73.73 ms | resolve=2861.19 ms | total=3420.67 ms
+[VALIDATION] pleb=98 candidate-query: gen=2371boxes 253.0ms, detect_time=87.7ms conflicts=3
+[VALIDATION] pleb=98 candidate-query: gen=2371boxes 255.0ms, detect_time=84.2ms conflicts=2
+[VALIDATION] pleb=98 candidate-query: gen=2371boxes 246.1ms, detect_time=85.6ms conflicts=3
+[VALIDATION] pleb=98 candidate-query: gen=2371boxes 244.1ms, detect_time=81.8ms conflicts=2
+[VALIDATION] pleb=98 candidate-query: gen=2371boxes 246.9ms, detect_time=82.7ms conflicts=2
+[VALIDATION] pleb=98 candidate-query: gen=2371boxes 241.0ms, detect_time=83.0ms conflicts=2
+[VALIDATION] pleb=98 candidate-query: gen=2371boxes 245.8ms, detect_time=83.7ms conflicts=2
+[VALIDATION] pleb=98 candidate-query: gen=2371boxes 244.2ms, detect_time=82.7ms conflicts=0
+UAV 0205 | RESOLVED | conflicts=  2 | create=   0.51 ms | insert= 654.53 ms | detect=  75.99 ms | resolve=5413.92 ms | total=6144.95 ms
+UAV 0206 | CLEAR    | conflicts=  0 | create=   0.50 ms | insert=1123.28 ms | detect= 120.02 ms | resolve=   0.00 ms | total=1243.80 ms
+[VALIDATION] pleb=81 candidate-query: gen=2419boxes 269.9ms, detect_time=83.3ms conflicts=3
+[VALIDATION] pleb=81 candidate-query: gen=2419boxes 276.9ms, detect_time=79.3ms conflicts=1
+[VALIDATION] pleb=81 candidate-query: gen=2419boxes 268.9ms, detect_time=81.1ms conflicts=3
+[VALIDATION] pleb=81 candidate-query: gen=2419boxes 262.7ms, detect_time=81.9ms conflicts=0
+[VALIDATION] pleb=207 candidate-query: gen=2459boxes 255.8ms, detect_time=86.7ms conflicts=0
+UAV 0207 | RESOLVED | conflicts=  9 | create=   0.55 ms | insert= 670.69 ms | detect=  97.78 ms | resolve=7483.68 ms | total=8252.69 ms
+UAV 0208 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 683.74 ms | detect=  97.83 ms | resolve=   0.00 ms | total= 782.11 ms
+UAV 0209 | CLEAR    | conflicts=  0 | create=   0.49 ms | insert=1002.38 ms | detect= 115.43 ms | resolve=   0.00 ms | total=1118.30 ms
+UAV 0210 | CLEAR    | conflicts=  0 | create=   0.48 ms | insert= 627.78 ms | detect=  75.84 ms | resolve=   0.00 ms | total= 704.10 ms
+UAV 0211 | CLEAR    | conflicts=  0 | create=   1.27 ms | insert=1019.18 ms | detect= 113.56 ms | resolve=   0.00 ms | total=1134.01 ms
+UAV 0212 | CLEAR    | conflicts=  0 | create=   0.66 ms | insert= 769.47 ms | detect=  96.72 ms | resolve=   0.00 ms | total= 866.86 ms
+[VALIDATION] pleb=213 candidate-query: gen=1708boxes 189.7ms, detect_time=64.2ms conflicts=0
+UAV 0213 | RESOLVED | conflicts=  2 | create=   0.63 ms | insert= 398.75 ms | detect=  61.62 ms | resolve=2458.16 ms | total=2919.17 ms
+UAV 0214 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert= 527.44 ms | detect=  76.17 ms | resolve=   0.00 ms | total= 604.07 ms
+[VALIDATION] pleb=37 candidate-query: gen=1749boxes 193.3ms, detect_time=65.1ms conflicts=0
+UAV 0215 | RESOLVED | conflicts=  1 | create=   0.44 ms | insert= 530.12 ms | detect=  78.07 ms | resolve=2233.78 ms | total=2842.41 ms
+[VALIDATION] pleb=7 candidate-query: gen=2819boxes 288.8ms, detect_time=100.1ms conflicts=0
+UAV 0216 | RESOLVED | conflicts=  1 | create=   0.63 ms | insert= 487.92 ms | detect=  73.40 ms | resolve=4009.05 ms | total=4571.00 ms
+UAV 0217 | CLEAR    | conflicts=  0 | create=   0.61 ms | insert= 698.27 ms | detect=  82.92 ms | resolve=   0.00 ms | total= 781.80 ms
+UAV 0218 | CLEAR    | conflicts=  0 | create=   0.44 ms | insert= 514.41 ms | detect=  73.59 ms | resolve=   0.00 ms | total= 588.44 ms
+UAV 0219 | CLEAR    | conflicts=  0 | create=   0.44 ms | insert= 521.91 ms | detect=  63.55 ms | resolve=   0.00 ms | total= 585.90 ms
+UAV 0220 | CLEAR    | conflicts=  0 | create=   0.55 ms | insert=1146.85 ms | detect=  96.48 ms | resolve=   0.00 ms | total=1243.88 ms
+UAV 0221 | CLEAR    | conflicts=  0 | create=   0.52 ms | insert= 775.69 ms | detect= 114.40 ms | resolve=   0.00 ms | total= 890.61 ms
+UAV 0222 | CLEAR    | conflicts=  0 | create=   0.74 ms | insert= 480.25 ms | detect=  70.83 ms | resolve=   0.00 ms | total= 551.82 ms
+[VALIDATION] pleb=223 candidate-query: gen=2512boxes 269.4ms, detect_time=98.0ms conflicts=0
+UAV 0223 | RESOLVED | conflicts=  1 | create=   0.54 ms | insert= 764.13 ms | detect=  99.04 ms | resolve=3574.32 ms | total=4438.03 ms
+UAV 0224 | CLEAR    | conflicts=  0 | create=   0.62 ms | insert= 424.28 ms | detect=  66.14 ms | resolve=   0.00 ms | total= 491.04 ms
+UAV 0225 | CLEAR    | conflicts=  0 | create=   0.55 ms | insert= 607.24 ms | detect=  93.45 ms | resolve=   0.00 ms | total= 701.25 ms
+UAV 0226 | CLEAR    | conflicts=  0 | create=   1.09 ms | insert=1146.49 ms | detect= 115.58 ms | resolve=   0.00 ms | total=1263.16 ms
+UAV 0227 | CLEAR    | conflicts=  0 | create=   0.58 ms | insert= 665.64 ms | detect= 104.30 ms | resolve=   0.00 ms | total= 770.52 ms
+UAV 0228 | CLEAR    | conflicts=  0 | create=   0.73 ms | insert= 729.71 ms | detect= 228.42 ms | resolve=   0.00 ms | total= 958.86 ms
+UAV 0229 | CLEAR    | conflicts=  0 | create=   0.63 ms | insert= 678.52 ms | detect= 115.97 ms | resolve=   0.00 ms | total= 795.11 ms
+[VALIDATION] pleb=230 candidate-query: gen=2556boxes 287.6ms, detect_time=92.9ms conflicts=0
+UAV 0230 | RESOLVED | conflicts=  1 | create=   0.45 ms | insert= 629.23 ms | detect=  97.94 ms | resolve=4163.03 ms | total=4890.64 ms
+[VALIDATION] pleb=220 candidate-query: gen=2929boxes 312.6ms, detect_time=94.3ms conflicts=1
+[VALIDATION] pleb=220 candidate-query: gen=2929boxes 309.2ms, detect_time=91.7ms conflicts=0
+UAV 0231 | RESOLVED | conflicts=  4 | create=   0.61 ms | insert= 545.13 ms | detect=  78.45 ms | resolve=4752.23 ms | total=5376.42 ms
+UAV 0232 | CLEAR    | conflicts=  0 | create=   0.52 ms | insert= 445.08 ms | detect=  71.88 ms | resolve=   0.00 ms | total= 517.48 ms
+[VALIDATION] pleb=233 candidate-query: gen=2382boxes 263.1ms, detect_time=93.3ms conflicts=0
+UAV 0233 | RESOLVED | conflicts=  1 | create=   0.48 ms | insert= 793.42 ms | detect=  94.62 ms | resolve=3672.30 ms | total=4560.81 ms
+UAV 0234 | CLEAR    | conflicts=  0 | create=   0.49 ms | insert= 615.30 ms | detect=  69.12 ms | resolve=   0.00 ms | total= 684.91 ms
+UAV 0235 | CLEAR    | conflicts=  0 | create=   0.44 ms | insert= 418.57 ms | detect=  73.14 ms | resolve=   0.00 ms | total= 492.16 ms
+UAV 0236 | CLEAR    | conflicts=  0 | create=   0.61 ms | insert= 555.65 ms | detect=  72.69 ms | resolve=   0.00 ms | total= 628.95 ms
+[VALIDATION] pleb=237 candidate-query: gen=1715boxes 190.7ms, detect_time=67.8ms conflicts=0
+UAV 0237 | RESOLVED | conflicts=  1 | create=   0.50 ms | insert= 462.79 ms | detect=  68.68 ms | resolve=2657.09 ms | total=3189.06 ms
+UAV 0238 | CLEAR    | conflicts=  0 | create=   0.49 ms | insert= 425.61 ms | detect=  75.68 ms | resolve=   0.00 ms | total= 501.78 ms
+UAV 0239 | CLEAR    | conflicts=  0 | create=   0.49 ms | insert= 421.44 ms | detect=  58.81 ms | resolve=   0.00 ms | total= 480.74 ms
+UAV 0240 | CLEAR    | conflicts=  0 | create=   1.54 ms | insert= 603.53 ms | detect=  74.48 ms | resolve=   0.00 ms | total= 679.54 ms
+UAV 0241 | CLEAR    | conflicts=  0 | create=   0.46 ms | insert= 988.01 ms | detect= 109.61 ms | resolve=   0.00 ms | total=1098.09 ms
+UAV 0242 | CLEAR    | conflicts=  0 | create=   0.51 ms | insert= 828.05 ms | detect=  91.63 ms | resolve=   0.00 ms | total= 920.20 ms
+UAV 0243 | CLEAR    | conflicts=  0 | create=   0.49 ms | insert= 715.89 ms | detect=  93.96 ms | resolve=   0.00 ms | total= 810.34 ms
+UAV 0244 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert=1608.76 ms | detect= 124.43 ms | resolve=   0.00 ms | total=1733.73 ms
+UAV 0245 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert= 363.18 ms | detect=  70.08 ms | resolve=   0.00 ms | total= 433.72 ms
+UAV 0246 | CLEAR    | conflicts=  0 | create=   0.53 ms | insert= 358.23 ms | detect=  65.76 ms | resolve=   0.00 ms | total= 424.52 ms
+UAV 0247 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 588.77 ms | detect=  93.35 ms | resolve=   0.00 ms | total= 682.66 ms
+UAV 0248 | CLEAR    | conflicts=  0 | create=   0.49 ms | insert= 805.71 ms | detect= 108.02 ms | resolve=   0.00 ms | total= 914.23 ms
+UAV 0249 | CLEAR    | conflicts=  0 | create=   1.03 ms | insert= 696.33 ms | detect= 100.74 ms | resolve=   0.00 ms | total= 798.11 ms
+[VALIDATION] pleb=250 candidate-query: gen=2212boxes 263.8ms, detect_time=83.8ms conflicts=0
+UAV 0250 | RESOLVED | conflicts=  9 | create=   0.69 ms | insert= 760.72 ms | detect=  89.43 ms | resolve=3606.99 ms | total=4457.82 ms
+UAV 0251 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert= 504.55 ms | detect=  78.08 ms | resolve=   0.00 ms | total= 583.08 ms
+UAV 0252 | CLEAR    | conflicts=  0 | create=   0.46 ms | insert= 338.38 ms | detect=  61.65 ms | resolve=   0.00 ms | total= 400.48 ms
+UAV 0253 | CLEAR    | conflicts=  0 | create=   0.49 ms | insert= 551.24 ms | detect=  65.71 ms | resolve=   0.00 ms | total= 617.45 ms
+UAV 0254 | CLEAR    | conflicts=  0 | create=   0.52 ms | insert=1533.39 ms | detect= 125.17 ms | resolve=   0.00 ms | total=1659.08 ms
+[VALIDATION] pleb=255 candidate-query: gen=2561boxes 282.2ms, detect_time=106.1ms conflicts=2
+[VALIDATION] pleb=255 candidate-query: gen=2561boxes 284.4ms, detect_time=99.9ms conflicts=2
+[VALIDATION] pleb=255 candidate-query: gen=2561boxes 271.1ms, detect_time=97.9ms conflicts=2
+[VALIDATION] pleb=255 candidate-query: gen=2561boxes 266.0ms, detect_time=97.0ms conflicts=2
+[VALIDATION] pleb=255 candidate-query: gen=2561boxes 274.2ms, detect_time=103.7ms conflicts=13
+[VALIDATION] pleb=255 candidate-query: gen=2561boxes 280.0ms, detect_time=100.5ms conflicts=3
+[VALIDATION] pleb=255 candidate-query: gen=2561boxes 282.2ms, detect_time=101.2ms conflicts=0
+UAV 0255 | RESOLVED | conflicts=  2 | create=   0.54 ms | insert= 605.20 ms | detect= 103.41 ms | resolve=6655.19 ms | total=7364.33 ms
+[VALIDATION] pleb=256 candidate-query: gen=2009boxes 238.3ms, detect_time=86.9ms conflicts=3
+[VALIDATION] pleb=256 candidate-query: gen=2009boxes 236.2ms, detect_time=84.2ms conflicts=0
+UAV 0256 | RESOLVED | conflicts=  3 | create=   0.51 ms | insert= 443.76 ms | detect=  79.75 ms | resolve=3315.64 ms | total=3839.65 ms
+UAV 0257 | CLEAR    | conflicts=  0 | create=   0.48 ms | insert= 873.60 ms | detect= 104.62 ms | resolve=   0.00 ms | total= 978.71 ms
+UAV 0258 | CLEAR    | conflicts=  0 | create=   0.46 ms | insert= 646.54 ms | detect=  62.74 ms | resolve=   0.00 ms | total= 709.75 ms
+UAV 0259 | CLEAR    | conflicts=  0 | create=   0.58 ms | insert=1182.21 ms | detect= 128.06 ms | resolve=   0.00 ms | total=1310.86 ms
+UAV 0260 | CLEAR    | conflicts=  0 | create=   0.53 ms | insert= 683.45 ms | detect=  71.85 ms | resolve=   0.00 ms | total= 755.83 ms
+UAV 0261 | CLEAR    | conflicts=  0 | create=   0.83 ms | insert= 397.85 ms | detect=  54.77 ms | resolve=   0.00 ms | total= 453.45 ms
+UAV 0262 | CLEAR    | conflicts=  0 | create=   0.68 ms | insert= 450.53 ms | detect=  54.56 ms | resolve=   0.00 ms | total= 505.76 ms
+UAV 0263 | CLEAR    | conflicts=  0 | create=   0.50 ms | insert= 510.04 ms | detect=  73.76 ms | resolve=   0.00 ms | total= 584.29 ms
+UAV 0264 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 622.10 ms | detect=  92.99 ms | resolve=   0.00 ms | total= 715.63 ms
+UAV 0265 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 940.88 ms | detect=  84.79 ms | resolve=   0.00 ms | total=1026.21 ms
+[VALIDATION] pleb=266 candidate-query: gen=2336boxes 273.0ms, detect_time=90.7ms conflicts=0
+UAV 0266 | RESOLVED | conflicts=  1 | create=   0.52 ms | insert= 713.17 ms | detect=  92.31 ms | resolve=4564.33 ms | total=5370.33 ms
+[VALIDATION] pleb=152 candidate-query: gen=2229boxes 308.8ms, detect_time=85.4ms conflicts=2
+[VALIDATION] pleb=152 candidate-query: gen=2229boxes 257.0ms, detect_time=79.5ms conflicts=2
+[VALIDATION] pleb=152 candidate-query: gen=2229boxes 239.8ms, detect_time=79.4ms conflicts=2
+[VALIDATION] pleb=152 candidate-query: gen=2229boxes 232.0ms, detect_time=75.9ms conflicts=0
+UAV 0267 | RESOLVED | conflicts=  2 | create=   0.52 ms | insert= 644.58 ms | detect=  94.87 ms | resolve=4747.14 ms | total=5487.11 ms
+UAV 0268 | CLEAR    | conflicts=  0 | create=   0.60 ms | insert= 650.28 ms | detect=  84.25 ms | resolve=   0.00 ms | total= 735.14 ms
+UAV 0269 | CLEAR    | conflicts=  0 | create=   0.64 ms | insert= 566.11 ms | detect=  70.95 ms | resolve=   0.00 ms | total= 637.70 ms
+UAV 0270 | CLEAR    | conflicts=  0 | create=   0.68 ms | insert= 783.54 ms | detect=  77.81 ms | resolve=   0.00 ms | total= 862.03 ms
+UAV 0271 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert= 864.93 ms | detect=  80.89 ms | resolve=   0.00 ms | total= 946.27 ms
+UAV 0272 | CLEAR    | conflicts=  0 | create=   0.46 ms | insert= 477.61 ms | detect=  55.23 ms | resolve=   0.00 ms | total= 533.31 ms
+UAV 0273 | CLEAR    | conflicts=  0 | create=   0.63 ms | insert= 564.63 ms | detect=  60.78 ms | resolve=   0.00 ms | total= 626.05 ms
+UAV 0274 | CLEAR    | conflicts=  0 | create=   0.48 ms | insert=1098.64 ms | detect=  89.05 ms | resolve=   0.00 ms | total=1188.17 ms
+UAV 0275 | CLEAR    | conflicts=  0 | create=   0.59 ms | insert= 472.59 ms | detect=  74.01 ms | resolve=   0.00 ms | total= 547.19 ms
+UAV 0276 | CLEAR    | conflicts=  0 | create=   0.57 ms | insert= 894.22 ms | detect= 100.39 ms | resolve=   0.00 ms | total= 995.18 ms
+UAV 0277 | CLEAR    | conflicts=  0 | create=   0.53 ms | insert= 791.12 ms | detect=  92.49 ms | resolve=   0.00 ms | total= 884.14 ms
+[VALIDATION] pleb=278 candidate-query: gen=2016boxes 224.9ms, detect_time=70.3ms conflicts=7
+[VALIDATION] pleb=278 candidate-query: gen=2016boxes 223.1ms, detect_time=64.9ms conflicts=0
+UAV 0278 | RESOLVED | conflicts=  2 | create=   0.45 ms | insert= 467.02 ms | detect=  65.97 ms | resolve=3532.63 ms | total=4066.08 ms
+UAV 0279 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 510.71 ms | detect=  66.79 ms | resolve=   0.00 ms | total= 578.03 ms
+UAV 0280 | CLEAR    | conflicts=  0 | create=   0.69 ms | insert= 427.39 ms | detect=  77.32 ms | resolve=   0.00 ms | total= 505.40 ms
+UAV 0281 | CLEAR    | conflicts=  0 | create=   0.61 ms | insert= 966.27 ms | detect=  93.82 ms | resolve=   0.00 ms | total=1060.69 ms
+UAV 0282 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 684.31 ms | detect=  88.30 ms | resolve=   0.00 ms | total= 773.16 ms
+UAV 0283 | CLEAR    | conflicts=  0 | create=   0.63 ms | insert= 637.58 ms | detect=  88.94 ms | resolve=   0.00 ms | total= 727.15 ms
+UAV 0284 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 448.57 ms | detect=  59.09 ms | resolve=   0.00 ms | total= 508.20 ms
+UAV 0285 | CLEAR    | conflicts=  0 | create=   0.47 ms | insert= 401.23 ms | detect=  54.36 ms | resolve=   0.00 ms | total= 456.07 ms
+UAV 0286 | CLEAR    | conflicts=  0 | create=   0.55 ms | insert= 445.35 ms | detect=  74.19 ms | resolve=   0.00 ms | total= 520.09 ms
+UAV 0287 | CLEAR    | conflicts=  0 | create=   0.47 ms | insert= 984.20 ms | detect=  83.61 ms | resolve=   0.00 ms | total=1068.27 ms
+UAV 0288 | CLEAR    | conflicts=  0 | create=   0.46 ms | insert= 509.91 ms | detect=  76.55 ms | resolve=   0.00 ms | total= 586.92 ms
+UAV 0289 | CLEAR    | conflicts=  0 | create=   0.46 ms | insert= 716.66 ms | detect=  65.14 ms | resolve=   0.00 ms | total= 782.27 ms
+UAV 0290 | CLEAR    | conflicts=  0 | create=   0.46 ms | insert= 421.96 ms | detect=  60.56 ms | resolve=   0.00 ms | total= 482.98 ms
+UAV 0291 | CLEAR    | conflicts=  0 | create=   0.64 ms | insert= 487.82 ms | detect=  68.86 ms | resolve=   0.00 ms | total= 557.31 ms
+UAV 0292 | CLEAR    | conflicts=  0 | create=   0.62 ms | insert= 446.84 ms | detect=  58.74 ms | resolve=   0.00 ms | total= 506.20 ms
+[VALIDATION] pleb=293 candidate-query: gen=2129boxes 236.7ms, detect_time=84.2ms conflicts=4
+[VALIDATION] pleb=293 candidate-query: gen=2129boxes 239.1ms, detect_time=83.7ms conflicts=5
+[VALIDATION] pleb=293 candidate-query: gen=2129boxes 233.2ms, detect_time=81.7ms conflicts=6
+[VALIDATION] pleb=293 candidate-query: gen=2129boxes 233.0ms, detect_time=83.8ms conflicts=5
+[VALIDATION] pleb=94 candidate-query: gen=2473boxes 257.3ms, detect_time=92.1ms conflicts=3
+[VALIDATION] pleb=94 candidate-query: gen=2473boxes 266.9ms, detect_time=93.2ms conflicts=0
+[VALIDATION] pleb=41 candidate-query: gen=1776boxes 193.7ms, detect_time=71.0ms conflicts=3
+[VALIDATION] pleb=41 candidate-query: gen=1776boxes 193.8ms, detect_time=70.8ms conflicts=3
+[VALIDATION] pleb=41 candidate-query: gen=1776boxes 191.8ms, detect_time=69.7ms conflicts=1
+[VALIDATION] pleb=41 candidate-query: gen=1776boxes 196.4ms, detect_time=70.6ms conflicts=1
+[VALIDATION] pleb=41 candidate-query: gen=1776boxes 197.1ms, detect_time=69.7ms conflicts=0
+UAV 0293 | RESOLVED | conflicts=  4 | create=   0.56 ms | insert= 492.02 ms | detect=  85.29 ms | resolve=10886.74 ms | total=11464.60 ms
+UAV 0294 | CLEAR    | conflicts=  0 | create=   0.48 ms | insert= 483.33 ms | detect=  87.24 ms | resolve=   0.00 ms | total= 571.05 ms
+UAV 0295 | CLEAR    | conflicts=  0 | create=   0.52 ms | insert= 382.48 ms | detect=  64.12 ms | resolve=   0.00 ms | total= 447.12 ms
+UAV 0296 | CLEAR    | conflicts=  0 | create=   0.63 ms | insert= 483.46 ms | detect=  70.99 ms | resolve=   0.00 ms | total= 555.08 ms
+UAV 0297 | CLEAR    | conflicts=  0 | create=   0.53 ms | insert= 971.32 ms | detect= 114.27 ms | resolve=   0.00 ms | total=1086.11 ms
+UAV 0298 | CLEAR    | conflicts=  0 | create=   0.56 ms | insert= 904.58 ms | detect=  96.51 ms | resolve=   0.00 ms | total=1001.65 ms
+UAV 0299 | CLEAR    | conflicts=  0 | create=   0.49 ms | insert= 794.03 ms | detect=  79.79 ms | resolve=   0.00 ms | total= 874.31 ms
+[VALIDATION] pleb=129 candidate-query: gen=3198boxes 366.3ms, detect_time=129.7ms conflicts=0
+UAV 0300 | RESOLVED | conflicts=  1 | create=   0.45 ms | insert= 614.50 ms | detect=  92.12 ms | resolve=5348.32 ms | total=6055.38 ms
+[VALIDATION] pleb=84 candidate-query: gen=1776boxes 193.6ms, detect_time=65.1ms conflicts=3
+[VALIDATION] pleb=84 candidate-query: gen=1776boxes 194.5ms, detect_time=66.4ms conflicts=2
+[VALIDATION] pleb=84 candidate-query: gen=1776boxes 195.7ms, detect_time=64.0ms conflicts=2
+[VALIDATION] pleb=84 candidate-query: gen=1776boxes 189.5ms, detect_time=62.2ms conflicts=2
+[VALIDATION] pleb=84 candidate-query: gen=1776boxes 187.7ms, detect_time=61.4ms conflicts=0
+UAV 0301 | RESOLVED | conflicts=  2 | create=   0.55 ms | insert= 333.96 ms | detect=  63.95 ms | resolve=3582.67 ms | total=3981.13 ms
+[VALIDATION] pleb=207 candidate-query: gen=2459boxes 273.5ms, detect_time=98.2ms conflicts=2
+[VALIDATION] pleb=207 candidate-query: gen=2459boxes 272.2ms, detect_time=100.4ms conflicts=7
+[VALIDATION] pleb=207 candidate-query: gen=2459boxes 263.3ms, detect_time=95.6ms conflicts=2
+[VALIDATION] pleb=207 candidate-query: gen=2459boxes 261.2ms, detect_time=93.8ms conflicts=0
+UAV 0302 | RESOLVED | conflicts=  1 | create=   0.63 ms | insert= 519.32 ms | detect=  82.91 ms | resolve=4475.36 ms | total=5078.21 ms
+UAV 0303 | CLEAR    | conflicts=  0 | create=   0.63 ms | insert= 445.35 ms | detect=  68.81 ms | resolve=   0.00 ms | total= 514.79 ms
+UAV 0304 | CLEAR    | conflicts=  0 | create=   0.53 ms | insert= 536.00 ms | detect=  81.57 ms | resolve=   0.00 ms | total= 618.10 ms
+UAV 0305 | CLEAR    | conflicts=  0 | create=   0.91 ms | insert= 410.41 ms | detect=  62.48 ms | resolve=   0.00 ms | total= 473.80 ms
+[VALIDATION] pleb=306 candidate-query: gen=1893boxes 205.3ms, detect_time=76.2ms conflicts=0
+UAV 0306 | RESOLVED | conflicts=  8 | create=   0.55 ms | insert= 495.80 ms | detect=  79.88 ms | resolve=2250.65 ms | total=2826.89 ms
+UAV 0307 | CLEAR    | conflicts=  0 | create=   0.67 ms | insert= 500.53 ms | detect=  68.96 ms | resolve=   0.00 ms | total= 570.16 ms
+UAV 0308 | CLEAR    | conflicts=  0 | create=   0.76 ms | insert= 536.32 ms | detect=  62.92 ms | resolve=   0.00 ms | total= 600.00 ms
+UAV 0309 | CLEAR    | conflicts=  0 | create=   0.55 ms | insert= 558.54 ms | detect=  71.61 ms | resolve=   0.00 ms | total= 630.70 ms
+UAV 0310 | CLEAR    | conflicts=  0 | create=   0.94 ms | insert= 475.57 ms | detect=  67.78 ms | resolve=   0.00 ms | total= 544.29 ms
+UAV 0311 | CLEAR    | conflicts=  0 | create=   0.52 ms | insert= 922.82 ms | detect= 110.24 ms | resolve=   0.00 ms | total=1033.58 ms
+UAV 0312 | CLEAR    | conflicts=  0 | create=   0.95 ms | insert= 739.63 ms | detect= 102.60 ms | resolve=   0.00 ms | total= 843.18 ms
+UAV 0313 | CLEAR    | conflicts=  0 | create=   0.86 ms | insert=1026.33 ms | detect= 150.38 ms | resolve=   0.00 ms | total=1177.57 ms
+UAV 0314 | CLEAR    | conflicts=  0 | create=   0.77 ms | insert= 750.26 ms | detect= 108.90 ms | resolve=   0.00 ms | total= 859.92 ms
+UAV 0315 | CLEAR    | conflicts=  0 | create=   0.76 ms | insert= 588.01 ms | detect= 101.59 ms | resolve=   0.00 ms | total= 690.36 ms
+[VALIDATION] pleb=311 candidate-query: gen=2678boxes 439.5ms, detect_time=221.5ms conflicts=3
+[VALIDATION] pleb=311 candidate-query: gen=2678boxes 385.7ms, detect_time=127.4ms conflicts=3
+[VALIDATION] pleb=311 candidate-query: gen=2678boxes 390.6ms, detect_time=122.8ms conflicts=1
+[VALIDATION] pleb=311 candidate-query: gen=2678boxes 360.1ms, detect_time=117.9ms conflicts=3
+[VALIDATION] pleb=311 candidate-query: gen=2678boxes 357.8ms, detect_time=113.5ms conflicts=0
+UAV 0316 | RESOLVED | conflicts=  3 | create=   0.70 ms | insert= 783.85 ms | detect= 110.28 ms | resolve=6223.70 ms | total=7118.53 ms
+UAV 0317 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert= 356.10 ms | detect=  67.83 ms | resolve=   0.00 ms | total= 424.37 ms
+UAV 0318 | CLEAR    | conflicts=  0 | create=   0.62 ms | insert= 383.42 ms | detect=  72.04 ms | resolve=   0.00 ms | total= 456.08 ms
+UAV 0319 | CLEAR    | conflicts=  0 | create=   0.60 ms | insert= 909.89 ms | detect= 100.41 ms | resolve=   0.00 ms | total=1010.91 ms
+UAV 0320 | CLEAR    | conflicts=  0 | create=   0.69 ms | insert= 802.09 ms | detect=  96.93 ms | resolve=   0.00 ms | total= 899.72 ms
+[VALIDATION] pleb=321 candidate-query: gen=2515boxes 266.8ms, detect_time=95.1ms conflicts=3
+[VALIDATION] pleb=321 candidate-query: gen=2515boxes 260.3ms, detect_time=100.0ms conflicts=0
+UAV 0321 | RESOLVED | conflicts=  1 | create=   0.46 ms | insert= 944.30 ms | detect=  97.26 ms | resolve=4580.38 ms | total=5622.40 ms
+UAV 0322 | CLEAR    | conflicts=  0 | create=   0.65 ms | insert= 483.94 ms | detect=  73.84 ms | resolve=   0.00 ms | total= 558.43 ms
+[VALIDATION] pleb=320 candidate-query: gen=2777boxes 294.6ms, detect_time=93.7ms conflicts=0
+UAV 0323 | RESOLVED | conflicts=  7 | create=   0.52 ms | insert= 526.26 ms | detect=  73.15 ms | resolve=3997.19 ms | total=4597.11 ms
+UAV 0324 | CLEAR    | conflicts=  0 | create=   0.67 ms | insert= 456.41 ms | detect=  82.89 ms | resolve=   0.00 ms | total= 539.97 ms
+UAV 0325 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 918.34 ms | detect= 101.37 ms | resolve=   0.00 ms | total=1020.25 ms
+UAV 0326 | CLEAR    | conflicts=  0 | create=   0.48 ms | insert= 990.31 ms | detect= 102.14 ms | resolve=   0.00 ms | total=1092.94 ms
+UAV 0327 | CLEAR    | conflicts=  0 | create=   0.47 ms | insert= 662.58 ms | detect=  94.48 ms | resolve=   0.00 ms | total= 757.54 ms
+UAV 0328 | CLEAR    | conflicts=  0 | create=   0.63 ms | insert= 480.99 ms | detect=  81.67 ms | resolve=   0.00 ms | total= 563.28 ms
+UAV 0329 | CLEAR    | conflicts=  0 | create=   0.48 ms | insert= 542.82 ms | detect=  64.47 ms | resolve=   0.00 ms | total= 607.77 ms
+UAV 0330 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 329.07 ms | detect=  62.20 ms | resolve=   0.00 ms | total= 391.80 ms
+UAV 0331 | CLEAR    | conflicts=  0 | create=   0.53 ms | insert= 844.90 ms | detect= 103.56 ms | resolve=   0.00 ms | total= 949.00 ms
+UAV 0332 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert= 638.76 ms | detect=  98.04 ms | resolve=   0.00 ms | total= 737.24 ms
+UAV 0333 | CLEAR    | conflicts=  0 | create=   0.58 ms | insert=1103.99 ms | detect= 100.46 ms | resolve=   0.00 ms | total=1205.03 ms
+[VALIDATION] pleb=334 candidate-query: gen=2147boxes 245.2ms, detect_time=90.7ms conflicts=1
+[VALIDATION] pleb=334 candidate-query: gen=2147boxes 244.9ms, detect_time=86.2ms conflicts=0
+UAV 0334 | RESOLVED | conflicts=  5 | create=   0.46 ms | insert= 545.27 ms | detect=  87.72 ms | resolve=3615.01 ms | total=4248.46 ms
+UAV 0335 | CLEAR    | conflicts=  0 | create=   0.61 ms | insert= 732.74 ms | detect=  96.37 ms | resolve=   0.00 ms | total= 829.71 ms
+[VALIDATION] pleb=336 candidate-query: gen=1862boxes 208.3ms, detect_time=75.7ms conflicts=8
+[VALIDATION] pleb=336 candidate-query: gen=1862boxes 212.8ms, detect_time=72.0ms conflicts=0
+UAV 0336 | RESOLVED | conflicts=  2 | create=   0.48 ms | insert= 403.24 ms | detect=  71.49 ms | resolve=3659.62 ms | total=4134.83 ms
+UAV 0337 | CLEAR    | conflicts=  0 | create=   0.46 ms | insert= 435.53 ms | detect=  74.44 ms | resolve=   0.00 ms | total= 510.43 ms
+[VALIDATION] pleb=338 candidate-query: gen=1758boxes 200.5ms, detect_time=73.9ms conflicts=0
+UAV 0338 | RESOLVED | conflicts=  1 | create=   0.69 ms | insert= 411.63 ms | detect=  74.09 ms | resolve=2815.44 ms | total=3301.85 ms
+[VALIDATION] pleb=339 candidate-query: gen=1863boxes 213.2ms, detect_time=85.4ms conflicts=2
+[VALIDATION] pleb=339 candidate-query: gen=1863boxes 224.8ms, detect_time=88.2ms conflicts=0
+UAV 0339 | RESOLVED | conflicts=  2 | create=   0.59 ms | insert= 694.89 ms | detect=  82.78 ms | resolve=3481.97 ms | total=4260.23 ms
+UAV 0340 | CLEAR    | conflicts=  0 | create=   0.84 ms | insert=3585.54 ms | detect= 504.91 ms | resolve=   0.00 ms | total=4091.28 ms
+UAV 0341 | CLEAR    | conflicts=  0 | create=   1.78 ms | insert=8171.53 ms | detect=2305.18 ms | resolve=   0.00 ms | total=10478.49 ms
+[VALIDATION] pleb=342 candidate-query: gen=1773boxes 3951.9ms, detect_time=1441.8ms conflicts=3
+[VALIDATION] pleb=342 candidate-query: gen=1773boxes 4363.9ms, detect_time=1417.7ms conflicts=2
+[VALIDATION] pleb=342 candidate-query: gen=1773boxes 4349.9ms, detect_time=1426.5ms conflicts=2
+[VALIDATION] pleb=342 candidate-query: gen=1773boxes 5004.7ms, detect_time=1392.0ms conflicts=2
+[VALIDATION] pleb=342 candidate-query: gen=1773boxes 4597.6ms, detect_time=1940.2ms conflicts=2
+[VALIDATION] pleb=342 candidate-query: gen=1773boxes 4898.3ms, detect_time=1503.5ms conflicts=0
+UAV 0342 | RESOLVED | conflicts=  2 | create=   7.87 ms | insert=8771.73 ms | detect=1438.73 ms | resolve=67624.68 ms | total=77843.01 ms
+[VALIDATION] pleb=87 candidate-query: gen=2051boxes 4854.4ms, detect_time=1594.7ms conflicts=0
+[VALIDATION] pleb=53 candidate-query: gen=2540boxes 5885.9ms, detect_time=1813.8ms conflicts=0
+UAV 0343 | RESOLVED | conflicts=  6 | create=   7.71 ms | insert=11880.74 ms | detect=1767.64 ms | resolve=83074.21 ms | total=96730.31 ms
+[VALIDATION] pleb=268 candidate-query: gen=2425boxes 318.9ms, detect_time=109.9ms conflicts=6
+[VALIDATION] pleb=268 candidate-query: gen=2425boxes 298.5ms, detect_time=107.5ms conflicts=1
+UAV 0344 | RESOLVED | conflicts=  3 | create=   0.74 ms | insert=1161.81 ms | detect= 156.77 ms | resolve=3481.25 ms | total=4800.56 ms
+[VALIDATION] pleb=345 candidate-query: gen=1741boxes 183.3ms, detect_time=74.0ms conflicts=0
+UAV 0345 | RESOLVED | conflicts=  3 | create=   0.50 ms | insert= 397.88 ms | detect=  75.21 ms | resolve=2065.64 ms | total=2539.23 ms
+UAV 0346 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert= 449.51 ms | detect=  73.11 ms | resolve=   0.00 ms | total= 523.06 ms
+UAV 0347 | CLEAR    | conflicts=  0 | create=   0.57 ms | insert= 590.41 ms | detect=  92.62 ms | resolve=   0.00 ms | total= 683.59 ms
+UAV 0348 | CLEAR    | conflicts=  0 | create=   0.63 ms | insert= 410.17 ms | detect=  75.93 ms | resolve=   0.00 ms | total= 486.73 ms
+UAV 0349 | CLEAR    | conflicts=  0 | create=   0.71 ms | insert= 666.72 ms | detect=  87.65 ms | resolve=   0.00 ms | total= 755.07 ms
+UAV 0350 | CLEAR    | conflicts=  0 | create=   0.50 ms | insert= 358.88 ms | detect=  68.91 ms | resolve=   0.00 ms | total= 428.29 ms
+UAV 0351 | CLEAR    | conflicts=  0 | create=   0.44 ms | insert= 653.97 ms | detect=  86.90 ms | resolve=   0.00 ms | total= 741.32 ms
+[VALIDATION] pleb=352 candidate-query: gen=2361boxes 257.0ms, detect_time=103.8ms conflicts=4
+[VALIDATION] pleb=352 candidate-query: gen=2361boxes 249.0ms, detect_time=100.0ms conflicts=0
+UAV 0352 | RESOLVED | conflicts=  2 | create=   0.61 ms | insert= 556.87 ms | detect= 108.65 ms | resolve=3641.89 ms | total=4308.02 ms
+UAV 0353 | CLEAR    | conflicts=  0 | create=   0.70 ms | insert= 769.81 ms | detect= 111.21 ms | resolve=   0.00 ms | total= 881.72 ms
+UAV 0354 | CLEAR    | conflicts=  0 | create=   0.70 ms | insert= 496.16 ms | detect=  89.68 ms | resolve=   0.00 ms | total= 586.54 ms
+UAV 0355 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 648.66 ms | detect=  97.06 ms | resolve=   0.00 ms | total= 746.25 ms
+[VALIDATION] pleb=356 candidate-query: gen=2337boxes 248.2ms, detect_time=95.1ms conflicts=5
+[VALIDATION] pleb=356 candidate-query: gen=2337boxes 260.5ms, detect_time=102.9ms conflicts=5
+[VALIDATION] pleb=356 candidate-query: gen=2337boxes 272.3ms, detect_time=100.0ms conflicts=4
+[VALIDATION] pleb=356 candidate-query: gen=2337boxes 267.8ms, detect_time=102.7ms conflicts=11
+[VALIDATION] pleb=356 candidate-query: gen=2337boxes 274.1ms, detect_time=96.5ms conflicts=3
+[VALIDATION] pleb=356 candidate-query: gen=2337boxes 263.0ms, detect_time=96.9ms conflicts=5
+[VALIDATION] pleb=356 candidate-query: gen=2337boxes 253.1ms, detect_time=92.2ms conflicts=2
+[VALIDATION] pleb=356 candidate-query: gen=2337boxes 245.9ms, detect_time=86.0ms conflicts=2
+[VALIDATION] pleb=356 candidate-query: gen=2337boxes 247.4ms, detect_time=89.5ms conflicts=3
+[VALIDATION] pleb=356 candidate-query: gen=2337boxes 249.8ms, detect_time=82.9ms conflicts=0
+UAV 0356 | RESOLVED | conflicts=  4 | create=   0.45 ms | insert= 485.77 ms | detect=  96.91 ms | resolve=9554.74 ms | total=10137.87 ms
+UAV 0357 | CLEAR    | conflicts=  0 | create=   0.58 ms | insert= 535.12 ms | detect=  76.70 ms | resolve=   0.00 ms | total= 612.40 ms
+UAV 0358 | CLEAR    | conflicts=  0 | create=   0.46 ms | insert= 531.82 ms | detect=  95.46 ms | resolve=   0.00 ms | total= 627.75 ms
+[VALIDATION] pleb=359 candidate-query: gen=2144boxes 234.8ms, detect_time=95.2ms conflicts=17
+[VALIDATION] pleb=359 candidate-query: gen=2144boxes 247.7ms, detect_time=94.7ms conflicts=2
+[VALIDATION] pleb=359 candidate-query: gen=2144boxes 251.7ms, detect_time=93.8ms conflicts=7
+[VALIDATION] pleb=359 candidate-query: gen=2144boxes 237.4ms, detect_time=87.5ms conflicts=0
+UAV 0359 | RESOLVED | conflicts= 30 | create=   0.62 ms | insert= 452.82 ms | detect= 100.28 ms | resolve=6238.89 ms | total=6792.61 ms
+UAV 0360 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 478.83 ms | detect=  61.68 ms | resolve=   0.00 ms | total= 541.05 ms
+UAV 0361 | CLEAR    | conflicts=  0 | create=   0.53 ms | insert= 706.35 ms | detect=  86.89 ms | resolve=   0.00 ms | total= 793.77 ms
+UAV 0362 | CLEAR    | conflicts=  0 | create=   0.53 ms | insert= 525.68 ms | detect=  82.84 ms | resolve=   0.00 ms | total= 609.05 ms
+UAV 0363 | CLEAR    | conflicts=  0 | create=   0.76 ms | insert= 450.70 ms | detect=  83.17 ms | resolve=   0.00 ms | total= 534.62 ms
+[VALIDATION] pleb=98 candidate-query: gen=2371boxes 251.1ms, detect_time=114.5ms conflicts=0
+UAV 0364 | RESOLVED | conflicts=  1 | create=   0.59 ms | insert=1194.99 ms | detect= 135.89 ms | resolve=3288.85 ms | total=4620.32 ms
+[VALIDATION] pleb=350 candidate-query: gen=1649boxes 189.9ms, detect_time=75.2ms conflicts=0
+UAV 0365 | RESOLVED | conflicts=  1 | create=   0.60 ms | insert= 969.68 ms | detect= 114.79 ms | resolve=2389.75 ms | total=3474.82 ms
+UAV 0366 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 806.38 ms | detect= 130.00 ms | resolve=   0.00 ms | total= 936.92 ms
+UAV 0367 | CLEAR    | conflicts=  0 | create=   0.68 ms | insert= 518.07 ms | detect=  87.56 ms | resolve=   0.00 ms | total= 606.31 ms
+UAV 0368 | CLEAR    | conflicts=  0 | create=   0.47 ms | insert= 498.73 ms | detect=  90.13 ms | resolve=   0.00 ms | total= 589.34 ms
+[VALIDATION] pleb=131 candidate-query: gen=2636boxes 299.7ms, detect_time=130.6ms conflicts=2
+[VALIDATION] pleb=131 candidate-query: gen=2636boxes 311.4ms, detect_time=130.8ms conflicts=0
+UAV 0369 | RESOLVED | conflicts=  4 | create=   0.46 ms | insert= 348.44 ms | detect=  84.04 ms | resolve=3892.96 ms | total=4325.91 ms
+UAV 0370 | CLEAR    | conflicts=  0 | create=   0.60 ms | insert= 459.08 ms | detect=  84.45 ms | resolve=   0.00 ms | total= 544.13 ms
+[VALIDATION] pleb=371 candidate-query: gen=2611boxes 310.3ms, detect_time=106.2ms conflicts=0
+UAV 0371 | RESOLVED | conflicts=  2 | create=   0.47 ms | insert= 636.60 ms | detect= 108.13 ms | resolve=3613.10 ms | total=4358.30 ms
+UAV 0372 | CLEAR    | conflicts=  0 | create=   0.97 ms | insert= 785.23 ms | detect= 110.46 ms | resolve=   0.00 ms | total= 896.65 ms
+UAV 0373 | CLEAR    | conflicts=  0 | create=   0.48 ms | insert= 516.89 ms | detect=  97.40 ms | resolve=   0.00 ms | total= 614.77 ms
+UAV 0374 | CLEAR    | conflicts=  0 | create=   0.53 ms | insert= 661.37 ms | detect=  79.74 ms | resolve=   0.00 ms | total= 741.64 ms
+[VALIDATION] pleb=375 candidate-query: gen=1891boxes 229.0ms, detect_time=89.5ms conflicts=0
+UAV 0375 | RESOLVED | conflicts=  1 | create=   0.47 ms | insert= 691.97 ms | detect=  88.53 ms | resolve=3285.47 ms | total=4066.45 ms
+UAV 0376 | CLEAR    | conflicts=  0 | create=   0.52 ms | insert= 921.52 ms | detect= 126.79 ms | resolve=   0.00 ms | total=1048.83 ms
+UAV 0377 | CLEAR    | conflicts=  0 | create=   0.47 ms | insert= 891.64 ms | detect= 143.01 ms | resolve=   0.00 ms | total=1035.13 ms
+UAV 0378 | CLEAR    | conflicts=  0 | create=   1.16 ms | insert=1034.86 ms | detect= 107.05 ms | resolve=   0.00 ms | total=1143.07 ms
+UAV 0379 | CLEAR    | conflicts=  0 | create=   0.47 ms | insert= 551.22 ms | detect=  64.11 ms | resolve=   0.00 ms | total= 615.80 ms
+UAV 0380 | CLEAR    | conflicts=  0 | create=   0.46 ms | insert= 668.80 ms | detect=  78.13 ms | resolve=   0.00 ms | total= 747.39 ms
+[VALIDATION] pleb=381 candidate-query: gen=2420boxes 288.9ms, detect_time=112.1ms conflicts=0
+UAV 0381 | RESOLVED | conflicts=  6 | create=   0.48 ms | insert= 674.27 ms | detect= 114.11 ms | resolve=4042.13 ms | total=4830.99 ms
+UAV 0382 | CLEAR    | conflicts=  0 | create=   0.51 ms | insert= 550.65 ms | detect= 126.37 ms | resolve=   0.00 ms | total= 677.53 ms
+UAV 0383 | CLEAR    | conflicts=  0 | create=   0.77 ms | insert= 959.26 ms | detect= 121.67 ms | resolve=   0.00 ms | total=1081.70 ms
+UAV 0384 | CLEAR    | conflicts=  0 | create=   0.53 ms | insert=1035.24 ms | detect= 154.72 ms | resolve=   0.00 ms | total=1190.49 ms
+[VALIDATION] pleb=385 candidate-query: gen=2183boxes 308.7ms, detect_time=126.6ms conflicts=2
+[VALIDATION] pleb=385 candidate-query: gen=2183boxes 283.2ms, detect_time=111.6ms conflicts=1
+[VALIDATION] pleb=39 candidate-query: gen=2479boxes 304.0ms, detect_time=113.4ms conflicts=2
+[VALIDATION] pleb=39 candidate-query: gen=2479boxes 351.6ms, detect_time=125.2ms conflicts=0
+UAV 0385 | RESOLVED | conflicts=  4 | create=   0.51 ms | insert= 545.22 ms | detect= 111.22 ms | resolve=8084.76 ms | total=8741.71 ms
+UAV 0386 | CLEAR    | conflicts=  0 | create=   0.57 ms | insert= 429.89 ms | detect=  90.47 ms | resolve=   0.00 ms | total= 520.94 ms
+[VALIDATION] pleb=387 candidate-query: gen=2240boxes 270.8ms, detect_time=105.2ms conflicts=0
+UAV 0387 | RESOLVED | conflicts= 11 | create=   0.50 ms | insert= 588.97 ms | detect= 119.58 ms | resolve=3485.39 ms | total=4194.44 ms
+UAV 0388 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert= 791.76 ms | detect=  99.22 ms | resolve=   0.00 ms | total= 891.43 ms
+UAV 0389 | CLEAR    | conflicts=  0 | create=   0.49 ms | insert= 584.44 ms | detect=  87.18 ms | resolve=   0.00 ms | total= 672.10 ms
+UAV 0390 | CLEAR    | conflicts=  0 | create=   0.57 ms | insert= 704.86 ms | detect= 103.50 ms | resolve=   0.00 ms | total= 808.92 ms
+UAV 0391 | CLEAR    | conflicts=  0 | create=   0.56 ms | insert= 886.37 ms | detect= 133.52 ms | resolve=   0.00 ms | total=1020.45 ms
+[VALIDATION] pleb=381 candidate-query: gen=2420boxes 265.7ms, detect_time=100.8ms conflicts=3
+[VALIDATION] pleb=381 candidate-query: gen=2420boxes 262.7ms, detect_time=99.1ms conflicts=6
+UAV 0392 | RESOLVED | conflicts=  1 | create=   0.44 ms | insert= 349.58 ms | detect=  64.04 ms | resolve=3437.37 ms | total=3851.42 ms
+UAV 0393 | CLEAR    | conflicts=  0 | create=   0.90 ms | insert= 507.68 ms | detect=  76.22 ms | resolve=   0.00 ms | total= 584.80 ms
+UAV 0394 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 566.10 ms | detect=  91.58 ms | resolve=   0.00 ms | total= 658.21 ms
+UAV 0395 | CLEAR    | conflicts=  0 | create=   0.48 ms | insert= 590.37 ms | detect= 100.39 ms | resolve=   0.00 ms | total= 691.24 ms
+[VALIDATION] pleb=84 candidate-query: gen=1776boxes 195.4ms, detect_time=80.1ms conflicts=5
+[VALIDATION] pleb=84 candidate-query: gen=1776boxes 198.0ms, detect_time=76.9ms conflicts=1
+[VALIDATION] pleb=84 candidate-query: gen=1776boxes 194.6ms, detect_time=80.1ms conflicts=3
+[VALIDATION] pleb=84 candidate-query: gen=1776boxes 190.5ms, detect_time=76.1ms conflicts=2
+[VALIDATION] pleb=84 candidate-query: gen=1776boxes 191.4ms, detect_time=75.2ms conflicts=0
+UAV 0396 | RESOLVED | conflicts=  2 | create=   0.45 ms | insert= 428.68 ms | detect=  87.37 ms | resolve=3405.23 ms | total=3921.74 ms
+[VALIDATION] pleb=397 candidate-query: gen=1991boxes 225.9ms, detect_time=85.9ms conflicts=0
+UAV 0397 | RESOLVED | conflicts=  7 | create=   0.51 ms | insert= 461.45 ms | detect=  86.44 ms | resolve=2739.82 ms | total=3288.22 ms
+UAV 0398 | CLEAR    | conflicts=  0 | create=   0.60 ms | insert= 812.42 ms | detect= 119.79 ms | resolve=   0.00 ms | total= 932.81 ms
+UAV 0399 | CLEAR    | conflicts=  0 | create=   0.44 ms | insert= 784.76 ms | detect= 121.86 ms | resolve=   0.00 ms | total= 907.06 ms
+UAV 0400 | CLEAR    | conflicts=  0 | create=   0.58 ms | insert= 582.04 ms | detect= 105.61 ms | resolve=   0.00 ms | total= 688.22 ms
+[VALIDATION] pleb=401 candidate-query: gen=1880boxes 210.3ms, detect_time=90.8ms conflicts=3
+[VALIDATION] pleb=401 candidate-query: gen=1880boxes 208.6ms, detect_time=83.3ms conflicts=0
+UAV 0401 | RESOLVED | conflicts=  1 | create=   0.45 ms | insert= 447.63 ms | detect=  88.21 ms | resolve=2695.76 ms | total=3232.06 ms
+UAV 0402 | CLEAR    | conflicts=  0 | create=   0.60 ms | insert=1026.43 ms | detect= 129.22 ms | resolve=   0.00 ms | total=1156.24 ms
+UAV 0403 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert= 468.04 ms | detect= 106.39 ms | resolve=   0.00 ms | total= 574.87 ms
+UAV 0404 | CLEAR    | conflicts=  0 | create=   0.68 ms | insert= 486.37 ms | detect=  95.59 ms | resolve=   0.00 ms | total= 582.64 ms
+UAV 0405 | CLEAR    | conflicts=  0 | create=   0.69 ms | insert= 801.49 ms | detect= 117.18 ms | resolve=   0.00 ms | total= 919.37 ms
+[VALIDATION] pleb=406 candidate-query: gen=3449boxes 390.1ms, detect_time=163.6ms conflicts=3
+[VALIDATION] pleb=406 candidate-query: gen=3449boxes 412.5ms, detect_time=139.9ms conflicts=6
+[VALIDATION] pleb=406 candidate-query: gen=3449boxes 382.0ms, detect_time=133.8ms conflicts=1
+[VALIDATION] pleb=406 candidate-query: gen=3449boxes 386.1ms, detect_time=138.0ms conflicts=3
+[VALIDATION] pleb=406 candidate-query: gen=3449boxes 363.2ms, detect_time=130.3ms conflicts=2
+[VALIDATION] pleb=406 candidate-query: gen=3449boxes 366.0ms, detect_time=130.2ms conflicts=3
+[VALIDATION] pleb=406 candidate-query: gen=3449boxes 369.4ms, detect_time=134.9ms conflicts=4
+[VALIDATION] pleb=406 candidate-query: gen=3449boxes 366.7ms, detect_time=129.6ms conflicts=1
+[VALIDATION] pleb=406 candidate-query: gen=3449boxes 365.7ms, detect_time=130.8ms conflicts=2
+[VALIDATION] pleb=406 candidate-query: gen=3449boxes 412.7ms, detect_time=136.3ms conflicts=0
+UAV 0406 | RESOLVED | conflicts=  5 | create=   0.45 ms | insert= 846.56 ms | detect= 139.27 ms | resolve=14692.36 ms | total=15678.64 ms
+UAV 0407 | CLEAR    | conflicts=  0 | create=   0.51 ms | insert= 791.70 ms | detect= 116.01 ms | resolve=   0.00 ms | total= 908.22 ms
+UAV 0408 | CLEAR    | conflicts=  0 | create=   0.60 ms | insert=1041.37 ms | detect= 128.14 ms | resolve=   0.00 ms | total=1170.10 ms
+[VALIDATION] pleb=409 candidate-query: gen=2263boxes 250.6ms, detect_time=104.3ms conflicts=0
+UAV 0409 | RESOLVED | conflicts=  3 | create=   0.51 ms | insert= 664.84 ms | detect= 106.86 ms | resolve=3446.60 ms | total=4218.81 ms
+UAV 0410 | CLEAR    | conflicts=  0 | create=   0.57 ms | insert= 466.12 ms | detect=  83.30 ms | resolve=   0.00 ms | total= 549.99 ms
+UAV 0411 | CLEAR    | conflicts=  0 | create=   0.58 ms | insert=1044.55 ms | detect= 134.76 ms | resolve=   0.00 ms | total=1179.89 ms
+[VALIDATION] pleb=90 candidate-query: gen=1782boxes 203.0ms, detect_time=77.1ms conflicts=5
+[VALIDATION] pleb=90 candidate-query: gen=1757boxes 196.9ms, detect_time=72.7ms conflicts=4
+[VALIDATION] pleb=90 candidate-query: gen=1795boxes 195.7ms, detect_time=76.2ms conflicts=12
+[VALIDATION] pleb=90 candidate-query: gen=1744boxes 191.7ms, detect_time=70.5ms conflicts=4
+[VALIDATION] pleb=90 candidate-query: gen=1832boxes 199.2ms, detect_time=75.6ms conflicts=9
+[VALIDATION] pleb=90 candidate-query: gen=1707boxes 185.6ms, detect_time=64.3ms conflicts=0
+UAV 0412 | RESOLVED | conflicts=  3 | create=   0.69 ms | insert= 394.49 ms | detect=  77.98 ms | resolve=3279.49 ms | total=3752.64 ms
+[VALIDATION] pleb=413 candidate-query: gen=1600boxes 175.7ms, detect_time=76.7ms conflicts=0
+UAV 0413 | RESOLVED | conflicts=  3 | create=   0.53 ms | insert= 381.86 ms | detect=  73.35 ms | resolve=2012.84 ms | total=2468.59 ms
+UAV 0414 | CLEAR    | conflicts=  0 | create=   0.51 ms | insert= 605.28 ms | detect= 114.60 ms | resolve=   0.00 ms | total= 720.39 ms
+UAV 0415 | CLEAR    | conflicts=  0 | create=   0.50 ms | insert= 414.89 ms | detect=  90.27 ms | resolve=   0.00 ms | total= 505.67 ms
+UAV 0416 | CLEAR    | conflicts=  0 | create=   0.49 ms | insert= 751.41 ms | detect= 117.87 ms | resolve=   0.00 ms | total= 869.77 ms
+UAV 0417 | CLEAR    | conflicts=  0 | create=   1.11 ms | insert= 605.27 ms | detect=  87.02 ms | resolve=   0.00 ms | total= 693.39 ms
+UAV 0418 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert= 823.72 ms | detect= 121.39 ms | resolve=   0.00 ms | total= 945.56 ms
+UAV 0419 | CLEAR    | conflicts=  0 | create=   0.52 ms | insert= 702.59 ms | detect= 129.13 ms | resolve=   0.00 ms | total= 832.24 ms
+UAV 0420 | CLEAR    | conflicts=  0 | create=   0.46 ms | insert= 344.00 ms | detect=  79.64 ms | resolve=   0.00 ms | total= 424.10 ms
+UAV 0421 | CLEAR    | conflicts=  0 | create=   0.65 ms | insert=1072.44 ms | detect= 122.33 ms | resolve=   0.00 ms | total=1195.42 ms
+UAV 0422 | CLEAR    | conflicts=  0 | create=   0.47 ms | insert= 393.70 ms | detect=  74.89 ms | resolve=   0.00 ms | total= 469.06 ms
+UAV 0423 | CLEAR    | conflicts=  0 | create=   0.44 ms | insert=1028.37 ms | detect= 129.60 ms | resolve=   0.00 ms | total=1158.40 ms
+UAV 0424 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 641.35 ms | detect=  95.80 ms | resolve=   0.00 ms | total= 737.70 ms
+UAV 0425 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert= 505.92 ms | detect=  94.85 ms | resolve=   0.00 ms | total= 601.22 ms
+[VALIDATION] pleb=426 candidate-query: gen=1943boxes 213.1ms, detect_time=94.7ms conflicts=0
+UAV 0426 | RESOLVED | conflicts=  1 | create=   0.43 ms | insert= 533.16 ms | detect=  96.12 ms | resolve=3000.89 ms | total=3630.60 ms
+[VALIDATION] pleb=427 candidate-query: gen=2094boxes 234.1ms, detect_time=95.6ms conflicts=5
+[VALIDATION] pleb=427 candidate-query: gen=2094boxes 240.5ms, detect_time=90.0ms conflicts=0
+UAV 0427 | RESOLVED | conflicts=  1 | create=   0.64 ms | insert= 445.15 ms | detect=  87.95 ms | resolve=3649.58 ms | total=4183.31 ms
+[VALIDATION] pleb=167 candidate-query: gen=1629boxes 178.3ms, detect_time=76.9ms conflicts=1
+[VALIDATION] pleb=167 candidate-query: gen=1629boxes 181.6ms, detect_time=77.2ms conflicts=1
+[VALIDATION] pleb=167 candidate-query: gen=1629boxes 175.9ms, detect_time=79.0ms conflicts=4
+[VALIDATION] pleb=167 candidate-query: gen=1629boxes 176.3ms, detect_time=76.3ms conflicts=0
+UAV 0428 | RESOLVED | conflicts=  3 | create=   0.66 ms | insert= 443.83 ms | detect=  97.07 ms | resolve=3296.86 ms | total=3838.42 ms
+UAV 0429 | CLEAR    | conflicts=  0 | create=   0.66 ms | insert= 566.66 ms | detect= 129.60 ms | resolve=   0.00 ms | total= 696.91 ms
+[VALIDATION] pleb=430 candidate-query: gen=2524boxes 278.8ms, detect_time=116.6ms conflicts=0
+UAV 0430 | RESOLVED | conflicts=  3 | create=   0.45 ms | insert= 787.95 ms | detect= 123.91 ms | resolve=3119.47 ms | total=4031.78 ms
+UAV 0431 | CLEAR    | conflicts=  0 | create=   0.60 ms | insert= 714.20 ms | detect= 143.07 ms | resolve=   0.00 ms | total= 857.86 ms
+[VALIDATION] pleb=432 candidate-query: gen=1792boxes 202.3ms, detect_time=93.0ms conflicts=6
+[VALIDATION] pleb=432 candidate-query: gen=1792boxes 215.5ms, detect_time=90.5ms conflicts=0
+UAV 0432 | RESOLVED | conflicts=  3 | create=   0.50 ms | insert= 414.41 ms | detect=  80.71 ms | resolve=2869.51 ms | total=3365.13 ms
+UAV 0433 | CLEAR    | conflicts=  0 | create=   0.65 ms | insert= 630.68 ms | detect= 129.43 ms | resolve=   0.00 ms | total= 760.75 ms
+UAV 0434 | CLEAR    | conflicts=  0 | create=   0.67 ms | insert= 385.34 ms | detect=  85.76 ms | resolve=   0.00 ms | total= 471.77 ms
+UAV 0435 | CLEAR    | conflicts=  0 | create=   0.60 ms | insert= 366.44 ms | detect=  84.19 ms | resolve=   0.00 ms | total= 451.23 ms
+UAV 0436 | CLEAR    | conflicts=  0 | create=   0.53 ms | insert=1233.51 ms | detect= 158.92 ms | resolve=   0.00 ms | total=1392.97 ms
+UAV 0437 | CLEAR    | conflicts=  0 | create=   0.56 ms | insert= 633.47 ms | detect= 115.71 ms | resolve=   0.00 ms | total= 749.74 ms
+UAV 0438 | CLEAR    | conflicts=  0 | create=   0.47 ms | insert= 795.19 ms | detect= 152.16 ms | resolve=   0.00 ms | total= 947.82 ms
+UAV 0439 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 634.25 ms | detect= 116.54 ms | resolve=   0.00 ms | total= 751.33 ms
+UAV 0440 | CLEAR    | conflicts=  0 | create=   0.61 ms | insert= 545.69 ms | detect= 106.21 ms | resolve=   0.00 ms | total= 652.51 ms
+UAV 0441 | CLEAR    | conflicts=  0 | create=   0.56 ms | insert= 746.30 ms | detect= 142.87 ms | resolve=   0.00 ms | total= 889.73 ms
+UAV 0442 | CLEAR    | conflicts=  0 | create=   0.76 ms | insert= 764.81 ms | detect= 120.08 ms | resolve=   0.00 ms | total= 885.64 ms
+UAV 0443 | CLEAR    | conflicts=  0 | create=   0.53 ms | insert=1208.47 ms | detect= 150.44 ms | resolve=   0.00 ms | total=1359.44 ms
+UAV 0444 | CLEAR    | conflicts=  0 | create=   0.60 ms | insert= 951.56 ms | detect= 140.46 ms | resolve=   0.00 ms | total=1092.62 ms
+UAV 0445 | CLEAR    | conflicts=  0 | create=   0.46 ms | insert= 468.45 ms | detect=  82.87 ms | resolve=   0.00 ms | total= 551.77 ms
+UAV 0446 | CLEAR    | conflicts=  0 | create=   0.55 ms | insert= 803.88 ms | detect= 116.04 ms | resolve=   0.00 ms | total= 920.47 ms
+[VALIDATION] pleb=447 candidate-query: gen=1600boxes 188.0ms, detect_time=78.2ms conflicts=2
+[VALIDATION] pleb=447 candidate-query: gen=1600boxes 188.5ms, detect_time=75.0ms conflicts=3
+[VALIDATION] pleb=447 candidate-query: gen=1600boxes 190.2ms, detect_time=72.3ms conflicts=2
+[VALIDATION] pleb=447 candidate-query: gen=1600boxes 181.8ms, detect_time=73.2ms conflicts=2
+[VALIDATION] pleb=447 candidate-query: gen=1600boxes 190.3ms, detect_time=71.4ms conflicts=0
+UAV 0447 | RESOLVED | conflicts=  2 | create=   0.57 ms | insert= 352.37 ms | detect=  68.70 ms | resolve=3184.66 ms | total=3606.30 ms
+[VALIDATION] pleb=63 candidate-query: gen=2282boxes 267.3ms, detect_time=101.7ms conflicts=2
+[VALIDATION] pleb=63 candidate-query: gen=2282boxes 273.8ms, detect_time=97.4ms conflicts=2
+[VALIDATION] pleb=63 candidate-query: gen=2282boxes 254.6ms, detect_time=93.2ms conflicts=3
+[VALIDATION] pleb=63 candidate-query: gen=2282boxes 259.9ms, detect_time=94.4ms conflicts=2
+[VALIDATION] pleb=63 candidate-query: gen=2282boxes 252.8ms, detect_time=92.8ms conflicts=2
+[VALIDATION] pleb=63 candidate-query: gen=2282boxes 292.1ms, detect_time=104.1ms conflicts=0
+[VALIDATION] pleb=51 candidate-query: gen=1661boxes 186.6ms, detect_time=79.6ms conflicts=0
+UAV 0448 | RESOLVED | conflicts=  4 | create=   0.54 ms | insert= 533.30 ms | detect= 102.11 ms | resolve=7183.26 ms | total=7819.22 ms
+UAV 0449 | CLEAR    | conflicts=  0 | create=   0.60 ms | insert= 835.67 ms | detect= 141.99 ms | resolve=   0.00 ms | total= 978.27 ms
+UAV 0450 | CLEAR    | conflicts=  0 | create=   0.46 ms | insert= 719.90 ms | detect= 124.37 ms | resolve=   0.00 ms | total= 844.73 ms
+UAV 0451 | CLEAR    | conflicts=  0 | create=   0.69 ms | insert=1139.12 ms | detect= 139.77 ms | resolve=   0.00 ms | total=1279.57 ms
+UAV 0452 | CLEAR    | conflicts=  0 | create=   0.43 ms | insert= 450.44 ms | detect= 105.91 ms | resolve=   0.00 ms | total= 556.78 ms
+UAV 0453 | CLEAR    | conflicts=  0 | create=   0.57 ms | insert= 669.53 ms | detect= 114.71 ms | resolve=   0.00 ms | total= 784.81 ms
+UAV 0454 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 462.83 ms | detect= 101.09 ms | resolve=   0.00 ms | total= 564.45 ms
+[VALIDATION] pleb=455 candidate-query: gen=2619boxes 293.4ms, detect_time=109.3ms conflicts=0
+UAV 0455 | RESOLVED | conflicts= 24 | create=   0.60 ms | insert= 748.58 ms | detect= 124.77 ms | resolve=4061.65 ms | total=4935.59 ms
+[VALIDATION] pleb=456 candidate-query: gen=1687boxes 184.5ms, detect_time=89.9ms conflicts=0
+UAV 0456 | RESOLVED | conflicts=  1 | create=   0.61 ms | insert= 370.73 ms | detect=  95.07 ms | resolve=2287.81 ms | total=2754.21 ms
+UAV 0457 | CLEAR    | conflicts=  0 | create=   0.64 ms | insert= 588.31 ms | detect= 103.29 ms | resolve=   0.00 ms | total= 692.24 ms
+[VALIDATION] pleb=458 candidate-query: gen=2367boxes 259.3ms, detect_time=121.2ms conflicts=2
+[VALIDATION] pleb=458 candidate-query: gen=2367boxes 248.5ms, detect_time=124.0ms conflicts=0
+UAV 0458 | RESOLVED | conflicts=  5 | create=   0.54 ms | insert= 813.14 ms | detect= 134.45 ms | resolve=4224.50 ms | total=5172.63 ms
+[VALIDATION] pleb=459 candidate-query: gen=2302boxes 279.9ms, detect_time=112.0ms conflicts=0
+UAV 0459 | RESOLVED | conflicts=  1 | create=   0.60 ms | insert= 657.09 ms | detect= 112.98 ms | resolve=3726.55 ms | total=4497.22 ms
+UAV 0460 | CLEAR    | conflicts=  0 | create=   0.63 ms | insert= 779.53 ms | detect= 127.08 ms | resolve=   0.00 ms | total= 907.25 ms
+UAV 0461 | CLEAR    | conflicts=  0 | create=   0.51 ms | insert= 916.38 ms | detect= 150.34 ms | resolve=   0.00 ms | total=1067.22 ms
+UAV 0462 | CLEAR    | conflicts=  0 | create=   0.50 ms | insert= 477.00 ms | detect=  95.34 ms | resolve=   0.00 ms | total= 572.84 ms
+UAV 0463 | CLEAR    | conflicts=  0 | create=   0.48 ms | insert= 608.86 ms | detect= 118.46 ms | resolve=   0.00 ms | total= 727.80 ms
+UAV 0464 | CLEAR    | conflicts=  0 | create=   0.82 ms | insert= 474.57 ms | detect=  97.97 ms | resolve=   0.00 ms | total= 573.36 ms
+UAV 0465 | CLEAR    | conflicts=  0 | create=   0.52 ms | insert= 526.52 ms | detect=  97.47 ms | resolve=   0.00 ms | total= 624.50 ms
+UAV 0466 | CLEAR    | conflicts=  0 | create=   0.46 ms | insert=4546.24 ms | detect= 399.27 ms | resolve=   0.00 ms | total=4945.97 ms
+UAV 0467 | CLEAR    | conflicts=  0 | create=   1.61 ms | insert=3367.44 ms | detect= 387.46 ms | resolve=   0.00 ms | total=3756.51 ms
+UAV 0468 | CLEAR    | conflicts=  0 | create=   2.16 ms | insert=1931.16 ms | detect= 254.22 ms | resolve=   0.00 ms | total=2187.54 ms
+UAV 0469 | CLEAR    | conflicts=  0 | create=   1.52 ms | insert=1862.45 ms | detect= 317.18 ms | resolve=   0.00 ms | total=2181.15 ms
+UAV 0470 | CLEAR    | conflicts=  0 | create=   1.58 ms | insert=2366.66 ms | detect= 403.43 ms | resolve=   0.00 ms | total=2771.67 ms
+[VALIDATION] pleb=471 candidate-query: gen=2509boxes 915.7ms, detect_time=391.3ms conflicts=41
+[VALIDATION] pleb=471 candidate-query: gen=2509boxes 1081.9ms, detect_time=383.8ms conflicts=8
+[VALIDATION] pleb=471 candidate-query: gen=2509boxes 1065.4ms, detect_time=451.4ms conflicts=52
+[VALIDATION] pleb=471 candidate-query: gen=2509boxes 979.8ms, detect_time=355.0ms conflicts=10
+[VALIDATION] pleb=471 candidate-query: gen=2509boxes 228.4ms, detect_time=87.8ms conflicts=0
+UAV 0471 | RESOLVED | conflicts= 32 | create=   1.40 ms | insert=2457.69 ms | detect= 358.65 ms | resolve=24038.66 ms | total=26856.40 ms
+UAV 0472 | CLEAR    | conflicts=  0 | create=   0.40 ms | insert= 572.12 ms | detect=  87.04 ms | resolve=   0.00 ms | total= 659.56 ms
+[VALIDATION] pleb=473 candidate-query: gen=2395boxes 221.7ms, detect_time=95.6ms conflicts=8
+[VALIDATION] pleb=473 candidate-query: gen=2391boxes 221.3ms, detect_time=86.3ms conflicts=0
+UAV 0473 | RESOLVED | conflicts=  4 | create=   0.52 ms | insert= 545.66 ms | detect=  91.37 ms | resolve=2756.12 ms | total=3393.67 ms
+UAV 0474 | CLEAR    | conflicts=  0 | create=   0.44 ms | insert= 302.47 ms | detect=  76.63 ms | resolve=   0.00 ms | total= 379.55 ms
+[VALIDATION] pleb=95 candidate-query: gen=1743boxes 165.8ms, detect_time=69.8ms conflicts=4
+[VALIDATION] pleb=95 candidate-query: gen=1743boxes 163.4ms, detect_time=68.5ms conflicts=0
+UAV 0475 | RESOLVED | conflicts=  1 | create=   0.40 ms | insert= 432.17 ms | detect=  91.23 ms | resolve=2212.82 ms | total=2736.61 ms
+[VALIDATION] pleb=476 candidate-query: gen=2451boxes 232.1ms, detect_time=100.6ms conflicts=1
+[VALIDATION] pleb=476 candidate-query: gen=2451boxes 232.6ms, detect_time=97.9ms conflicts=0
+UAV 0476 | RESOLVED | conflicts=  5 | create=   0.40 ms | insert= 538.14 ms | detect= 105.71 ms | resolve=3570.69 ms | total=4214.95 ms
+[VALIDATION] pleb=396 candidate-query: gen=1997boxes 188.0ms, detect_time=77.1ms conflicts=1
+[VALIDATION] pleb=396 candidate-query: gen=1997boxes 212.6ms, detect_time=79.9ms conflicts=3
+[VALIDATION] pleb=396 candidate-query: gen=1997boxes 205.8ms, detect_time=86.8ms conflicts=0
+UAV 0477 | RESOLVED | conflicts=  3 | create=   0.47 ms | insert= 388.61 ms | detect=  83.18 ms | resolve=3743.27 ms | total=4215.53 ms
+[VALIDATION] pleb=478 candidate-query: gen=2284boxes 396.5ms, detect_time=173.8ms conflicts=2
+[VALIDATION] pleb=478 candidate-query: gen=2284boxes 436.2ms, detect_time=190.3ms conflicts=0
+UAV 0478 | RESOLVED | conflicts=  2 | create=   0.59 ms | insert= 856.28 ms | detect= 153.70 ms | resolve=6535.49 ms | total=7546.05 ms
+[VALIDATION] pleb=479 candidate-query: gen=2260boxes 348.7ms, detect_time=149.2ms conflicts=0
+UAV 0479 | RESOLVED | conflicts=  1 | create=   0.64 ms | insert= 787.06 ms | detect= 151.06 ms | resolve=4299.55 ms | total=5238.32 ms
+[VALIDATION] pleb=480 candidate-query: gen=2910boxes 1685.8ms, detect_time=480.8ms conflicts=2
+[VALIDATION] pleb=480 candidate-query: gen=2910boxes 1530.8ms, detect_time=421.9ms conflicts=3
+[VALIDATION] pleb=480 candidate-query: gen=2910boxes 1305.3ms, detect_time=369.9ms conflicts=0
+UAV 0480 | RESOLVED | conflicts=  2 | create=   0.57 ms | insert=1947.46 ms | detect= 424.17 ms | resolve=17333.30 ms | total=19705.50 ms
+[VALIDATION] pleb=481 candidate-query: gen=2287boxes 930.2ms, detect_time=275.2ms conflicts=0
+UAV 0481 | RESOLVED | conflicts=  4 | create=   1.24 ms | insert=2144.50 ms | detect= 288.03 ms | resolve=9767.05 ms | total=12200.82 ms
+[VALIDATION] pleb=482 candidate-query: gen=2031boxes 772.9ms, detect_time=372.1ms conflicts=0
+UAV 0482 | RESOLVED | conflicts=  5 | create=   1.17 ms | insert=1835.85 ms | detect= 281.61 ms | resolve=9272.94 ms | total=11391.56 ms
+[VALIDATION] pleb=483 candidate-query: gen=2275boxes 857.1ms, detect_time=293.5ms conflicts=0
+UAV 0483 | RESOLVED | conflicts=  1 | create=   1.31 ms | insert=1937.48 ms | detect= 309.87 ms | resolve=8929.51 ms | total=11178.18 ms
+[VALIDATION] pleb=484 candidate-query: gen=2516boxes 1435.4ms, detect_time=294.5ms conflicts=1
+[VALIDATION] pleb=390 candidate-query: gen=2525boxes 1040.7ms, detect_time=116.3ms conflicts=3
+[VALIDATION] pleb=390 candidate-query: gen=2525boxes 234.8ms, detect_time=90.9ms conflicts=0
+UAV 0484 | RESOLVED | conflicts=  5 | create=   1.29 ms | insert=2653.22 ms | detect= 278.06 ms | resolve=14168.76 ms | total=17101.32 ms
+UAV 0485 | CLEAR    | conflicts=  0 | create=   0.51 ms | insert= 720.86 ms | detect= 101.56 ms | resolve=   0.00 ms | total= 822.93 ms
+[VALIDATION] pleb=486 candidate-query: gen=2504boxes 233.7ms, detect_time=107.0ms conflicts=2
+[VALIDATION] pleb=486 candidate-query: gen=2504boxes 235.1ms, detect_time=103.7ms conflicts=0
+UAV 0486 | RESOLVED | conflicts=  2 | create=   0.46 ms | insert= 515.30 ms | detect= 112.93 ms | resolve=3084.44 ms | total=3713.14 ms
+UAV 0487 | CLEAR    | conflicts=  0 | create=   0.42 ms | insert= 476.84 ms | detect= 358.56 ms | resolve=   0.00 ms | total= 835.82 ms
+UAV 0488 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 756.22 ms | detect= 103.25 ms | resolve=   0.00 ms | total= 860.02 ms
+UAV 0489 | CLEAR    | conflicts=  0 | create=   0.45 ms | insert= 411.70 ms | detect=  79.44 ms | resolve=   0.00 ms | total= 491.58 ms
+UAV 0490 | CLEAR    | conflicts=  0 | create=   0.57 ms | insert= 556.34 ms | detect=  64.51 ms | resolve=   0.00 ms | total= 621.42 ms
+UAV 0491 | CLEAR    | conflicts=  0 | create=   0.52 ms | insert= 531.45 ms | detect=  62.56 ms | resolve=   0.00 ms | total= 594.54 ms
+UAV 0492 | CLEAR    | conflicts=  0 | create=   0.53 ms | insert= 404.15 ms | detect=  74.96 ms | resolve=   0.00 ms | total= 479.64 ms
+UAV 0493 | CLEAR    | conflicts=  0 | create=   0.46 ms | insert= 634.63 ms | detect= 104.50 ms | resolve=   0.00 ms | total= 739.59 ms
+UAV 0494 | CLEAR    | conflicts=  0 | create=   0.42 ms | insert= 493.00 ms | detect=  92.59 ms | resolve=   0.00 ms | total= 586.02 ms
+[VALIDATION] pleb=495 candidate-query: gen=2379boxes 221.0ms, detect_time=94.9ms conflicts=5
+[VALIDATION] pleb=495 candidate-query: gen=2379boxes 221.5ms, detect_time=97.4ms conflicts=3
+[VALIDATION] pleb=495 candidate-query: gen=2379boxes 218.5ms, detect_time=94.1ms conflicts=5
+[VALIDATION] pleb=495 candidate-query: gen=2379boxes 222.6ms, detect_time=95.1ms conflicts=2
+[VALIDATION] pleb=495 candidate-query: gen=2379boxes 217.4ms, detect_time=96.2ms conflicts=3
+[VALIDATION] pleb=495 candidate-query: gen=2379boxes 224.5ms, detect_time=95.8ms conflicts=3
+[VALIDATION] pleb=495 candidate-query: gen=2379boxes 230.1ms, detect_time=110.2ms conflicts=1
+[VALIDATION] pleb=495 candidate-query: gen=2379boxes 231.0ms, detect_time=103.4ms conflicts=2
+[VALIDATION] pleb=495 candidate-query: gen=2379boxes 225.6ms, detect_time=88.7ms conflicts=0
+UAV 0495 | RESOLVED | conflicts=  5 | create=   0.44 ms | insert= 868.71 ms | detect= 101.32 ms | resolve=9013.94 ms | total=9984.40 ms
+UAV 0496 | CLEAR    | conflicts=  0 | create=   0.64 ms | insert= 692.74 ms | detect= 112.64 ms | resolve=   0.00 ms | total= 806.02 ms
+UAV 0497 | CLEAR    | conflicts=  0 | create=   0.63 ms | insert= 715.81 ms | detect=  91.12 ms | resolve=   0.00 ms | total= 807.56 ms
+UAV 0498 | CLEAR    | conflicts=  0 | create=   0.54 ms | insert= 639.64 ms | detect=  81.05 ms | resolve=   0.00 ms | total= 721.23 ms
+[VALIDATION] pleb=499 candidate-query: gen=1958boxes 418.4ms, detect_time=179.4ms conflicts=5
+[VALIDATION] pleb=499 candidate-query: gen=1958boxes 440.2ms, detect_time=164.8ms conflicts=0
+UAV 0499 | RESOLVED | conflicts=  1 | create=   0.54 ms | insert= 769.72 ms | detect= 141.48 ms | resolve=5717.78 ms | total=6629.52 ms
+UAV 0500 | CLEAR    | conflicts=  0 | create=   0.62 ms | insert= 605.42 ms | detect=  98.83 ms | resolve=   0.00 ms | total= 704.87 ms
+
+================================================================================================
+SUMMARY
+================================================================================================
+Inserted UAVs:      500
+Clear:              410
+Resolved:           90
+FB2 (Hover):        0
+Deadlocks:          0
+Average:            2089.07 ms / insertion
+Median:             881.36 ms / insertion
+95th percentile:    5973.93 ms / insertion
+Worst case:         96730.31 ms / insertion
+Total elapsed:      1044533.06 ms
+Memory delta:       1415.34 MB
+================================================================================================

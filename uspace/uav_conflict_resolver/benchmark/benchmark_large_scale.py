@@ -19,6 +19,8 @@ Expected: Some conflicts will be detected and resolved by manager
 """
 
 import sys
+import io
+import contextlib
 from pathlib import Path
 import numpy as np
 import time
@@ -37,7 +39,7 @@ if _PROJECT_ROOT not in sys.path:
 
 from core.models.flight_plan import FlightPlan
 from core.models.waypoint import Waypoint
-from detection.rtree_detector import RTreeDetector
+from core.config import UAV_MAX_SPEED
 from central_manager import CentralManager
 from flightplan_generator import generate_layered_straight_fleet
 
@@ -48,25 +50,153 @@ LARGE_PRISM = (
     (30, 120)        # Z: 90 m span (30m to 120m altitude)
 )
 
-# Vertiport-style airspace: 20 km × 20 km, flyable 30m - 120m
-VERTIPORT_PRISM = (
-    (0, 20000),     # X: 20 km
-    (0, 20000),     # Y: 20 km
-    (30, 120)       # Z: 30m - 120m
-)
+
 
 # Main benchmark default fleet size. Change this value to scale the run.
-DEFAULT_N_UAVS = 100
+DEFAULT_N_UAVS = 500
+
+
+def _parse_float_list(value: Optional[str]) -> Optional[List[float]]:
+    """Parse a comma-separated list of floats from the CLI."""
+    if value is None:
+        return None
+
+    items = [item.strip() for item in value.split(",") if item.strip()]
+    if not items:
+        return None
+
+    return [float(item) for item in items]
+
+
+def _build_straight_plan(
+    uav_index: int,
+    prism: Tuple[Tuple[float, float], ...] = LARGE_PRISM,
+    seed: int = 42,
+    crossing_point: Optional[Tuple[float, float]] = None,
+    crossing_time: Optional[float] = None,
+    n_waypoints: int = 6,
+    z_levels: Optional[List[float]] = None,
+) -> FlightPlan:
+    """Build a long, mostly straight plan similar to the sequential benchmark."""
+    rng = np.random.default_rng(seed + uav_index * 881)
+    x_rng, y_rng, z_rng = prism
+
+    cruise_levels = z_levels or [55.0, 70.0]
+    z_cruise = float(rng.choice(cruise_levels))
+    cruise_speed = float(rng.uniform(10.0, min(15.0, UAV_MAX_SPEED)))
+    margin = 500.0
+
+    if crossing_point is not None:
+        cx, cy = crossing_point
+        bearing = rng.uniform(0.0, 2.0 * np.pi)
+        half_dist = rng.uniform(3_500.0, 5_500.0)
+        x_start = cx - half_dist * np.cos(bearing)
+        y_start = cy - half_dist * np.sin(bearing)
+        x_end = cx + half_dist * np.cos(bearing)
+        y_end = cy + half_dist * np.sin(bearing)
+    else:
+        edge = uav_index % 4
+        if edge == 0:
+            x_start = x_rng[0] + rng.uniform(margin, margin * 2)
+            y_start = rng.uniform(y_rng[0] + margin, y_rng[1] - margin)
+            x_end = x_rng[1] - rng.uniform(margin, margin * 2)
+            y_end = rng.uniform(y_rng[0] + margin, y_rng[1] - margin)
+        elif edge == 1:
+            x_start = x_rng[1] - rng.uniform(margin, margin * 2)
+            y_start = rng.uniform(y_rng[0] + margin, y_rng[1] - margin)
+            x_end = x_rng[0] + rng.uniform(margin, margin * 2)
+            y_end = rng.uniform(y_rng[0] + margin, y_rng[1] - margin)
+        elif edge == 2:
+            x_start = rng.uniform(x_rng[0] + margin, x_rng[1] - margin)
+            y_start = y_rng[0] + rng.uniform(margin, margin * 2)
+            x_end = rng.uniform(x_rng[0] + margin, x_rng[1] - margin)
+            y_end = y_rng[1] - rng.uniform(margin, margin * 2)
+        else:
+            x_start = rng.uniform(x_rng[0] + margin, x_rng[1] - margin)
+            y_start = y_rng[1] - rng.uniform(margin, margin * 2)
+            x_end = rng.uniform(x_rng[0] + margin, x_rng[1] - margin)
+            y_end = y_rng[0] + rng.uniform(margin, margin * 2)
+
+    x_start = float(np.clip(x_start, x_rng[0] + 10.0, x_rng[1] - 10.0))
+    y_start = float(np.clip(y_start, y_rng[0] + 10.0, y_rng[1] - 10.0))
+    x_end = float(np.clip(x_end, x_rng[0] + 10.0, x_rng[1] - 10.0))
+    y_end = float(np.clip(y_end, y_rng[0] + 10.0, y_rng[1] - 10.0))
+
+    positions: List[np.ndarray] = []
+    dx = x_end - x_start
+    dy = y_end - y_start
+    length = np.hypot(dx, dy)
+    perp_x = -dy / length if length > 1e-6 else 0.0
+    perp_y = dx / length if length > 1e-6 else 0.0
+
+    for i in range(n_waypoints):
+        alpha = i / (n_waypoints - 1)
+        px = x_start + alpha * dx
+        py = y_start + alpha * dy
+        if 0 < i < n_waypoints - 1:
+            jitter = rng.uniform(-180.0, 180.0)
+            px += jitter * perp_x
+            py += jitter * perp_y
+        px = float(np.clip(px, x_rng[0] + 10.0, x_rng[1] - 10.0))
+        py = float(np.clip(py, y_rng[0] + 10.0, y_rng[1] - 10.0))
+        positions.append(np.array([px, py, z_cruise]))
+
+    seg_dists = [float(np.linalg.norm(positions[i + 1] - positions[i])) for i in range(n_waypoints - 1)]
+    total_dist = sum(seg_dists)
+    mission_duration = max(800.0, total_dist / cruise_speed)
+
+    mid_idx = n_waypoints // 2
+    if crossing_time is not None:
+        dist_to_mid = sum(seg_dists[:mid_idx])
+        frac_to_mid = dist_to_mid / total_dist if total_dist > 1e-6 else 0.5
+        t_start = crossing_time - frac_to_mid * mission_duration
+        t_start = max(0.0, t_start) + rng.uniform(-1.0, 1.0)
+    else:
+        t_start = uav_index * 3.0 + rng.uniform(0.0, 0.75)
+
+    cumulative = [0.0]
+    for d in seg_dists:
+        cumulative.append(cumulative[-1] + d)
+    times = [t_start + (c / total_dist) * mission_duration for c in cumulative]
+
+    fp = FlightPlan()
+    fp.id = uav_index + 1
+    fp.priority = 2 if uav_index % 23 == 0 else (1 if uav_index % 7 == 0 else 0)
+    fp.radius = 5.0
+    fp.max_var_lin_vel = UAV_MAX_SPEED
+    fp.max_var_ang_vel = 1.0
+
+    for i, (pos, t) in enumerate(zip(positions, times)):
+        if i == 0:
+            label = "START"
+            nxt = positions[1] - positions[0]
+            norm = np.linalg.norm(nxt)
+            vel = (nxt / norm * cruise_speed).tolist() if norm > 1e-9 else [0.0, 0.0, 0.0]
+        elif i == n_waypoints - 1:
+            label = "END"
+            vel = [0.0, 0.0, 0.0]
+        else:
+            label = f"WP_{i}"
+            nxt = positions[i + 1] - positions[i]
+            norm = np.linalg.norm(nxt)
+            vel = (nxt / norm * cruise_speed).tolist() if norm > 1e-9 else [0.0, 0.0, 0.0]
+        fp.set_waypoint(Waypoint(label, float(t), pos.tolist(), vel))
+
+    fp.connect_waypoints(strict=True)
+    fp._benchmark_mid = (float(positions[mid_idx][0]), float(positions[mid_idx][1]))
+    fp._benchmark_mid_time = float(times[mid_idx])
+    return fp
 
 
 def generate_large_fleet(
     n_uavs: int = DEFAULT_N_UAVS,
     prism: Tuple[Tuple[float, float], ...] = LARGE_PRISM,
     t_start: float = 0.0,
-    t_end: float = 500.0,
+    t_end: float = 1200.0,
     seed: int = 42,
     verbose: bool = True,
     conflict_mode: bool = True,
+    z_levels: Optional[List[float]] = None,
 ) -> List[FlightPlan]:
     """
     Generate a large fleet of UAVs using mostly straight routes stratified by
@@ -81,20 +211,32 @@ def generate_large_fleet(
         )
         print(f"  • Time window: {t_start:.1f}s - {t_end:.1f}s\n")
     if conflict_mode:
-        levels = [40.0, 55.0, 70.0, 85.0]
-        fleet = generate_layered_straight_fleet(
-            n_uavs=n_uavs,
-            prism=prism,
-            t_start=t_start,
-            t_end=t_end,
-            radius=5.0,
-            seed=seed,
-            levels=levels,
-            conflict_mode=True,
-            num_waypoints=4,
-        )
+        fleet = []
+        prev_mid: Optional[Tuple[float, float]] = None
+        prev_mid_time: Optional[float] = None
+
+        for uav_idx in range(n_uavs):
+            rng_j = np.random.default_rng(seed + uav_idx)
+            if prev_mid is None:
+                fp = _build_straight_plan(uav_idx, prism=prism, seed=seed, z_levels=z_levels)
+            else:
+                jitter_xy = (rng_j.uniform(-80.0, 80.0), rng_j.uniform(-80.0, 80.0))
+                cross_pt = (prev_mid[0] + jitter_xy[0], prev_mid[1] + jitter_xy[1])
+                cross_t = prev_mid_time + rng_j.uniform(-3.0, 3.0)
+                fp = _build_straight_plan(
+                    uav_idx,
+                    prism=prism,
+                    seed=seed,
+                    crossing_point=cross_pt,
+                    crossing_time=cross_t,
+                    z_levels=z_levels,
+                )
+
+            fleet.append(fp)
+            prev_mid = getattr(fp, "_benchmark_mid", None)
+            prev_mid_time = getattr(fp, "_benchmark_mid_time", None)
     else:
-        levels = [35.0, 50.0, 65.0, 80.0, 95.0, 110.0]
+        levels = z_levels or [35.0, 50.0, 65.0, 80.0, 95.0, 110.0]
         fleet = generate_layered_straight_fleet(
             n_uavs=n_uavs,
             prism=prism,
@@ -241,13 +383,14 @@ def generate_vertiport_fleet(
 class LargeScaleBenchmark:
     """Orchestrates large-scale benchmark with conflict resolution."""
     
-    def __init__(self, verbose: bool = True):
+    def __init__(self, verbose: bool = True, visualize: bool = True):
         self.fleet = []
         self.detector = None
         self.manager = None
         self.metrics = {}
         self.original_plans: Dict[int, FlightPlan] = {}
         self.verbose = verbose
+        self.visualize = visualize
     
     def _log(self, msg: str, level: str = "INFO"):
         """Print verbose log message."""
@@ -263,7 +406,12 @@ class LargeScaleBenchmark:
         prefix = prefix_map.get(level, "→ ")
         print(f"  {prefix} {msg}")
     
-    def run(self, n_uavs: int = DEFAULT_N_UAVS, conflict_mode: bool = True) -> dict:
+    def run(
+        self,
+        n_uavs: int = DEFAULT_N_UAVS,
+        conflict_mode: bool = True,
+        z_levels: Optional[List[float]] = None,
+    ) -> dict:
         """
         Execute the full large-scale benchmark pipeline.
         
@@ -289,7 +437,12 @@ class LargeScaleBenchmark:
         t0_gen = time.time()
         mem0_gen = psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024
         
-        self.fleet = generate_large_fleet(n_uavs=n_uavs, verbose=self.verbose, conflict_mode=conflict_mode)
+        self.fleet = generate_large_fleet(
+            n_uavs=n_uavs,
+            verbose=self.verbose,
+            conflict_mode=conflict_mode,
+            z_levels=z_levels,
+        )
         self.original_plans = {}
         for fp in self.fleet:
             try:
@@ -315,13 +468,18 @@ class LargeScaleBenchmark:
         print(f"\n┌─ [PHASE 2] CONFLICT DETECTION ────────────────────────────────────────────────────────┐")
         print(f"└─────────────────────────────────────────────────────────────────────────────────────┘")
         
-        self._log("Initializing RTree detector...")
+        self._log("Bulk registering all flight plans in CentralManager...")
         t0_init = time.time()
         mem0_init = psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024
         
-        self.detector = RTreeDetector()
-        for fp in self.fleet:
-            self.detector.register_uav(fp.id, fp, interval=0.5)
+        priority_map = {str(fp.id): fp.priority for fp in self.fleet}
+        self.manager = CentralManager()
+        self.manager.bulk_register_uavs(
+            [(str(fp.id), fp) for fp in self.fleet],
+            priority_map=priority_map,
+            interval=0.5,
+        )
+        self.detector = self.manager._rtree_detector
         
         t1_init = time.time()
         mem1_init = psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024
@@ -329,49 +487,20 @@ class LargeScaleBenchmark:
         mem_init = mem1_init - mem0_init
         
         total_boxes = sum(len(self.detector.uavs[uid]["boxes"]) for uid in self.detector.uavs)
-        self._log(f"RTree initialized with {len(self.fleet)} UAVs (total boxes: {total_boxes})", "OK")
-        
-        self._log("Running conflict detection on all UAVs...")
+        self._log(f"RTree bulk-loaded with {len(self.fleet)} UAVs (total boxes: {total_boxes})", "OK")
+
+        self._log("Running system-wide conflict detection...")
         t0_detect = time.time()
         mem0_detect = psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024
         
-        all_conflicts = []
+        unique_conflicts = self.detector.detect_all_conflicts_system_wide()
         detection_times = []
-        
-        for idx, fp in enumerate(self.fleet):
-            t_before = time.time()
-            conflicts = self.detector.detect_all_conflicts(fp.id)
-            t_after = time.time()
-            
-            detection_times.append(t_after - t_before)
-            all_conflicts.extend(conflicts)
-            
-            if self.verbose and (idx + 1) % 100 == 0:
-                self._log(f"Detection progress: {idx + 1}/{len(self.fleet)} UAVs processed")
         
         t1_detect = time.time()
         mem1_detect = psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024
         
         time_detect = t1_detect - t0_detect
         mem_detect = mem1_detect - mem0_detect
-        
-        # Deduplicate conflicts (each conflict counted twice)
-        # Convert to canonical form: (uav_a, uav_b, box_a_idx, box_b_idx) for deduplication
-        seen = {}
-        unique_conflicts = []
-        for conflict in all_conflicts:
-            # Create a canonical key with sorted UAV IDs to treat (A,B) and (B,A) as same
-            uav_a, uav_b = conflict["uav_a"], conflict["uav_b"]
-            box_a, box_b = conflict["box_a_idx"], conflict["box_b_idx"]
-            # Normalize the pair so smaller ID comes first
-            if uav_a < uav_b:
-                key = (uav_a, uav_b, box_a, box_b)
-            else:
-                key = (uav_b, uav_a, box_b, box_a)
-            
-            if key not in seen:
-                seen[key] = conflict
-                unique_conflicts.append(conflict)
         
         print(f"\n✓ Conflict Detection Complete:")
         print(f"  │ Conflicts found: {len(unique_conflicts)}")
@@ -385,20 +514,11 @@ class LargeScaleBenchmark:
         print(f"\n┌─ [PHASE 3] CONFLICT RESOLUTION ───────────────────────────────────────────────────────┐")
         print(f"└─────────────────────────────────────────────────────────────────────────────────────┘")
         
-        # Initialize CentralManager and register all flight plans
-        self._log("Initializing CentralManager for conflict resolution...")
+        # Resolve the whole airspace in repeated global sweeps.
+        self._log("Running global manager sweeps until the airspace stabilizes...")
         t0_manager = time.time()
         mem0_manager = psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024
 
-        self.manager = CentralManager()
-        self._log("Adding all flight plans to manager...")
-
-        for fp in self.fleet:
-            self.manager.register_uav(str(fp.id), fp)
-
-        self._log(f"Manager has {len(self.manager._flight_plans)} flight plans registered", "OK")
-
-        # Resolve globally until the airspace stabilizes.
         resolve_stats = self.manager.solve_all(max_sweeps=300, interval=0.5)
 
         t1_manager = time.time()
@@ -414,6 +534,8 @@ class LargeScaleBenchmark:
         print(f"  │ Attempts: {resolve_stats['attempted']}")
         print(f"  │ Resolved: {resolve_stats['resolved']}")
         print(f"  │ Deadlocks: {resolve_stats['deadlocks']}")
+        print(f"  │   anchor: {resolve_stats.get('anchor_deadlocks', 0)}")
+        print(f"  │   hover timeout: {resolve_stats.get('hover_deadlocks', 0)}")
         print(f"  │ Remaining conflicts: {resolve_stats['remaining_conflicts']}")
         
         # ─────────────────────────────────────────────────────────────────
@@ -477,6 +599,8 @@ class LargeScaleBenchmark:
             "conflict_density": len(unique_conflicts) / len(self.fleet),
             "resolved_conflicts": resolve_stats.get("resolved", 0),
             "unresolved_conflicts": resolve_stats.get("deadlocks", 0),
+            "anchor_deadlocks": resolve_stats.get("anchor_deadlocks", 0),
+            "hover_deadlocks": resolve_stats.get("hover_deadlocks", 0),
             "remaining_conflicts": resolve_stats.get("remaining_conflicts", 0),
             "solve_sweeps": resolve_stats.get("sweeps", 0),
             "solve_attempts": resolve_stats.get("attempted", 0),
@@ -484,21 +608,22 @@ class LargeScaleBenchmark:
 
         # Visualization: first show realtime-like BEFORE/AFTER 3D routes,
         # then summary plots with timing and resolution metrics.
-        try:
-            self.visualize_before_after_routes()
-        except Exception as e:
-            self._log(f"Before/After visualization failed: {e}", "WARN")
+        if self.visualize:
+            try:
+                self.visualize_before_after_routes()
+            except Exception as e:
+                self._log(f"Before/After visualization failed: {e}", "WARN")
 
-        try:
-            self.visualize_results(self.metrics, unique_conflicts)
-        except Exception as e:
-            self._log(f"Visualization failed: {e}", "WARN")
+            try:
+                self.visualize_results(self.metrics, unique_conflicts)
+            except Exception as e:
+                self._log(f"Visualization failed: {e}", "WARN")
 
         return self.metrics
 
     def visualize_before_after_routes(self):
         """Render a realtime-style 3D BEFORE/AFTER route comparison."""
-        if not self.verbose:
+        if not self.visualize:
             return
 
         BG = "#0f1117"
@@ -580,7 +705,7 @@ class LargeScaleBenchmark:
 
     def visualize_results(self, metrics: dict, unique_conflicts: List[dict]):
         """Create plots summarizing fleet, conflicts and resolution results."""
-        if not self.verbose:
+        if not self.visualize:
             return
 
         fig, axs = plt.subplots(2, 2, figsize=(14, 10))
@@ -643,7 +768,7 @@ class LargeScaleBenchmark:
         ax_bar.set_title("Conflict resolution outcomes")
         ax_bar.set_ylabel("count")
 
-        # Text box with key metrics
+        # Text box with key metrics 
         text_lines = [
             f"UAVs: {metrics.get('n_uavs', 0)}",
             f"Conflicts: {metrics.get('total_conflicts', 0)}",
@@ -666,17 +791,53 @@ class LargeScaleBenchmark:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--n-uavs", type=int, default=DEFAULT_N_UAVS, help="Number of UAVs to generate")
+    parser.add_argument("--visualize", dest="visualize", action="store_true", help="Enable matplotlib visualizations")
+    parser.add_argument("--no-visualize", dest="visualize", action="store_false", help="Disable matplotlib visualizations")
+    parser.add_argument(
+        "--z-levels",
+        type=str,
+        default=None,
+        help="Comma-separated cruise altitude levels in meters, e.g. 55,70,85",
+    )
     conflict_group = parser.add_mutually_exclusive_group()
     conflict_group.add_argument("--conflict-mode", dest="conflict_mode", action="store_true", help="Enable aggressive conflict generation")
     conflict_group.add_argument("--no-conflict-mode", dest="conflict_mode", action="store_false", help="Disable aggressive conflict generation")
-    parser.set_defaults(conflict_mode=True)
+    parser.set_defaults(conflict_mode=True, visualize=False)
     args = parser.parse_args()
 
-    benchmark = LargeScaleBenchmark(verbose=True)
-    metrics = benchmark.run(n_uavs=args.n_uavs, conflict_mode=args.conflict_mode)
-    
-    print("\n" + "="*100)
-    print("Benchmark completed successfully!")
-    print(f"Total conflicts detected: {metrics['total_conflicts']}")
-    print(f"Conflict density: {metrics['conflict_density']:.4f} conflicts/UAV")
-    print("="*100)
+    benchmark = LargeScaleBenchmark(verbose=True, visualize=args.visualize)
+    capture_buffer = io.StringIO()
+
+    class _Tee:
+        def __init__(self, *streams):
+            self.streams = streams
+
+        def write(self, text):
+            for stream in self.streams:
+                stream.write(text)
+            return len(text)
+
+        def flush(self):
+            for stream in self.streams:
+                stream.flush()
+
+    with contextlib.redirect_stdout(_Tee(sys.stdout, capture_buffer)):
+        try:
+            metrics = benchmark.run(
+                n_uavs=args.n_uavs,
+                conflict_mode=args.conflict_mode,
+                z_levels=_parse_float_list(args.z_levels),
+            )
+
+            print("\n" + "=" * 100)
+            print("Benchmark completed successfully!")
+            print(f"Total conflicts detected: {metrics['total_conflicts']}")
+            print(f"Conflict density: {metrics['conflict_density']:.4f} conflicts/UAV")
+            print("=" * 100)
+        finally:
+            output_file = Path(__file__).with_name("benchmark_large_scale_output.txt")
+            output_file.write_text(
+                capture_buffer.getvalue().rstrip("\n") + "\n",
+                encoding="utf-8",
+            )
+            print(f"Benchmark output written to: {output_file}")

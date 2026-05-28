@@ -20,6 +20,10 @@ NOTES:
     The benchmark uses dense, corridor-like flight plans so that conflicts
     appear naturally as the fleet grows. This is closer to a live system than
     a pre-generated batch benchmark with all aircraft present from the start.
+    Conflicts that are effectively unresolved because they occur at the very
+    beginning of a flight plan are outside the scope of this benchmark. Those
+    cases are counted as DEADLOCKs but do not stop the run, because low-level
+    runway/vertiport management is assumed to handle departure scheduling.
 
 STATUS MEANINGS:
     CLEAR:
@@ -27,10 +31,11 @@ STATUS MEANINGS:
 RESOLVED:
         A conflict was detected and the resolver found a safe new plan.
     HOVER:
-        The resolver reached FB2 (hover). In this benchmark it counts as a
-        failure and stops the run.
+        The resolver reached FB2 (hover). In this benchmark it is counted
+        and the run continues.
 DEADLOCK:
-        A conflict was detected but no safe resolution strategy succeeded.
+    A conflict was detected but no safe resolution strategy succeeded.
+    In this benchmark, DEADLOCKs are counted and the insertion loop continues.
 
 FLIGHT PLAN CREATION:
     Each inserted UAV gets a new FlightPlan built by the generator in
@@ -49,11 +54,31 @@ TIMING BREAKDOWN:
         Time spent registering the plan in the CentralManager / R-Tree (indexing all its OBBs).
     detect:
         Time spent finding conflicts for the inserted UAV.
-    resolve:
-        Time spent running the conflict-resolution cascade.
+    resolve_loop:
+        Time spent running the full resolution loop until the inserted UAV
+        becomes conflict-free or the resolver stops.
+    last_pass:
+        Time spent in the last single resolution pass only.
+    phase_sum:
+        Sum of the measured phase times inside that last pass (S1, SAT, S2,
+        FB1, FB2).
+    validation items:
+        Time spent generating the candidate swept boxes and checking them
+        against the live detector during candidate-query validation.
+    per-pass details:
+        One block per resolution pass, with totals and phase timings.
     total:
         Sum of create + insert + detect + resolve for the insertion.
 """
+
+# LEGEND
+#   statuses: CLEAR=no conflict | RESOLVED=fix applied | HOVER=FB2 used | DEADLOCK=no safe fix
+#   timings(ms): create=build plan | insert=register | detect=search conflicts | resolve_loop=all passes
+#   timings(ms): last_pass=last single pass | phase_sum=phase total inside that pass | total=full insertion
+#   phases: S1=kinematic bounding | SAT=MTV generation | S2=horizontal stretch | FB1=vertical MTV | FB2=hover
+#   counts: iters_total=all candidates | S1i/S2i/FB1i/FB2i=tries in each phase
+#   validation: candidate-query check of the temporary swap before accepting a plan
+#   passes: one block per resolution pass (if any)
 
 from __future__ import annotations
 
@@ -104,6 +129,9 @@ DEFAULT_GENERATED_SPEED_FRACTION: float = 0.90
 DEFAULT_GENERATED_V_MAX_MARGIN: float = 0.01
 DEFAULT_MAX_UAVS: Optional[int] = None
 
+# Toggle to enable/disable 3D visualization at the end of the benchmark
+# Set to False to disable plotting (commenting out the visualization section)
+ENABLE_VISUALIZATION: bool = True
 
 def _pick_altitude_level(index: int, prism: Tuple[Tuple[float, float], ...], rng: np.random.Generator) -> float:
     """Distribute UAVs across a finite set of altitude layers."""
@@ -241,12 +269,17 @@ def _build_collinear_plan(
             )
         )
 
-    fp.connect_waypoints(strict=False)
+    fp.connect_waypoints(strict=True)
     return fp
 
 
 class IncrementalRealtimeBenchmark:
-    """Insert UAVs one by one and stop on HOVER/FB2 or DEADLOCK."""
+    """Insert UAVs one by one until the requested fleet size is reached.
+
+    FB2 and DEADLOCK are counted as outcomes, but neither one stops the
+    benchmark. The goal is to keep inserting UAVs up to the target size and
+    record how many cases required those fallback outcomes.
+    """
 
     def __init__(self, prism: Tuple[Tuple[float, float], ...] = REALISTIC_PRISM, seed: int = 42, verbose: bool = True):
         self.prism = prism
@@ -288,7 +321,9 @@ class IncrementalRealtimeBenchmark:
         inserted = 0
         resolved = 0
         deadlocks = 0
-        hover_failures = 0
+        anchor_deadlocks = 0
+        hover_deadlocks = 0
+        fb2_cases = 0
         clear_insertions = 0
         total_elapsed_ms = 0.0
         stop_reason = "max_uavs"
@@ -354,53 +389,17 @@ class IncrementalRealtimeBenchmark:
 
             resolve_ms = 0.0
             phase_times: Dict[str, float] = {}
+            last_pass_ms = 0.0
+            pass_history: List[Dict[str, object]] = []
             result = None
             if conflicts:
-                conflicts.sort(key=lambda c: c["time_range"][0])
-                conflict = conflicts[0]
-
-                uav_a_id = conflict["uav_a"]
-                uav_b_id = conflict["uav_b"]
-                priority_a = self.manager._priorities.get(uav_a_id, 0)
-                priority_b = self.manager._priorities.get(uav_b_id, 0)
-
-                if priority_a >= priority_b:
-                    if priority_a == priority_b and uav_a_id > uav_b_id:
-                        vip_id, pleb_id = uav_b_id, uav_a_id
-                    else:
-                        vip_id, pleb_id = uav_a_id, uav_b_id
-                else:
-                    vip_id, pleb_id = uav_b_id, uav_a_id
-
-                fp_vip = self.manager._flight_plans[vip_id]
-                fp_pleb = self.manager._flight_plans[pleb_id]
-
                 resolve_t0 = time.perf_counter()
-                result = self.manager._resolver.resolve(
-                    conflict=conflict,
-                    fp_pleb=fp_pleb,
-                    fp_vip=fp_vip,
-                    pleb_id=pleb_id,
-                    vip_id=vip_id,
-                )
+                result = self.manager.resolve_until_clear(uav_id, interval=interval)
                 resolve_ms = (time.perf_counter() - resolve_t0) * 1000.0
-                phase_times = dict(result.phase_times)
-
-                if result.success:
-                    if result.new_fp_pleb is not None:
-                        self.manager.register_uav(
-                            pleb_id,
-                            result.new_fp_pleb,
-                            priority=self.manager._priorities.get(pleb_id, 0),
-                            interval=interval,
-                        )
-                    if result.new_fp_vip is not None:
-                        self.manager.register_uav(
-                            vip_id,
-                            result.new_fp_vip,
-                            priority=self.manager._priorities.get(vip_id, 0),
-                            interval=interval,
-                        )
+                if result is not None:
+                    phase_times = dict(result.phase_times)
+                    last_pass_ms = float(phase_times.get("resolve_total_ms", 0.0))
+                    pass_history = list(getattr(result, "pass_history", []))
 
             elapsed_ms = creation_ms + insert_ms + detect_ms + resolve_ms
             total_elapsed_ms += elapsed_ms
@@ -417,13 +416,19 @@ class IncrementalRealtimeBenchmark:
                 phase_iterations = dict(getattr(result, "phase_iterations", {}))
                 if result.strategy_used == "FB2":
                     status = "HOVER"
-                    hover_failures += 1
+                    fb2_cases += 1
                 elif result.success:
                     status = "RESOLVED"
                     resolved += 1
                 else:
                     status = "DEADLOCK"
                     deadlocks += 1
+                    deadlock_type = str(getattr(result, "deadlock_type", "unknown"))
+                    if deadlock_type in {"anchor_before_conflict", "anchor_after_finish"}:
+                        anchor_deadlocks += 1
+                    elif deadlock_type == "hover_timeout":
+                        hover_deadlocks += 1
+                    self.manager.remove_uav(uav_id)
 
             record = {
                 "uav_id": fp.id,
@@ -438,6 +443,10 @@ class IncrementalRealtimeBenchmark:
                 "insert_ms": insert_ms,
                 "detect_ms": detect_ms,
                 "resolve_ms": resolve_ms,
+                "resolve_loop_ms": resolve_ms,
+                "resolve_last_pass_ms": last_pass_ms,
+                "resolve_pass_count": len(pass_history),
+                "resolve_pass_history": pass_history,
                 "resolve_total_ms": phase_times.get("resolve_total_ms", resolve_ms),
                 "shadow_build_ms": phase_times.get("shadow_build_ms", 0.0),
                 "s1_ms": phase_times.get("s1_ms", 0.0),
@@ -445,7 +454,14 @@ class IncrementalRealtimeBenchmark:
                 "s2_ms": phase_times.get("s2_ms", 0.0),
                 "fb1_ms": phase_times.get("fb1_ms", 0.0),
                 "fb2_ms": phase_times.get("fb2_ms", 0.0),
-                # Validation metrics (temporary-swap)
+                "resolve_phase_sum_ms": float(
+                    phase_times.get("s1_ms", 0.0)
+                    + phase_times.get("sat_ms", 0.0)
+                    + phase_times.get("s2_ms", 0.0)
+                    + phase_times.get("fb1_ms", 0.0)
+                    + phase_times.get("fb2_ms", 0.0)
+                ),
+                # Validation metrics (candidate-query)
                 "validation_method": phase_times.get("validation_method", "none"),
                 "candidate_boxes": int(phase_times.get("candidate_boxes", 0)),
                 "original_boxes": int(phase_times.get("original_boxes", 0)),
@@ -455,13 +471,16 @@ class IncrementalRealtimeBenchmark:
                 "detect_validation_ms": float(phase_times.get("detect_ms", 0.0)),
                 "restore_remove_ms": float(phase_times.get("restore_remove_ms", 0.0)),
                 "restore_insert_ms": float(phase_times.get("restore_insert_ms", 0.0)),
+                "validation_total_ms": float(
+                    phase_times.get("candidate_gen_ms", 0.0)
+                    + phase_times.get("detect_ms", 0.0)
+                ),
                 "elapsed_ms": elapsed_ms,
             }
             self.records.append(record)
 
             if phase_times:
                 breakdown = (
-                    f"shadow={phase_times.get('shadow_build_ms', 0.0):8.2f} ms | "
                     f"S1={phase_times.get('s1_ms', 0.0):8.2f} ms | "
                     f"SAT={phase_times.get('sat_ms', 0.0):8.2f} ms | "
                     f"S2={phase_times.get('s2_ms', 0.0):8.2f} ms | "
@@ -484,34 +503,78 @@ class IncrementalRealtimeBenchmark:
                 vins = float(phase_times.get('candidate_insert_ms', phase_times.get('candidate_register_ms', 0.0)))
                 validation_brief = f"val_method={vmethod} boxes_c={vboxes_c} boxes_o={vboxes_o} gen={vgen:.1f}ms ins={vins:.1f}ms det={vdetect:.1f}ms"
             else:
-                breakdown = "shadow=    0.00 ms | S1=    0.00 ms | SAT=    0.00 ms | S2=    0.00 ms | FB1=    0.00 ms | FB2=    0.00 ms"
+                breakdown = "S1=    0.00 ms | SAT=    0.00 ms | S2=    0.00 ms | FB1=    0.00 ms | FB2=    0.00 ms"
                 validation_brief = "val_method=none"
                 iterations_brief = f"iters_total={iterations:>3d} | S1=  0 | S2=  0 | FB1=  0 | FB2=  0"
+
+            resolve_phase_sum_ms = float(
+                phase_times.get("s1_ms", 0.0)
+                + phase_times.get("sat_ms", 0.0)
+                + phase_times.get("s2_ms", 0.0)
+                + phase_times.get("fb1_ms", 0.0)
+                + phase_times.get("fb2_ms", 0.0)
+            )
+            validation_total_ms = float(vgen + vdetect) if phase_times else 0.0
 
             self._log(
                 f"UAV {fp.id:04d} | {status:<8s} | strategy={strategy:<8s} | "
                 f"{iterations_brief} | create={creation_ms:8.2f} ms | "
                 f"insert={insert_ms:8.2f} ms | detect={detect_ms:8.2f} ms | "
-                f"resolve={resolve_ms:8.2f} ms | "
+                f"resolve_loop={resolve_ms:8.2f} ms | last_pass={last_pass_ms:8.2f} ms | "
                 f"total={elapsed_ms:8.2f} ms"
             )
             if phase_times:
-                self._log(f"    resolve breakdown: {breakdown}")
-                self._log(f"    validation: {validation_brief}")
+                self._log(
+                    f"    resolve items: loop={resolve_ms:8.2f} ms | "
+                    f"last_pass={last_pass_ms:8.2f} ms | phase_sum={resolve_phase_sum_ms:8.2f} ms | "
+                )
+                self._log(f"    resolve breakdown (last pass): {breakdown}")
+                self._log(
+                    f"    validation items: total={validation_total_ms:8.2f} ms | {validation_brief}"
+                )
+            if pass_history:
+                self._log(f"    passes: {len(pass_history)}")
+                for pass_info in pass_history:
+                    pass_times = dict(pass_info.get("phase_times", {}))
+                    pass_breakdown = (
+                        f"S1={pass_times.get('s1_ms', 0.0):7.2f} | "
+                        f"SAT={pass_times.get('sat_ms', 0.0):7.2f} | "
+                        f"S2={pass_times.get('s2_ms', 0.0):7.2f} | "
+                        f"FB1={pass_times.get('fb1_ms', 0.0):7.2f} | "
+                        f"FB2={pass_times.get('fb2_ms', 0.0):7.2f}"
+                    )
+                    pass_iterations = dict(pass_info.get("phase_iterations", {}))
+                    self._log(
+                        f"      pass {int(pass_info.get('pass_index', 0)):02d} | "
+                        f"conf_before={int(pass_info.get('conflicts_before', 0)):>3d} | "
+                        f"conf_after={int(pass_info.get('remaining_conflicts_after', 0)):>3d} | "
+                        f"strategy={str(pass_info.get('strategy_used', 'NONE')):<8s} | "
+                        f"iters={int(pass_info.get('iterations', 0)):>3d} | "
+                        f"total={float(pass_info.get('resolve_total_ms', 0.0)):8.2f} ms | "
+                        f"phase_sum={float(pass_info.get('resolve_phase_sum_ms', 0.0)):8.2f} ms | "
+                        f"validation={float(pass_info.get('validation_total_ms', 0.0)):8.2f} ms"
+                    )
+                    self._log(
+                        f"        phases: {pass_breakdown} | "
+                        f"S1i={int(pass_iterations.get('s1', 0)):>3d} | "
+                        f"S2i={int(pass_iterations.get('s2', 0)):>3d} | "
+                        f"FB1i={int(pass_iterations.get('fb1', 0)):>3d} | "
+                        f"FB2i={int(pass_iterations.get('fb2', 0)):>3d}"
+                    )
 
             inserted += 1
 
-            # Stop early if the resolver reaches HOVER/FB2, which counts as
-            # a failure for this benchmark, or if it reaches DEADLOCK.
+            # FB2 and DEADLOCK are not stop conditions here. They are counted
+            # so we can report how often the benchmark hit these fallback paths,
+            # but the loop continues until the requested fleet size is reached.
             if result is not None and result.strategy_used == "FB2":
-                self._log(f"Resolver reached HOVER/FB2 at UAV {fp.id}. Stopping benchmark.")
-                stop_reason = "FB2"
-                break
+                self._log(f"Resolver reached HOVER/FB2 at UAV {fp.id}. Counting it and continuing.")
 
             if result is not None and not result.success:
-                self._log(f"Resolver reached DEADLOCK at UAV {fp.id}. Stopping benchmark.")
-                stop_reason = "DEADLOCK"
-                break
+                self._log(
+                    f"Resolver reached DEADLOCK at UAV {fp.id}. Counting it, removing the route, and continuing the benchmark."
+                )
+                self._log(f"    deadlock_type={str(getattr(result, 'deadlock_type', 'unknown'))}")
 
         mem_end_mb = process.memory_info().rss / (1024 * 1024)
         mem_delta_mb = mem_end_mb - mem_start_mb
@@ -541,25 +604,42 @@ class IncrementalRealtimeBenchmark:
         avg_creation_ms = float(np.mean(creation_samples)) if creation_samples else 0.0
         avg_insert_ms = float(np.mean(insert_samples)) if insert_samples else 0.0
         avg_detect_ms = float(np.mean(detect_samples)) if detect_samples else 0.0
-        avg_resolve_ms = float(np.mean(resolve_samples)) if resolve_samples else 0.0
-        avg_resolve_total_ms = float(np.mean(resolve_total_samples)) if resolve_total_samples else 0.0
-        avg_resolve_conflict_ms = float(np.mean(resolve_conflict_samples)) if resolve_conflict_samples else 0.0
-        avg_shadow_ms = float(np.mean(shadow_samples)) if shadow_samples else 0.0
-        avg_s1_ms = float(np.mean(s1_samples)) if s1_samples else 0.0
-        avg_sat_ms = float(np.mean(sat_samples)) if sat_samples else 0.0
-        avg_s2_ms = float(np.mean(s2_samples)) if s2_samples else 0.0
-        avg_fb1_ms = float(np.mean(fb1_samples)) if fb1_samples else 0.0
-        avg_fb2_ms = float(np.mean(fb2_samples)) if fb2_samples else 0.0
-        avg_s1_iters = float(np.mean(s1_iter_samples)) if s1_iter_samples else 0.0
-        avg_s2_iters = float(np.mean(s2_iter_samples)) if s2_iter_samples else 0.0
-        avg_fb1_iters = float(np.mean(fb1_iter_samples)) if fb1_iter_samples else 0.0
-        avg_fb2_iters = float(np.mean(fb2_iter_samples)) if fb2_iter_samples else 0.0
+        conflict_records = [item for item in self.records if float(item["resolve_ms"]) > 0.0]
+        conflict_resolve_samples = [float(item["resolve_ms"]) for item in conflict_records]
+        conflict_resolve_total_samples = [float(item["resolve_total_ms"]) for item in conflict_records]
+        conflict_pass_counts = [int(item.get("resolve_pass_count", 0)) for item in conflict_records]
+        conflict_shadow_samples = [float(item["shadow_build_ms"]) for item in conflict_records]
+        conflict_s1_samples = [float(item["s1_ms"]) for item in conflict_records]
+        conflict_sat_samples = [float(item["sat_ms"]) for item in conflict_records]
+        conflict_s2_samples = [float(item["s2_ms"]) for item in conflict_records]
+        conflict_fb1_samples = [float(item["fb1_ms"]) for item in conflict_records]
+        conflict_fb2_samples = [float(item["fb2_ms"]) for item in conflict_records]
+        conflict_s1_iter_samples = [float(item["s1_iterations"]) for item in conflict_records]
+        conflict_s2_iter_samples = [float(item["s2_iterations"]) for item in conflict_records]
+        conflict_fb1_iter_samples = [float(item["fb1_iterations"]) for item in conflict_records]
+        conflict_fb2_iter_samples = [float(item["fb2_iterations"]) for item in conflict_records]
+        avg_resolve_ms = float(np.mean(conflict_resolve_samples)) if conflict_resolve_samples else 0.0
+        avg_resolve_total_ms = float(np.mean(conflict_resolve_total_samples)) if conflict_resolve_total_samples else 0.0
+        avg_resolve_conflict_ms = avg_resolve_total_ms
+        avg_resolve_pass_count = float(np.mean(conflict_pass_counts)) if conflict_pass_counts else 0.0
+        avg_shadow_ms = float(np.mean(conflict_shadow_samples)) if conflict_shadow_samples else 0.0
+        avg_s1_ms = float(np.mean(conflict_s1_samples)) if conflict_s1_samples else 0.0
+        avg_sat_ms = float(np.mean(conflict_sat_samples)) if conflict_sat_samples else 0.0
+        avg_s2_ms = float(np.mean(conflict_s2_samples)) if conflict_s2_samples else 0.0
+        avg_fb1_ms = float(np.mean(conflict_fb1_samples)) if conflict_fb1_samples else 0.0
+        avg_fb2_ms = float(np.mean(conflict_fb2_samples)) if conflict_fb2_samples else 0.0
+        avg_s1_iters = float(np.mean(conflict_s1_iter_samples)) if conflict_s1_iter_samples else 0.0
+        avg_s2_iters = float(np.mean(conflict_s2_iter_samples)) if conflict_s2_iter_samples else 0.0
+        avg_fb1_iters = float(np.mean(conflict_fb1_iter_samples)) if conflict_fb1_iter_samples else 0.0
+        avg_fb2_iters = float(np.mean(conflict_fb2_iter_samples)) if conflict_fb2_iter_samples else 0.0
 
         summary = {
             "inserted": inserted,
             "resolved": resolved,
             "deadlocks": deadlocks,
-            "hover_failures": hover_failures,
+            "anchor_deadlocks": anchor_deadlocks,
+            "hover_deadlocks": hover_deadlocks,
+            "fb2_cases": fb2_cases,
             "clear_insertions": clear_insertions,
             "average_ms": average_ms,
             "median_ms": median_ms,
@@ -571,6 +651,7 @@ class IncrementalRealtimeBenchmark:
             "avg_resolve_ms": avg_resolve_ms,
             "avg_resolve_total_ms": avg_resolve_total_ms,
             "avg_resolve_conflict_ms": avg_resolve_conflict_ms,
+            "avg_resolve_pass_count": avg_resolve_pass_count,
             "avg_shadow_ms": avg_shadow_ms,
             "avg_s1_ms": avg_s1_ms,
             "avg_sat_ms": avg_sat_ms,
@@ -591,8 +672,10 @@ class IncrementalRealtimeBenchmark:
         self._log(f"Inserted UAVs:           {inserted}")
         self._log(f"Clear insertions:        {clear_insertions}")
         self._log(f"Resolved conflicts:      {resolved}")
-        self._log(f"Hover failures:          {hover_failures}")
+        self._log(f"FB2 cases:               {fb2_cases}")
         self._log(f"Deadlocks:               {deadlocks}")
+        self._log(f"  anchor:                {anchor_deadlocks}")
+        self._log(f"  hover timeout:         {hover_deadlocks}")
         self._log(f"Average per insertion:   {average_ms:.2f} ms")
         self._log(f"Median per insertion:    {median_ms:.2f} ms")
         self._log(f"95th percentile:         {p95_ms:.2f} ms")
@@ -600,19 +683,18 @@ class IncrementalRealtimeBenchmark:
         self._log(f"Avg creation time:       {avg_creation_ms:.2f} ms")
         self._log(f"Avg insertion time:      {avg_insert_ms:.2f} ms")
         self._log(f"Avg detection time:      {avg_detect_ms:.2f} ms")
-        self._log(f"Avg resolution time (all insertions): {avg_resolve_ms:.2f} ms")
-        self._log(f"Avg resolve total (all insertions):    {avg_resolve_total_ms:.2f} ms")
-        self._log(f"Avg resolve total (conflicts only):    {avg_resolve_conflict_ms:.2f} ms")
-        self._log(f"Avg shadow build:        {avg_shadow_ms:.2f} ms")
-        self._log(f"Avg S1 time:             {avg_s1_ms:.2f} ms")
-        self._log(f"Avg S1 iterations:       {avg_s1_iters:.2f}")
-        self._log(f"Avg SAT time:            {avg_sat_ms:.2f} ms")
-        self._log(f"Avg S2 time:             {avg_s2_ms:.2f} ms")
-        self._log(f"Avg S2 iterations:       {avg_s2_iters:.2f}")
-        self._log(f"Avg FB1 time:            {avg_fb1_ms:.2f} ms")
-        self._log(f"Avg FB1 iterations:      {avg_fb1_iters:.2f}")
-        self._log(f"Avg FB2 time:            {avg_fb2_ms:.2f} ms")
-        self._log(f"Avg FB2 iterations:      {avg_fb2_iters:.2f}")
+        self._log(f"Avg last-pass resolve time (conflicts only): {avg_resolve_conflict_ms:.2f} ms")
+        self._log(f"Avg resolution loop time (conflicts only): {avg_resolve_ms:.2f} ms")
+        self._log(f"Avg passes per conflict insertion: {avg_resolve_pass_count:.2f}")
+        self._log(f"Avg S1 time (conflicts only): {avg_s1_ms:.2f} ms")
+        self._log(f"Avg S1 iterations (conflicts only): {avg_s1_iters:.2f}")
+        self._log(f"Avg SAT time (conflicts only): {avg_sat_ms:.2f} ms")
+        self._log(f"Avg S2 time (conflicts only): {avg_s2_ms:.2f} ms")
+        self._log(f"Avg S2 iterations (conflicts only): {avg_s2_iters:.2f}")
+        self._log(f"Avg FB1 time (conflicts only): {avg_fb1_ms:.2f} ms")
+        self._log(f"Avg FB1 iterations (conflicts only): {avg_fb1_iters:.2f}")
+        self._log(f"Avg FB2 time (conflicts only): {avg_fb2_ms:.2f} ms")
+        self._log(f"Avg FB2 iterations (conflicts only): {avg_fb2_iters:.2f}")
         self._log(f"Total elapsed:           {total_elapsed_ms:.2f} ms")
         self._log(f"Memory delta:            {mem_delta_mb:.2f} MB")
         self._log(f"Run ended because:       {stop_reason}")
@@ -620,64 +702,67 @@ class IncrementalRealtimeBenchmark:
         self._log("=" * 96 + "\n")
 
         # --------------- 3D Visualization (Before / After) ---------------
-        try:
-            BG = "#0f1117"
-            fig = plt.figure(figsize=(14, 7), facecolor=BG)
-            fig.canvas.manager.set_window_title("UAV Conflict Resolver — Benchmark Routes")
-            fig.text(0.5, 0.95, "Benchmark: Flight Routes — Before and After Resolution",
-                     ha="center", va="center", fontsize=14, fontweight="bold", color="white")
+        # Visualization disabled by default. To re-enable, set
+        # ENABLE_VISUALIZATION = True at the top of this file.
+        if ENABLE_VISUALIZATION:
+            try:
+                BG = "#0f1117"
+                fig = plt.figure(figsize=(14, 7), facecolor=BG)
+                fig.canvas.manager.set_window_title("UAV Conflict Resolver — Benchmark Routes")
+                fig.text(0.5, 0.95, "Benchmark: Flight Routes — Before and After Resolution",
+                         ha="center", va="center", fontsize=14, fontweight="bold", color="white")
 
-            # Prepare plan dictionaries keyed by integer id
-            before_plans = {pid: fp for pid, fp in self.original_plans.items()}
-            after_plans = {pid: self.manager.get_flight_plan(str(pid)) for pid in before_plans.keys()}
+                # Prepare plan dictionaries keyed by integer id
+                before_plans = {pid: fp for pid, fp in self.original_plans.items()}
+                after_plans = {pid: self.manager.get_flight_plan(str(pid)) for pid in before_plans.keys()}
 
-            colors_list = [
-                "#2ecc71", "#e74c3c", "#3498db", "#f1c40f", "#9b59b6",
-                "#1abc9c", "#e67e22", "#34495e", "#7f8c8d", "#16a085"
-            ]
+                colors_list = [
+                    "#2ecc71", "#e74c3c", "#3498db", "#f1c40f", "#9b59b6",
+                    "#1abc9c", "#e67e22", "#34495e", "#7f8c8d", "#16a085"
+                ]
 
-            for col, title, plan_dict in [
-                (0, "BEFORE (Original Generated Fleet)", before_plans),
-                (1, "AFTER (Committed Plans in CentralManager)", after_plans),
-            ]:
-                ax = fig.add_subplot(1, 2, col + 1, projection="3d")
-                ax.set_facecolor(BG)
-                ax.set_title(title, color="white", fontsize=11, pad=10)
+                for col, title, plan_dict in [
+                    (0, "BEFORE (Original Generated Fleet)", before_plans),
+                    (1, "AFTER (Committed Plans in CentralManager)", after_plans),
+                ]:
+                    ax = fig.add_subplot(1, 2, col + 1, projection="3d")
+                    ax.set_facecolor(BG)
+                    ax.set_title(title, color="white", fontsize=11, pad=10)
 
-                for i, (pid, fp) in enumerate(sorted(plan_dict.items())):
-                    if fp is None:
-                        continue
+                    for i, (pid, fp) in enumerate(sorted(plan_dict.items())):
+                        if fp is None:
+                            continue
 
-                    try:
-                        trace = fp.trace(0.1)
-                    except Exception:
-                        # If trace sampling fails, skip this plan
-                        continue
+                        try:
+                            trace = fp.trace(0.1)
+                        except Exception:
+                            # If trace sampling fails, skip this plan
+                            continue
 
-                    color = colors_list[i % len(colors_list)]
-                    z_offset = i * 0.05
-                    z_plot = trace[:, 3] + z_offset
-                    ax.plot(trace[:, 1], trace[:, 2], z_plot,
-                            color=color, linewidth=1.2, linestyle='-', alpha=0.9)
-                    ax.scatter(trace[0, 1], trace[0, 2], trace[0, 3] + z_offset, color=color, s=18, marker="o", zorder=5)
-                    ax.scatter(trace[-1, 1], trace[-1, 2], trace[-1, 3] + z_offset, color=color, s=18, marker="^", zorder=5)
+                        color = colors_list[i % len(colors_list)]
+                        z_offset = i * 0.05
+                        z_plot = trace[:, 3] + z_offset
+                        ax.plot(trace[:, 1], trace[:, 2], z_plot,
+                                color=color, linewidth=1.2, linestyle='-', alpha=0.9)
+                        ax.scatter(trace[0, 1], trace[0, 2], trace[0, 3] + z_offset, color=color, s=18, marker="o", zorder=5)
+                        ax.scatter(trace[-1, 1], trace[-1, 2], trace[-1, 3] + z_offset, color=color, s=18, marker="^", zorder=5)
 
-                ax.set_xlabel("X (m)", color="white", labelpad=4)
-                ax.set_ylabel("Y (m)", color="white", labelpad=4)
-                ax.set_zlabel("Z (m)", color="white", labelpad=4)
-                ax.tick_params(colors="white")
-                for pane in [ax.xaxis.pane, ax.yaxis.pane, ax.zaxis.pane]:
-                    try:
-                        pane.fill = False
-                        pane.set_edgecolor("#2a2d3a")
-                    except Exception:
-                        pass
+                    ax.set_xlabel("X (m)", color="white", labelpad=4)
+                    ax.set_ylabel("Y (m)", color="white", labelpad=4)
+                    ax.set_zlabel("Z (m)", color="white", labelpad=4)
+                    ax.tick_params(colors="white")
+                    for pane in [ax.xaxis.pane, ax.yaxis.pane, ax.zaxis.pane]:
+                        try:
+                            pane.fill = False
+                            pane.set_edgecolor("#2a2d3a")
+                        except Exception:
+                            pass
 
-            plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-            plt.show()
-        except Exception:
-            # Visualization must not break the benchmark result flow.
-            pass
+                plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+                plt.show()
+            except Exception:
+                # Visualization must not break the benchmark result flow.
+                pass
 
         self.summary = summary
         return summary
@@ -702,7 +787,7 @@ if __name__ == "__main__":
 
     with contextlib.redirect_stdout(_Tee(sys.stdout, capture_buffer)):
         try:
-            benchmark.run(max_uavs=2000, interval=DEFAULT_INTERVAL_S)
+            benchmark.run(max_uavs=20, interval=DEFAULT_INTERVAL_S)
         finally:
             output_file = benchmark.write_output_txt(capture_buffer.getvalue())
             print(f"Benchmark output written to: {output_file}")
