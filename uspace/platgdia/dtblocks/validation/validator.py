@@ -33,17 +33,35 @@ def parse_str_list(str_list: str) -> list:
     
 def on_mission_msg(client, userdata, msg):
     data = json.loads(msg.payload.decode())
-    mission_mng_id = data["id"]
+    mission_mng_id = data["mission_manager_id"]
+    uav_operator_id = data.get("uav_operator_id")
     mission_id = data["mission_id"]
+    mission_type = data.get("mission_type", "")
     mission_status = data.get("mission_status", "")
+    stop_list = data.get("stop_list", [])
+    stop_times = data.get("stop_times", [])
+    landing_time = data.get("landing_time", None)
 
     start_msg = mission_status == ""
 
     if f"{mission_mng_id} - {mission_id}" not in missions:
-        missions[f"{mission_mng_id} - {mission_id}"] = {"start_time": None, "end_time": None, "status": None}
+        missions[f"{mission_mng_id} - {mission_id}"] = {
+            "start_time": None, 
+            "end_time": None, 
+            "uav_operator_id": uav_operator_id,
+            "mission_type": None,
+            "stop_list": None,
+            "stop_times": None,
+            "landing_time": None,
+            "status": None
+        }
 
     if start_msg:
         missions[f"{mission_mng_id} - {mission_id}"]["start_time"] = datetime.now().strftime("%d-%m-%Y %H:%M:%S:%f")
+        missions[f"{mission_mng_id} - {mission_id}"]["stop_list"] = stop_list
+        missions[f"{mission_mng_id} - {mission_id}"]["mission_type"] = mission_type
+        missions[f"{mission_mng_id} - {mission_id}"]["stop_times"] = stop_times
+        missions[f"{mission_mng_id} - {mission_id}"]["landing_time"] = landing_time
 
     else:
         missions[f"{mission_mng_id} - {mission_id}"]["end_time"] = datetime.now().strftime("%d-%m-%Y %H:%M:%S:%f")
@@ -148,7 +166,7 @@ try:
 except KeyboardInterrupt as e:
     pass
 except Exception as e:
-    print(f"Error connecting to MQTT broker: {e}")
+    print(f"[VALIDATOR] - Something went wrong: {e}")
 
 finally:
     mqtt_client.loop_stop()

@@ -1,0 +1,42 @@
+{
+    "MSSN_MNG_0 - MISSION_1": {
+        "start_time": "29-05-2026 13:13:01:617359",
+        "end_time": "29-05-2026 13:13:01:626984",
+        "uav_operator_id": "UAV_OP_6",
+        "mission_type": "PASSENGER_TRANSPORT",
+        "stop_list": [
+            "VERT_OP_16",
+            "VERT_OP_18",
+            "VERT_OP_12",
+            "VERT_OP_13"
+        ],
+        "stop_times": [
+            50,
+            42,
+            55,
+            35
+        ],
+        "landing_time": 41967,
+        "status": "IN_PROGRESS"
+    },
+    "MSSN_MNG_0 - MISSION_2": {
+        "start_time": "29-05-2026 13:13:06:618131",
+        "end_time": "29-05-2026 13:13:06:629812",
+        "uav_operator_id": "UAV_OP_8",
+        "mission_type": "PASSENGER_TRANSPORT",
+        "stop_list": [
+            "VERT_OP_15",
+            "VERT_OP_13",
+            "VERT_OP_18",
+            "VERT_OP_19"
+        ],
+        "stop_times": [
+            29,
+            52,
+            37,
+            11
+        ],
+        "landing_time": 31774,
+        "status": "IN_PROGRESS"
+    }
+}

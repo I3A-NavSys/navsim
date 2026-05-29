@@ -1,6 +1,6 @@
 from tabulate import tabulate
 import json
-import random
+import numpy as np
 
 from uspace.mqtt.mqtt_service import MQTTService
 from uspace.uspace_manager.constants import Topics, MissionStatus, MissionType
@@ -8,9 +8,15 @@ from .mission import Mission
 
 
 class MissionManager:
-    def __init__(self, id=None, name=None, service_types=[MissionType.DELIVERY, MissionType.PASSENGER_TRANSPORT], verbose=False):
-        # Test
-        random.seed(6)
+    def __init__(
+        self, 
+        id=None, 
+        name=None, 
+        service_types=[MissionType.DELIVERY, MissionType.PASSENGER_TRANSPORT], 
+        verbose=False, 
+        random_seed=0
+    ):
+        self.rng = np.random.default_rng(random_seed)
 
         self.verbose = verbose
         self.id: str = id
@@ -106,7 +112,7 @@ class MissionManager:
             if service_type in op_data["service_types"]
         ]
 
-        return uav_operators, vertiport_operators
+        return sorted(uav_operators), sorted(vertiport_operators)
 
     # ----------------------
     # --- USpace Methods ---
@@ -128,25 +134,25 @@ class MissionManager:
     def request_uav_mission(self, current_time=0):
         # Choose MissionType randomly and get possible operators for that type until 
         # choosing a type with at least one possible UAV operator and one possible Vertiport operator
-        mission_type = random.choice(self.service_types)
+        mission_type = self.rng.choice(self.service_types)
         possible_uav_operators, possible_vertiport_operators = self.get_operators_by_service_type(mission_type)
 
         while not possible_uav_operators or not possible_vertiport_operators:
-            mission_type = random.choice(self.service_types)
+            mission_type = self.rng.choice(self.service_types)
             possible_uav_operators, possible_vertiport_operators = self.get_operators_by_service_type(mission_type)
-        
+
+        amount_stops = self.rng.integers(1, len(possible_vertiport_operators))
+
+        stop_list = self.rng.choice(possible_vertiport_operators, size=amount_stops, replace=False).tolist()
+
+        stop_times = self.rng.integers(10, 60, amount_stops).tolist()
+
+        uav_operator_id = self.rng.choice(possible_uav_operators)
+
+        landing_time = int(self.rng.integers(current_time + 900, current_time + 43200))
+
         self.last_mission_id += 1
         mission_id = f"MISSION_{self.last_mission_id}"
-
-        amount_stops = random.randint(1, len(possible_vertiport_operators))
-
-        stop_list = random.sample(possible_vertiport_operators, amount_stops)
-        stop_times = [random.randint(10, 60) for _ in range(amount_stops)]
-        uav_operator_id = random.choice(possible_uav_operators)
-        landing_time = random.randint(
-            current_time + 900, 
-            current_time + 43200
-        )
 
         self.missions[mission_id] = Mission(
             id=mission_id,
@@ -172,7 +178,8 @@ class MissionManager:
         
         topic = f"{Topics.MISSION_UAV_SERVICE}/{uav_operator_id}"
         msg = {
-            "id": self.id,
+            "mission_manager_id": self.id,
+            "uav_operator_id": uav_operator_id,
             "mission_id": mission_id,
             "mission_type": mission_type,
             "stop_list": stop_list,
@@ -223,7 +230,7 @@ class MissionManager:
     def on_receive_uav_mission_update(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())
 
-        uav_operator_id = data["id"]
+        uav_operator_id = data["mission_manager_id"]
         mission_id = data["mission_id"]
         mission_status = data["mission_status"]
 

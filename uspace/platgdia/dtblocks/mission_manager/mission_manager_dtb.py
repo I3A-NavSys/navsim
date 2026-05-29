@@ -46,7 +46,8 @@ mission_managers = [
         id=f"MSSN_MNG_{i}", 
         name=f"Mission Manager {i}", 
         service_types=MISSION_MNG_SERVICE_TYPES[i],
-        verbose=True
+        verbose=True,
+        random_seed=i
     )
     for i in range(MAX_MISSION_MNG)
 ]

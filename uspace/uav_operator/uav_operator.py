@@ -288,10 +288,11 @@ class UAVOperator:
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
 
-    def send_mission_status_update(self, missiom_manager_id, mission_id, mission_status):
-        topic = f"{Topics.MISSION_STATUS_UPDATE}/{missiom_manager_id}"
+    def send_mission_status_update(self, mission_manager_id, mission_id, mission_status):
+        topic = f"{Topics.MISSION_STATUS_UPDATE}/{mission_manager_id}"
         msg = {
-            "id": self.id,
+            "mission_manager_id": mission_manager_id,
+            "uav_operator_id": self.id,
             "mission_id": mission_id,
             "mission_status": mission_status,
         }
@@ -373,7 +374,7 @@ class UAVOperator:
         data = json.loads(msg.payload.decode())
 
         # Extract mission data
-        mission_manager_id = data["id"]
+        mission_manager_id = data["mission_manager_id"]
         mission_id = data["mission_id"]
         mission_type = data["mission_type"]
         stop_list = data["stop_list"]
