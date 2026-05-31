@@ -53,7 +53,7 @@ LARGE_PRISM = (
 
 
 # Main benchmark default fleet size. Change this value to scale the run.
-DEFAULT_N_UAVS = 500
+DEFAULT_N_UAVS = 2000
 
 
 def _parse_float_list(value: Optional[str]) -> Optional[List[float]]:
@@ -81,7 +81,7 @@ def _build_straight_plan(
     rng = np.random.default_rng(seed + uav_index * 881)
     x_rng, y_rng, z_rng = prism
 
-    cruise_levels = z_levels or [55.0, 70.0]
+    cruise_levels = z_levels or [35.0,55.0, 70.0, 90.0, 110.0]
     z_cruise = float(rng.choice(cruise_levels))
     cruise_speed = float(rng.uniform(10.0, min(15.0, UAV_MAX_SPEED)))
     margin = 500.0
@@ -257,7 +257,7 @@ def generate_large_fleet(
 
 def generate_vertiport_fleet(
     n_uavs: int = 100,
-    prism: Tuple[Tuple[float, float], ...] = VERTIPORT_PRISM,
+    prism: Tuple[Tuple[float, float], ...] = LARGE_PRISM,
     t_start: float = 0.0,
     t_end: float = 1200.0,
     seed: int = 42,
@@ -383,7 +383,7 @@ def generate_vertiport_fleet(
 class LargeScaleBenchmark:
     """Orchestrates large-scale benchmark with conflict resolution."""
     
-    def __init__(self, verbose: bool = True, visualize: bool = True):
+    def __init__(self, verbose: bool = True, visualize: bool = False):
         self.fleet = []
         self.detector = None
         self.manager = None
@@ -494,7 +494,19 @@ class LargeScaleBenchmark:
         mem0_detect = psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024
         
         unique_conflicts = self.detector.detect_all_conflicts_system_wide()
+        # Measure per-UAV detection time (detailed timing like other benchmarks)
         detection_times = []
+        try:
+            uav_ids = list(self.detector.uavs.keys())
+            for uid in uav_ids:
+                t_before = time.time()
+                # run targeted detection for this UAV
+                _ = self.detector.detect_all_conflicts(uid)
+                t_after = time.time()
+                detection_times.append(t_after - t_before)
+        except Exception:
+            # In case targeted per-UAV detection fails, keep detection_times empty
+            detection_times = []
         
         t1_detect = time.time()
         mem1_detect = psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024
@@ -605,6 +617,48 @@ class LargeScaleBenchmark:
             "solve_sweeps": resolve_stats.get("sweeps", 0),
             "solve_attempts": resolve_stats.get("attempted", 0),
         }
+
+        # --- Additional detailed detection statistics (added for parity with other benchmarks)
+        try:
+            if detection_times:
+                det_arr = np.array(detection_times) * 1000.0
+                self.metrics.update({
+                    "detection_min_ms": float(np.min(det_arr)),
+                    "detection_max_ms": float(np.max(det_arr)),
+                    "detection_mean_ms": float(np.mean(det_arr)),
+                    "detection_median_ms": float(np.median(det_arr)),
+                    "detection_std_ms": float(np.std(det_arr)),
+                })
+            else:
+                self.metrics.update({
+                    "detection_min_ms": 0.0,
+                    "detection_max_ms": 0.0,
+                    "detection_mean_ms": 0.0,
+                    "detection_median_ms": 0.0,
+                    "detection_std_ms": 0.0,
+                })
+        except Exception:
+            # Fallback: keep zeros if numpy operations fail
+            self.metrics.update({
+                "detection_min_ms": 0.0,
+                "detection_max_ms": 0.0,
+                "detection_mean_ms": 0.0,
+                "detection_median_ms": 0.0,
+                "detection_std_ms": 0.0,
+            })
+
+        # Print expanded detection statistics without removing existing summary
+        print(f"\n┌─ DETAILED DETECTION STATS ───────────────────────────────────────────────────────┐")
+        if self.metrics.get("detection_times_ms"):
+            print(f"│ Detection samples:             {len(self.metrics['detection_times_ms']):>12}                          │")
+            print(f"│ Detection time (ms) - min:     {self.metrics['detection_min_ms']:>12.4f}                          │")
+            print(f"│ Detection time (ms) - max:     {self.metrics['detection_max_ms']:>12.4f}                          │")
+            print(f"│ Detection time (ms) - mean:    {self.metrics['detection_mean_ms']:>12.4f}                          │")
+            print(f"│ Detection time (ms) - median:  {self.metrics['detection_median_ms']:>12.4f}                          │")
+            print(f"│ Detection time (ms) - stddev:  {self.metrics['detection_std_ms']:>12.4f}                          │")
+        else:
+            print(f"│ Detection timing data unavailable (per-UAV measurement skipped)                │")
+        print(f"└────────────────────────────────────────────────────────────────────────────────────┘")
 
         # Visualization: first show realtime-like BEFORE/AFTER 3D routes,
         # then summary plots with timing and resolution metrics.

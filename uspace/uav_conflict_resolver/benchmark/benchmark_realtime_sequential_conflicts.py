@@ -690,7 +690,7 @@ if __name__ == "__main__":
 
     with contextlib.redirect_stdout(_Tee(sys.stdout, capture_buffer)):
         try:
-            bench.run(max_uavs=2000, interval=0.5)
+            bench.run(max_uavs=500, interval=0.5)
         finally:
             output_file = Path(__file__).with_name(
                 "benchmark_realtime_sequential_conflicts_output.txt"

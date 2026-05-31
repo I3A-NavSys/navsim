@@ -383,7 +383,7 @@ class CentralManager:
 
         return results
 
-    def solve_all(self, max_sweeps: int = 300, interval: float = OBB_INTERVAL) -> dict:
+    def solve_all(self, max_sweeps: int = 100, interval: float = OBB_INTERVAL) -> dict:
         """
         Iteratively resolve system-wide conflicts until the airspace stabilizes.
 
@@ -407,16 +407,26 @@ class CentralManager:
 
         t0 = time.perf_counter()
 
-        for _ in range(max_sweeps):
+        for sweep_idx in range(1, max_sweeps + 1):
             conflicts = self._rtree_detector.detect_all_conflicts_system_wide()
             if not conflicts:
                 summary["stabilized"] = True
+                print(
+                    f"[CentralManager] Sweep {sweep_idx}: airspace already conflict-free; stopping."
+                )
                 break
 
             summary["sweeps"] += 1
+            print(
+                f"[CentralManager] Sweep {sweep_idx}/{max_sweeps}: "
+                f"conflicts_before={len(conflicts)}"
+            )
             sweep_results = self.single_solve_sweep(interval=interval)
 
             if not sweep_results:
+                print(
+                    f"[CentralManager] Sweep {sweep_idx}: no UAVs produced a resolution result; stopping."
+                )
                 break
 
             resolved_this_sweep = 0
@@ -433,7 +443,16 @@ class CentralManager:
                     elif deadlock_type == "hover_timeout":
                         summary["hover_deadlocks"] += 1
 
+            print(
+                f"[CentralManager] Sweep {sweep_idx}: "
+                f"attempted={len(sweep_results)} resolved={resolved_this_sweep} "
+                f"deadlocks={len(sweep_results) - resolved_this_sweep}"
+            )
+
             if resolved_this_sweep == 0:
+                print(
+                    f"[CentralManager] Sweep {sweep_idx}: no progress made; stopping."
+                )
                 break
 
         summary["remaining_conflicts"] = len(self._rtree_detector.detect_all_conflicts_system_wide())
@@ -441,4 +460,9 @@ class CentralManager:
         summary["time_s"] = time.perf_counter() - t0
         summary["max_sweeps"] = max_sweeps
         summary["interval"] = interval
+
+        print(
+            f"[CentralManager] Sweep loop finished: sweeps={summary['sweeps']} "
+            f"remaining_conflicts={summary['remaining_conflicts']} stabilized={summary['stabilized']}"
+        )
         return summary
