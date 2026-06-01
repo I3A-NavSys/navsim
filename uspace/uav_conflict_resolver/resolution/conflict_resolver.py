@@ -800,17 +800,16 @@ class ConflictResolver:
         """
         Fallback 2 (Hover) implementation.
 
-        Instead of inserting explicit hover waypoints (`HOV_S`/`HOV_E`) and
-        postponing only the remainder of the plan, this simpler approach
-        postpones the whole flight plan by increasing amounts until the
-        candidate is conflict-free or the maximum hover timeout is reached.
+                FB2 inserts an explicit hover segment anchored at `t_anchor` and then
+                postpones the unresolved suffix of the flight plan so the already flown
+                prefix is preserved.
 
         Rationale / notes:
-        - Simpler codepath: avoids waypoint label/epsilon bookkeeping.
-        - Semantically this delays the UAV departure (shifts `init_time`).
-          That may interact differently with other UAVs (global temporal
-          ripple), so this behaviour is intentionally different from the
-          previous local-hover semantics.
+                - The already-flown prefix is left untouched.
+                - The hover segment is represented by two fixed markers, `HOV_S` and
+                    `HOV_E`, with zero velocity at the hover position.
+                - The remaining suffix is shifted forward in time, which is a closer
+                    match to a real replanning command sent to a UAV already in motion.
         - We keep the same iteration caps (`HOVER_MAX_TIMEOUT`,
           `HOVER_TIME_STEP`) and the same kinematic validation via
           `connect_waypoints()`.
@@ -818,13 +817,31 @@ class ConflictResolver:
         Returns: (accepted_flight_plan | None, iteration_count)
         """
         max_iters = int(HOVER_MAX_TIMEOUT / HOVER_TIME_STEP)
+        hover_position = np.array(fp_pleb.status_at_time(t_anchor).pos, dtype=float)
 
         for iteration in range(1, max_iters + 1):
             hover_duration = iteration * HOVER_TIME_STEP
 
-            # Build a modified FlightPlan: postpone entire plan by hover_duration
+            # Build an explicit hover segment at the anchor and postpone only
+            # the remaining suffix so already-flown waypoints stay fixed.
             candidate = fp_pleb.copy()
-            candidate.postpone(hover_duration)
+            candidate.set_waypoint(
+                Waypoint(
+                    label="HOV_S",
+                    t=t_anchor,
+                    pos=hover_position,
+                    vel=np.zeros(3),
+                )
+            )
+            candidate.set_waypoint(
+                Waypoint(
+                    label="HOV_E",
+                    t=t_anchor + hover_duration,
+                    pos=hover_position,
+                    vel=np.zeros(3),
+                )
+            )
+            candidate.postpone_from(t_anchor, hover_duration)
 
             try:
                 candidate.connect_waypoints(strict=True)
