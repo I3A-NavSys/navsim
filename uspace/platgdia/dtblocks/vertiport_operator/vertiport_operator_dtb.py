@@ -144,5 +144,8 @@ wait_event = threading.Event()
 try:
     # Wait indefinitely until the event is set (which never happens in this case)
     wait_event.wait()
+    
+except KeyboardInterrupt:
+    pass
 except Exception as e:
     print(f"Vertiport Operator DTBlock: An error has occurred: {e}")

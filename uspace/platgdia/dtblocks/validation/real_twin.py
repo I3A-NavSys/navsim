@@ -4,19 +4,23 @@ import time
 import sys
 import os
 
+current_file_path = os.path.dirname(__file__)
+dtblocks_folder_path = os.path.abspath(os.path.join(current_file_path, ".."))
+
 def launch_simulation_cluster():
     """
     Orchestrates the execution of all Digital Twin Block (DTB) scripts.
     Uses subprocess.Popen to run them asynchronously in the background since 
     each script contains an infinite loop or a blocking wait event.
     """
+
     # Define the exact execution order required by your architecture
     scripts_to_run = [
-        "/home/tetemo/Escritorio/UCLM/TRABAJO/navsim/uspace/platgdia/dtblocks/validation/validator.py",
-        "/home/tetemo/Escritorio/UCLM/TRABAJO/navsim/uspace/platgdia/dtblocks/uspace_manager/uspace_manager_dtb.py",
-        "/home/tetemo/Escritorio/UCLM/TRABAJO/navsim/uspace/platgdia/dtblocks/vertiport_operator/vertiport_operator_dtb.py",
-        "/home/tetemo/Escritorio/UCLM/TRABAJO/navsim/uspace/platgdia/dtblocks/uav_operator/uav_operator_dtb.py",
-        "/home/tetemo/Escritorio/UCLM/TRABAJO/navsim/uspace/platgdia/dtblocks/mission_manager/mission_manager_dtb.py",
+        dtblocks_folder_path + "/validation/validator.py",
+        dtblocks_folder_path + "/uspace_manager/uspace_manager_dtb.py",
+        dtblocks_folder_path + "/vertiport_operator/vertiport_operator_dtb.py",
+        dtblocks_folder_path + "/uav_operator/uav_operator_dtb.py",
+        dtblocks_folder_path + "/mission_manager/mission_manager_dtb.py",
     ]
     
     active_processes = []
@@ -58,7 +62,7 @@ def launch_simulation_cluster():
 
 if __name__ == "__main__":
     # Load environment variables
-    env_path = "/home/tetemo/Escritorio/UCLM/TRABAJO/navsim/uspace/platgdia/dtblocks/.env"
+    env_path = dtblocks_folder_path + "/.env"
     load_dotenv(env_path)
     
     launch_simulation_cluster()
