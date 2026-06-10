@@ -117,13 +117,13 @@ LOCATION = parse_str_list(os.getenv("LOCATION", '[[100, 500], [-600, -200]]'))
 missions = {}
 # {grid: list[tuple(int, int, str, int)], flightplans: list[dict[str, Any]]}
 airspace = {"grid": [], "flightplans": []}
-results_file_path = "/home/tetemo/Escritorio/UCLM/TRABAJO/navsim/uspace/platgdia/dtblocks/validation/"
+results_file_path = project_root_path + "/uspace/platgdia/dtblocks/validation"
 
 # Build MQTT Client
 mqtt_client = MQTTService.build_client("VALIDATOR")
 
 # Connect to MQTT Broker
-result = mqtt_client.connect(MQTT_HOST_ADDRESS, MQTT_HOST_PORT)
+failure = mqtt_client.connect(MQTT_HOST_ADDRESS, MQTT_HOST_PORT)
 
 # Set callbacks for topics
 for i in range(MAX_MISSION_MNG):
@@ -160,7 +160,7 @@ for i in range(MAX_UAV_OPS):
 
 # Main loop
 try:
-    if result == 0:
+    if not failure:
         mqtt_client.loop_forever()
 
 except KeyboardInterrupt as e:
@@ -175,10 +175,10 @@ finally:
     print(f"\nSaving results to JSON in {results_file_path}")
 
     # Save results to a JSON file
-    with open(f"{results_file_path}missions_validation.json", "w") as file:
+    with open(f"{results_file_path}/missions_validation.json", "w") as file:
         json.dump(missions, file, indent=4)
 
-    with open(f"{results_file_path}airspace_validation.json", "w") as file:
+    with open(f"{results_file_path}/airspace_validation.json", "w") as file:
         json.dump(airspace, file, indent=4)
 
     # Show results

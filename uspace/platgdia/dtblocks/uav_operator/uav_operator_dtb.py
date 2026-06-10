@@ -103,5 +103,7 @@ try:
         time.sleep(1)
         time_manager.current_sim_time += 1
 
+except KeyboardInterrupt:
+    pass
 except Exception as e:
     print(f"UAV Operator DTBlock: An error has occurred: {e}")

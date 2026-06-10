@@ -77,5 +77,7 @@ try:
             if current_time % MAX_REQUEST_TIME[i] == 0:
                 mission_managers[i].request_uav_mission(current_time)
 
+except KeyboardInterrupt:
+    pass
 except Exception as e:
     print(f"Mission Manager DTBlock: An error has occurred: {e}")
