@@ -136,7 +136,7 @@ def run_visualizer():
     print("\nCalculating Rigid Shift Detour on curved path...")
     fp_new = build_rigid_shift_detour(
         fp=fp_curved,
-        t_anchor=t_anchor,
+        t_detour_starthor=t_anchor,
         mtv=mtv,
         conflict_obbs=conflict_obbs
     )

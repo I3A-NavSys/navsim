@@ -31,7 +31,8 @@ from detection.rtree_detector import RTreeDetector
 from resolution.geometry.sat_mtv import generate_mtv_candidates
 from resolution.geometry.path_geometry import build_rigid_shift_detour
 
-BG = "#0f1117"
+BG = "white"
+FG = "#111111"
 
 
 def generate_obb_faces(corners):
@@ -130,7 +131,7 @@ def run_visualizer():
         # Keep latest successfully built flight plan as the fallback plot target
         best_fp = fp_cand
         
-        # Validate with shadow R-Tree detector
+        # Validate with live R-Tree detector
         detector_post = RTreeDetector()
         detector_post.register_uav(1, fp_cand, interval=0.5)
         detector_post.register_uav(2, fp_vip,  interval=0.5)
@@ -181,14 +182,14 @@ def run_visualizer():
     fig.canvas.manager.set_window_title("VIZ 10 — Long Curved Conflict — Strategy 2")
     fig.text(0.5, 0.97,
              "Strategy 2 (Rigid Shift / Triangle) — LONG CONFLICT on CURVED PATH",
-             ha="center", fontsize=14, fontweight="bold", color="white")
+             ha="center", fontsize=14, fontweight="bold", color=FG)
 
     def configure_ax(ax):
         ax.set_xlim(-20, 250); ax.set_ylim(-50, 200); ax.set_zlim(80, 180)
-        ax.set_xlabel("X (m)", color="white", fontsize=10, fontweight="bold")
-        ax.set_ylabel("Y (m)", color="white", fontsize=10, fontweight="bold")
-        ax.set_zlabel("Z (m)", color="white", fontsize=10, fontweight="bold")
-        ax.tick_params(colors="white")
+        ax.set_xlabel("X (m)", color=FG, fontsize=10, fontweight="bold")
+        ax.set_ylabel("Y (m)", color=FG, fontsize=10, fontweight="bold")
+        ax.set_zlabel("Z (m)", color=FG, fontsize=10, fontweight="bold")
+        ax.tick_params(colors=FG)
         for pane in [ax.xaxis.pane, ax.yaxis.pane, ax.zaxis.pane]:
             pane.fill = False; pane.set_edgecolor("#2a2d3a")
         ax.view_init(elev=28, azim=40)
@@ -223,7 +224,7 @@ def run_visualizer():
              color="#e74c3c", fontsize=9, fontweight="bold", ha="center",
              bbox=dict(boxstyle="round,pad=0.3", facecolor=BG, edgecolor="#e74c3c", alpha=0.85))
     configure_ax(ax1)
-    ax1.legend(facecolor=BG, edgecolor="#2a2d3a", labelcolor="white", loc="upper left", fontsize=9)
+    ax1.legend(facecolor=BG, edgecolor="#cfcfcf", labelcolor=FG, loc="upper left", fontsize=9)
 
     # ── AFTER ───────────────────────────────────────────────────────────
     ax2 = fig.add_subplot(1, 2, 2, projection="3d")
@@ -260,7 +261,7 @@ def run_visualizer():
                         edgecolors="white", linewidths=1.5, label="Return (ret)")
 
     configure_ax(ax2)
-    ax2.legend(facecolor=BG, edgecolor="#2a2d3a", labelcolor="white", loc="upper left", fontsize=9)
+    ax2.legend(facecolor=BG, edgecolor="#cfcfcf", labelcolor=FG, loc="upper left", fontsize=9)
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.show()

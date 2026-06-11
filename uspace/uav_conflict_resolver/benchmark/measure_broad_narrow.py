@@ -128,7 +128,7 @@ colors = ['#457B9D', '#E63946']
 explode = (0, 0.1)
 
 ax.pie(sizes, explode=explode, labels=labels, colors=colors, autopct='%1.1f%%',
-       shadow=False, startangle=90, textprops={'fontsize': 12, 'weight': 'bold'})
+       live=False, startangle=90, textprops={'fontsize': 12, 'weight': 'bold'})
 ax.axis('equal')  
 
 plt.title("Time Distribution: Broad vs Narrow Phase (System-Wide Detection)", fontsize=14, y=1.05)

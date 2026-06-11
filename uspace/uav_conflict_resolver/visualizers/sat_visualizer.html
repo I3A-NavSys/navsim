@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SAT OBB Visualizer — Separating Axis Theorem</title>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    :root {
+      --bg:#ffffff; --surf:#f7f7f7; --bdr:#e2e2e2; --bdr2:#bdbdbd;
+      --tx:#1a1a1a; --tx2:#555; --txm:#999;
+      --ca:#1565c0; --cb:#b71c1c;
+      --covr:#2e7d32; --csep:#e65100; --cax:#6a1b9a;
+      --mono:'JetBrains Mono',monospace;
+    }
+    html,body { width:100%;height:100%;overflow:hidden;background:var(--bg);
+      color:var(--tx);font-family:'Inter',sans-serif;font-size:14px;line-height:1.5; }
+
+    #app {
+      display:grid;
+      grid-template-columns:290px 1fr 278px;
+      grid-template-rows:46px 1fr;
+      height:100vh;width:100vw;
+    }
+
+    /* HEADER */
+    #header {
+      grid-column:1/-1;
+      display:flex;align-items:center;gap:14px;padding:0 22px;
+      border-bottom:1px solid var(--bdr);background:#fff;
+    }
+    .hd-logo{font-family:'Crimson Pro',serif;font-size:18px;font-weight:600;}
+    .hd-sub{font-size:12px;color:var(--txm);}
+    .hd-tag{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--txm);letter-spacing:.08em;}
+
+    /* PANELS */
+    #left-panel {
+      border-right:1px solid var(--bdr);background:var(--surf);
+      overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:16px;
+    }
+    #viewport {position:relative;overflow:hidden;background:#f5f5f5;}
+    #three-canvas{display:block;width:100%;height:100%;}
+    #right-panel {
+      border-left:1px solid var(--bdr);background:#fff;
+      overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:14px;
+    }
+
+    /* Section title */
+    .sec{font-size:11px;font-weight:600;letter-spacing:.1em;color:var(--txm);
+      text-transform:uppercase;margin-bottom:7px;padding-bottom:4px;border-bottom:1px solid var(--bdr);}
+
+    /* Status */
+    #status-badge{display:flex;align-items:center;gap:8px;padding:9px 13px;
+      border-radius:6px;font-weight:600;font-size:13px;border:1px solid;
+      transition:background .2s,color .2s,border-color .2s;}
+    #status-badge.overlap{background:#e8f5e9;color:var(--covr);border-color:#a5d6a7;}
+    #status-badge.separate{background:#fff3e0;color:var(--csep);border-color:#ffcc80;}
+    #status-badge .dot{width:9px;height:9px;border-radius:50%;background:currentColor;flex-shrink:0;}
+
+    /* Box cards */
+    .box-card{background:#fff;border:1px solid var(--bdr);border-radius:6px;padding:11px;}
+    .box-card.ca{border-left:3px solid var(--ca);}
+    .box-card.cb{border-left:3px solid var(--cb);}
+    .box-card h3{font-size:13px;font-weight:600;margin-bottom:9px;}
+    .box-card.ca h3{color:var(--ca);}
+    .box-card.cb h3{color:var(--cb);}
+    .cr{display:flex;align-items:center;gap:7px;margin-bottom:5px;}
+    .cr label{font-size:11px;color:var(--tx2);width:50px;flex-shrink:0;font-family:var(--mono);}
+    .cr input[type=range]{flex:1;accent-color:#444;}
+    .cr .val{font-size:11px;font-family:var(--mono);color:var(--txm);width:38px;text-align:right;}
+
+    /* Info card */
+    .info-card{background:#f0f4ff;border:1px solid #bbdefb;border-radius:6px;
+      padding:10px 12px;font-size:11.5px;color:#1a237e;line-height:1.65;}
+    .info-card b{font-weight:600;}
+
+    /* MTV */
+    #mtv-display{font-size:11px;font-family:var(--mono);color:var(--tx2);line-height:1.8;}
+    .mtv-val{color:var(--covr);font-weight:600;}
+    .mtv-sep{color:var(--csep);font-weight:600;}
+
+    /* Axis list */
+    .ag-title{font-size:11px;font-weight:600;letter-spacing:.05em;color:var(--txm);
+      text-transform:uppercase;margin-top:5px;margin-bottom:3px;}
+    .ax-item{display:flex;align-items:center;gap:7px;padding:4px 7px;
+      border-radius:4px;cursor:pointer;border:1px solid transparent;
+      transition:background .12s,border-color .12s;margin-bottom:2px;}
+    .ax-item:hover{background:#f2f2f2;}
+    .ax-item.active{background:#f3e5f5;border-color:#ce93d8;}
+    .ax-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+    .ax-dot.y{background:var(--covr);}
+    .ax-dot.n{background:var(--csep);}
+    .ax-dot.s{background:#bbb;}
+    .ax-lbl{font-family:var(--mono);font-size:11px;flex:1;}
+    .ax-val{font-family:var(--mono);font-size:10px;width:48px;text-align:right;}
+    .ax-val.sep{color:var(--csep);}
+    .ax-val.ovr{color:var(--covr);}
+    .ax-val.skip{color:#bbb;}
+
+    /* ── FLASHLIGHT DIAGRAM box ── */
+    #flash-box{border:1px solid var(--bdr);border-radius:6px;overflow:hidden;}
+    #flash-title{
+      padding:7px 11px;font-size:12px;font-weight:600;color:var(--tx2);
+      background:var(--surf);border-bottom:1px solid var(--bdr);
+      display:flex;align-items:center;gap:8px;
+    }
+    #flash-title .badge{
+      font-size:10px;font-family:var(--mono);letter-spacing:.06em;
+      background:#f3e5f5;color:var(--cax);border:1px solid #ce93d8;
+      border-radius:3px;padding:1px 5px;
+    }
+    #flash-wrap{padding:10px;background:#fff;}
+    #flash-canvas{display:block;width:100%;border:1px solid var(--bdr);border-radius:3px;}
+    #flash-legend{
+      padding:7px 11px;font-size:10.5px;color:var(--tx2);line-height:1.65;
+      border-top:1px solid var(--bdr);background:var(--surf);
+    }
+
+    /* ── 1D PROJECTION box ── */
+    #proj-box{border:1px solid var(--bdr);border-radius:6px;overflow:hidden;}
+    #proj-title{padding:7px 11px;font-size:12px;font-weight:600;color:var(--tx2);
+      background:var(--surf);border-bottom:1px solid var(--bdr);}
+    #proj-wrap{padding:10px;background:#fff;}
+    #proj-canvas{display:block;width:100%;}
+    #proj-exp{padding:7px 11px;font-size:10.5px;color:var(--tx2);line-height:1.6;
+      border-top:1px solid var(--bdr);background:var(--surf);}
+
+    /* 3D overlays */
+    #canvas-hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);
+      background:rgba(0,0,0,.58);color:#fff;font-size:11px;padding:4px 12px;
+      border-radius:20px;pointer-events:none;font-family:var(--mono);white-space:nowrap;}
+    #ax-overlay{position:absolute;top:10px;left:10px;
+      background:rgba(255,255,255,.93);border:1px solid var(--bdr2);
+      border-radius:6px;padding:7px 11px;font-size:11px;font-family:var(--mono);
+      pointer-events:none;line-height:1.9;min-width:150px;}
+    #ax-overlay b{color:var(--cax);}
+    #ax-overlay .sub{font-size:9.5px;color:var(--txm);}
+
+    ::-webkit-scrollbar{width:5px;}
+    ::-webkit-scrollbar-thumb{background:#ddd;border-radius:3px;}
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HEADER -->
+  <header id="header">
+    <span class="hd-logo">SAT Visualizer</span>
+    <span class="hd-sub">Separating Axis Theorem · Oriented Bounding Boxes · 3D</span>
+    <span class="hd-tag">OBB–OBB · 15 AXES</span>
+  </header>
+
+  <!-- LEFT PANEL -->
+  <aside id="left-panel">
+    <div>
+      <div class="sec">Collision Status</div>
+      <div id="status-badge" class="overlap">
+        <span class="dot"></span>
+        <span id="status-text">Overlapping — No Separating Axis Found</span>
+      </div>
+    </div>
+
+    <div>
+      <div class="sec">Box A</div>
+      <div class="box-card ca">
+        <h3>Box A (blue)</h3>
+        <div class="cr"><label>pos X</label><input type="range" id="a-px" min="-3" max="3" step="0.05" value="-1.0"><span class="val" id="a-px-v">-1.00</span></div>
+        <div class="cr"><label>pos Y</label><input type="range" id="a-py" min="-3" max="3" step="0.05" value="0.0"><span class="val" id="a-py-v">0.00</span></div>
+        <div class="cr"><label>pos Z</label><input type="range" id="a-pz" min="-3" max="3" step="0.05" value="0.0"><span class="val" id="a-pz-v">0.00</span></div>
+        <div class="cr"><label>rot X</label><input type="range" id="a-rx" min="0" max="360" step="1" value="0"><span class="val" id="a-rx-v">0°</span></div>
+        <div class="cr"><label>rot Y</label><input type="range" id="a-ry" min="0" max="360" step="1" value="15"><span class="val" id="a-ry-v">15°</span></div>
+        <div class="cr"><label>rot Z</label><input type="range" id="a-rz" min="0" max="360" step="1" value="0"><span class="val" id="a-rz-v">0°</span></div>
+        <div class="cr"><label>size X</label><input type="range" id="a-sx" min="0.3" max="2.5" step="0.05" value="1.2"><span class="val" id="a-sx-v">1.20</span></div>
+        <div class="cr"><label>size Y</label><input type="range" id="a-sy" min="0.3" max="2.5" step="0.05" value="0.8"><span class="val" id="a-sy-v">0.80</span></div>
+        <div class="cr"><label>size Z</label><input type="range" id="a-sz" min="0.3" max="2.5" step="0.05" value="1.0"><span class="val" id="a-sz-v">1.00</span></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="sec">Box B</div>
+      <div class="box-card cb">
+        <h3>Box B (red)</h3>
+        <div class="cr"><label>pos X</label><input type="range" id="b-px" min="-3" max="3" step="0.05" value="0.7"><span class="val" id="b-px-v">0.70</span></div>
+        <div class="cr"><label>pos Y</label><input type="range" id="b-py" min="-3" max="3" step="0.05" value="0.0"><span class="val" id="b-py-v">0.00</span></div>
+        <div class="cr"><label>pos Z</label><input type="range" id="b-pz" min="-3" max="3" step="0.05" value="0.0"><span class="val" id="b-pz-v">0.00</span></div>
+        <div class="cr"><label>rot X</label><input type="range" id="b-rx" min="0" max="360" step="1" value="0"><span class="val" id="b-rx-v">0°</span></div>
+        <div class="cr"><label>rot Y</label><input type="range" id="b-ry" min="0" max="360" step="1" value="30"><span class="val" id="b-ry-v">30°</span></div>
+        <div class="cr"><label>rot Z</label><input type="range" id="b-rz" min="0" max="360" step="1" value="0"><span class="val" id="b-rz-v">0°</span></div>
+        <div class="cr"><label>size X</label><input type="range" id="b-sx" min="0.3" max="2.5" step="0.05" value="0.9"><span class="val" id="b-sx-v">0.90</span></div>
+        <div class="cr"><label>size Y</label><input type="range" id="b-sy" min="0.3" max="2.5" step="0.05" value="1.1"><span class="val" id="b-sy-v">1.10</span></div>
+        <div class="cr"><label>size Z</label><input type="range" id="b-sz" min="0.3" max="2.5" step="0.05" value="0.7"><span class="val" id="b-sz-v">0.70</span></div>
+      </div>
+    </div>
+
+    <div class="info-card">
+      <b>Separating Axis Theorem (SAT)</b><br>
+      Two convex shapes <em>do not intersect</em> iff there exists an axis onto which their
+      1-D projections (shadows) are disjoint. For OBB–OBB in 3D, exactly <b>15 candidate axes</b>
+      suffice: 3 face normals of A, 3 of B, and 9 edge cross-products A<sub>i</sub>×B<sub>j</sub>.
+    </div>
+
+    <div>
+      <div class="sec">Minimum Translation Vector</div>
+      <div id="mtv-display">—</div>
+    </div>
+  </aside>
+
+  <!-- 3D VIEWPORT -->
+  <main id="viewport">
+    <canvas id="three-canvas"></canvas>
+    <div id="canvas-hint">Orbit: left-drag · Pan: right-drag · Zoom: scroll</div>
+    <div id="ax-overlay">
+      <div class="sub">SELECTED AXIS</div>
+      <b id="ov-name">—</b><br>
+      <span id="ov-vec" class="sub"></span>
+    </div>
+  </main>
+
+  <!-- RIGHT PANEL -->
+  <aside id="right-panel">
+
+    <!-- Axis list -->
+    <div>
+      <div class="sec">Candidate Axes — 15 total</div>
+      <div class="ag-title">Face normals of Box A</div>
+      <div id="axes-a"></div>
+      <div class="ag-title">Face normals of Box B</div>
+      <div id="axes-b"></div>
+      <div class="ag-title">Edge cross-products A<sub>i</sub> × B<sub>j</sub></div>
+      <div id="axes-cross"></div>
+    </div>
+
+    <!-- ══ FLASHLIGHT DIAGRAM ══ -->
+    <div id="flash-box">
+      <div id="flash-title">
+        <span>Flashlight Projection Diagram</span>
+        <span class="badge">VIEW ⊥ TO AXIS</span>
+      </div>
+      <div id="flash-wrap">
+        <canvas id="flash-canvas" width="240" height="150"></canvas>
+      </div>
+      <div id="flash-legend">
+        <b>How to read it:</b> you are looking <em>sideways</em> at the axis (the horizontal line n̂).
+        Parallel light rays (dashed) fall <em>perpendicular</em> to n̂ and cast a <b>1-D shadow</b>
+        (thick coloured bar) on it — like a ruler on the floor with sunlight from above.
+        If the two shadows have a <b style="color:var(--csep)">gap</b>, that axis separates the boxes.
+      </div>
+    </div>
+
+    <!-- ══ 1-D PROJECTION STRIP ══ -->
+    <div id="proj-box">
+      <div id="proj-title">1-D Projection Intervals on Axis</div>
+      <div id="proj-wrap">
+        <canvas id="proj-canvas" width="240" height="80"></canvas>
+      </div>
+      <div id="proj-exp">Select an axis from the list above.</div>
+    </div>
+
+  </aside>
+</div>
+
+<!-- ═══════════════════════════════ SCRIPT ═══════════════════════════════ -->
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const DEG = Math.PI / 180;
+
+/* ══════════════════════════════════════════════════════
+   THREE.JS SCENE
+══════════════════════════════════════════════════════ */
+const threeCanvas = $('three-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas: threeCanvas, antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setClearColor(0xf5f5f5, 1);
+
+const scene  = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(42, 1, 0.01, 200);
+camera.position.set(5.5, 3.5, 6.5);
+camera.lookAt(0,0,0);
+
+const orbit = new THREE.OrbitControls(camera, threeCanvas);
+orbit.enableDamping = true;
+orbit.dampingFactor = 0.07;
+
+/* Lighting */
+scene.add(new THREE.AmbientLight(0xffffff, 0.78));
+const sun = new THREE.DirectionalLight(0xffffff, 0.82);
+sun.position.set(8,12,6);
+scene.add(sun);
+scene.add(new THREE.DirectionalLight(0xffffff, 0.22).position.set(-5,-4,-5));
+
+/* Grid + world axes */
+scene.add(new THREE.GridHelper(12, 24, 0xdddddd, 0xeeeeee));
+scene.add(new THREE.AxesHelper(0.35));
+
+/* ── OBB meshes ── */
+function makeOBB(hexFill, hexEdge) {
+  const g = new THREE.Group();
+  const geo = new THREE.BoxGeometry(1,1,1);
+  g.add(new THREE.Mesh(geo,
+    new THREE.MeshLambertMaterial({ color: hexFill, transparent:true, opacity:0.20 })));
+  g.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo),
+    new THREE.LineBasicMaterial({ color: hexEdge })));
+  g.add(new THREE.AxesHelper(0.72));
+  return g;
+}
+const obbA = makeOBB(0x1565c0, 0x1565c0);
+const obbB = makeOBB(0xb71c1c, 0xb71c1c);
+scene.add(obbA, obbB);
+
+/* ── Projection visualisation group (rebuilt on axis change) ── */
+const projViz = new THREE.Group();
+scene.add(projViz);
+
+function clearProjViz() {
+  while (projViz.children.length) {
+    const c = projViz.children[0];
+    if (c.geometry) c.geometry.dispose();
+    if (c.material)  c.material.dispose();
+    projViz.remove(c);
+  }
+}
+
+let axisArrowObj = null;
+let axisPlaneMesh = null;
+
+function removeAxisArrow() {
+  if (axisArrowObj) { scene.remove(axisArrowObj); axisArrowObj = null; }
+  if (axisPlaneMesh){ scene.remove(axisPlaneMesh); axisPlaneMesh = null; }
+}
+
+function showAxisArrow(n) {
+  removeAxisArrow();
+  const L = 6;
+  const origin = n.clone().multiplyScalar(-L/2);
+  axisArrowObj = new THREE.ArrowHelper(n, origin, L, 0x6a1b9a, 0.25, 0.13);
+  scene.add(axisArrowObj);
+
+  const planeGeo = new THREE.PlaneGeometry(5,5);
+  const planeMat = new THREE.MeshBasicMaterial({
+    color: 0x7b1fa2, transparent:true, opacity:0.055, side: THREE.DoubleSide
+  });
+  axisPlaneMesh = new THREE.Mesh(planeGeo, planeMat);
+  axisPlaneMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1), n);
+  scene.add(axisPlaneMesh);
+}
+
+/* ── Draw 3D projection rays & interval markers ── */
+function drawProjViz3D(n, stA, stB) {
+  clearProjViz();
+
+  function addRays(corners, color) {
+    const pts = [];
+    corners.forEach(c => {
+      const t = c.dot(n);
+      pts.push(c.clone(), n.clone().multiplyScalar(t));
+    });
+    const geo = new THREE.BufferGeometry().setFromPoints(pts);
+    const mat = new THREE.LineDashedMaterial({
+      color, dashSize:0.07, gapSize:0.055, transparent:true, opacity:0.5
+    });
+    const ls = new THREE.LineSegments(geo, mat);
+    ls.computeLineDistances();
+    projViz.add(ls);
+  }
+
+  function addInterval(corners, color) {
+    const ts = corners.map(c => c.dot(n));
+    const mn = Math.min(...ts), mx = Math.max(...ts);
+    // Thick segment on axis
+    const geo = new THREE.BufferGeometry().setFromPoints([
+      n.clone().multiplyScalar(mn),
+      n.clone().multiplyScalar(mx)
+    ]);
+    const mat = new THREE.LineBasicMaterial({ color });
+    projViz.add(new THREE.LineSegments(geo, mat));
+    // Endpoint spheres
+    const sg = new THREE.SphereGeometry(0.07, 10, 10);
+    const sm = new THREE.MeshBasicMaterial({ color });
+    [mn, mx].forEach(t => {
+      const s = new THREE.Mesh(sg, sm);
+      s.position.copy(n.clone().multiplyScalar(t));
+      projViz.add(s);
+    });
+    return { mn, mx };
+  }
+
+  const cA = getOBBCorners(stA);
+  const cB = getOBBCorners(stB);
+  addRays(cA, 0x1565c0);
+  addRays(cB, 0xb71c1c);
+  addInterval(cA, 0x1565c0);
+  addInterval(cB, 0xb71c1c);
+}
+
+/* ══════════════════════════════════════════════════════
+   SAT ENGINE
+══════════════════════════════════════════════════════ */
+function obbState(group) {
+  group.updateMatrixWorld(true);
+  const pos=new THREE.Vector3(), q=new THREE.Quaternion(), sc=new THREE.Vector3();
+  group.matrixWorld.decompose(pos,q,sc);
+  const rm = new THREE.Matrix4().makeRotationFromQuaternion(q);
+  const ax = [
+    new THREE.Vector3(1,0,0).applyMatrix4(rm),
+    new THREE.Vector3(0,1,0).applyMatrix4(rm),
+    new THREE.Vector3(0,0,1).applyMatrix4(rm),
+  ];
+  return { pos, ax, he:[sc.x*.5, sc.y*.5, sc.z*.5] };
+}
+
+function getOBBCorners(st) {
+  const c = [];
+  for (let s0 of [-1,1]) for (let s1 of [-1,1]) for (let s2 of [-1,1])
+    c.push(st.pos.clone()
+      .addScaledVector(st.ax[0], s0*st.he[0])
+      .addScaledVector(st.ax[1], s1*st.he[1])
+      .addScaledVector(st.ax[2], s2*st.he[2]));
+  return c;
+}
+
+function projectOBB(st, axis) {
+  const c = st.pos.dot(axis);
+  const r = Math.abs(st.ax[0].dot(axis))*st.he[0]
+           + Math.abs(st.ax[1].dot(axis))*st.he[1]
+           + Math.abs(st.ax[2].dot(axis))*st.he[2];
+  return { min:c-r, max:c+r, c, r };
+}
+
+function testAxis(vec, stA, stB) {
+  if (vec.lengthSq() < 1e-10) return { skip:true };
+  const n = vec.clone().normalize();
+  const pA = projectOBB(stA, n);
+  const pB = projectOBB(stB, n);
+  const ovr = Math.min(pA.max,pB.max) - Math.max(pA.min,pB.min);
+  return { n, pA, pB, ovr, gap:-ovr, sep: ovr < -1e-6 };
+}
+
+function buildAxes(stA, stB) {
+  const axes=[], xyz=['x','y','z'];
+  stA.ax.forEach((v,i) => axes.push({lbl:`A·n${xyz[i]}`, vec:v.clone(), grp:'a'}));
+  stB.ax.forEach((v,i) => axes.push({lbl:`B·n${xyz[i]}`, vec:v.clone(), grp:'b'}));
+  for (let i=0;i<3;i++) for (let j=0;j<3;j++)
+    axes.push({lbl:`A${xyz[i]}×B${xyz[j]}`, vec:stA.ax[i].clone().cross(stB.ax[j]), grp:'cross'});
+  return axes;
+}
+
+/* ══════════════════════════════════════════════════════
+   GEOMETRY UTILS
+══════════════════════════════════════════════════════ */
+
+/* Robust perpendicular vector */
+function getPerpVec(n) {
+  const v = (Math.abs(n.x) < 0.9)
+    ? new THREE.Vector3(1,0,0)
+    : new THREE.Vector3(0,1,0);
+  return v.sub(n.clone().multiplyScalar(n.dot(v))).normalize();
+}
+
+/* Andrew's monotone chain — 2D convex hull */
+function convexHull2D(pts) {
+  if (pts.length < 3) return pts;
+  const sorted = [...pts].sort((a,b) => a[0]-b[0] || a[1]-b[1]);
+  const cross = (O,A,B) => (A[0]-O[0])*(B[1]-O[1]) - (A[1]-O[1])*(B[0]-O[0]);
+  const lower=[];
+  for (const p of sorted) {
+    while (lower.length>=2 && cross(lower[lower.length-2],lower[lower.length-1],p)<=0) lower.pop();
+    lower.push(p);
+  }
+  const upper=[];
+  for (let i=sorted.length-1;i>=0;i--) {
+    const p=sorted[i];
+    while (upper.length>=2 && cross(upper[upper.length-2],upper[upper.length-1],p)<=0) upper.pop();
+    upper.push(p);
+  }
+  upper.pop(); lower.pop();
+  return lower.concat(upper);
+}
+
+/* ══════════════════════════════════════════════════════
+   FLASHLIGHT DIAGRAM  (2-D canvas, side view)
+══════════════════════════════════════════════════════ */
+const fc  = $('flash-canvas');
+const fctx = fc.getContext('2d');
+
+function drawFlashlight(stA, stB, axisN, res) {
+  const W = fc.width, H = fc.height;
+  fctx.clearRect(0,0,W,H);
+  fctx.fillStyle='#fff'; fctx.fillRect(0,0,W,H);
+
+  const perpN = getPerpVec(axisN);
+
+  const cA = getOBBCorners(stA);
+  const cB = getOBBCorners(stB);
+
+  /* Project corners to 2D: x = along axis, y = along perp */
+  const p2DA = cA.map(c => [c.dot(axisN), c.dot(perpN)]);
+  const p2DB = cB.map(c => [c.dot(axisN), c.dot(perpN)]);
+
+  /* Ranges */
+  const allPts = [...p2DA, ...p2DB];
+  const xMin = Math.min(...allPts.map(p=>p[0]));
+  const xMax = Math.max(...allPts.map(p=>p[0]));
+  const yMin = Math.min(...allPts.map(p=>p[1]));
+  const yMax = Math.max(...allPts.map(p=>p[1]));
+  const xPad = Math.max((xMax-xMin)*0.18, 0.3);
+  const yPad = Math.max((yMax-yMin)*0.18, 0.3);
+  const xL=xMin-xPad, xR=xMax+xPad;
+  const yB=yMin-yPad, yT=yMax+yPad;
+
+  const ML=22, MR=22, MT=18, axisYpx = H-26;
+  const mapX = x => ML + ((x-xL)/(xR-xL)) * (W-ML-MR);
+
+  /* Map Y: higher y_world = higher on screen, axis at axisYpx */
+  /* We need to fit everything; axis corresponds to y=0 in perp space  */
+  /* Actually perp coord can be anything; just fit the range */
+  const yRange = yT-yB || 1;
+  /* Reserve top MT..axisYpx for boxes, bottom axisYpx..H for labels */
+  const mapY = y => axisYpx - ((y-yB)/yRange) * (axisYpx-MT);
+
+  /* ── Shadow (1-D) intervals on axis ── */
+  const sxA_min = Math.min(...p2DA.map(p=>p[0]));
+  const sxA_max = Math.max(...p2DA.map(p=>p[0]));
+  const sxB_min = Math.min(...p2DB.map(p=>p[0]));
+  const sxB_max = Math.max(...p2DB.map(p=>p[0]));
+
+  /* ── Draw parallel light rays (dashed) from top to axis ── */
+  const extremeXA = [sxA_min, sxA_max];
+  const extremeXB = [sxB_min, sxB_max];
+
+  fctx.save();
+  fctx.setLineDash([3,4]); fctx.lineWidth=0.8;
+
+  /* Ray field: draw several rays across the full width */
+  const nRays = 14;
+  for (let i=0;i<=nRays;i++) {
+    const xw = xL + (i/nRays)*(xR-xL);
+    const sx = mapX(xw);
+    // Determine color based on which interval it falls in
+    const inA = xw >= sxA_min && xw <= sxA_max;
+    const inB = xw >= sxB_min && xw <= sxB_max;
+    let col = 'rgba(200,200,200,0.35)';
+    if (inA && inB) col = 'rgba(100,50,150,0.3)';
+    else if (inA)   col = 'rgba(21,101,192,0.3)';
+    else if (inB)   col = 'rgba(183,28,28,0.3)';
+    fctx.beginPath(); fctx.moveTo(sx,0); fctx.lineTo(sx,axisYpx);
+    fctx.strokeStyle=col; fctx.stroke();
+  }
+  fctx.restore();
+
+  /* ── Convex hulls of boxes ── */
+  const hullA = convexHull2D(p2DA);
+  const hullB = convexHull2D(p2DB);
+
+  function drawHull(hull, fill, stroke) {
+    fctx.beginPath();
+    hull.forEach((p,i) => {
+      const sx=mapX(p[0]), sy=mapY(p[1]);
+      i===0 ? fctx.moveTo(sx,sy) : fctx.lineTo(sx,sy);
+    });
+    fctx.closePath();
+    fctx.fillStyle=fill; fctx.fill();
+    fctx.strokeStyle=stroke; fctx.lineWidth=1.6; fctx.stroke();
+  }
+
+  drawHull(hullA, 'rgba(21,101,192,0.18)', '#1565c0');
+  drawHull(hullB, 'rgba(183,28,28,0.18)', '#b71c1c');
+
+  /* Box labels */
+  fctx.font='bold 10px Inter,sans-serif';
+  const topA = hullA.reduce((a,b)=>a[1]>b[1]?a:b);
+  const topB = hullB.reduce((a,b)=>a[1]>b[1]?a:b);
+  fctx.fillStyle='#1565c0';
+  fctx.fillText('A', mapX(topA[0])+3, mapY(topA[1])-4);
+  fctx.fillStyle='#b71c1c';
+  fctx.fillText('B', mapX(topB[0])+3, mapY(topB[1])-4);
+
+  /* ── AXIS LINE ── */
+  fctx.beginPath(); fctx.moveTo(ML-4,axisYpx); fctx.lineTo(W-MR+4,axisYpx);
+  fctx.strokeStyle='#444'; fctx.lineWidth=1.5; fctx.stroke();
+  /* Arrowhead */
+  fctx.beginPath();
+  fctx.moveTo(W-MR+4,axisYpx); fctx.lineTo(W-MR-3,axisYpx-4); fctx.lineTo(W-MR-3,axisYpx+4);
+  fctx.closePath(); fctx.fillStyle='#444'; fctx.fill();
+  fctx.font='italic 11px JetBrains Mono,monospace'; fctx.fillStyle='#444';
+  fctx.fillText('n̂', W-MR+6, axisYpx+4);
+
+  /* ── Shadow bars on axis ── */
+  const sBarH = 5;
+  /* Box A shadow — thick blue bar */
+  fctx.beginPath();
+  fctx.moveTo(mapX(sxA_min), axisYpx);
+  fctx.lineTo(mapX(sxA_max), axisYpx);
+  fctx.strokeStyle='#1565c0'; fctx.lineWidth=sBarH+1; fctx.stroke();
+  /* Box B shadow — thinner red bar below */
+  fctx.beginPath();
+  fctx.moveTo(mapX(sxB_min), axisYpx);
+  fctx.lineTo(mapX(sxB_max), axisYpx);
+  fctx.strokeStyle='#b71c1c'; fctx.lineWidth=sBarH-1; fctx.stroke();
+
+  /* Endpoint ticks */
+  [[sxA_min,'#1565c0'],[sxA_max,'#1565c0'],[sxB_min,'#b71c1c'],[sxB_max,'#b71c1c']].forEach(([v,col])=>{
+    const x=mapX(v);
+    fctx.beginPath(); fctx.moveTo(x,axisYpx-7); fctx.lineTo(x,axisYpx+7);
+    fctx.strokeStyle=col; fctx.lineWidth=1.3; fctx.stroke();
+  });
+
+  /* ── Gap / Overlap ── */
+  const gapMin = Math.min(sxA_max, sxB_max);
+  const gapMax = Math.max(sxA_min, sxB_min);
+  const hasGap = gapMax > gapMin + 1e-6;
+
+  if (hasGap) {
+    /* orange gap region */
+    const gL=mapX(gapMin), gW=mapX(gapMax)-mapX(gapMin);
+    fctx.fillStyle='rgba(230,81,0,0.13)';
+    fctx.fillRect(gL, axisYpx-12, gW, 24);
+    /* dashed borders */
+    fctx.save(); fctx.setLineDash([3,3]);
+    [gL, gL+gW].forEach(x=>{
+      fctx.beginPath(); fctx.moveTo(x,axisYpx-22); fctx.lineTo(x,axisYpx+16);
+      fctx.strokeStyle='#e65100'; fctx.lineWidth=1; fctx.stroke();
+    });
+    fctx.restore();
+    fctx.font='bold 9px Inter,sans-serif'; fctx.fillStyle='#e65100';
+    fctx.textAlign='center';
+    fctx.fillText('GAP', gL+gW/2, axisYpx+20);
+    fctx.textAlign='left';
+  } else {
+    const ovL=Math.max(sxA_min,sxB_min), ovR=Math.min(sxA_max,sxB_max);
+    if (ovR>ovL) {
+      fctx.fillStyle='rgba(46,125,50,0.12)';
+      fctx.fillRect(mapX(ovL), axisYpx-12, mapX(ovR)-mapX(ovL), 24);
+      fctx.font='bold 8px Inter,sans-serif'; fctx.fillStyle='#2e7d32';
+      fctx.textAlign='center';
+      fctx.fillText('OVERLAP', (mapX(ovL)+mapX(ovR))/2, axisYpx+20);
+      fctx.textAlign='left';
+    }
+  }
+
+  /* ── Light direction label ── */
+  fctx.font='9px Inter,sans-serif'; fctx.fillStyle='#bbb';
+  fctx.fillText('parallel rays ⊥ n̂', 4, 11);
+  /* Small downward arrow */
+  fctx.beginPath(); fctx.moveTo(W-10,5); fctx.lineTo(W-10,15);
+  fctx.strokeStyle='#ccc'; fctx.lineWidth=1; fctx.stroke();
+  fctx.beginPath(); fctx.moveTo(W-10,15); fctx.lineTo(W-13,11); fctx.lineTo(W-7,11);
+  fctx.closePath(); fctx.fillStyle='#ccc'; fctx.fill();
+}
+
+/* ══════════════════════════════════════════════════════
+   1-D PROJECTION STRIP (right panel bottom)
+══════════════════════════════════════════════════════ */
+const pc  = $('proj-canvas');
+const pctx = pc.getContext('2d');
+
+function drawProj1D(res) {
+  const W=pc.width, H=pc.height;
+  pctx.clearRect(0,0,W,H);
+  pctx.fillStyle='#fff'; pctx.fillRect(0,0,W,H);
+
+  const {pA,pB,ovr} = res;
+  const all=[pA.min,pA.max,pB.min,pB.max];
+  const lo=Math.min(...all), hi=Math.max(...all);
+  const pad=Math.max((hi-lo)*0.18,0.3);
+  const lo2=lo-pad, hi2=hi+pad;
+  const px = v => 18+((v-lo2)/(hi2-lo2))*(W-36);
+  const yM=H/2;
+
+  /* axis */
+  pctx.beginPath(); pctx.moveTo(14,yM); pctx.lineTo(W-12,yM);
+  pctx.strokeStyle='#ccc'; pctx.lineWidth=1; pctx.stroke();
+  pctx.beginPath(); pctx.moveTo(W-12,yM);
+  pctx.lineTo(W-18,yM-4); pctx.lineTo(W-18,yM+4);
+  pctx.closePath(); pctx.fillStyle='#bbb'; pctx.fill();
+
+  const BH=12;
+  const yA=yM-9, yB=yM+9;
+
+  /* A bar */
+  const aL=px(pA.min), aR=px(pA.max);
+  pctx.fillStyle='rgba(21,101,192,.15)'; pctx.fillRect(aL,yA-BH,aR-aL,BH);
+  pctx.strokeStyle='#1565c0'; pctx.lineWidth=1.5; pctx.strokeRect(aL,yA-BH,aR-aL,BH);
+  pctx.beginPath(); pctx.arc(px(pA.c),yA-BH/2,2.5,0,Math.PI*2);
+  pctx.fillStyle='#1565c0'; pctx.fill();
+
+  /* B bar */
+  const bL=px(pB.min), bR=px(pB.max);
+  pctx.fillStyle='rgba(183,28,28,.15)'; pctx.fillRect(bL,yB,bR-bL,BH);
+  pctx.strokeStyle='#b71c1c'; pctx.lineWidth=1.5; pctx.strokeRect(bL,yB,bR-bL,BH);
+  pctx.beginPath(); pctx.arc(px(pB.c),yB+BH/2,2.5,0,Math.PI*2);
+  pctx.fillStyle='#b71c1c'; pctx.fill();
+
+  /* Labels */
+  pctx.font='bold 9px Inter,sans-serif';
+  pctx.fillStyle='#1565c0'; pctx.fillText('A',aL+2,yA-BH-2);
+  pctx.fillStyle='#b71c1c'; pctx.fillText('B',bL+2,yB+BH+9);
+
+  /* Gap / overlap */
+  if (ovr < -1e-6) {
+    const gL=px(Math.min(pA.max,pB.max)), gR=px(Math.max(pA.min,pB.min));
+    pctx.fillStyle='rgba(230,81,0,.13)';
+    pctx.fillRect(Math.min(gL,gR),yM-28,Math.abs(gR-gL),56);
+    pctx.save(); pctx.setLineDash([3,3]);
+    [Math.min(gL,gR),Math.max(gL,gR)].forEach(x=>{
+      pctx.beginPath(); pctx.moveTo(x,yM-26); pctx.lineTo(x,yM+26);
+      pctx.strokeStyle='#e65100'; pctx.lineWidth=1; pctx.stroke();
+    });
+    pctx.restore();
+    pctx.font='bold 8px Inter,sans-serif'; pctx.fillStyle='#e65100';
+    pctx.textAlign='center';
+    pctx.fillText('GAP',(Math.min(gL,gR)+Math.max(gL,gR))/2,yM-15);
+    pctx.textAlign='left';
+  } else {
+    const oL=px(Math.max(pA.min,pB.min)), oR=px(Math.min(pA.max,pB.max));
+    if (oR>oL) {
+      pctx.fillStyle='rgba(46,125,50,.11)'; pctx.fillRect(oL,yM-28,oR-oL,56);
+      pctx.font='bold 8px Inter,sans-serif'; pctx.fillStyle='#2e7d32';
+      pctx.textAlign='center';
+      pctx.fillText('OVERLAP',(oL+oR)/2,yM-15);
+      pctx.textAlign='left';
+    }
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   UI STATE & CONTROLS
+══════════════════════════════════════════════════════ */
+let selIdx=0, axisData=[], axisResults=[];
+
+function initSlider(id, isRot) {
+  const el=$(id), lv=$(id+'-v');
+  const upd=()=>{ lv.textContent = isRot
+    ? parseFloat(el.value).toFixed(0)+'°'
+    : parseFloat(el.value).toFixed(2); };
+  el.addEventListener('input',()=>{ upd(); refreshUI(); });
+  upd();
+}
+['a-px','a-py','a-pz','b-px','b-py','b-pz',
+ 'a-sx','a-sy','a-sz','b-sx','b-sy','b-sz'].forEach(id=>initSlider(id,false));
+['a-rx','a-ry','a-rz','b-rx','b-ry','b-rz'].forEach(id=>initSlider(id,true));
+
+function readBox(p) {
+  const g=s=>parseFloat($(p+s).value);
+  return { pos:[g('px'),g('py'),g('pz')], rot:[g('rx')*DEG,g('ry')*DEG,g('rz')*DEG], size:[g('sx'),g('sy'),g('sz')] };
+}
+function applyBox(grp,s) {
+  grp.position.set(...s.pos); grp.rotation.set(...s.rot); grp.scale.set(...s.size);
+}
+
+/* Axis list UI */
+function buildAxisUI(axes,results) {
+  const c={a:$('axes-a'),b:$('axes-b'),cross:$('axes-cross')};
+  Object.values(c).forEach(el=>el.innerHTML='');
+  axes.forEach((ax,i)=>{
+    const r=results[i];
+    const item=document.createElement('div');
+    item.className='ax-item'+(i===selIdx?' active':'');
+
+    const dot=document.createElement('span');
+    dot.className='ax-dot '+(r.skip?'s':r.sep?'n':'y');
+
+    const lbl=document.createElement('span');
+    lbl.className='ax-lbl'; lbl.textContent=ax.lbl;
+
+    const val=document.createElement('span');
+    if (r.skip){ val.className='ax-val skip'; val.textContent='≈0 axis'; }
+    else if (r.sep){ val.className='ax-val sep'; val.textContent='+'+r.gap.toFixed(3); }
+    else { val.className='ax-val ovr'; val.textContent=r.ovr.toFixed(3); }
+
+    item.appendChild(dot); item.appendChild(lbl); item.appendChild(val);
+    item.addEventListener('click',()=>{ selIdx=i; refreshUI(); });
+    c[ax.grp].appendChild(item);
+  });
+}
+
+/* Main refresh */
+function refreshUI() {
+  /* Apply box transforms */
+  applyBox(obbA, readBox('a-'));
+  applyBox(obbB, readBox('b-'));
+  obbA.updateMatrixWorld(true); obbB.updateMatrixWorld(true);
+  const stA=obbState(obbA), stB=obbState(obbB);
+
+  /* Build + test axes */
+  axisData    = buildAxes(stA, stB);
+  axisResults = axisData.map(ax=>testAxis(ax.vec,stA,stB));
+
+  /* Collision status */
+  const separated = axisResults.some(r=>!r.skip&&r.sep);
+  const badge=$('status-badge'), stxt=$('status-text');
+  badge.className = separated?'separate':'overlap';
+  stxt.textContent = separated
+    ?'Separated — Separating Axis Found'
+    :'Overlapping — No Separating Axis Found';
+
+  /* MTV */
+  const mtvEl=$('mtv-display');
+  if (!separated) {
+    let mn=Infinity, mAx=null;
+    axisResults.forEach((r,i)=>{ if(!r.skip&&!r.sep&&r.ovr<mn){mn=r.ovr;mAx=axisData[i];} });
+    if (mAx) {
+      const n=mAx.vec.clone().normalize();
+      mtvEl.innerHTML=`<span class="mtv-val">Axis: ${mAx.lbl}<br>Depth: ${mn.toFixed(4)} u<br>`+
+        `Dir: (${n.x.toFixed(3)}, ${n.y.toFixed(3)}, ${n.z.toFixed(3)})</span>`;
+    }
+  } else {
+    mtvEl.innerHTML='<span class="mtv-sep">Boxes separated — MTV not needed</span>';
+  }
+
+  /* Axis list */
+  buildAxisUI(axisData,axisResults);
+
+  /* Selected axis */
+  const ax=axisData[selIdx], res=axisResults[selIdx];
+  if (ax && !res.skip) {
+    /* 3D */
+    showAxisArrow(ax.vec.clone().normalize());
+    drawProjViz3D(res.n, stA, stB);
+
+    /* 2D flashlight diagram */
+    resizeCanvases();
+    drawFlashlight(stA, stB, res.n, res);
+
+    /* 1D strip */
+    drawProj1D(res);
+
+    /* Overlay */
+    $('ov-name').textContent=ax.lbl;
+    const n=ax.vec.clone().normalize();
+    $('ov-vec').textContent=`(${n.x.toFixed(3)}, ${n.y.toFixed(3)}, ${n.z.toFixed(3)})`;
+
+    /* Explanation */
+    $('proj-exp').innerHTML = res.sep
+      ? `<b>${ax.lbl}</b> → <b style="color:var(--csep)">SEPARATING AXIS</b>. `+
+        `Gap = <b>${res.gap.toFixed(4)}</b> u. Shadows are disjoint → boxes do not collide.`
+      : `<b>${ax.lbl}</b> → intervals <b style="color:var(--covr)">overlap</b> by `+
+        `<b>${res.ovr.toFixed(4)}</b> u. Axis does not separate; all 15 must be tested.`;
+  } else {
+    removeAxisArrow(); clearProjViz();
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   RESIZE
+══════════════════════════════════════════════════════ */
+function resizeCanvases() {
+  const fw=$('flash-wrap').clientWidth||240;
+  fc.width=fw-20; fc.height=Math.round((fw-20)*0.62);
+
+  const pw=$('proj-wrap').clientWidth||240;
+  pc.width=pw-20; pc.height=80;
+}
+
+function onResize() {
+  const vp=$('viewport');
+  renderer.setSize(vp.clientWidth, vp.clientHeight);
+  camera.aspect=vp.clientWidth/vp.clientHeight;
+  camera.updateProjectionMatrix();
+  resizeCanvases();
+  if (axisResults[selIdx]&&!axisResults[selIdx].skip) {
+    const stA=obbState(obbA), stB=obbState(obbB);
+    drawFlashlight(stA, stB, axisResults[selIdx].n, axisResults[selIdx]);
+    drawProj1D(axisResults[selIdx]);
+  }
+}
+window.addEventListener('resize',onResize);
+
+/* ══════════════════════════════════════════════════════
+   ANIMATION LOOP
+══════════════════════════════════════════════════════ */
+function animate() {
+  requestAnimationFrame(animate);
+  orbit.update();
+  renderer.render(scene, camera);
+}
+
+/* ── BOOT ── */
+onResize();
+refreshUI();
+animate();
+</script>
+</body>
+</html>

@@ -242,11 +242,10 @@ class ConflictResolver:
         # querying the active detector; no entries are inserted into or
         # removed from the live index during validation.
         # =================================================================
-        shadow = self._manager
-        phase_times["shadow_build_ms"] = 0.0
+        phase_times["validation_ms"] = 0.0
 
         def _check_valid(candidate: FlightPlan) -> bool:
-            return self._validate_candidate_query(candidate, pleb_id, shadow, t_conflict)
+            return self._validate_candidate_query(candidate, pleb_id, t_conflict)
 
         # =================================================================
         # Step 2: Strategy 1 — Kinematic Bounding (velocity-only)
@@ -314,7 +313,6 @@ class ConflictResolver:
             t_anchor=t_anchor,
             horizontal_mtvs=sat_result.horizontal_mtvs,
             conflict=conflict,
-            shadow=shadow,
         )
         phase_times["s2_ms"] = (time.perf_counter() - phase_t0) * 1000.0
         phase_iterations["s2"] = iters
@@ -348,7 +346,6 @@ class ConflictResolver:
             t_anchor=t_anchor,
             vertical_mtvs=sat_result.vertical_mtvs,
             conflict=conflict,
-            shadow=shadow,
         )
         phase_times["fb1_ms"] = (time.perf_counter() - phase_t0) * 1000.0
         phase_iterations["fb1"] = iters
@@ -375,7 +372,6 @@ class ConflictResolver:
             fp_vip=fp_vip,
             pleb_id=pleb_id,
             t_anchor=t_anchor,
-            shadow=shadow,
         )
         phase_times["fb2_ms"] = (time.perf_counter() - phase_t0) * 1000.0
         phase_iterations["fb2"] = iters
@@ -417,7 +413,6 @@ class ConflictResolver:
         self,
         candidate_fp: FlightPlan,
         pleb_id: str,
-        shadow: "RTreeDetector",
         t_conflict_being_solved: float = 0.0,
     ) -> bool:
         """
@@ -474,78 +469,6 @@ class ConflictResolver:
         earliest_new_conflict = conflicts[0]["time_range"][0]
         return earliest_new_conflict >= t_conflict_being_solved + FORWARD_PROGRESS_MARGIN
 
-    def _compute_conflict_origin(
-        self,
-        conflict: dict,
-        pleb_id: str,
-    ) -> Optional[np.ndarray]:
-        """
-        Compute the detour origin for a conflict window.
-
-        This helper avoids picking an arbitrary OBB when multiple boxes are
-        involved. It collects all plebeian and VIP swept boxes that overlap the
-        conflict time window, keeps only the pairs that truly collide in SAT,
-        and builds a weighted centroid of their midpoints.
-
-        The weight is the MTV norm because larger MTVs correspond to a stronger
-        geometric overlap, which is a more relevant signal than just time
-        coexistence.
-
-                    t_detour_starthor=t_anchor,
-        center of the plebeian boxes in the time window.
-        """
-        pleb_id_key = conflict.get("uav_a", pleb_id)
-        vip_id_key = conflict.get("uav_b")
-        t_min, t_max = conflict["time_range"]
-
-        pleb_conflict_obbs = []
-        vip_conflict_obbs = []
-
-        try:
-            for box in self._manager.uavs[pleb_id_key]["boxes"]:
-                if box.t_range[1] > t_min and box.t_range[0] < t_max:
-                    pleb_conflict_obbs.append(box)
-        except KeyError:
-            pleb_conflict_obbs = []
-
-        try:
-            for box in self._manager.uavs[vip_id_key]["boxes"]:
-                if box.t_range[1] > t_min and box.t_range[0] < t_max:
-                    vip_conflict_obbs.append(box)
-        except KeyError:
-            vip_conflict_obbs = []
-
-        if not pleb_conflict_obbs:
-            return None
-
-        pair_midpoints = []
-        weights = []
-
-        for pb in pleb_conflict_obbs:
-            for vb in vip_conflict_obbs:
-                t_overlap = min(pb.t_range[1], vb.t_range[1]) - max(pb.t_range[0], vb.t_range[0])
-                if t_overlap <= 0:
-                    continue
-
-                is_collision, mtv_vector = pb.collides_with(vb)
-                if not is_collision:
-                    continue
-
-                midpoint = (np.array(pb.center, dtype=float) + np.array(vb.center, dtype=float)) * 0.5
-                weight = float(np.linalg.norm(mtv_vector))
-                if weight <= 0:
-                    weight = float(t_overlap)
-
-                pair_midpoints.append(midpoint)
-                weights.append(weight)
-
-        if pair_midpoints:
-            total_weight = float(sum(weights))
-            if total_weight > 0:
-                return sum(midpoint * weight for midpoint, weight in zip(pair_midpoints, weights)) / total_weight
-
-        return np.mean([np.array(box.center, dtype=float) for box in pleb_conflict_obbs], axis=0)
-
     # ------------------------------------------------------------------
     # Strategy 2: Horizontal Path Stretch
     # ------------------------------------------------------------------
@@ -558,12 +481,11 @@ class ConflictResolver:
         t_anchor:        float,
         horizontal_mtvs: list,
         conflict:        dict,
-        shadow:          "RTreeDetector" = None,
     ) -> tuple[Optional[FlightPlan], int]:
         """
         Iterate over horizontal MTVs, building a TRAPEZOID spatial detour for each
         candidate. The detour relies on heuristic scaling and validation against
-        the Shadow R-Tree.
+        the live R-Tree through candidate queries.
 
         The conflicting OBB sequence is passed to build_trapezoid_detour to compute
         an aggregated safe volume for the evasion maneuver.
@@ -583,11 +505,6 @@ class ConflictResolver:
 
         if not conflict_obbs:
             conflict_obbs = None
-
-        # Compute a weighted conflict origin from SAT-confirmed pairs.
-        # This replaces the older "middle OBB" heuristic and works better when
-        # one OBB overlaps several others or when the conflict is curved.
-        origin_conflict = self._compute_conflict_origin(conflict=conflict, pleb_id=pleb_id)
 
         # Pre-calculate base t_anc and t_ret from conflict
         v_cruise = fp_pleb.status_at_time(t_anchor).vel
@@ -649,7 +566,6 @@ class ConflictResolver:
                     t_detour_starthor=t_anchor,
                     mtv=scaled_mtv,
                     conflict_obbs=conflict_obbs,
-                    origin_conflict=origin_conflict,
                     t_detour_start_override=t_detour_start_adj,
                     t_detour_end_override=t_detour_end_adj,
                 )
@@ -659,8 +575,8 @@ class ConflictResolver:
 
                 iters_count += 1
 
-                # Global R-Tree validation (shadow)
-                if self._validate_candidate_query(candidate, pleb_id, shadow, conflict["time_range"][0]):
+                # Global R-Tree validation using the live detector.
+                if self._validate_candidate_query(candidate, pleb_id, conflict["time_range"][0]):
                     print(f"[DEBUG S2]       -> Live validation SUCCESS! Detour is conflict-free.")
                     return candidate, iters_count
                 else:
@@ -680,7 +596,6 @@ class ConflictResolver:
         t_anchor:      float,
         vertical_mtvs: list,
         conflict:      dict,
-        shadow:        "RTreeDetector" = None,
     ) -> tuple[Optional[FlightPlan], int]:
         """
         Iterate over vertical MTVs (Z-dominant) from the SAT result.
@@ -706,10 +621,6 @@ class ConflictResolver:
 
         if not conflict_obbs:
             conflict_obbs = None
-        # Reuse the same weighted SAT-based origin as Strategy 2 so the visual
-        # reference matches the real detour geometry.
-        origin_conflict = self._compute_conflict_origin(conflict=conflict, pleb_id=pleb_id)
-
         # Pre-calculate base t_detour_start and t_detour_end from conflict (same as S2)
         v_cruise = fp_pleb.status_at_time(t_anchor).vel
         v_cruise_norm = np.linalg.norm(v_cruise) if v_cruise is not None else CRUISE_SPEED_FALLBACK
@@ -767,7 +678,6 @@ class ConflictResolver:
                     t_detour_starthor=t_anchor,
                     mtv=scaled_mtv,
                     conflict_obbs=conflict_obbs,
-                    origin_conflict=origin_conflict,
                     t_detour_start_override=t_detour_start_adj,
                     t_detour_end_override=t_detour_end_adj,
                 )
@@ -777,7 +687,7 @@ class ConflictResolver:
 
                 iters_count += 1
 
-                if self._validate_candidate_query(candidate, pleb_id, shadow, conflict["time_range"][0]):
+                if self._validate_candidate_query(candidate, pleb_id, conflict["time_range"][0]):
                     print(f"[DEBUG FB1]       -> Live validation SUCCESS! Vertical detour is conflict-free.")
                     return candidate, iters_count
                 else:
@@ -795,7 +705,6 @@ class ConflictResolver:
         fp_vip:   FlightPlan,
         pleb_id:  str,
         t_anchor: float,
-        shadow:   "RTreeDetector" = None,
     ) -> tuple[Optional[FlightPlan], int]:
         """
         Fallback 2 (Hover) implementation.
@@ -853,7 +762,7 @@ class ConflictResolver:
                 continue
 
             # Validate candidate against live detector (candidate-query)
-            if self._validate_candidate_query(candidate, pleb_id, shadow, t_anchor):
+            if self._validate_candidate_query(candidate, pleb_id, t_anchor):
                 return candidate, iteration
 
         # Timeout — DEADLOCK

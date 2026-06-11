@@ -11,7 +11,7 @@ PURPOSE:
     build_rigid_shift_detour()  — PRIMARY. Rigid Shift (detour_start → det → detour_end).
                                   Uses kinematic boundaries and heuristic MTV
                                   scaling to find a conflict-free route via the
-                                  Shadow R-Tree.
+                                  live R-Tree.
 
 RIGID SHIFT GEOMETRY (3-POINT TOPOLOGY):
     Original route:
@@ -63,7 +63,6 @@ def build_rigid_shift_detour(
     t_detour_starthor:     float,
     mtv:          np.ndarray,
     conflict_obbs: Optional[List["SweptBox_OBB"]] = None,
-    origin_conflict: Optional[np.ndarray] = None,
     t_detour_start_override: Optional[float] = None,
     t_detour_end_override: Optional[float] = None,
 ) -> Optional[FlightPlan]:
@@ -76,13 +75,12 @@ def build_rigid_shift_detour(
     tangent using central finite differences.
     
     Args:
-        fp:                   Flight plan to modify
-        t_detour_starthor:             detour_starthor time for maneuver start
-        mtv:                  Minimum translation vector (displacement)
-        conflict_obbs:        List of conflicting OBB boxes
-        origin_conflict:      Conflict origin point (optional)
-        t_detour_start_override:       If provided, use this detour_starthor time instead of calculating
-        t_detour_end_override:       If provided, use this detour_endurn time instead of calculating
+        fp:                      Flight plan to modify
+        t_detour_starthor:       detour_starthor time for maneuver start
+        mtv:                     Minimum translation vector (displacement)
+        conflict_obbs:           List of conflicting OBB boxes
+        t_detour_start_override: If provided, use this detour_starthor time instead of calculating
+        t_detour_end_override:   If provided, use this detour_endurn time instead of calculating
     """
     # Guard: detour_starthor must be within the flight plan window
     if t_detour_starthor >= fp.finish_time():

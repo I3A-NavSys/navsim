@@ -58,7 +58,7 @@ VERTIPORT_PRISM: Tuple[Tuple[float, float], ...] = (
     (30.0, 120.0),     # Z: UTM low-altitude band
 )
 
-CRUISE_LEVELS = [55.0, 70.0]  # available altitude layers (m)
+CRUISE_LEVELS = [55.0, 70.0, 90.0]  # available altitude layers (m)
 N_WAYPOINTS       = 6      # waypoints per plan (START + intermediates + END)
 INSERTION_GAP_S   = 3.0    # seconds between successive t_start values
 DEFAULT_INTERVAL_S = 0.5   # OBB sampling interval for the R-Tree
@@ -605,11 +605,12 @@ class SequentialConflictRealtimeBenchmark:
         # ENABLE_VISUALIZATION = True at the top of this file.
         if ENABLE_VISUALIZATION:
             try:
-                BG = "#0f1117"
+                BG = "white"
+                FG = "#111111"
                 fig = plt.figure(figsize=(14, 7), facecolor=BG)
                 fig.canvas.manager.set_window_title("UAV Conflict Resolver — Benchmark Routes")
                 fig.text(0.5, 0.95, "Benchmark: Sequential Conflict Routes — Before and After Resolution",
-                         ha="center", va="center", fontsize=14, fontweight="bold", color="white")
+                         ha="center", va="center", fontsize=14, fontweight="bold", color=FG)
 
                 # Prepare plan dictionaries keyed by integer id
                 before_plans = {pid: fp for pid, fp in self.original_plans.items()}
@@ -626,7 +627,7 @@ class SequentialConflictRealtimeBenchmark:
                 ]:
                     ax = fig.add_subplot(1, 2, col + 1, projection="3d")
                     ax.set_facecolor(BG)
-                    ax.set_title(title, color="white", fontsize=11, pad=10)
+                    ax.set_title(title, color=FG, fontsize=11, pad=10)
 
                     for i, (pid, fp) in enumerate(sorted(plan_dict.items())):
                         if fp is None:
@@ -646,10 +647,10 @@ class SequentialConflictRealtimeBenchmark:
                         ax.scatter(trace[0, 1], trace[0, 2], trace[0, 3] + z_offset, color=color, s=18, marker="o", zorder=5)
                         ax.scatter(trace[-1, 1], trace[-1, 2], trace[-1, 3] + z_offset, color=color, s=18, marker="^", zorder=5)
 
-                    ax.set_xlabel("X (m)", color="white", labelpad=4)
-                    ax.set_ylabel("Y (m)", color="white", labelpad=4)
-                    ax.set_zlabel("Z (m)", color="white", labelpad=4)
-                    ax.tick_params(colors="white")
+                    ax.set_xlabel("X (m)", color=FG, labelpad=4)
+                    ax.set_ylabel("Y (m)", color=FG, labelpad=4)
+                    ax.set_zlabel("Z (m)", color=FG, labelpad=4)
+                    ax.tick_params(colors=FG)
                     for pane in [ax.xaxis.pane, ax.yaxis.pane, ax.zaxis.pane]:
                         try:
                             pane.fill = False
