@@ -208,6 +208,27 @@ class UAVOperator:
             print(tabulate(formatted_data, headers=headers, tablefmt="grid"))
             print()
 
+    def notify_validation_service(self, mission_manager_id, mission_id):
+        mission = self.missions[mission_manager_id][mission_id]["mission"]
+        uav_id = self.missions[mission_manager_id][mission_id]["assigned_uav_id"]
+        flightplans = self.missions[mission_manager_id][mission_id]["flightplans"]
+        
+        topic = Topics.VALIDATION_MISSION_STATUS_UPDATE
+        msg = {
+            "mission_manager_id": mission_manager_id,
+            "uav_operator_id": self.id,
+            "mission_id": mission_id,
+            "mission_type": mission.mission_type,
+            "mission_status": mission.status,
+            "stop_list": mission.stop_list,
+            "stop_times": mission.stop_times,
+            "landing_time": mission.landing_time,
+            "cancellation_reason": mission.cancellation_reason,
+            "uav_id": uav_id,
+            "flightplans": flightplans
+        }
+        self.send_mqtt_msg(topic, json.dumps(msg))
+
     # ----------------------
     # --- USpace Methods ---
     # ----------------------
@@ -650,7 +671,8 @@ class UAVOperator:
             mission_id, 
             MissionStatus.IN_PROGRESS
         )
-        # TODO: send flightplan to UAV for execution
+        
+        self.notify_validation_service(mission_manager_id, mission_id)
 
     def on_request_vertiport_info_response(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())

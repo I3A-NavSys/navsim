@@ -50,3 +50,6 @@ class Topics:
 
     # Mission Manager Topics
     MISSION_STATUS_UPDATE = "mission_managers/missions/status_update"
+
+    # Validation Topics
+    VALIDATION_MISSION_STATUS_UPDATE = "validation/mission_managers/missions/status_update"

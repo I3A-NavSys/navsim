@@ -34,48 +34,34 @@ def parse_str_list(str_list: str) -> list:
 def on_mission_msg(client, userdata, msg):
     data = json.loads(msg.payload.decode())
     mission_mng_id = data["mission_manager_id"]
-    uav_operator_id = data.get("uav_operator_id")
+    uav_operator_id = data["uav_operator_id"]
     mission_id = data["mission_id"]
-    mission_type = data.get("mission_type", "")
-    mission_status = data.get("mission_status", "")
-    stop_list = data.get("stop_list", [])
-    stop_times = data.get("stop_times", [])
-    landing_time = data.get("landing_time", None)
+    mission_type = data["mission_type"]
+    mission_status = data["mission_status"]
+    stop_list = data["stop_list"]
+    stop_times = data["stop_times"]
+    landing_time = data["landing_time"]
+    cancellation_reason = data["cancellation_reason"]
+    uav_id = data["uav_id"]
+    flightplans = data["flightplans"]
 
-    start_msg = mission_status == ""
-
-    if f"{mission_mng_id} - {mission_id}" not in missions:
-        missions[f"{mission_mng_id} - {mission_id}"] = {
-            "start_time": None, 
-            "end_time": None, 
-            "uav_operator_id": uav_operator_id,
-            "mission_type": None,
-            "stop_list": None,
-            "stop_times": None,
-            "landing_time": None,
-            "status": None
-        }
-
-    if start_msg:
+    if mission_status == MissionStatus.PENDING:
+        missions[f"{mission_mng_id} - {mission_id}"] = {}
         missions[f"{mission_mng_id} - {mission_id}"]["start_time"] = datetime.now().strftime("%d-%m-%Y %H:%M:%S:%f")
-        missions[f"{mission_mng_id} - {mission_id}"]["stop_list"] = stop_list
-        missions[f"{mission_mng_id} - {mission_id}"]["mission_type"] = mission_type
-        missions[f"{mission_mng_id} - {mission_id}"]["stop_times"] = stop_times
-        missions[f"{mission_mng_id} - {mission_id}"]["landing_time"] = landing_time
 
     else:
         missions[f"{mission_mng_id} - {mission_id}"]["end_time"] = datetime.now().strftime("%d-%m-%Y %H:%M:%S:%f")
-        missions[f"{mission_mng_id} - {mission_id}"]["status"] = MissionStatus.IN_PROGRESS
 
-def on_mission_cancelled(client, userdata, msg):
-    data = json.loads(msg.payload.decode())
-    mission_mng_id = data["mission_manager_id"]
-    mission_id = data["mission_id"]
-
-    if f"{mission_mng_id} - {mission_id}" in missions:
-        missions[f"{mission_mng_id} - {mission_id}"]["end_time"] = datetime.now().strftime("%d-%m-%Y %H:%M:%S:%f")
-        missions[f"{mission_mng_id} - {mission_id}"]["status"] = MissionStatus.CANCELLED
-
+    missions[f"{mission_mng_id} - {mission_id}"]["uav_operator_id"] = uav_operator_id
+    missions[f"{mission_mng_id} - {mission_id}"]["mission_type"] = mission_type
+    missions[f"{mission_mng_id} - {mission_id}"]["stop_list"] = stop_list
+    missions[f"{mission_mng_id} - {mission_id}"]["stop_times"] = stop_times
+    missions[f"{mission_mng_id} - {mission_id}"]["landing_time"] = landing_time
+    missions[f"{mission_mng_id} - {mission_id}"]["status"] = mission_status
+    missions[f"{mission_mng_id} - {mission_id}"]["cancellation_reason"] = cancellation_reason
+    missions[f"{mission_mng_id} - {mission_id}"]["uav_id"] = uav_id
+    missions[f"{mission_mng_id} - {mission_id}"]["flightplans"] = flightplans
+    
 def on_route_requested(client, userdata, msg):
     data = json.loads(msg.payload.decode())
     grid = data["grid"]

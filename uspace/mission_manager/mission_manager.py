@@ -114,6 +114,25 @@ class MissionManager:
 
         return sorted(uav_operators), sorted(vertiport_operators)
 
+    def notify_validation_service(self, mission_id):
+        mission = self.missions[mission_id]
+        
+        topic = Topics.VALIDATION_MISSION_STATUS_UPDATE
+        msg = {
+            "mission_manager_id": self.id,
+            "uav_operator_id": mission.uav_operator_id,
+            "mission_id": mission_id,
+            "mission_type": mission.mission_type,
+            "mission_status": mission.status,
+            "stop_list": mission.stop_list,
+            "stop_times": mission.stop_times,
+            "landing_time": mission.landing_time,
+            "cancellation_reason": mission.cancellation_reason,
+            "uav_id": None,
+            "flightplans": None
+        }
+        self.send_mqtt_msg(topic, json.dumps(msg))
+
     # ----------------------
     # --- USpace Methods ---
     # ----------------------
@@ -188,6 +207,9 @@ class MissionManager:
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
 
+        # Notify Validation Service for time tracking
+        self.notify_validation_service(mission_id)
+
     # ----------------------
     # --- MQTT Callbacks ---
     # ----------------------
@@ -208,6 +230,9 @@ class MissionManager:
         # Update mission status and cancellation reason
         self.missions[mission_id].status = MissionStatus.CANCELLED
         self.missions[mission_id].cancellation_reason = cancellation_reason
+
+        # Notify Validation Service
+        self.notify_validation_service(mission_id)
 
     def on_receive_vertiport_operator_list(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())
@@ -230,7 +255,7 @@ class MissionManager:
     def on_receive_uav_mission_update(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())
 
-        uav_operator_id = data["mission_manager_id"]
+        uav_operator_id = data["uav_operator_id"]
         mission_id = data["mission_id"]
         mission_status = data["mission_status"]
 
@@ -246,3 +271,6 @@ class MissionManager:
             print(f"  Mission Status: {mission_status}")
             print("----------------------------------------------")
             print()
+
+        # Notify Validation Service
+        self.notify_validation_service(mission_id)
