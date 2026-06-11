@@ -61,18 +61,10 @@ def on_mission_msg(client, userdata, msg):
     missions[f"{mission_mng_id} - {mission_id}"]["cancellation_reason"] = cancellation_reason
     missions[f"{mission_mng_id} - {mission_id}"]["uav_id"] = uav_id
     missions[f"{mission_mng_id} - {mission_id}"]["flightplans"] = flightplans
-    
-def on_route_requested(client, userdata, msg):
-    data = json.loads(msg.payload.decode())
-    grid = data["grid"]
-    raw_flightplan = data["flightplan"]
-
-    airspace["grid"] = grid
-    airspace["flightplans"].append(raw_flightplan)
 
 
 # Load environment variables
-env_path = "/home/tetemo/Escritorio/UCLM/TRABAJO/navsim/uspace/platgdia/dtblocks/.env"
+env_path = f"{project_root_path}/uspace/platgdia/dtblocks/.env"
 load_dotenv(env_path)
 
 # Get Configuration Variables
@@ -112,37 +104,13 @@ mqtt_client = MQTTService.build_client("VALIDATOR")
 failure = mqtt_client.connect(MQTT_HOST_ADDRESS, MQTT_HOST_PORT)
 
 # Set callbacks for topics
-for i in range(MAX_MISSION_MNG):
-    mqtt_client.message_callback_add(
-        f"{Topics.MISSION_STATUS_UPDATE}/MSSN_MNG_{i}",
-        on_mission_msg
-    )
-    mqtt_client.message_callback_add(
-        f"{Topics.CANCEL_MISSION}/MSSN_MNG_{i}",
-        on_mission_cancelled
-    )
-
-for i in range(MAX_UAV_OPS):
-    mqtt_client.message_callback_add(
-        f"{Topics.MISSION_UAV_SERVICE}/UAV_OP_{i}",
-        on_mission_msg
-    )
-    mqtt_client.message_callback_add(
-        f"{Topics.REQUEST_ROUTE}/UAV_OP_{i}",
-        on_route_requested
-    )
-
+mqtt_client.message_callback_add(
+    Topics.VALIDATION_MISSION_STATUS_UPDATE,
+    on_mission_msg
+)
 
 # Subscribe to necessary topics
-# Mission Manager Topics
-for i in range(MAX_MISSION_MNG):
-    mqtt_client.subscribe(f"{Topics.MISSION_STATUS_UPDATE}/MSSN_MNG_{i}")
-    mqtt_client.subscribe(f"{Topics.CANCEL_MISSION}/MSSN_MNG_{i}")
-
-# UAV Operator Topics
-for i in range(MAX_UAV_OPS):
-    mqtt_client.subscribe(f"{Topics.MISSION_UAV_SERVICE}/UAV_OP_{i}")
-    mqtt_client.subscribe(f"{Topics.REQUEST_ROUTE}/UAV_OP_{i}")
+mqtt_client.subscribe(Topics.VALIDATION_MISSION_STATUS_UPDATE)
 
 # Main loop
 try:
@@ -166,15 +134,3 @@ finally:
 
     with open(f"{results_file_path}/airspace_validation.json", "w") as file:
         json.dump(airspace, file, indent=4)
-
-    # Show results
-    # print("\n--- Missions ---")
-    # for mission_id, mission_data in missions.items():
-    #     print(f"Mission ID: {mission_id}")
-    #     print(f"  Start Time: {mission_data['start_time']}")
-    #     print(f"  End Time: {mission_data['end_time']}")
-    #     print(f"  Status: {mission_data['status']}")
-
-    # print("\n--- Airspace ---")
-    # print(f"Grid: {airspace['grid']}")
-    # print(f"Flightplans: {airspace['flightplans']}")
