@@ -16,7 +16,7 @@ def launch_simulation_cluster():
 
     # Define the exact execution order required by your architecture
     scripts_to_run = [
-        dtblocks_folder_path + "/validation/validator.py",
+        dtblocks_folder_path + "/validation/validation_dtb.py",
         dtblocks_folder_path + "/uspace_manager/uspace_manager_dtb.py",
         dtblocks_folder_path + "/vertiport_operator/vertiport_operator_dtb.py",
         dtblocks_folder_path + "/uav_operator/uav_operator_dtb.py",
