@@ -53,3 +53,4 @@ class Topics:
 
     # Validation Topics
     VALIDATION_MISSION_STATUS_UPDATE = "validation/mission_managers/missions/status_update"
+    VALIDATION_MISSION_UAV_SERVICE_RESPONSE = "validation/uav_operators/missions/request/response"
