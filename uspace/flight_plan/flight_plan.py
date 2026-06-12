@@ -291,7 +291,7 @@ class FlightPlan:
             i = wp
 
         if (i== 0) or (i == len(self.waypoints) - 1) or (i is None):
-            raise RuntimeError(f"Trying to smooth invalid WP (received label: {label})")
+            raise RuntimeError(f"Trying to smooth invalid WP: {i})")
       
         wp1 = self.waypoints[i-1]
         wp2 = self.waypoints[i]
@@ -583,6 +583,12 @@ class FlightPlan:
 
         trace_1_times = np.round(trace_1[:, 0], decimals)
         trace_2_times = np.round(trace_2[:, 0], decimals)
+
+        # Early return when the two plans do not overlap in time
+        overlap_start = max(trace_1_times[0], trace_2_times[0])
+        overlap_end   = min(trace_1_times[-1], trace_2_times[-1])
+        if overlap_start > overlap_end:
+            return [], np.array([])
 
         init_trace_1 = [[0]]
         init_trace_2 = [[0]]

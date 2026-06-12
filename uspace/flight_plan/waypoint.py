@@ -178,7 +178,7 @@ class Waypoint:
         wp2.acel = a2
         wp2.jerk = j2
         wp2.snap = s2
-        wp2.crkl = c2
+        wp2.crakle = c2
 
         return wp2
 
