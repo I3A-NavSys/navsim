@@ -30,10 +30,11 @@ class FlightPlan:
         self.target_yaw = None
         self.waypoints: SortedList[Waypoint] = SortedList([])
         self.time_waypoints: SortedList[float] = SortedList([])
+        self.labels_to_idx = {}
         self.length: int = 0
         self.figure_processes = []
 
-    def set_waypoint(self, wp=None, label="", time=None, pos=None, vel=None, heading=[0,0]):
+    def add_waypoint(self, wp=None, label=None, time=None, pos=None, vel=None, heading=[0,0]):
         if wp is None:
             if time is None:
                 if self.length == 0:
@@ -58,31 +59,51 @@ class FlightPlan:
                     else:
                         vel = status.vel
 
+            if label == None:
+                if self.length == 0:
+                    label = "default_label_0"
+                else:
+                    label = f"default_label_{self.length}"
+
             wp = Waypoint(label=label, t=time, pos=pos, vel=vel, heading=heading)
         
+        # Determine the index to insert the new waypoint based on its time
         index = self.time_waypoints.bisect_left(wp.t)
 
+        # Add label to the dictionary for quick access
+        self.labels_to_idx[wp.label] = index
+
         # Replace if the same time already exists
-        if index < self.length and self.time_waypoints[index] == wp.t:
-            self.waypoints[index] = wp
-        else:
-            self.waypoints.add(wp)
+        update_existing_wp = (
+            (index < self.length and self.time_waypoints[index] == wp.t) or
+            (index > 0 and index == self.length and self.time_waypoints[index - 1] == wp.t)
+        )
+        
+        if update_existing_wp:
+            old_wp = self.waypoints.pop(index)
+            self.time_waypoints.pop(index)
+            self.labels_to_idx.pop(old_wp.label, None)
+
+        # Insert the new waypoint and its time into the sorted lists
+        self.waypoints.add(wp)
+        self.time_waypoints.add(wp.t)
 
         self.length += 1
 
     def remove_waypoint(
         self, 
-        idx: Optional[int],  
+        idx: Optional[int] = None,  
         # label: Optional[str], 
-        time: Optional[float]
+        time: Optional[float] = None
     ) -> None:
         """
         Remove a waypoint from the flight plan by index, or time.
         If no index or time is provided, the last waypoint will be removed.
 
         Args:
-            idx (Optional[int]): The index of the waypoint to remove. If None, the waypoint will be removed by time.
-            time (Optional[float]): The time of the waypoint to remove. If None, the waypoint will be removed by index.
+            - idx (Optional[int]) : The index of the waypoint to remove. If None, the waypoint will be removed by time.
+            
+            - time (Optional[float]) : The time of the waypoint to remove. If None, the waypoint will be removed by index.
         """
 
         # Check if there is any waypoint to remove
@@ -94,19 +115,25 @@ class FlightPlan:
 
         # Remove the last waypoint
         if not remove_by_idx and not remove_by_time:
-            self.waypoints.pop()
+            wp = self.waypoints.pop()
             self.time_waypoints.pop()
+            self.labels_to_idx.pop(wp.label, None)
             self.length -= 1
             return
         
         # Remove by index
         if remove_by_idx:
             # Check if the index is valid
-            if idx < 0 or idx >= self.length:
+            is_not_valid = (
+                idx >= self.length or 
+                idx < -self.length
+            )
+            if is_not_valid:
                 raise IndexError(f"Index {idx} is out of range for FlightPlan of length {self.length}.")
             
-            self.waypoints.pop(idx)
+            wp = self.waypoints.pop(idx)
             self.time_waypoints.pop(idx)
+            self.labels_to_idx.pop(wp.label, None)
             self.length -= 1
             return
         
@@ -116,38 +143,99 @@ class FlightPlan:
         else:
             pointed_wp_idx = self.time_waypoints.bisect_left(time)
         
-        self.waypoints.pop(pointed_wp_idx)
+        wp = self.waypoints.pop(pointed_wp_idx)
         self.time_waypoints.pop(pointed_wp_idx)
+        self.labels_to_idx.pop(wp.label, None)
         self.length -= 1
-        
+        return
 
-    def get_index_from_label(self, label: str) -> Optional[int]:
-        for i, wp in enumerate(self.waypoints):
-            if wp.label == label:
-                return i
+    def get_idx_by_label(self, label: str) -> Optional[int]:
+        """
+        Get the index of a waypoint by its label.
+
+        Args:
+            - label (str) : The label of the waypoint to find.
+
+        Returns:
+            Optional[int] : The index of the waypoint if found, otherwise None.
+        """
+
+        if label in self.labels_to_idx:
+            return self.labels_to_idx[label]
         return None
-    
-    def get_running_waypoint(self, t: float):
-        return self.waypoints[self.get_running_index_from_time(t)]
 
-    def get_running_index_from_time(self, t: float):
+    def get_running_waypoint(self, time: float) -> Optional[Waypoint]:
         """
-        It returns the WP the UAV is currently executing
-        """
+        Get the waypoint that the UAV is executing at a given time.
+
+        Args:
+            - time (float) : The time to check for the executing waypoint. 
         
-        index = self.get_target_index_from_time(t)
-        running_i = 0 if index == 0 else index - 1
-        return running_i
+        Returns:
+            Optional[Waypoint] : The waypoint being executed at the given time, or None if no waypoint is found.
+        """
+
+        waypoint_idx = self.get_running_waypoint_idx(time)
+        
+        if waypoint_idx is None:
+            return None
+        
+        return self.waypoints[waypoint_idx]
+
+    def get_running_waypoint_idx(self, time: float) -> Optional[int]:
+        """
+        Get the index of the waypoint that the UAV is executing at a given time.
+
+        Args:
+            - time (float) : The time to check for the executing waypoint. 
+
+        Returns:
+            Optional[int] : The index of the waypoint being executed at the given time, or None if no waypoint is found.
+        """
+
+        if self.length == 0:
+            return None
+        
+        waypoint_idx = self.time_waypoints.bisect_right(time) - 1
+        return waypoint_idx
+
+    def get_target_waypoint(self, time: float) -> Optional[Waypoint]:
+        """
+        Get the waypoint that the UAV is flying to at a given time.
+
+        Args:
+            - time (float) : The time to check for the target waypoint. 
+
+        Returns:
+            Optional[Waypoint] : The waypoint being targeted at the given time, or None if no waypoint is found.
+        """
+
+        waypoint_idx = self.get_target_waypoint_idx(time)
+        
+        if waypoint_idx is None:
+            return None
+        
+        return self.waypoints[waypoint_idx]
     
-    def get_target_index_from_time(self, t: float):
+    def get_target_waypoint_idx(self, time: float) -> Optional[int]:
         """
-        It returns the WP the UAV is flying to.
-        Note: if t == wp.t, that wp is also considered as target.
-        O(log n) binary search instead of O(n) linear scan.
+        Get the index of the waypoint that the UAV is flying to at a given time.
+
+        Args:
+            - time (float) : The time to check for the target waypoint. 
+
+        Returns:
+            Optional[int] : The index of the waypoint being targeted at the given time, or None if no waypoint is found.
         """
-        if not self.waypoints:
-            return 0
-        return bisect.bisect_left(_TimesView(self.waypoints), t)
+
+        if self.length == 0:
+            return None
+        
+        waypoint_idx = self.time_waypoints.bisect_right(time)
+        
+        if waypoint_idx >= self.length:
+            return None
+        return waypoint_idx
     
     def copy(self):
         """Realiza una copia profunda de la instancia actual de FlightPlan."""
