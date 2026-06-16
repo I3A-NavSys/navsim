@@ -128,8 +128,6 @@ class MissionManager:
             "stop_times": mission.stop_times,
             "landing_time": mission.landing_time,
             "cancellation_reason": mission.cancellation_reason,
-            "uav_id": None,
-            "flightplans": None
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
 
@@ -183,6 +181,9 @@ class MissionManager:
             status=MissionStatus.PENDING
         )
 
+        # Notify Validation Service for time tracking
+        self.notify_validation_service(mission_id)
+
         # Logging
         if self.verbose:
             print("----------------------------------------------")
@@ -206,9 +207,6 @@ class MissionManager:
             "landing_time": landing_time,
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
-
-        # Notify Validation Service for time tracking
-        self.notify_validation_service(mission_id)
 
     # ----------------------
     # --- MQTT Callbacks ---

@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   mqtt_dtblock:
     image: eclipse-mosquitto:2.0

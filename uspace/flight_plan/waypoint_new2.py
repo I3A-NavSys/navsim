@@ -2,6 +2,11 @@ import numpy as np
 
 
 class Waypoint:
+    # __slots__ eliminates per-instance __dict__, cutting ~200 B per object
+    # and slightly speeding up attribute access.
+    __slots__ = ('label', 't', 'pos', 'vel', 'acel', 'jerk', 'snap', 'crakle',
+                 'fly_over', 'heading')
+
     def __init__(
         self, 
         label='', 
@@ -25,6 +30,9 @@ class Waypoint:
         self.crakle = np.array(crakle)     # ckl           (m/s5)
         self.fly_over = fly_over           # mandatory transit (bool)
         self.heading = heading             # orientation vector [x, y]
+
+    def __lt__(self, other) -> bool:
+        return self.t < other.t
 
     def stop(self):
         self.vel  = np.zeros(3)

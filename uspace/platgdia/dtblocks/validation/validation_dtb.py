@@ -31,7 +31,7 @@ def parse_str_list(str_list: str) -> list:
     except json.JSONDecodeError:
         raise ValueError(f"Failed to parse list: {str_list}")
     
-def on_mission_msg(client, userdata, msg):
+def on_mission_status_update(client, userdata, msg):
     data = json.loads(msg.payload.decode())
     mission_mng_id = data["mission_manager_id"]
     uav_operator_id = data["uav_operator_id"]
@@ -42,23 +42,35 @@ def on_mission_msg(client, userdata, msg):
     stop_times = data["stop_times"]
     landing_time = data["landing_time"]
     cancellation_reason = data["cancellation_reason"]
+
+    match mission_status:
+        case MissionStatus.PENDING:
+            missions[f"{mission_mng_id} - {mission_id}"] = {}
+            missions[f"{mission_mng_id} - {mission_id}"]["start_time"] = datetime.now().strftime("%d-%m-%Y %H:%M:%S:%f")
+            missions[f"{mission_mng_id} - {mission_id}"]["end_time"] = None
+            missions[f"{mission_mng_id} - {mission_id}"]["uav_operator_id"] = uav_operator_id
+            missions[f"{mission_mng_id} - {mission_id}"]["mission_type"] = mission_type
+            missions[f"{mission_mng_id} - {mission_id}"]["stop_list"] = stop_list
+            missions[f"{mission_mng_id} - {mission_id}"]["stop_times"] = stop_times
+            missions[f"{mission_mng_id} - {mission_id}"]["landing_time"] = landing_time
+            missions[f"{mission_mng_id} - {mission_id}"]["status"] = mission_status
+            
+        case MissionStatus.IN_PROGRESS:
+            missions[f"{mission_mng_id} - {mission_id}"]["end_time"] = datetime.now().strftime("%d-%m-%Y %H:%M:%S:%f")
+            missions[f"{mission_mng_id} - {mission_id}"]["status"] = mission_status
+
+        case MissionStatus.CANCELLED:
+            missions[f"{mission_mng_id} - {mission_id}"]["end_time"] = datetime.now().strftime("%d-%m-%Y %H:%M:%S:%f")
+            missions[f"{mission_mng_id} - {mission_id}"]["status"] = mission_status
+            missions[f"{mission_mng_id} - {mission_id}"]["cancellation_reason"] = cancellation_reason
+    
+def on_mission_uav_service_response(client, userdata, msg):
+    data = json.loads(msg.payload.decode())
+    mission_mng_id = data["mission_manager_id"]
+    mission_id = data["mission_id"]
     uav_id = data["uav_id"]
     flightplans = data["flightplans"]
 
-    if mission_status == MissionStatus.PENDING:
-        missions[f"{mission_mng_id} - {mission_id}"] = {}
-        missions[f"{mission_mng_id} - {mission_id}"]["start_time"] = datetime.now().strftime("%d-%m-%Y %H:%M:%S:%f")
-
-    else:
-        missions[f"{mission_mng_id} - {mission_id}"]["end_time"] = datetime.now().strftime("%d-%m-%Y %H:%M:%S:%f")
-
-    missions[f"{mission_mng_id} - {mission_id}"]["uav_operator_id"] = uav_operator_id
-    missions[f"{mission_mng_id} - {mission_id}"]["mission_type"] = mission_type
-    missions[f"{mission_mng_id} - {mission_id}"]["stop_list"] = stop_list
-    missions[f"{mission_mng_id} - {mission_id}"]["stop_times"] = stop_times
-    missions[f"{mission_mng_id} - {mission_id}"]["landing_time"] = landing_time
-    missions[f"{mission_mng_id} - {mission_id}"]["status"] = mission_status
-    missions[f"{mission_mng_id} - {mission_id}"]["cancellation_reason"] = cancellation_reason
     missions[f"{mission_mng_id} - {mission_id}"]["uav_id"] = uav_id
     missions[f"{mission_mng_id} - {mission_id}"]["flightplans"] = flightplans
 
@@ -95,7 +107,7 @@ LOCATION = parse_str_list(os.getenv("LOCATION", '[[100, 500], [-600, -200]]'))
 missions = {}
 # {grid: list[tuple(int, int, str, int)], flightplans: list[dict[str, Any]]}
 airspace = {"grid": [], "flightplans": []}
-results_file_path = project_root_path + "/uspace/platgdia/dtblocks/validation"
+results_file_path = f"{project_root_path}/uspace/platgdia/dtblocks/validation"
 
 # Build MQTT Client
 mqtt_client = MQTTService.build_client("VALIDATOR")
@@ -104,13 +116,12 @@ mqtt_client = MQTTService.build_client("VALIDATOR")
 failure = mqtt_client.connect(MQTT_HOST_ADDRESS, MQTT_HOST_PORT)
 
 # Set callbacks for topics
-mqtt_client.message_callback_add(
-    Topics.VALIDATION_MISSION_STATUS_UPDATE,
-    on_mission_msg
-)
+mqtt_client.message_callback_add(Topics.VALIDATION_MISSION_STATUS_UPDATE, on_mission_status_update)
+mqtt_client.message_callback_add(Topics.VALIDATION_MISSION_UAV_SERVICE_RESPONSE, on_mission_uav_service_response)
 
 # Subscribe to necessary topics
 mqtt_client.subscribe(Topics.VALIDATION_MISSION_STATUS_UPDATE)
+mqtt_client.subscribe(Topics.VALIDATION_MISSION_UAV_SERVICE_RESPONSE)
 
 # Main loop
 try:
@@ -132,5 +143,5 @@ finally:
     with open(f"{results_file_path}/missions_validation.json", "w") as file:
         json.dump(missions, file, indent=4)
 
-    with open(f"{results_file_path}/airspace_validation.json", "w") as file:
-        json.dump(airspace, file, indent=4)
+    # with open(f"{results_file_path}/airspace_validation.json", "w") as file:
+    #     json.dump(airspace, file, indent=4)

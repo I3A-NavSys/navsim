@@ -7,16 +7,17 @@ import mplcursors
 import matplotlib.pyplot as plt
 from matplotlib.backend_tools import ToolToggleBase
 from matplotlib.collections import PathCollection
-from scipy.spatial.transform import Rotation
 import multiprocessing as mp
+# import bisect
+from sortedcontainers import SortedList
 
 
-from uspace.flight_plan.waypoint import Waypoint
+from uspace.flight_plan.waypoint_new2 import Waypoint
 from uspace.flight_plan.command import Command
 
 
-# matplotlib.use("Qt5Agg")
-# plt.rcParams["toolbar"] = "toolmanager"
+matplotlib.use("Qt5Agg")
+plt.rcParams["toolbar"] = "toolmanager"
 
 class FlightPlan:
 
@@ -27,29 +28,30 @@ class FlightPlan:
         self.max_var_lin_vel = 5        # maximum variation in linear  velocity   [  m/s]
         self.max_var_ang_vel = 1        # maximum variation in angular velocity   [rad/s]
         self.target_yaw = None
-        self.waypoints: List[Waypoint] = []
+        self.waypoints: SortedList[Waypoint] = SortedList([])
+        self.time_waypoints: SortedList[float] = SortedList([])
+        self.labels_to_idx = {}
+        self.length: int = 0
         self.figure_processes = []
 
-    def set_waypoint(self, wp=None, label="", time=None, pos=None, vel=None, heading=[0,0]):
-        numWPs = len(self.waypoints)
-
+    def add_waypoint(self, wp=None, label=None, time=None, pos=None, vel=None, heading=[0,0]):
         if wp is None:
             if time is None:
-                if numWPs == 0:
+                if self.length == 0:
                     time = 0
                 else:
                     time = self.finish_time() + 1
 
-            if numWPs > 0:  status = self.status_at_time(time)
+            if self.length > 0:  status = self.status_at_time(time)
 
             if pos is None:
-                if numWPs == 0:
+                if self.length == 0:
                     pos = [0,0,0]
                 else:
                     pos = status.pos
 
             if vel is None:
-                if numWPs == 0:
+                if self.length == 0:
                     vel = [0,0,0]
                 else:
                     if time <= self.init_time():
@@ -57,55 +59,183 @@ class FlightPlan:
                     else:
                         vel = status.vel
 
+            if label == None:
+                if self.length == 0:
+                    label = "default_label_0"
+                else:
+                    label = f"default_label_{self.length}"
+
             wp = Waypoint(label=label, t=time, pos=pos, vel=vel, heading=heading)
         
-        index = self.get_target_index_from_time(wp.t)
+        # Determine the index to insert the new waypoint based on its time
+        index = self.time_waypoints.bisect_left(wp.t)
+
+        # Add label to the dictionary for quick access
+        self.labels_to_idx[wp.label] = index
 
         # Replace if the same time already exists
-        if index < numWPs and self.waypoints[index].t == wp.t:
-            self.waypoints[index] = wp
-        else:
-            self.waypoints.insert(index, wp)
-
-    def remove_negative_time(self):
-        if self.init_time() < 0:
-            self.postpone(-self.init_time())
-
-    def remove_waypoint_at_time(self, t: float) -> None:
-        """Removes the waypoint at a specific time `t` from the flight plan."""
-        self.waypoints = list(filter(lambda wp: wp.t != t, self.waypoints))
-
-    def get_index_from_label(self, label: str) -> Optional[int]:
-        for i, wp in enumerate(self.waypoints):
-            if wp.label == label:
-                return i
-        return None
-    
-    def get_running_waypoint(self, t: float):
-        return self.waypoints[self.get_running_index_from_time(t)]
-
-    def get_running_index_from_time(self, t: float):
-        """
-        It returns the WP the UAV is currently executing
-        """
+        update_existing_wp = (
+            (index < self.length and self.time_waypoints[index] == wp.t) or
+            (index > 0 and index == self.length and self.time_waypoints[index - 1] == wp.t)
+        )
         
-        index = self.get_target_index_from_time(t)
-        running_i = 0 if index == 0 else index - 1
-        return running_i
+        if update_existing_wp:
+            old_wp = self.waypoints.pop(index)
+            self.time_waypoints.pop(index)
+            self.labels_to_idx.pop(old_wp.label, None)
+
+        # Insert the new waypoint and its time into the sorted lists
+        self.waypoints.add(wp)
+        self.time_waypoints.add(wp.t)
+
+        self.length += 1
+
+    def remove_waypoint(
+        self, 
+        idx: Optional[int] = None,  
+        # label: Optional[str], 
+        time: Optional[float] = None
+    ) -> None:
+        """
+        Remove a waypoint from the flight plan by index, or time.
+        If no index or time is provided, the last waypoint will be removed.
+
+        Args:
+            - idx (Optional[int]) : The index of the waypoint to remove. If None, the waypoint will be removed by time.
+            
+            - time (Optional[float]) : The time of the waypoint to remove. If None, the waypoint will be removed by index.
+        """
+
+        # Check if there is any waypoint to remove
+        if self.length == 0:
+            return
+
+        remove_by_idx = idx is not None
+        remove_by_time = time is not None
+
+        # Remove the last waypoint
+        if not remove_by_idx and not remove_by_time:
+            wp = self.waypoints.pop()
+            self.time_waypoints.pop()
+            self.labels_to_idx.pop(wp.label, None)
+            self.length -= 1
+            return
+        
+        # Remove by index
+        if remove_by_idx:
+            # Check if the index is valid
+            is_not_valid = (
+                idx >= self.length or 
+                idx < -self.length
+            )
+            if is_not_valid:
+                raise IndexError(f"Index {idx} is out of range for FlightPlan of length {self.length}.")
+            
+            wp = self.waypoints.pop(idx)
+            self.time_waypoints.pop(idx)
+            self.labels_to_idx.pop(wp.label, None)
+            self.length -= 1
+            return
+        
+        # Remove by time
+        if time >= self.time_waypoints[-1]:
+            pointed_wp_idx = self.length - 1
+        else:
+            pointed_wp_idx = self.time_waypoints.bisect_left(time)
+        
+        wp = self.waypoints.pop(pointed_wp_idx)
+        self.time_waypoints.pop(pointed_wp_idx)
+        self.labels_to_idx.pop(wp.label, None)
+        self.length -= 1
+        return
+
+    def get_idx_by_label(self, label: str) -> Optional[int]:
+        """
+        Get the index of a waypoint by its label.
+
+        Args:
+            - label (str) : The label of the waypoint to find.
+
+        Returns:
+            Optional[int] : The index of the waypoint if found, otherwise None.
+        """
+
+        if label in self.labels_to_idx:
+            return self.labels_to_idx[label]
+        return None
+
+    def get_running_waypoint(self, time: float) -> Optional[Waypoint]:
+        """
+        Get the waypoint that the UAV is executing at a given time.
+
+        Args:
+            - time (float) : The time to check for the executing waypoint. 
+        
+        Returns:
+            Optional[Waypoint] : The waypoint being executed at the given time, or None if no waypoint is found.
+        """
+
+        waypoint_idx = self.get_running_waypoint_idx(time)
+        
+        if waypoint_idx is None:
+            return None
+        
+        return self.waypoints[waypoint_idx]
+
+    def get_running_waypoint_idx(self, time: float) -> Optional[int]:
+        """
+        Get the index of the waypoint that the UAV is executing at a given time.
+
+        Args:
+            - time (float) : The time to check for the executing waypoint. 
+
+        Returns:
+            Optional[int] : The index of the waypoint being executed at the given time, or None if no waypoint is found.
+        """
+
+        if self.length == 0:
+            return None
+        
+        waypoint_idx = self.time_waypoints.bisect_right(time) - 1
+        return waypoint_idx
+
+    def get_target_waypoint(self, time: float) -> Optional[Waypoint]:
+        """
+        Get the waypoint that the UAV is flying to at a given time.
+
+        Args:
+            - time (float) : The time to check for the target waypoint. 
+
+        Returns:
+            Optional[Waypoint] : The waypoint being targeted at the given time, or None if no waypoint is found.
+        """
+
+        waypoint_idx = self.get_target_waypoint_idx(time)
+        
+        if waypoint_idx is None:
+            return None
+        
+        return self.waypoints[waypoint_idx]
     
-    def get_target_index_from_time(self, t: float):
+    def get_target_waypoint_idx(self, time: float) -> Optional[int]:
         """
-        It returns the WP the UAV is flying to
-        Note: if t == wp.t, that wp is also considered as target, although they are at the same instant
+        Get the index of the waypoint that the UAV is flying to at a given time.
+
+        Args:
+            - time (float) : The time to check for the target waypoint. 
+
+        Returns:
+            Optional[int] : The index of the waypoint being targeted at the given time, or None if no waypoint is found.
         """
 
-        if not self.waypoints:
-            return 0
-
-        for i, wp in enumerate(self.waypoints):
-            if t <= wp.t:
-                return i
-        return i + 1
+        if self.length == 0:
+            return None
+        
+        waypoint_idx = self.time_waypoints.bisect_right(time)
+        
+        if waypoint_idx >= self.length:
+            return None
+        return waypoint_idx
     
     def copy(self):
         """Realiza una copia profunda de la instancia actual de FlightPlan."""
@@ -189,6 +319,15 @@ class FlightPlan:
             return 0
         else:
             return self.waypoints[-1].t
+
+    def remove_negative_time(self) -> None:
+        """
+        Postpone the flight plan if it contains waypoints with negative time, 
+        so that the first waypoint starts at time 0.
+        """
+        if self.time_waypoints[0] < 0:
+            self.postpone(-self.time_waypoints[0])
+
 
     def set_uniform_velocity(self, wp=None, vel=None):
         # Compute MRU velocity for all WPs
@@ -433,110 +572,45 @@ class FlightPlan:
         if t > self.finish_time():
             return self.waypoints[-1].interpolation(t)
 
-        # Get the current waypoint
-        for i in range(1, len(self.waypoints)):
-            if t < self.waypoints[i].t:
-                wp1 = self.waypoints[i - 1]
-                wp2 = wp1.interpolation(t)
-                return wp2
-            
-        # index = self.GetRunningIndexFromTime(t)
-        # wp2 = self.waypoints[index].interpolation(t)
-        # return wp2
+        # Binary search: find the last waypoint whose time <= t, O(log n).
+        idx = bisect.bisect_right(_TimesView(self.waypoints), t) - 1
+        return self.waypoints[max(idx, 0)].interpolation(t)
     
     def trace(self, timeStep):
-        # This method expands the flight plan behavior over time
+        # This method expands the flight plan behavior over time.
+        # Vectorised segment-by-segment Taylor expansion:
+        #   1. searchsorted assigns every instant to its segment in O(n log n)
+        #   2. per segment all instants are evaluated in a single numpy broadcast
+        # Overall: O(n_wp + n_pts) instead of the previous O(n_pts * log(n_wp)).
         instants = np.arange(self.init_time(), self.finish_time() + timeStep, timeStep)
-        tr = np.zeros((len(instants), 10))
+        tr = np.empty((len(instants), 10))
         tr[:, 0] = instants
-        
-        # Get position at each time instant
-        for i in range(len(instants)):
-            wp = self.status_at_time(tr[i, 0])
-            tr[i, 1:4] = wp.pos
-            tr[i, 4:7] = wp.vel
-            tr[i, 7:10] = wp.acel
-        
-        tr[-1, 4:7] = [0, 0, 0]  # Set velocity to zero at the last time instant
-        
+
+        wp_times = np.array([wp.t for wp in self.waypoints])
+        seg = np.searchsorted(wp_times, instants, side='right') - 1
+        seg = np.clip(seg, 0, len(self.waypoints) - 1)
+
+        for si in range(len(self.waypoints)):
+            mask = seg == si
+            if not np.any(mask):
+                continue
+            wp = self.waypoints[si]
+            dt  = (instants[mask] - wp.t)[:, None]  # (k,1) — broadcasts over xyz
+            dt2 = dt  * dt
+            dt3 = dt2 * dt
+            dt4 = dt3 * dt
+            dt5 = dt4 * dt
+            r, v, a = wp.pos, wp.vel, wp.acel
+            j, sn, c = wp.jerk, wp.snap, wp.crakle
+            tr[mask, 1:4]  = r + dt*v   + (dt2*0.5)*a  + (dt3/6)*j   + (dt4/24)*sn  + (dt5/120)*c
+            tr[mask, 4:7]  = v + dt*a   + (dt2*0.5)*j  + (dt3/6)*sn  + (dt4/24)*c
+            tr[mask, 7:10] = a + dt*j   + (dt2*0.5)*sn + (dt3/6)*c
+
+        tr[-1, 4:7] = 0.0   # zero velocity at the last instant
         return tr
 
     #------------------------------------------------------------------------------------------------------------------
     # UAV NAVIGATION
-
-    def get_command(self, currentTime, UAVpos, UAVvel, UAVrot : Rotation, WPheading, tToSolve) -> Command:
-        # UAVvel = current UAV vel in global system
-        # This function converts a flight plan position at certain time
-        # to a navigation command (desired velocity vector and rotation)        
-
-        # CURRENT UAV YAW
-        _, _, UAVyaw = UAVrot.as_euler('xyz', degrees=False)
-
-        # EXPECTED UAV POSE
-        expected = self.status_at_time(currentTime)
-
-        # COMPUTING CORRECTION VELOCITY (to achieve status.pos in 'tToSolve' seconds)
-        crVel = (expected.pos - UAVpos) / tToSolve
-
-        # COMPUTING COMMANDED VELOCITY
-        cmdVel = expected.vel + crVel
-        # print("cmdVel1:", cmdVel)
-
-        # SMOOTHING COMMANDED VELOCITY
-        varVel = cmdVel - UAVvel
-        # varVelMagnitude = np.linalg.norm(varVel)
-        # if varVelMagnitude > self.max_var_lin_vel:
-        #     varVel /= varVelMagnitude # Normalize
-        #     varVel *= self.max_var_lin_vel
-        # print("varVel:", varVel)
-
-        cmdVel = UAVvel + varVel
-        # print("cmdVel2:", cmdVel)
-
-        # COMPUTING DRONE RELATIVE LINEAR VELOCITY
-        cmdRelVel = UAVrot.inv().apply(cmdVel)
-        # print("cmdRelVel:", cmdRelVel)
-
-        # COMPUTING TARGET ERROR YAW
-        if WPheading is None:
-            targetDir = expected.vel.copy()
-            targetDir[2] = 0
-
-        else:
-            targetDir = WPheading
-
-        if np.linalg.norm(targetDir) > 0:
-            self.target_yaw = np.arctan2(targetDir[1], targetDir[0])
-        elif self.target_yaw is None:
-            self.target_yaw = UAVyaw
-
-        errorYaw = self.target_yaw - UAVyaw
-        while errorYaw < -np.pi:
-            errorYaw += 2*np.pi
-
-        while np.pi < errorYaw:
-            errorYaw -= 2*np.pi
-
-        # COMPUTING TARGET ANGULAR VELOCITY
-        currentWel = errorYaw / tToSolve
-        
-        # if currentWel < -self.max_var_ang_vel:
-        #     currentWel = -self.max_var_ang_vel
-        
-        # if self.max_var_ang_vel < currentWel:
-        #     currentWel = self.max_var_ang_vel
-
-        # CREATING COMMANDED RELATIVE VELOCITY VECTOR
-        cmd = Command(
-            on=True,
-            velX=cmdRelVel[0],
-            velY=cmdRelVel[1],
-            velZ=cmdRelVel[2],
-            rotZ=currentWel,
-            duration=tToSolve
-        )
-
-        return cmd
     
     def get_isaacsim_command(self, time, pos, lin_vel, yaw, heading, t_to_solve):
         # EXPECTED UAV POSE
@@ -601,12 +675,14 @@ class FlightPlan:
         if trace_1_times[-1] < trace_2_times[-1]:   end_trace_2 = np.where(trace_2_times == trace_1_times[-1])
         else:                                       end_trace_1 = np.where(trace_1_times == trace_2_times[-1])
 
-        distance_separation = np.abs(trace_1[init_trace_1[0][0]:end_trace_1[0][0], 1:4] - 
-                                     trace_2[init_trace_2[0][0]:end_trace_2[0][0], 1:4])
-        
-        distances = [np.linalg.norm(dist) for dist in distance_separation]
+        i1, e1 = init_trace_1[0][0], end_trace_1[0][0]
+        i2, e2 = init_trace_2[0][0], end_trace_2[0][0]
 
-        return distances, trace_1_times[init_trace_1[0][0]:end_trace_1[0][0]]
+        # Vectorised Euclidean distance: no Python loop, no redundant np.abs
+        diff = trace_1[i1:e1, 1:4] - trace_2[i2:e2, 1:4]
+        distances = np.linalg.norm(diff, axis=1)
+
+        return distances, trace_1_times[i1:e1]
 
     #------------------------------------------------------------------------------------------------------------------
     # INFORMATION AND FIGURES

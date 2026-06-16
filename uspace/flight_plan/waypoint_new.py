@@ -2,6 +2,11 @@ import numpy as np
 
 
 class Waypoint:
+    # __slots__ eliminates per-instance __dict__, cutting ~200 B per object
+    # and slightly speeding up attribute access.
+    __slots__ = ('label', 't', 'pos', 'vel', 'acel', 'jerk', 'snap', 'crakle',
+                 'fly_over', 'heading')
+
     def __init__(
         self, 
         label='', 

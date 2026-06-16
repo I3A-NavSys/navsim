@@ -9,14 +9,32 @@ from matplotlib.backend_tools import ToolToggleBase
 from matplotlib.collections import PathCollection
 from scipy.spatial.transform import Rotation
 import multiprocessing as mp
+import bisect
 
 
-from uspace.flight_plan.waypoint import Waypoint
+from uspace.flight_plan.waypoint_new import Waypoint
 from uspace.flight_plan.command import Command
 
 
 # matplotlib.use("Qt5Agg")
 # plt.rcParams["toolbar"] = "toolmanager"
+
+
+class _TimesView:
+    """Read-only adapter that lets bisect operate on waypoint times
+    without copying them into a new list.
+    """
+    __slots__ = ('_wps',)
+
+    def __init__(self, wps):
+        self._wps = wps
+
+    def __len__(self):
+        return len(self._wps)
+
+    def __getitem__(self, i):
+        return self._wps[i].t
+
 
 class FlightPlan:
 
@@ -95,17 +113,13 @@ class FlightPlan:
     
     def get_target_index_from_time(self, t: float):
         """
-        It returns the WP the UAV is flying to
-        Note: if t == wp.t, that wp is also considered as target, although they are at the same instant
+        It returns the WP the UAV is flying to.
+        Note: if t == wp.t, that wp is also considered as target.
+        O(log n) binary search instead of O(n) linear scan.
         """
-
         if not self.waypoints:
             return 0
-
-        for i, wp in enumerate(self.waypoints):
-            if t <= wp.t:
-                return i
-        return i + 1
+        return bisect.bisect_left(_TimesView(self.waypoints), t)
     
     def copy(self):
         """Realiza una copia profunda de la instancia actual de FlightPlan."""
@@ -433,32 +447,41 @@ class FlightPlan:
         if t > self.finish_time():
             return self.waypoints[-1].interpolation(t)
 
-        # Get the current waypoint
-        for i in range(1, len(self.waypoints)):
-            if t < self.waypoints[i].t:
-                wp1 = self.waypoints[i - 1]
-                wp2 = wp1.interpolation(t)
-                return wp2
-            
-        # index = self.GetRunningIndexFromTime(t)
-        # wp2 = self.waypoints[index].interpolation(t)
-        # return wp2
+        # Binary search: find the last waypoint whose time <= t, O(log n).
+        idx = bisect.bisect_right(_TimesView(self.waypoints), t) - 1
+        return self.waypoints[max(idx, 0)].interpolation(t)
     
     def trace(self, timeStep):
-        # This method expands the flight plan behavior over time
+        # This method expands the flight plan behavior over time.
+        # Vectorised segment-by-segment Taylor expansion:
+        #   1. searchsorted assigns every instant to its segment in O(n log n)
+        #   2. per segment all instants are evaluated in a single numpy broadcast
+        # Overall: O(n_wp + n_pts) instead of the previous O(n_pts * log(n_wp)).
         instants = np.arange(self.init_time(), self.finish_time() + timeStep, timeStep)
-        tr = np.zeros((len(instants), 10))
+        tr = np.empty((len(instants), 10))
         tr[:, 0] = instants
-        
-        # Get position at each time instant
-        for i in range(len(instants)):
-            wp = self.status_at_time(tr[i, 0])
-            tr[i, 1:4] = wp.pos
-            tr[i, 4:7] = wp.vel
-            tr[i, 7:10] = wp.acel
-        
-        tr[-1, 4:7] = [0, 0, 0]  # Set velocity to zero at the last time instant
-        
+
+        wp_times = np.array([wp.t for wp in self.waypoints])
+        seg = np.searchsorted(wp_times, instants, side='right') - 1
+        seg = np.clip(seg, 0, len(self.waypoints) - 1)
+
+        for si in range(len(self.waypoints)):
+            mask = seg == si
+            if not np.any(mask):
+                continue
+            wp = self.waypoints[si]
+            dt  = (instants[mask] - wp.t)[:, None]  # (k,1) — broadcasts over xyz
+            dt2 = dt  * dt
+            dt3 = dt2 * dt
+            dt4 = dt3 * dt
+            dt5 = dt4 * dt
+            r, v, a = wp.pos, wp.vel, wp.acel
+            j, sn, c = wp.jerk, wp.snap, wp.crakle
+            tr[mask, 1:4]  = r + dt*v   + (dt2*0.5)*a  + (dt3/6)*j   + (dt4/24)*sn  + (dt5/120)*c
+            tr[mask, 4:7]  = v + dt*a   + (dt2*0.5)*j  + (dt3/6)*sn  + (dt4/24)*c
+            tr[mask, 7:10] = a + dt*j   + (dt2*0.5)*sn + (dt3/6)*c
+
+        tr[-1, 4:7] = 0.0   # zero velocity at the last instant
         return tr
 
     #------------------------------------------------------------------------------------------------------------------
@@ -601,12 +624,14 @@ class FlightPlan:
         if trace_1_times[-1] < trace_2_times[-1]:   end_trace_2 = np.where(trace_2_times == trace_1_times[-1])
         else:                                       end_trace_1 = np.where(trace_1_times == trace_2_times[-1])
 
-        distance_separation = np.abs(trace_1[init_trace_1[0][0]:end_trace_1[0][0], 1:4] - 
-                                     trace_2[init_trace_2[0][0]:end_trace_2[0][0], 1:4])
-        
-        distances = [np.linalg.norm(dist) for dist in distance_separation]
+        i1, e1 = init_trace_1[0][0], end_trace_1[0][0]
+        i2, e2 = init_trace_2[0][0], end_trace_2[0][0]
 
-        return distances, trace_1_times[init_trace_1[0][0]:end_trace_1[0][0]]
+        # Vectorised Euclidean distance: no Python loop, no redundant np.abs
+        diff = trace_1[i1:e1, 1:4] - trace_2[i2:e2, 1:4]
+        distances = np.linalg.norm(diff, axis=1)
+
+        return distances, trace_1_times[i1:e1]
 
     #------------------------------------------------------------------------------------------------------------------
     # INFORMATION AND FIGURES

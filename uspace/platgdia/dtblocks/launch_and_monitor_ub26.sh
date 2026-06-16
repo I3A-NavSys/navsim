@@ -17,10 +17,14 @@ for SERVICE in $SERVICES; do
     # Launch a new terminal window natively using gnome-terminal
     # 'docker-compose logs -f' streams the logs in real-time
     # 'exec bash' ensures the terminal window remains open even if the container crashes or stops
-    # gnome-terminal -- bash -c "echo '=== Real-time Logs: $SERVICE ==='; echo ''; docker-compose logs -f $SERVICE; exec bash"
-    gnome-terminal -- bash -c "echo '=== Real-time Logs: $SERVICE ==='; echo ''; docker compose logs -f $SERVICE"
+    # ptyxis --new-window -- bash -c "echo '=== Real-time Logs: $SERVICE ==='; echo ''; docker-compose logs -f $SERVICE; exec bash"
+    ptyxis --new-window -- bash -c "echo '=== Real-time Logs: $SERVICE ==='; echo ''; docker compose logs -f $SERVICE"
 done
 
 echo "All log windows successfully opened."
 
-gnome-terminal -- bash -c "echo '=== Validator Script ==='; echo ''; /bin/python3.14 /home/ertete/Escritorio/UCLM/TRABAJO/navsim/uspace/platgdia/dtblocks/validation/validator.py; exec bash"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# PYTHON_BIN="$(which python)"
+
+# ptyxis --new-window -- bash -c "echo '=== Validator Script ==='; echo ''; /bin/python3.14 ${SCRIPT_DIR}/validation/validation_dtb.py; exec bash"
+ptyxis --new-window -- bash -c "echo '=== Validator Script ==='; echo ''; ${SCRIPT_DIR}/../../../.venv/bin/python ${SCRIPT_DIR}/validation/validation_dtb.py; exec bash"
