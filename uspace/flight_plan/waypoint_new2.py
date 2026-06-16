@@ -21,6 +21,7 @@ class Waypoint:
         heading=[0,0]
     ):
         self.label: str = label            # identifier to refer the waypoint
+        self.fly_over = fly_over           # mandatory transit (bool)
         self.t: float = t     # time          (s)
         self.pos  = np.array(pos)          # position      (m)
         self.vel  = np.array(vel)          # velocity      (m/s)
@@ -28,11 +29,26 @@ class Waypoint:
         self.jerk = np.array(jerk)         # jerk          (m/s3)
         self.snap = np.array(snap)         # snap          (m/s4)
         self.crakle = np.array(crakle)     # ckl           (m/s5)
-        self.fly_over = fly_over           # mandatory transit (bool)
-        self.heading = heading             # orientation vector [x, y]
+        self.heading = np.array(heading)   # orientation vector [x, y]
 
     def __lt__(self, other) -> bool:
         return self.t < other.t
+
+    def copy(self):
+        waypoint = Waypoint.__new__(Waypoint)
+        
+        waypoint.label = self.label
+        waypoint.fly_over = self.fly_over
+        waypoint.t = self.t
+        waypoint.heading  = self.heading.copy()
+        waypoint.pos    = self.pos.copy()
+        waypoint.vel    = self.vel.copy()
+        waypoint.acel   = self.acel.copy()
+        waypoint.jerk   = self.jerk.copy()
+        waypoint.snap   = self.snap.copy()
+        waypoint.crakle = self.crakle.copy()
+
+        return waypoint
 
     def stop(self):
         self.vel  = np.zeros(3)

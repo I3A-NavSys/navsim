@@ -1,6 +1,6 @@
 from tabulate import tabulate
 import copy
-from typing import List, Optional
+from typing import List, Optional, Any
 import numpy as np
 import matplotlib
 import mplcursors
@@ -237,13 +237,38 @@ class FlightPlan:
             return None
         return waypoint_idx
     
-    def copy(self):
-        """Realiza una copia profunda de la instancia actual de FlightPlan."""
-        fp = FlightPlan()
-        fp.waypoints = copy.deepcopy(self.waypoints)
-        return fp
+    def copy(self) -> FlightPlan:
+        """
+        Makes a deep copy of the flight plan
 
-    def to_dict(self):
+        Returns:
+            FlightPlan: A new instance of FlightPlan with the same waypoints.
+        """
+        flight_plan = FlightPlan.__new__(FlightPlan)
+        
+        flight_plan.id = self.id
+        flight_plan.priority = self.priority
+        flight_plan.radius = self.radius
+        flight_plan.max_var_lin_vel = self.max_var_lin_vel
+        flight_plan.max_var_ang_vel = self.max_var_ang_vel
+        flight_plan.target_yaw = self.target_yaw
+        flight_plan.length = self.length
+        flight_plan.waypoints = SortedList(wp.copy() for wp in self.waypoints)
+        flight_plan.time_waypoints = SortedList(self.time_waypoints)
+        flight_plan.labels_to_idx = dict(self.labels_to_idx)
+            
+        return flight_plan
+
+    def to_dict(self) -> dict[str, Any]:
+        """
+        Convert the flight plan to a dictionary.
+
+        Returns:
+            dict: A dictionary representing the flight plan.
+        """
+
+        wps = list(self.waypoints)
+        
         return {
             "id": self.id,
             "priority": self.priority,
@@ -251,163 +276,248 @@ class FlightPlan:
             "max_var_lin_vel": self.max_var_lin_vel,
             "max_var_ang_vel": self.max_var_ang_vel,
             "target_yaw": self.target_yaw,
-            "waypoints": [
-                {
-                    "label": wp.label,
-                    "t": wp.t,
-                    "pos": wp.pos.tolist(),
-                    "vel": wp.vel.tolist(),
-                    "acel": wp.acel.tolist(),
-                    "jerk": wp.jerk.tolist(),
-                    "snap": wp.snap.tolist(),
-                    "crakle": wp.crakle.tolist(),
-                    "fly_over": wp.fly_over,
-                    "heading": wp.heading if wp.heading is not None else None
-                }
-                for wp in self.waypoints
-            ]
+            "waypoints": {
+                "labels":   [wp.label    for wp in wps],
+                "fly_over": [wp.fly_over for wp in wps],
+                "times":    [wp.t        for wp in wps],
+                "headings": [wp.heading  for wp in wps],
+                "pos":    np.array([wp.pos    for wp in wps]).tolist(),
+                "vel":    np.array([wp.vel    for wp in wps]).tolist(),
+                "acel":   np.array([wp.acel   for wp in wps]).tolist(),
+                "jerk":   np.array([wp.jerk   for wp in wps]).tolist(),
+                "snap":   np.array([wp.snap   for wp in wps]).tolist(),
+                "crakle": np.array([wp.crakle for wp in wps]).tolist(),
+            }
         }
     
-    def from_dict(self, data: dict):
+    def from_dict(self, data: dict[str, Any]) -> None:
+        """
+        Load the flight plan from a dictionary.
+
+        Args:
+            - data (dict) : A dictionary representing the flight plan.
+        """
+
+        # 1. Load basic attributes
         self.id = data.get("id", 0)
         self.priority = data.get("priority", 0)
         self.radius = data.get("radius", 1)
         self.max_var_lin_vel = data.get("max_var_lin_vel", 5)
         self.max_var_ang_vel = data.get("max_var_ang_vel", 1)
         self.target_yaw = data.get("target_yaw", None)
-        self.waypoints = []
-        for wp_data in data.get("waypoints", []):
+
+        # 2. Reset waypoints and related attributes
+        self.waypoints = SortedList([])
+        self.time_waypoints = SortedList([])
+        self.labels_to_idx = {}
+        self.length = 0
+
+        # 3. Load waypoints
+        wps_data = data.get("waypoints", {})
+        if not wps_data:
+            return
+
+        # 4. Extract waypoint attributes from the dictionary
+        labels   = wps_data.get("labels",   [])
+        fly_over = wps_data.get("fly_over", [])
+        times    = wps_data.get("times",    [])
+        headings = wps_data.get("headings", [])
+        pos      = wps_data.get("pos",      [])
+        vel      = wps_data.get("vel",      [])
+        acel     = wps_data.get("acel",     [])
+        jerk     = wps_data.get("jerk",     [])
+        snap     = wps_data.get("snap",     [])
+        crakle   = wps_data.get("crakle",   [])
+
+        # 5. Create and add waypoints to the flight plan
+        for i in range(len(labels)):
             wp = Waypoint(
-                label=wp_data.get("label", ""),
-                t=wp_data.get("t", 0),
-                pos=wp_data.get("pos", [0, 0, 0]),
-                vel=wp_data.get("vel", [0, 0, 0]),
-                acel=wp_data.get("acel", [0, 0, 0]),
-                jerk=wp_data.get("jerk", [0, 0, 0]),
-                snap=wp_data.get("snap", [0, 0, 0]),
-                crakle=wp_data.get("crakle", [0, 0, 0]),
-                fly_over=wp_data.get("fly_over", False),
-                heading=wp_data.get("heading", None)
+                label=labels[i],
+                t=times[i],
+                pos=pos[i],
+                vel=vel[i],
+                acel=acel[i],
+                jerk=jerk[i],
+                snap=snap[i],
+                crakle=crakle[i],
+                fly_over=fly_over[i],
+                heading=headings[i]
             )
-            self.waypoints.append(wp)
+            self.waypoints.add(wp)
+            self.time_waypoints.add(wp.t)
+            self.labels_to_idx[wp.label] = i
+            self.length += 1
 
-    def to_lists(self):
-        times = [wp.t for wp in self.waypoints]
-        positions = [wp.pos for wp in self.waypoints]
-        velocities = [wp.vel for wp in self.waypoints]
-        accelerations = [wp.acel for wp in self.waypoints]
-        jerks = [wp.jerk for wp in self.waypoints]
-        snaps = [wp.snap for wp in self.waypoints]
-        crackels = [wp.crakle for wp in self.waypoints]
-        headings = [wp.heading for wp in self.waypoints]
-        
-        return [times, positions, velocities, accelerations, jerks, snaps, crackels, headings]
+    def waypoints_to_arrays(self) -> List[np.ndarray]:
+        """
+        Convert the waypoints to separate numpy arrays for each attribute.
 
+        Returns:
+            - List[np.ndarray] : A list of numpy arrays containing the attributes of each waypoint,
+            in this order: [times, positions, velocities, accelerations, jerks, snaps, crackles, headings].
+
+        Example::
+
+            flight_plan = FlightPlan()
+            flight_plan.add_waypoint(label="WP1", time=0, pos=[0, 0, 0], vel=[1, 0, 0])
+            flight_plan.add_waypoint(label="WP2", time=1, pos=[1, 0, 0], vel=[1, 0, 0])
+            arrays = flight_plan.waypoints_to_arrays()
+            # arrays[0] -> array([0., 1.])              shape (N,)    # times
+            # arrays[1] -> array([[0,0,0],[1,0,0]])     shape (N, 3)  # positions
+            # arrays[2] -> array([[1,0,0],[1,0,0]])     shape (N, 3)  # velocities
+            # arrays[3] -> array([[0,0,0],[0,0,0]])     shape (N, 3)  # accelerations
+            # arrays[4] -> array([[0,0,0],[0,0,0]])     shape (N, 3)  # jerks
+            # arrays[5] -> array([[0,0,0],[0,0,0]])     shape (N, 3)  # snaps
+            # arrays[6] -> array([[0,0,0],[0,0,0]])     shape (N, 3)  # crackles
+            # arrays[7] -> array([[0,0],[0,0]])         shape (N, 2)  # headings
+        """
+
+        wps = list(self.waypoints)
+        N = self.length
+
+        times         = np.empty(N)
+        positions     = np.empty((N, 3))
+        velocities    = np.empty((N, 3))
+        accelerations = np.empty((N, 3))
+        jerks         = np.empty((N, 3))
+        snaps         = np.empty((N, 3))
+        crackles      = np.empty((N, 3))
+        headings      = np.empty((N, 2))
+
+        for i, wp in enumerate(wps):
+            times[i]         = wp.t
+            positions[i]     = wp.pos
+            velocities[i]    = wp.vel
+            accelerations[i] = wp.acel
+            jerks[i]         = wp.jerk
+            snaps[i]         = wp.snap
+            crackles[i]      = wp.crakle
+            headings[i]      = wp.heading
+
+        return [times, positions, velocities, accelerations, jerks, snaps, crackles, headings]
+    
     #------------------------------------------------------------------------------------------------------------------
     # TIME MANAGEMENT
 
-    def init_time(self):
-        # time of the first waypoint
-        if not self.waypoints:
-            return 0
+    def start_time(self) -> Optional[float]:
+        """
+        Returns the time of the first waypoint in the flight plan.
+
+        Returns:
+            Optional[float]: The time of the first waypoint, or None if there are no waypoints.
+        """
+
+        if self.length == 0:
+            return None
         else:
             return self.waypoints[0].t
 
-    def finish_time(self):
-        # time of the last waypoint
-        if not self.waypoints:
-            return 0
+    def finish_time(self) -> Optional[float]:
+        """
+        Returns the time of the last waypoint in the flight plan.
+
+        Returns:
+            Optional[float]: The time of the last waypoint, or None if there are no waypoints.
+        """
+
+        if self.length == 0:
+            return None
         else:
             return self.waypoints[-1].t
 
     def remove_negative_time(self) -> None:
         """
-        Postpone the flight plan if it contains waypoints with negative time, 
-        so that the first waypoint starts at time 0.
+        Remove any negative time from the flight plan by postponing all waypoints
+        to ensure the first waypoint starts at positive time (>= 0).
         """
+
         if self.time_waypoints[0] < 0:
             self.postpone(-self.time_waypoints[0])
 
+    def postpone_from(self, start_time: float, time_delta: float):
+        """
+        Postpone the Flight Plan from a given start_time by a given time_delta.
 
-    def set_uniform_velocity(self, wp=None, vel=None):
-        # Compute MRU velocity for all WPs
-        if wp is None and vel is None:
-            for i in range(len(self.waypoints)-1):
-                self.set_uniform_velocity(wp=i)
+        Args:
+            - start_time (float) : The time from which to start postponing the flight plan.
+            - time_delta (float) : The amount of time to postpone the flight plan.
+        """
 
-            # Stop last WP
-            # self.waypoints[-1].stop()
-
-        # Set vel velocity to all WPs
-        elif wp is None:
-            for i in range(len(self.waypoints)-1):
-                self.set_uniform_velocity(wp=i, vel=vel)
-
-            # Stop last WP
-            self.waypoints[-1].stop()
-
-        # Compute MRU velocity just for wp WP
-        elif vel is None:
-            # Get WP index
-            if isinstance(wp, str):     index = self.get_index_from_label(wp)
-            else:                       index = wp
-
-            # Return if it is the last WP or it is not found
-            if (index == len(self.waypoints)-1) or (index is None): return
-
-            # Get specified WP and next one
-            wp1 = self.waypoints[index]
-            wp2 = self.waypoints[index+1]
-
-            # Update wp1.vel if has no velocity yet or positions are the same
-            if np.sum(wp1.vel) == 0 or np.array_equal(wp1.pos, wp2.pos):
-                wp1.set_uniform_velocity(wp2)        
-
-        # Set vel velocity just to wp WP
-        else:
-            # Get WP index
-            if isinstance(wp, str):     index = self.get_index_from_label(wp)
-            else:                       index = wp
-
-            # Return if it is the last WP or it is not found
-            if (index == len(self.waypoints)-1) or (index is None): return
-
-            # Get specified WP and next one
-            wp1 = self.waypoints[index]
-            wp2 = self.waypoints[index+1]
-
-            # New time for wp2 according to vel
-            t2 = wp1.t + wp1.distance_to(wp2) / vel
-            # Update wp2.t and postpone following WPs
-            self.postpone_from(wp2.t, t2 - wp2.t)
-            # Update wp1.vel
-            wp1.set_uniform_velocity(wp2)
-
-    def postpone_from(self, startTime: float, timeStep: float):
-        # Postpone a portion of the Flight Plan a given time_delta,
-        # starting from a given startTime
-        if self.finish_time() < startTime:
+        # Early exit conditions: 
+        # if the flight plan is empty, 
+        # if the time_delta is zero 
+        # if the start_time is after the finish_time
+        if self.length == 0 or time_delta == 0 or start_time >= self.time_waypoints[-1]:
             return
 
-        # Find the first waypoint with time greater than or equal to startTime
-        index = self.get_target_index_from_time(startTime)
+        # Find the index of the first waypoint whose time is greater than or equal to start_time
+        index = self.time_waypoints.bisect_left(start_time)
 
-        if index > 0 and timeStep < self.waypoints[index].time_to(self.waypoints[index-1]):
-            return  # Not enough time in the past
+        # Check if the time_delta is less than the gap between the found waypoint and the previous one
+        # This ensures that we do not create overlapping waypoints in time as there is not enough time gap
+        if index > 0 and time_delta < (self.time_waypoints[index] - self.time_waypoints[index - 1]):
+            return
 
-        for i in range(index, len(self.waypoints)):
-            self.waypoints[i].postpone(timeStep)
+        # Postpone all waypoints from the found index onwards by the time_delta
+        affected_wps = self.waypoints[index:]
 
-    def postpone(self, timeStep: float) -> None:
-        # Postpone the Flight Plan by a given timeStep
-        self.postpone_from(self.init_time(), timeStep)
+        for wp in affected_wps:
+            wp.t += time_delta
+
+        # Rebuild time_waypoints for the affected range: O(k) delete + O(k log N) re-insert
+        del self.time_waypoints[index:]
+        self.time_waypoints.update(wp.t for wp in affected_wps)
+
+    def postpone(self, time_delta: float) -> None:
+        """
+        Postpone the entire Flight Plan by a given time delta.
+
+        Args:
+            - time_delta (float) : The amount of time to postpone the flight plan. Can be negative.
+        """
+        
+        self.postpone_from(self.time_waypoints[0], time_delta)
 
     def reschedule_at(self, time: float) -> None:
-        # Perform a temporal translation of the Flight Plan to begin at a given time.
-        self.postpone(time - self.init_time())
+        """
+        Perform a temporal translation of the Flight Plan to begin at a given time.
+
+        Args:
+            - time (float) : The new start time for the Flight Plan.
+        """
+        self.postpone(time - self.time_waypoints[0])
 
     #------------------------------------------------------------------------------------------------------------------
     # ROUTE MANAGEMENT
+
+    def sync_kinematic_times(self) -> None:
+        """
+        Synchronizes the time (t) of all waypoints based on their spatial distance 
+        and target velocities. This guarantees that the 5th order polynomial solver 
+        finds a perfectly straight constant-acceleration profile without overshooting.
+        """
+        if len(self.waypoints) < 2:
+            return
+
+        for i in range(len(self.waypoints) - 1):
+            wp1 = self.waypoints[i]
+            wp2 = self.waypoints[i + 1]
+
+            dist = wp1.distance_to(wp2)
+            v1_mag = np.linalg.norm(wp1.vel)
+            v2_mag = np.linalg.norm(wp2.vel)
+
+            # Average speed during this segment
+            avg_v = (v1_mag + v2_mag) / 2.0
+            
+            if avg_v <= 0:
+                continue
+
+            # Kinematic time required: t = d / v
+            t_required = dist / avg_v
+
+            # Update the next waypoint's time sequentially
+            wp2.t = np.round(wp1.t + t_required, 4)
 
     def connect_waypoints(self):
         """
