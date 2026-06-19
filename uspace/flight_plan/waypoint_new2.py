@@ -73,8 +73,7 @@ class Waypoint:
    
     def distance_to(self, wp) -> float:
         # Get the distance between two waypoints
-        dist = np.linalg.norm(self.pos - wp.pos)
-        return float(dist)
+        return np.linalg.norm(self.pos - wp.pos)
 
     def direction_to(self, wp) -> np.array:
         # Get a direction vector from one waypoint to another
@@ -151,8 +150,8 @@ class Waypoint:
         ])
 
         B = np.array([
-            r2 - r1 - v1 * t12,
-            v2 - v1,
+            r2 - r1 - v1 * t12 - 0.5 * a1 * (t12 ** 2),
+            v2 - v1 - a1 * t12,
             a2 - a1
         ])
 
@@ -165,15 +164,70 @@ class Waypoint:
         self.snap = X[1]
         self.crakle = X[2]
 
-    def set_JS0_T(self, wp2):
-        # Dados dos waypoints con 
-        #   t1 pos1 vel1 acel1
-        #      pos2 vel2 acel2
-        # obtiene 
-        #   jerk1 snap1 crkl1=0
-        #   t2
-        # para ejecutar dicho movimiento
-        pass
+    def set_JSC(self, wp2):
+        """
+        Calculates the kinematic derivatives (Jerk, Snap, Crackle).
+        Uses a robust tolerance to detect straight acceleration lanes and
+        assigns them pure constant acceleration, avoiding polynomial wobble.
+        """
+        t12 = wp2.t - self.t
+        if t12 <= 0:
+            return
+
+        r1 = self.pos
+        v1 = self.vel
+        r2 = wp2.pos
+        v2 = wp2.vel
+
+        # 1. Theoretical constant acceleration needed to bridge the velocities
+        a_ideal = (v2 - v1) / t12
+
+        # 2. Where the drone would be if it followed pure constant acceleration
+        r2_ideal = r1 + v1 * t12 + 0.5 * a_ideal * (t12 ** 2)
+
+        # 3. Distance between ideal 1D physics and actual 3D target position
+        pos_error = np.linalg.norm(r2 - r2_ideal)
+
+        # 4. HYBRID BYPASS: Relaxed tolerance (1.0 meter) to account for 3D float math.
+        # If it's a straight lane, force exact linear velocity and zero higher derivatives.
+        if pos_error < 1.0:
+            self.acel = a_ideal
+            
+            # CRITICAL FIX: Prepare the NEXT waypoint with this exact acceleration.
+            # If the next segment is a complex curve, it will use this realistic 
+            # inertia instead of defaulting to 0, preventing spline whip.
+            wp2.acel = a_ideal
+            
+            self.jerk = np.zeros(3)
+            self.snap = np.zeros(3)
+            self.crakle = np.zeros(3)
+            return
+
+        # 5. COMPLEX CURVE FALLBACK (Corners)
+        a1 = self.acel
+        a2 = wp2.acel
+
+        A = np.array([
+            [t12**3 / 6, t12**4 / 24, t12**5 / 120],
+            [t12**2 / 2, t12**3 / 6,  t12**4 / 24 ],
+            [t12,        t12**2 / 2,  t12**3 / 6  ]
+        ])
+
+        # Corrected B matrix containing the initial acceleration terms
+        B = np.array([
+            r2 - r1 - v1 * t12 - 0.5 * a1 * (t12 ** 2),
+            v2 - v1 - a1 * t12,
+            a2 - a1
+        ])
+
+        try:
+            X = np.linalg.solve(A, B)
+            self.jerk = X[0]
+            self.snap = X[1]
+            self.crakle = X[2]
+            
+        except np.linalg.LinAlgError:
+            raise ValueError('Error. 5th-Order Interpolation not possible.')
 
     def interpolation(self, t2):
     # Dados dos waypoints con tiempo, posición, velocidad y aceleración nula

@@ -20,20 +20,35 @@ matplotlib.use("Qt5Agg")
 plt.rcParams["toolbar"] = "toolmanager"
 
 class FlightPlan:
-
-    def __init__(self):
-        self.id: int = 0
-        self.priority: int = 0
-        self.radius: float = 1
-        self.max_var_lin_vel = 5        # maximum variation in linear  velocity   [  m/s]
-        self.max_var_ang_vel = 1        # maximum variation in angular velocity   [rad/s]
-        self.target_yaw = None
+    def __init__(
+        self, 
+        id: str="", 
+        priority: int=0, 
+        radius: float=1, 
+        max_var_lin_vel: float=5, 
+        max_var_ang_vel: float=1, 
+        target_yaw=None
+    ):
+        self.id: str = id
+        self.priority: int = priority
+        self.radius: float = radius
+        self.max_var_lin_vel = max_var_lin_vel        # maximum variation in linear  velocity   [  m/s]
+        self.max_var_ang_vel = max_var_ang_vel        # maximum variation in angular velocity   [rad/s]
+        self.target_yaw = target_yaw
         self.waypoints: SortedList[Waypoint] = SortedList([])
         self.time_waypoints: SortedList[float] = SortedList([])
         self.labels_to_idx = {}
         self.length: int = 0
         self.figure_processes = []
 
+    def __repr__(self):
+        waypoints_info = [[wp.label, wp.t, wp.pos, wp.vel, wp.acel, wp.jerk, wp.snap, wp.crakle] for wp in self.waypoints]
+        waypoints_headers = ('label', 'time', 'position', 'velocity', 'acceleration', 'jerk', 'snap', 'crakle')
+        return f"FlightPlan with id '{self.id}':\n{tabulate(waypoints_info, headers=waypoints_headers, tablefmt='grid')}"
+
+    # ----------------------------------
+    # -------- BASE FUNCTIONS ----------
+    # ----------------------------------
     def add_waypoint(self, wp=None, label=None, time=None, pos=None, vel=None, heading=[0,0]):
         if wp is None:
             if time is None:
@@ -237,6 +252,9 @@ class FlightPlan:
             return None
         return waypoint_idx
     
+    # ----------------------------------
+    # -------- AUXILIARY FUNCTIONS -----
+    # ----------------------------------
     def copy(self) -> FlightPlan:
         """
         Makes a deep copy of the flight plan
@@ -280,7 +298,7 @@ class FlightPlan:
                 "labels":   [wp.label    for wp in wps],
                 "fly_over": [wp.fly_over for wp in wps],
                 "times":    [wp.t        for wp in wps],
-                "headings": [wp.heading  for wp in wps],
+                "headings": np.array([wp.heading  for wp in wps]).tolist(),
                 "pos":    np.array([wp.pos    for wp in wps]).tolist(),
                 "vel":    np.array([wp.vel    for wp in wps]).tolist(),
                 "acel":   np.array([wp.acel   for wp in wps]).tolist(),
@@ -396,9 +414,9 @@ class FlightPlan:
 
         return [times, positions, velocities, accelerations, jerks, snaps, crackles, headings]
     
-    #------------------------------------------------------------------------------------------------------------------
-    # TIME MANAGEMENT
-
+    # ----------------------------------
+    # -------- TIME MANAGEMENT ---------
+    # ----------------------------------
     def start_time(self) -> Optional[float]:
         """
         Returns the time of the first waypoint in the flight plan.
@@ -455,8 +473,11 @@ class FlightPlan:
 
         # Check if the time_delta is less than the gap between the found waypoint and the previous one
         # This ensures that we do not create overlapping waypoints in time as there is not enough time gap
-        if index > 0 and time_delta < (self.time_waypoints[index] - self.time_waypoints[index - 1]):
-            return
+        if index > 0 and time_delta <= (self.time_waypoints[index - 1] - self.time_waypoints[index]):
+            raise ValueError(
+                f"Time delta {time_delta} is too small to postpone from time {start_time}. "
+                "Not enough time gap between waypoints."
+            )
 
         # Postpone all waypoints from the found index onwards by the time_delta
         affected_wps = self.waypoints[index:]
@@ -487,37 +508,40 @@ class FlightPlan:
         """
         self.postpone(time - self.time_waypoints[0])
 
-    #------------------------------------------------------------------------------------------------------------------
-    # ROUTE MANAGEMENT
-
+    # ----------------------------------
+    # -------- PLAN MANAGEMENT ---------
+    # ----------------------------------
     def sync_kinematic_times(self) -> None:
         """
-        Synchronizes the time (t) of all waypoints based on their spatial distance 
+        Synchronizes the time of all waypoints based on their spatial distance 
         and target velocities. This guarantees that the 5th order polynomial solver 
         finds a perfectly straight constant-acceleration profile without overshooting.
         """
-        if len(self.waypoints) < 2:
+
+        # If there are less than 2 waypoints, there's nothing to synchronize
+        if self.length < 2:
             return
 
-        for i in range(len(self.waypoints) - 1):
+        for i in range(self.length - 1):
             wp1 = self.waypoints[i]
             wp2 = self.waypoints[i + 1]
 
-            dist = wp1.distance_to(wp2)
+            distance = wp1.distance_to(wp2)
             v1_mag = np.linalg.norm(wp1.vel)
             v2_mag = np.linalg.norm(wp2.vel)
 
             # Average speed during this segment
-            avg_v = (v1_mag + v2_mag) / 2.0
+            avg_vel = (v1_mag + v2_mag) / 2.0
             
-            if avg_v <= 0:
+            # If the average velocity is zero or negative, we cannot compute a valid time step, so we skip this segment
+            if avg_vel <= 0:
                 continue
 
             # Kinematic time required: t = d / v
-            t_required = dist / avg_v
+            time_required = distance / avg_vel
 
-            # Update the next waypoint's time sequentially
-            wp2.t = np.round(wp1.t + t_required, 4)
+            # Update next waypoint's time
+            wp2.t = round(wp1.t + time_required, 4)
 
     def connect_waypoints(self):
         """
@@ -659,9 +683,9 @@ class FlightPlan:
         self.set_waypoint(wp2A)
         self.set_waypoint(wp2B)
 
-    #------------------------------------------------------------------------------------------------------------------
-    # FLIGHT PLAN BEHAVIOUR
-
+    # ----------------------------------
+    # -------- CORE FUNCTIONS ----------
+    # ----------------------------------
     def status_at_time(self, t: float) -> Waypoint:
         """
         Check the status of the flight plan at a given time.
@@ -673,17 +697,17 @@ class FlightPlan:
         Waypoint: The interpolated waypoint status at time t.
         """
         # Check if t is outside the flight plan schedule
-        if t <= self.init_time(): 
+        if t <= self.time_waypoints[0]: 
             return self.waypoints[0]
         
-        if t == self.finish_time():
+        if t == self.time_waypoints[-1]:
             return self.waypoints[-1]
 
-        if t > self.finish_time():
+        if t > self.time_waypoints[-1]:
             return self.waypoints[-1].interpolation(t)
 
         # Binary search: find the last waypoint whose time <= t, O(log n).
-        idx = bisect.bisect_right(_TimesView(self.waypoints), t) - 1
+        idx = self.time_waypoints.bisect_right(t) - 1
         return self.waypoints[max(idx, 0)].interpolation(t)
     
     def trace(self, timeStep):
@@ -719,9 +743,9 @@ class FlightPlan:
         tr[-1, 4:7] = 0.0   # zero velocity at the last instant
         return tr
 
-    #------------------------------------------------------------------------------------------------------------------
-    # UAV NAVIGATION
-    
+    # ----------------------------------
+    # -------- NAVIGATION --------------
+    # ----------------------------------
     def get_isaacsim_command(self, time, pos, lin_vel, yaw, heading, t_to_solve):
         # EXPECTED UAV POSE
         expected = self.status_at_time(time)
@@ -756,9 +780,9 @@ class FlightPlan:
 
         return command_linear_vel, command_yaw_rotation
 
-    #------------------------------------------------------------------------------------------------------------------
-    # CONFLICT DETECTION
-
+    # ----------------------------------
+    # -------- CONFLICT DETECTION ------
+    # ----------------------------------
     def compare_to(self, fp2, time_step):
         decimals = len(str(time_step).split(".")[1])
 
@@ -794,9 +818,9 @@ class FlightPlan:
 
         return distances, trace_1_times[i1:e1]
 
-    #------------------------------------------------------------------------------------------------------------------
-    # INFORMATION AND FIGURES
-
+    # ----------------------------------
+    # -------- INFO & FIGURES ----------
+    # ----------------------------------
     def print_waypoints(self) -> None:
         """Prints all waypoints in the flight plan with their time, position, and velocity."""
         table = [
@@ -827,9 +851,6 @@ class FlightPlan:
             text += f"ACEL: {wp.acel}"
 
             sel.annotation.set_text(text)
-
-    def __repr__(self):
-        return f"FlightPlan(id: {self.id}, waypoints: {len(self.waypoints)})"
 
     def position_figure(self, figName, timeStep):
         # Display the flight plan trajectory
