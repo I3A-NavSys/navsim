@@ -391,18 +391,19 @@ class FlightPlan:
         """
 
         wps = list(self.waypoints)
-        N = self.length
 
-        times         = np.empty(N)
-        positions     = np.empty((N, 3))
-        velocities    = np.empty((N, 3))
-        accelerations = np.empty((N, 3))
-        jerks         = np.empty((N, 3))
-        snaps         = np.empty((N, 3))
-        crackles      = np.empty((N, 3))
-        headings      = np.empty((N, 2))
+        labels        = np.empty(self.length, dtype=object)
+        times         = np.empty(self.length)
+        positions     = np.empty((self.length, 3))
+        velocities    = np.empty((self.length, 3))
+        accelerations = np.empty((self.length, 3))
+        jerks         = np.empty((self.length, 3))
+        snaps         = np.empty((self.length, 3))
+        crackles      = np.empty((self.length, 3))
+        headings      = np.empty((self.length, 2))
 
         for i, wp in enumerate(wps):
+            labels[i]        = wp.label
             times[i]         = wp.t
             positions[i]     = wp.pos
             velocities[i]    = wp.vel
@@ -412,7 +413,7 @@ class FlightPlan:
             crackles[i]      = wp.crakle
             headings[i]      = wp.heading
 
-        return [times, positions, velocities, accelerations, jerks, snaps, crackles, headings]
+        return [labels, times, positions, velocities, accelerations, jerks, snaps, crackles, headings]
     
     # ----------------------------------
     # -------- TIME MANAGEMENT ---------
@@ -511,47 +512,86 @@ class FlightPlan:
     # ----------------------------------
     # -------- PLAN MANAGEMENT ---------
     # ----------------------------------
-    def sync_kinematic_times(self) -> None:
+    def make_plan_feasible(self, is_time_key_aspect: bool, reconnect_waypoints: bool) -> None:
         """
-        Synchronizes the time of all waypoints based on their spatial distance 
-        and target velocities. This guarantees that the 5th order polynomial solver 
-        finds a perfectly straight constant-acceleration profile without overshooting.
+        Makes the flight plan feasible by adjusting the times and velocities of the waypoints.
+
+        Args:
+            - is_time_key_aspect (bool) : If True, time is the key aspect and velocities will be adjusted. 
+                                           If False, velocities are the key aspect and times will be adjusted.
+            - reconnect_waypoints (bool) : If True, waypoints will be reconnected after adjustment.
         """
 
-        # If there are less than 2 waypoints, there's nothing to synchronize
+        # 1. If there are less than 2 waypoints, there's nothing to make feasible
         if self.length < 2:
             return
+        
+        # 2. Convert waypoints to arrays for easier manipulation
+        waypoint_arrays = self.waypoints_to_arrays()
+        labels = waypoint_arrays[0]
+        times = waypoint_arrays[1]
+        positions = waypoint_arrays[2]
+        velocities = waypoint_arrays[3]
+        headings = waypoint_arrays[8]
 
-        for i in range(self.length - 1):
-            wp1 = self.waypoints[i]
-            wp2 = self.waypoints[i + 1]
+        # 3. Calculate distances, delta times, and velocity magnitudes
+        distances = np.linalg.norm(np.diff(positions, axis=0), axis=1)
+        delta_times = np.diff(times)
+        vel_magnitudes = np.linalg.norm(velocities, axis=1)
 
-            distance = wp1.distance_to(wp2)
-            v1_mag = np.linalg.norm(wp1.vel)
-            v2_mag = np.linalg.norm(wp2.vel)
+        # 3.1 Avoid division by zero by replacing zero magnitudes with a small value
+        vel_magnitudes[vel_magnitudes == 0] = 1e-6
 
-            # Average speed during this segment
-            avg_vel = (v1_mag + v2_mag) / 2.0
+        # 4. Initialize new velocities and times (default to current values)
+        new_velocities = velocities
+        new_times = times
+
+        # 5. Adjust velocities and times based on whether time is a key aspect or not
+        if is_time_key_aspect:
+            # If time is the key aspect, we adjust the velocities to ensure that the UAV can reach the next waypoint 
+            # in the given time.
+            normed_velocities = velocities[:-1] / vel_magnitudes[:-1, np.newaxis]
+            new_vel_magnitudes = distances / delta_times
+            new_velocities = normed_velocities * new_vel_magnitudes[:, np.newaxis]
+            new_velocities = np.vstack((new_velocities, velocities[-1]))
+            new_velocities = np.round(new_velocities, 4)
+
+            # 6. Update the velocities of the waypoints
+            for i, wp in enumerate(self.waypoints):
+                wp.vel = new_velocities[i]
+
+        else:
+            # If velocity is the key aspect, we adjust the times to ensure that the UAV can reach the next waypoint
+            new_delta_times = distances / vel_magnitudes[:-1]
+            new_times = np.cumsum(np.concatenate(([times[0]], new_delta_times)))
+            new_times = np.round(new_times, 4)
+
+            # 6. Update the times of the waypoints
+            self.time_waypoints = SortedList(new_times)
+
+            self.waypoints = SortedList([
+                Waypoint(
+                    label=labels[i],
+                    t=new_times[i],
+                    pos=positions[i],
+                    vel=new_velocities[i],
+                    heading=headings[i]
+                ) for i in range(self.length)
+            ])
             
-            # If the average velocity is zero or negative, we cannot compute a valid time step, so we skip this segment
-            if avg_vel <= 0:
-                continue
+        # 7. Reconnect waypoints if specified
+        if reconnect_waypoints:
+            self.connect_waypoints()
 
-            # Kinematic time required: t = d / v
-            time_required = distance / avg_vel
-
-            # Update next waypoint's time
-            wp2.t = round(wp1.t + time_required, 4)
-
-    def connect_waypoints(self):
+    def connect_waypoints(self) -> None:
         """
-        Para cada waypoint con tiempo, posición, velocidad y aceleración determinados,
-        obtiene las 3 derivadas siguientes que ejecutan dicho movimiento.
+        Connects each waypoint to the next one in the flight plan.
+        This method iterates through the waypoints and establishes a connection from each waypoint to the subsequent 
+        one, allowing for smooth transitions between waypoints during flight.        
         """
-        for i in range(len(self.waypoints) - 1):
-            wpA = self.waypoints[i]
-            wpB = self.waypoints[i + 1]
-            wpA.connect_to(wpB)
+        for i in range(self.length - 1):
+            self.waypoints[i].connect_to(self.waypoints[i + 1])
+
 
     def smooth_waypoint_speed(self, wp, angVel):
         # Curva el vertice entre dos rectas
@@ -563,7 +603,7 @@ class FlightPlan:
         elif type(wp) == int:
             i = wp
 
-        if (i== 0) or (i == len(self.waypoints) - 1) or (i is None):
+        if (i== 0) or (i == self.length - 1) or (i is None):
             raise RuntimeError(f"Trying to smooth invalid WP: {i})")
       
         wp1 = self.waypoints[i-1]
@@ -633,7 +673,7 @@ class FlightPlan:
         elif type(wp) == int:
             i = wp
             
-        if (i== 0) or (i == len(self.waypoints) - 1) or (i is None):
+        if (i== 0) or (i == self.length - 1) or (i is None):
             return
       
         wp1 = self.waypoints[i-1]
@@ -716,7 +756,7 @@ class FlightPlan:
         #   1. searchsorted assigns every instant to its segment in O(n log n)
         #   2. per segment all instants are evaluated in a single numpy broadcast
         # Overall: O(n_wp + n_pts) instead of the previous O(n_pts * log(n_wp)).
-        instants = np.arange(self.init_time(), self.finish_time() + timeStep, timeStep)
+        instants = np.arange(self.start_time(), self.finish_time() + timeStep, timeStep)
         tr = np.empty((len(instants), 10))
         tr[:, 0] = instants
 
