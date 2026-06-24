@@ -73,42 +73,6 @@ class UAVactionTerm(ActionTerm):
 
         self._asset = env.scene[cfg.asset_name]
 
-
-
-    @property
-    def action_dim(self) -> int:
-        return self._raw_actions.shape[1]
-
-    @property
-    def raw_actions(self) -> torch.Tensor:
-        return self._raw_actions
-
-    @property
-    def processed_actions(self) -> torch.Tensor:
-        return self._processed_actions
-
-    def process_actions(self, actions: torch.Tensor):
-        # Si algun dron reventó y el NaN se cuela, lo ponemos a 0
-        # -------------- Teresa  ----------------------------------
-        actions = torch.clamp(actions, -1.0, 1.0)
-        actions = torch.nan_to_num(actions, nan=0.0)
-
-
-        # Define constants as tensors
-
-        # Vamos a pasarle equilibrio físico directamente para que:
-        # 0 - hover; >0 - se eleve; <0 - baje
-        # ----------------------- intento 1-----------------------------
-        # mass = self._asset.data.default_mass.sum(dim=1, keepdim=True)
-        # weight = mass*9.81 # gravedad
-        # thrust_hover_total = weight
-        # thrust_hover_per_rotor = torch.tensor(thrust_hover_total / 4.0, device=self.device)
-        # kFT = torch.tensor([4.6544, 4.6544, 0.9309, 0.9309], device=self.device)
-        # raw_hover = torch.sqrt(thrust_hover_per_rotor / kFT)
-
-        # thrust_scale = 0.3
-        # self._raw_actions = raw_hover * (1.0 + thrust_scale * actions)
-        # self._raw_actions = torch.clamp(self._raw_actions, min=0.0)
         # ------------------------intento 2-----------------------
 
         mass = self._asset.data.default_mass.sum(dim=1, keepdim=True)
@@ -149,11 +113,33 @@ class UAVactionTerm(ActionTerm):
         # Asegurar positivo
         u_hover = torch.clamp(u_hover, min=0.0)
 
-        omega_hover = torch.sqrt(u_hover)
+        self.omega_hover = torch.sqrt(u_hover)
+
+
+
+    @property
+    def action_dim(self) -> int:
+        return self._raw_actions.shape[1]
+
+    @property
+    def raw_actions(self) -> torch.Tensor:
+        return self._raw_actions
+
+    @property
+    def processed_actions(self) -> torch.Tensor:
+        return self._processed_actions
+
+    def process_actions(self, actions: torch.Tensor):
+        # Si algun dron reventó y el NaN se cuela, lo ponemos a 0
+        # -------------- Teresa  ----------------------------------
+        actions = torch.clamp(actions, -1.0, 1.0)
+        actions = torch.nan_to_num(actions, nan=0.0)
+
+        # omega_hover = torch.sqrt(u_hover)
         thrust_scale = 0.5
-        self._raw_actions = omega_hover * (1.0 + thrust_scale * actions)
+        self._raw_actions = self.omega_hover * (1.0 + thrust_scale * actions)
         self._raw_actions = torch.clamp(self._raw_actions, min=0.0)
-        # ------------------------------------------------------
+        # # ------------------------------------------------------
 
         kFT_N = torch.tensor(4.6544, device=self.device)
         kFT_S = torch.tensor(0.9309, device=self.device)

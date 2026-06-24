@@ -13,22 +13,22 @@ class Command13PPORunnerCfg(RslRlOnPolicyRunnerCfg):
     csv_path_metrics = "C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid_command_v13"
     callbacks = True
     policy = RslRlPpoActorCriticCfg(
-        init_noise_std=0.5,
-        actor_hidden_dims=[256, 256],
+        init_noise_std=0.1,
+        actor_hidden_dims=[128, 128],
         critic_hidden_dims=[64, 64],
-        activation="tanh",
+        activation="relu",
     )
     algorithm = RslRlPpoAlgorithmCfg(
-        value_loss_coef=0.5,
+        value_loss_coef=1.0,
         use_clipped_value_loss=True,
-        clip_param=0.1,
-        entropy_coef=0.001,
-        num_learning_epochs=12,
+        clip_param=0.2,
+        entropy_coef=0.0,
+        num_learning_epochs=4,
         num_mini_batches=4,
         learning_rate=5e-05,
         schedule="adaptive",
-        gamma=0.99,
-        lam=0.95,
+        gamma=0.95,
+        lam=0.9,
         desired_kl=0.02,
         max_grad_norm=2.0,
     )
