@@ -4,13 +4,13 @@ import numpy as np
 class Waypoint:
     # __slots__ eliminates per-instance __dict__, cutting ~200 B per object
     # and slightly speeding up attribute access.
-    __slots__ = ('label', 't', 'pos', 'vel', 'acel', 'jerk', 'snap', 'crakle',
+    __slots__ = ('label', 'time', 'pos', 'vel', 'acel', 'jerk', 'snap', 'crakle',
                  'fly_over', 'heading')
 
     def __init__(
         self, 
         label='', 
-        t=0, 
+        time=0, 
         pos=[0,0,0], 
         vel=[0,0,0], 
         acel=[0,0,0],
@@ -22,7 +22,7 @@ class Waypoint:
     ):
         self.label: str = label            # identifier to refer the waypoint
         self.fly_over = fly_over           # mandatory transit (bool)
-        self.t: float = t     # time          (s)
+        self.time: float = time     # time          (s)
         self.pos  = np.array(pos)          # position      (m)
         self.vel  = np.array(vel)          # velocity      (m/s)
         self.acel = np.array(acel)         # acceleration  (m/s2)
@@ -32,14 +32,14 @@ class Waypoint:
         self.heading = np.array(heading)   # orientation vector [x, y]
 
     def __lt__(self, other) -> bool:
-        return self.t < other.t
+        return self.time < other.time
 
     def copy(self):
         waypoint = Waypoint.__new__(Waypoint)
         
         waypoint.label = self.label
         waypoint.fly_over = self.fly_over
-        waypoint.t = self.t
+        waypoint.time = self.time
         waypoint.heading  = self.heading.copy()
         waypoint.pos    = self.pos.copy()
         waypoint.vel    = self.vel.copy()
@@ -51,22 +51,22 @@ class Waypoint:
         return waypoint
 
     def stop(self):
-        self.vel  = np.zeros(3)
-        self.acel = np.zeros(3)
-        self.jerk = np.zeros(3)
-        self.snap = np.zeros(3)
-        self.crakle = np.zeros(3)
+        self.vel[:] = 0
+        self.acel[:] = 0
+        self.jerk[:] = 0
+        self.snap[:] = 0
+        self.crakle[:] = 0
 
     #-------------------------------------------------------------------
     # TIME MANAGEMENT
 
     def postpone(self, timeStep):
-        self.t += timeStep
-        self.t = np.round(self.t, 2)
+        self.time += timeStep
+        self.time = np.round(self.time, 2)
 
     def time_to(self, wp):
         # Get the time elapsed from this waypoint to another given
-        return wp.t - self.t
+        return wp.time - self.time
 
     #-------------------------------------------------------------------
     # SPACE MANAGEMENT
@@ -110,7 +110,7 @@ class Waypoint:
             dot_product = np.dot(self.vel,wp.vel)
             cos_angle = dot_product / (norm_a_vel * norm_b_vel)
             angle = np.arccos(np.clip(cos_angle, -1.0, 1.0))
-            return angle
+            return round(angle, 6)
         
     #-------------------------------------------------------------------
     # DYNAMICS MANAGEMENT
@@ -170,7 +170,7 @@ class Waypoint:
         Uses a robust tolerance to detect straight acceleration lanes and
         assigns them pure constant acceleration, avoiding polynomial wobble.
         """
-        t12 = wp2.t - self.t
+        t12 = wp2.time - self.time
         if t12 <= 0:
             return
 
@@ -233,7 +233,7 @@ class Waypoint:
     # Dados dos waypoints con tiempo, posición, velocidad y aceleración nula
     # interpola un tercer waypoint a un tiempo dado
         wp2 = Waypoint()
-        wp2.t = t2
+        wp2.time = t2
 
         r1 = self.pos
         v1 = self.vel
