@@ -1,3 +1,5 @@
+from os import times
+
 from tabulate import tabulate
 from typing import List, Optional, Any, Union
 import math
@@ -98,6 +100,8 @@ class FlightPlan:
             old_wp = self.waypoints.pop(index)
             self.time_waypoints.pop(index)
             self.labels_to_idx.pop(old_wp.label, None)
+
+            self.length -= 1
 
         # Insert the new waypoint and its time into the sorted lists
         self.waypoints.insert(index, wp)
@@ -449,7 +453,7 @@ class FlightPlan:
         if self.time_waypoints[0] < 0:
             self.postpone(-self.time_waypoints[0])
 
-    def postpone_from(self, start_time: float, time_delta: float):
+    def postpone_from(self, start_time: float, time_delta: float) -> None:
         """
         Postpone the Flight Plan from a given start_time by a given time_delta.
 
@@ -593,7 +597,8 @@ class FlightPlan:
 
     def smooth_waypoint_speed(self, waypoint: Union[str, int, float], ang_vel: float) -> None:
         """
-        Smooths the curve at a specified waypoint by creating two new waypoints to replace the original one.
+        Smooths the curve at a specified waypoint by creating two new waypoints to replace the original one 
+        while maintaining the speed.
 
         Args:
             - waypoint (Union[str, int, float]) : The label, index, or time of the waypoint to smooth.
@@ -654,12 +659,12 @@ class FlightPlan:
         # 8.1 Check if there is enough time in the past to create the first new waypoint (wp_2A) 
         # before the original waypoint (wp_2)
         if wp_2.time - time_step <= wp_1.time:
-            raise Exception(f"There is not time enough to smooth the curve (waypoint: {wp_2.label})")
+            raise Exception(f"There is not time enough in the past to smooth the curve (waypoint: {wp_2.label})")
         
         # 8.2 Check if there is enough time in the future to create the second new waypoint (wp_2B) 
         # after the original waypoint (wp_2)
         if wp_3.time <= wp_2B_init_time:
-            raise Exception(f"There is not time enough to smooth the curve (waypoint: {wp_2.label})")
+            raise Exception(f"There is not time enough in the future to smooth the curve (waypoint: {wp_2.label})")
 
         # 9. Create two new waypoints (wp_2A and wp_2B) to replace the original waypoint (wp_2)
         # 9.1 Create the first new waypoint (wp_2A) before the original waypoint (wp_2)
@@ -698,8 +703,10 @@ class FlightPlan:
         T = 30.0 * time_step * norm_w / (7.0 * norm_w + 16.0 * avg_vel)
         wp_2B.time = wp_2A.time + T
 
-        # 11. Connect wp_2A to wp_2B now that the optimal duration is known
+        # 11. Connect new waypoints
+        wp_1.connect_to(wp_2A)
         wp_2A.connect_to(wp_2B)
+        wp_2B.connect_to(wp_3)
 
         # 12. Update the flight plan by removing the original waypoint (wp_2) and
         # adding the new waypoints (wp_2A and wp_2B)
@@ -713,128 +720,312 @@ class FlightPlan:
         # its initial time to maintain the overall flight duration
         self.postpone_from(wp_2B.time + 0.001, wp_2B.time - wp_2B_init_time)
 
-    def smooth_waypoint_duration(self, waypoint: Union[str, int], angVel: float, linAcel: float) -> None:
-        # Curva el vertice entre dos rectas
-        # reduciendo velocidad y manteniendo el tiempo de vuelo
-        # Para ello descompone dicho waypoint en dos
-        if type(waypoint) == str:
-            wp_idx : int = self.labels_to_idx.get(waypoint, None)
-        elif type(waypoint) == int:
+    def smooth_waypoint_duration(self, waypoint: Union[str, int], ang_vel: float, lin_acel: float) -> None:
+        """
+        Smooths the curve at a specified waypoint by creating two new waypoints to replace the original one
+        while maintaining the duration of the curve.
+
+        Args:
+            - waypoint (Union[str, int]) : The label or index of the waypoint to smooth.
+            - ang_vel (float) : The angular velocity to be used for smoothing the curve.
+            - lin_acel (float) : The linear acceleration to be used for smoothing the curve
+        """
+        
+        # 1. Check if ang_vel and lin_acel are valid (greater than zero)
+        if ang_vel <= 0:
+            raise ValueError("Angular velocity must be a positive value.")
+
+        if lin_acel <= 0:
+            raise ValueError("Linear acceleration must be a positive value.")
+
+        # 2. Determine the index of the waypoint to smooth based on the input type (label or index)
+        if isinstance(waypoint, str):
+            wp_idx: int = self.labels_to_idx.get(waypoint, None)
+        elif isinstance(waypoint, int):
             wp_idx = waypoint
+        elif isinstance(waypoint, float):
+            wp_idx = self.get_running_waypoint_idx(waypoint)
+        else:
+            raise TypeError(f"Invalid type for waypoint: {type(waypoint)}. Expected str, int, or float.")
             
-        if (wp_idx== 0) or (wp_idx == self.length - 1) or (wp_idx is None):
-            return
-      
-        wp1 = self.waypoints[wp_idx - 1]
-        wp2 = self.waypoints[wp_idx]
+        # 3. Check if the waypoint index is valid for smoothing (not the first or last waypoint).
+        is_invalid_wp = (
+            wp_idx is None or
+            wp_idx == 0 or
+            wp_idx == self.length - 1
+        )
 
-        if wp2.fly_over:
-            return
+        if is_invalid_wp:
+            raise RuntimeError(f"Trying to smooth invalid WP: {wp_idx}")
+            
+        # 4. Retrieve the waypoints before, at, and after the specified index
+        wp_1 = self.waypoints[wp_idx - 1]
+        wp_2 = self.waypoints[wp_idx]
+        wp_3 = self.waypoints[wp_idx + 1]
+
+        # 5. Check if the waypoint to smooth is a fly-over waypoint, which cannot be smoothed
+        if wp_2.fly_over:
+            raise RuntimeError(f"Trying to smooth a fly over WP (waypoint: {wp_2.label})")
         
-        angle = wp1.angle_with(wp2)
-        tc = angle / angVel         # Time spent in the curve
+        # 6. Calculate the angle between the two segments formed by the waypoints
+        angle = wp_1.angle_with(wp_2)
 
-        v1 = np.linalg.norm(wp1.vel)
-        v2 = np.linalg.norm(wp2.vel)
-        ts = np.abs(v2-v1) / linAcel
+        # 6.1 Check if the angle is zero, which indicates a straight line and cannot be smoothed
+        if angle == 0:
+            raise RuntimeError(f"Trying to smooth a straight line (waypoint: {wp_2.label})")
 
-        interval = np.max([tc, ts])
-        self.expand_waypoint(i, interval)
-
-    def expand_waypoint(self, index, interval):
-        # Decompone un waypoint en dos, separados un intervalo dado
-        i = index
-      
-        wp1 = self.waypoints[i-1]
-        wp2 = self.waypoints[i]
-        wp3 = self.waypoints[i+1]
+        # 7 Compute the time spent in the curve based on the linear acceleration and the difference in velocities
+        # 7.1 Calculate the magnitudes of the velocities of the two waypoints
+        vel_1 = math.sqrt(wp_1.vel[0]**2 + wp_1.vel[1]**2 + wp_1.vel[2]**2)
+        vel_2 = math.sqrt(wp_2.vel[0]**2 + wp_2.vel[1]**2 + wp_2.vel[2]**2)
         
-        step = interval / 2
-        if (step >= wp2.time - wp1.time) or (step >= wp3.time - wp2.time):
-            # There is not time enough to include the curve
-            return
+        # 7.2 Calculate the time spent in the curve based on the velocity and the  linear acceleration
+        ts = abs(vel_2 - vel_1) / lin_acel
 
-        wp2A = Waypoint()
-        wp2A.label = wp2.label + "_A"
-        wp2A.pos = wp2.pos - wp1.vel * step
-        wp2A.vel = wp1.vel
-        wp2A.time = wp2.time - step
+        # 8. Calculate the time spent in the curve based on the angle and the given angular velocity
+        tc = angle / ang_vel
 
-        wp2B = Waypoint()
-        wp2B.label = wp2.label + "_B"
-        wp2B.pos = wp2.pos + wp2.vel * step
-        wp2B.vel = wp2.vel
-        wp2B.time = wp2.time + step
+        # 9. Determine the time step to create the new waypoints for smoothing based on the maximum 
+        # of the two calculated times
+        time_step = max(tc, ts) / 2
 
-        wp2A.connect_to(wp2B)
+        # 10. Check feasibility:
+        # 10.1 Check if there is enough time in the past to create the first new waypoint (wp_2A)
+        # before the original waypoint (wp_2)
 
-        self.remove_waypoint_at_time(wp2.time)
-        self.set_waypoint(wp2A)
-        self.set_waypoint(wp2B)
+        if time_step >= wp_2.time - wp_1.time:
+            raise Exception(f"There is not time enough in the past to smooth the curve (waypoint: {wp_2.label})")
+        
+        # 10.2 Check if there is enough time in the future to create the second new waypoint (wp_2B)
+        # after the original waypoint (wp_2)
+        if time_step >= wp_3.time - wp_2.time:
+            raise Exception(f"There is not time enough in the future to smooth the curve (waypoint: {wp_2.label})")
+        
+        # 11. Create two new waypoints (wp_2A and wp_2B) to replace the original waypoint (wp_2)
+        # 11.1 Create the first new waypoint (wp_2A) before the original waypoint (wp_2)
+        wp_2A = Waypoint(
+            label = f"{wp_2.label}_A",
+            time  = wp_2.time - time_step,
+            pos   = wp_2.pos - wp_1.vel * time_step,
+            vel   = wp_1.vel
+        )
+
+        # 11.2 Create the second new waypoint (wp_2B) after the original waypoint (wp_2)
+        wp_2B = Waypoint(
+            label = f"{wp_2.label}_B",
+            time  = wp_2.time + time_step,
+            pos   = wp_2.pos + wp_2.vel * time_step,
+            vel   = wp_2.vel
+        )
+
+        # 12. Connect new waypoints
+        wp_1.connect_to(wp_2A)
+        wp_2A.connect_to(wp_2B)
+        wp_2B.connect_to(wp_3)
+
+        # 13. Update the flight plan by removing the original waypoint (wp_2) and
+        # adding the new waypoints (wp_2A and wp_2B)
+        wp_2_idx = self.labels_to_idx[wp_2.label]
+
+        self.remove_waypoint(wp_2_idx)
+        self.add_waypoint(wp_2A)
+        self.add_waypoint(wp_2B)
 
     # ----------------------------------
     # -------- CORE FUNCTIONS ----------
     # ----------------------------------
-    def status_at_time(self, t: float) -> Waypoint:
+    def status_at_time(self, time: float) -> Waypoint:
         """
         Check the status of the flight plan at a given time.
         
         Args:
-        t (float): The time at which to check the status.
+            - time (float) : The time at which to check the status.
         
         Returns:
-        Waypoint: The interpolated waypoint status at time t.
+            Waypoint: The interpolated waypoint status at the given time.
         """
-        # Check if t is outside the flight plan schedule
-        if t <= self.time_waypoints[0]: 
+
+        # 1. Handle edge cases for time before the first waypoint and after the last waypoint
+        if time <= self.time_waypoints[0]: 
             return self.waypoints[0]
         
-        if t == self.time_waypoints[-1]:
+        if time == self.time_waypoints[-1]:
             return self.waypoints[-1]
 
-        if t > self.time_waypoints[-1]:
-            return self.waypoints[-1].interpolation(t)
+        if time > self.time_waypoints[-1]:
+            return self.waypoints[-1].interpolation(time)
 
-        # Binary search: find the last waypoint whose time <= t, O(log n).
-        idx = self.time_waypoints.bisect_right(t) - 1
-        return self.waypoints[max(idx, 0)].interpolation(t)
+        # 2. Get the running waypoint for the given time and return its interpolated status
+        running_wp = self.get_running_waypoint(time)
+
+        return running_wp.interpolation(time)
     
-    def trace(self, timeStep):
-        # This method expands the flight plan behavior over time.
-        # Vectorised segment-by-segment Taylor expansion:
-        #   1. searchsorted assigns every instant to its segment in O(n log n)
-        #   2. per segment all instants are evaluated in a single numpy broadcast
-        # Overall: O(n_wp + n_pts) instead of the previous O(n_pts * log(n_wp)).
-        instants = np.arange(self.start_time(), self.finish_time() + timeStep, timeStep)
-        tr = np.empty((len(instants), 10))
-        tr[:, 0] = instants
+    def trace(self, time_step: float) -> np.ndarray:
+        """
+        Compute the UAV's trace over time based on the flightplan's waypoints.
 
-        wp_times = np.array([wp.time for wp in self.waypoints])
-        seg = np.searchsorted(wp_times, instants, side='right') - 1
-        seg = np.clip(seg, 0, len(self.waypoints) - 1)
+        Args:
+            - time_step (float) : The time step to compute the trace.
 
-        for si in range(len(self.waypoints)):
-            mask = seg == si
-            if not np.any(mask):
-                continue
-            wp = self.waypoints[si]
-            dt  = (instants[mask] - wp.time)[:, None]  # (k,1) — broadcasts over xyz
-            dt2 = dt  * dt
-            dt3 = dt2 * dt
-            dt4 = dt3 * dt
-            dt5 = dt4 * dt
-            r, v, a = wp.pos, wp.vel, wp.acel
-            j, sn, c = wp.jerk, wp.snap, wp.crakle
-            tr[mask, 1:4]  = r + dt*v   + (dt2*0.5)*a  + (dt3/6)*j   + (dt4/24)*sn  + (dt5/120)*c
-            tr[mask, 4:7]  = v + dt*a   + (dt2*0.5)*j  + (dt3/6)*sn  + (dt4/24)*c
-            tr[mask, 7:10] = a + dt*j   + (dt2*0.5)*sn + (dt3/6)*c
+        Returns:
+            - np.ndarray : Array of position, velocity and acceleration at time instants sample with the given time step.
+        """
 
-        tr[-1, 4:7] = 0.0   # zero velocity at the last instant
-        return tr
+        # 1. Get waypoints as arrays for easier manipulation
+        waypoint_arrays = self.waypoints_to_arrays()
+        times = waypoint_arrays[1]
+        positions = waypoint_arrays[2]
+        velocities = waypoint_arrays[3]
+        accelerations = waypoint_arrays[4]
+        jerks = waypoint_arrays[5]
+        snaps = waypoint_arrays[6]
+        crackles = waypoint_arrays[7]
+
+        # 2. Compute time instants according to the given time_step
+        instants = np.arange(times[0], times[-1] + time_step, time_step)
+
+        # 3. Relate each instant to the last waypoint whose time <= t.
+        interpolation_idxs = np.searchsorted(times, instants, side="right") - 1
+
+        # 4. Compute the time difference between each instant and the corresponding waypoint time
+        dt = (instants - times[interpolation_idxs])[:, np.newaxis]
+
+        # 5. Compute the status at each instant using the Taylor series expansion
+        traced_positions = (
+            positions[interpolation_idxs] + 
+            velocities[interpolation_idxs] * dt + 
+            0.5 * accelerations[interpolation_idxs] * dt**2 + 
+            (1/6) * jerks[interpolation_idxs] * dt**3 + 
+            (1/24) * snaps[interpolation_idxs] * dt**4 + 
+            (1/120) * crackles[interpolation_idxs] * dt**5
+        )
+
+        traced_velocities = (
+            velocities[interpolation_idxs] + 
+            accelerations[interpolation_idxs] * dt + 
+            0.5 * jerks[interpolation_idxs] * dt**2 + 
+            (1/6) * snaps[interpolation_idxs] * dt**3 + 
+            (1/24) * crackles[interpolation_idxs] * dt**4
+        )
+
+        traced_accelerations = (
+            accelerations[interpolation_idxs] + 
+            jerks[interpolation_idxs] * dt + 
+            0.5 * snaps[interpolation_idxs] * dt**2 + 
+            (1/6) * crackles[interpolation_idxs] * dt**3
+        )
+
+        traced_jerks = (
+            jerks[interpolation_idxs] + 
+            snaps[interpolation_idxs] * dt + 
+            0.5 * crackles[interpolation_idxs] * dt**2
+        )
+
+        traced_snaps = (
+            snaps[interpolation_idxs] + 
+            crackles[interpolation_idxs] * dt
+        )
+
+        traced_crackles = crackles[interpolation_idxs]
+
+        # 6. Combine all traced data into a single array
+        trace = np.column_stack((
+            instants, 
+            traced_positions, 
+            traced_velocities, 
+            traced_accelerations, 
+            traced_jerks, 
+            traced_snaps, 
+            traced_crackles
+        ))
+
+        return trace
 
     # ----------------------------------
     # -------- NAVIGATION --------------
     # ----------------------------------
+    def get_command(self, time, pos, lin_vel, yaw, heading, t_to_solve) -> Command:
+        """
+        Compute the navigation command for the UAV based on its current state and the flight plan.
+
+        Args:
+            - time (float) : The current time.
+            - pos (np.ndarray) : The current position of the UAV.
+            - lin_vel (np.ndarray) : The current linear velocity of the UAV.
+            - yaw (float) : The current yaw of the UAV.
+            - heading (np.ndarray) : The desired heading direction for the UAV.
+            - t_to_solve (float) : The time duration over which to compute the command
+        """
+        
+        # CURRENT UAV YAW
+        _, _, UAVyaw = UAVrot.as_euler('xyz', degrees=False)
+
+        # EXPECTED UAV POSE
+        expected = self.status_at_time(currentTime)
+
+        # COMPUTING CORRECTION VELOCITY (to achieve status.pos in 'tToSolve' seconds)
+        crVel = (expected.pos - UAVpos) / tToSolve
+
+        # COMPUTING COMMANDED VELOCITY
+        cmdVel = expected.vel + crVel
+        # print("cmdVel1:", cmdVel)
+
+        # SMOOTHING COMMANDED VELOCITY
+        varVel = cmdVel - UAVvel
+        # varVelMagnitude = np.linalg.norm(varVel)
+        # if varVelMagnitude > self.max_var_lin_vel:
+        #     varVel /= varVelMagnitude # Normalize
+        #     varVel *= self.max_var_lin_vel
+        # print("varVel:", varVel)
+
+        cmdVel = UAVvel + varVel
+        # print("cmdVel2:", cmdVel)
+
+        # COMPUTING DRONE RELATIVE LINEAR VELOCITY
+        cmdRelVel = UAVrot.inv().apply(cmdVel)
+        # print("cmdRelVel:", cmdRelVel)
+
+        # COMPUTING TARGET ERROR YAW
+        if WPheading is None:
+            targetDir = expected.vel.copy()
+            targetDir[2] = 0
+
+        else:
+            targetDir = WPheading
+
+        if np.linalg.norm(targetDir) > 0:
+            self.target_yaw = np.arctan2(targetDir[1], targetDir[0])
+        elif self.target_yaw is None:
+            self.target_yaw = UAVyaw
+
+        errorYaw = self.target_yaw - UAVyaw
+        while errorYaw < -np.pi:
+            errorYaw += 2*np.pi
+
+        while np.pi < errorYaw:
+            errorYaw -= 2*np.pi
+
+        # COMPUTING TARGET ANGULAR VELOCITY
+        currentWel = errorYaw / tToSolve
+        
+        # if currentWel < -self.max_var_ang_vel:
+        #     currentWel = -self.max_var_ang_vel
+        
+        # if self.max_var_ang_vel < currentWel:
+        #     currentWel = self.max_var_ang_vel
+
+        # CREATING COMMANDED RELATIVE VELOCITY VECTOR
+        cmd = Command(
+            on=True,
+            velX=cmdRelVel[0],
+            velY=cmdRelVel[1],
+            velZ=cmdRelVel[2],
+            rotZ=currentWel,
+            duration=tToSolve
+        )
+
+        return cmd
+    
     def get_isaacsim_command(self, time, pos, lin_vel, yaw, heading, t_to_solve):
         # EXPECTED UAV POSE
         expected = self.status_at_time(time)
