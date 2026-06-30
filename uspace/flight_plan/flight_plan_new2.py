@@ -1745,124 +1745,230 @@ class FlightPlan:
         # 9. Show the figure without blocking the execution of the program
         plt.show(block=False)
 
-    def add_UAV_track_pos(self, fig_name, UAVinfo : List[Waypoint]):
-        posFig = plt.figure(fig_name)
-        subplots = posFig.get_axes()
+    def add_UAV_track_pos(self, fig_name, uav_info: np.ndarray) -> None:
+        """
+        Adds the UAV's tracked position to the existing position plots in the specified figure.
+
+        Args:
+            - fig_name (str) : The name of the matplotlib figure window.
+            - uav_info (np.ndarray) : An array of UAV information containing time and position data.
+        """
+
+        # 1. Get the existing figure and its subplots
+        figure = plt.figure(fig_name)
+        subplots = figure.get_axes()
+
+        # 2. Unpack the subplots for easier access
         pos_error_vs_time_plot = subplots[0]
         position_3D_plot = subplots[1]
         x_pos_vs_time_plot = subplots[2]
         y_pos_vs_time_plot = subplots[3]
         z_pos_vs_time_plot = subplots[4]
 
-        x_waypoint_posUAV = []
-        y_waypoint_posUAV = []
-        z_waypoint_posUAV = []
-        timeUAV = []
-        errors = []
+        # 3. Unpack the UAV information into separate arrays for time and position
+        times_uav = uav_info[:, 0]
+        x_uav_pos = uav_info[:, 1]
+        y_uav_pos = uav_info[:, 2]
+        z_uav_pos = uav_info[:, 3]
+    
+        # 4. Compute the error between the UAV's tracked position and the expected position from the flight plan
+        expected_status = np.array([self.status_at_time(time).pos for time in times_uav])
+        errors = np.linalg.norm(uav_info[:, 1:4] - expected_status, axis=1)
 
-        for wp in UAVinfo:
-            x_waypoint_posUAV.append(wp.pos[0])
-            y_waypoint_posUAV.append(wp.pos[1])
-            z_waypoint_posUAV.append(wp.pos[2])
-            timeUAV.append(wp.time)
+        # 5. Plot the error on the position error versus time subplot
+        pos_error_vs_time_plot.plot(times_uav, errors, linestyle="solid", linewidth=1, color="red")
 
-            # Compute errors between UAV and flight plan
-            status = self.status_at_time(wp.time)
-            error = np.linalg.norm(wp.pos - status.pos)
-            errors.append(error)
+        # 6. Plot the UAV's tracked position on the 3D position plot and the individual position versus time plots
+        position_3D_plot.plot(
+            x_uav_pos, 
+            y_uav_pos, 
+            z_uav_pos, 
+            linestyle="dashed", 
+            linewidth=1, 
+            color="black", 
+            gid="UAV_tracking", 
+            zorder=2
+        )
+        x_pos_vs_time_plot.plot(
+            times_uav, 
+            x_uav_pos, 
+            linestyle="dashed", 
+            linewidth=1, 
+            color="black", 
+            gid="UAV_tracking", 
+            zorder=2
+        )
+        y_pos_vs_time_plot.plot(
+            times_uav, 
+            y_uav_pos, 
+            linestyle="dashed", 
+            linewidth=1, 
+            color="black", 
+            gid="UAV_tracking", 
+            zorder=2
+        )
+        z_pos_vs_time_plot.plot(
+            times_uav, 
+            z_uav_pos, 
+            linestyle="dashed", 
+            linewidth=1, 
+            color="black", 
+            gid="UAV_tracking", 
+            zorder=2
+        )
 
-        # Plot UAV errors
-        pos_error_vs_time_plot.plot(timeUAV, errors, linestyle="solid", linewidth=1, color="red")
+        # 7. Highlight the UAV's tracked positions on the plots using scatter plots
+        position_3D_plot.scatter(x_uav_pos, y_uav_pos, z_uav_pos, color="black", s=10, gid="UAV_tracking", zorder=2)
+        x_pos_vs_time_plot.scatter(times_uav, x_uav_pos, color="black", s=10, gid="UAV_tracking", zorder=2)
+        y_pos_vs_time_plot.scatter(times_uav, y_uav_pos, color="black", s=10, gid="UAV_tracking", zorder=2)
+        z_pos_vs_time_plot.scatter(times_uav, z_uav_pos, color="black", s=10, gid="UAV_tracking", zorder=2)
 
-        # Plot UAV route
-        position_3D_plot.plot(x_waypoint_posUAV, y_waypoint_posUAV, z_waypoint_posUAV, linestyle="dashed", linewidth=1, color="black", 
-                                     gid="UAVtracking", zorder=2)
-        x_pos_vs_time_plot.plot(timeUAV, x_waypoint_posUAV, linestyle="dashed", linewidth=1, color="black", 
-                                         gid="UAVtracking", zorder=2)
-        y_pos_vs_time_plot.plot(timeUAV, y_waypoint_posUAV, linestyle="dashed", linewidth=1, color="black", 
-                                         gid="UAVtracking", zorder=2)
-        z_pos_vs_time_plot.plot(timeUAV, z_waypoint_posUAV, linestyle="dashed", linewidth=1, color="black", 
-                                         gid="UAVtracking", zorder=2)
+    def add_UAV_track_vel(self, fig_name, uav_info : np.ndarray) -> None:
+        """
+        Adds the UAV's tracked velocity to the existing velocity plots in the specified figure.
 
-        # Highlight UAV route positions
-        position_3D_plot.scatter(x_waypoint_posUAV, y_waypoint_posUAV, z_waypoint_posUAV, color="black", s=10, gid="UAVtracking", zorder=2)
-        x_pos_vs_time_plot.scatter(timeUAV, x_waypoint_posUAV, color="black", s=10, gid="UAVtracking", zorder=2)
-        y_pos_vs_time_plot.scatter(timeUAV, y_waypoint_posUAV, color="black", s=10, gid="UAVtracking", zorder=2)
-        z_pos_vs_time_plot.scatter(timeUAV, z_waypoint_posUAV, color="black", s=10, gid="UAVtracking", zorder=2)
+        Args:
+            - fig_name (str) : The name of the matplotlib figure window.
+            - uav_info (np.ndarray) : An array of UAV information containing time and velocity data.
+        """
 
-    def add_UAV_track_vel(self, fig_name, UAVinfo : List[Waypoint]):
-        posFig = plt.figure(fig_name)
-        subplots = posFig.get_axes()
+        # 1. Get the existing figure and its subplots
+        figure = plt.figure(fig_name)
+        subplots = figure.get_axes()
+
+        # 2. Unpack the subplots for easier access
         velocity_3D_plot = subplots[0]
         x_vel_vs_time_plot = subplots[1]
         y_vel_vs_time_plot = subplots[2]
         z_vel_vs_time_plot = subplots[3]
 
-        xVelUAV = []
-        yVelUAV = []
-        zVelUAV = []
-        timeUAV = []
+        # 3. Unpack the UAV information into separate arrays for time and velocity
+        times_uav = uav_info[:, 0]
+        x_uav_vel = uav_info[:, 1]
+        y_uav_vel = uav_info[:, 2]
+        z_uav_vel = uav_info[:, 3]
 
-        for wp in UAVinfo:
-            xVelUAV.append(wp.vel[0])
-            yVelUAV.append(wp.vel[1])
-            zVelUAV.append(wp.vel[2])
-            timeUAV.append(wp.time)
+        # 4. Plot the UAV's tracked velocity on the 3D velocity plot and the individual velocity versus time plots
+        info_3d = np.sqrt(x_uav_vel**2 + y_uav_vel**2 + z_uav_vel**2)
 
-        xVelUAV = np.array(xVelUAV)
-        yVelUAV = np.array(yVelUAV)
-        zVelUAV = np.array(zVelUAV)
-        
-        # Plot UAV route
-        velocity_3D_plot.plot(timeUAV, np.sqrt(xVelUAV**2 + yVelUAV**2 + zVelUAV**2), linestyle="dashed", linewidth=1, 
-                       color="black", gid="UAVtracking", zorder=2)
-        x_vel_vs_time_plot.plot(timeUAV, xVelUAV, linestyle="dashed", linewidth=1, color="black", gid="UAVtracking", zorder=2)
-        y_vel_vs_time_plot.plot(timeUAV, yVelUAV, linestyle="dashed", linewidth=1, color="black", gid="UAVtracking", zorder=2)
-        z_vel_vs_time_plot.plot(timeUAV, zVelUAV, linestyle="dashed", linewidth=1, color="black", gid="UAVtracking", zorder=2)
+        velocity_3D_plot.plot(
+            times_uav, 
+            info_3d, 
+            linestyle="dashed", 
+            linewidth=1, 
+            color="black", 
+            gid="UAV_tracking", 
+            zorder=2
+        )
+        x_vel_vs_time_plot.plot(
+            times_uav, 
+            x_uav_vel, 
+            linestyle="dashed", 
+            linewidth=1, 
+            color="black", 
+            gid="UAV_tracking", 
+            zorder=2
+        )
+        y_vel_vs_time_plot.plot(
+            times_uav, 
+            y_uav_vel, 
+            linestyle="dashed", 
+            linewidth=1, 
+            color="black", 
+            gid="UAV_tracking", 
+            zorder=2
+        )
+        z_vel_vs_time_plot.plot(
+            times_uav, 
+            z_uav_vel, 
+            linestyle="dashed", 
+            linewidth=1, 
+            color="black", 
+            gid="UAV_tracking", 
+            zorder=2
+        )
 
-        # Highlight UAV route positions
-        velocity_3D_plot.scatter(timeUAV, np.sqrt(xVelUAV**2 + yVelUAV**2 + zVelUAV**2), color="black", s=10, gid="UAVtracking", 
-                          zorder=2)
-        x_vel_vs_time_plot.scatter(timeUAV, xVelUAV, color="black", s=10, gid="UAVtracking", zorder=2)
-        y_vel_vs_time_plot.scatter(timeUAV, yVelUAV, color="black", s=10, gid="UAVtracking", zorder=2)
-        z_vel_vs_time_plot.scatter(timeUAV, zVelUAV, color="black", s=10, gid="UAVtracking", zorder=2)
+        # 5. Highlight the UAV's tracked positions on the plots using scatter plots
+        velocity_3D_plot.scatter(times_uav, info_3d, color="black", s=10, gid="UAV_tracking", zorder=2)
+        x_vel_vs_time_plot.scatter(times_uav, x_uav_vel, color="black", s=10, gid="UAV_tracking", zorder=2)
+        y_vel_vs_time_plot.scatter(times_uav, y_uav_vel, color="black", s=10, gid="UAV_tracking", zorder=2)
+        z_vel_vs_time_plot.scatter(times_uav, z_uav_vel, color="black", s=10, gid="UAV_tracking", zorder=2)
 
-    def add_UAV_track_acc(self, fig_name, UAVinfo : List[Waypoint]):
-        posFig = plt.figure(fig_name)
-        subplots = posFig.get_axes()
+    def add_UAV_track_acc(self, fig_name, uav_info : np.ndarray) -> None:
+        """
+        Adds the UAV's tracked acceleration to the existing velocity plots in the specified figure.
+
+        Args:
+            - fig_name (str) : The name of the matplotlib figure window.
+            - uav_info (np.ndarray) : An array of UAV information containing time and acceleration data.
+        """
+
+        # 1. Get the existing figure and its subplots
+        figure = plt.figure(fig_name)
+        subplots = figure.get_axes()
+
+        # 2. Unpack the subplots for easier access
         acceleration_3D_plot = subplots[0]
         x_acc_vs_time_plot = subplots[1]
         y_acc_vs_time_plot = subplots[2]
-        x_acc_vs_time_plot = subplots[3]
+        z_acc_vs_time_plot = subplots[3]
 
-        xVelUAV = []
-        yVelUAV = []
-        zVelUAV = []
-        timeUAV = []
+        # 3. Unpack the UAV information into separate arrays for time and acceleration
+        times_uav = uav_info[:, 0]
+        x_uav_acc = uav_info[:, 1]
+        y_uav_acc = uav_info[:, 2]
+        z_uav_acc = uav_info[:, 3]
 
-        for wp in UAVinfo:
-            xVelUAV.append(wp.vel[0])
-            yVelUAV.append(wp.vel[1])
-            zVelUAV.append(wp.vel[2])
-            timeUAV.append(wp.time)
-
-        xAccUAV = np.diff(xVelUAV, prepend=xVelUAV[:1])
-        yAccUAV = np.diff(yVelUAV, prepend=yVelUAV[:1])
-        zAccUAV = np.diff(zVelUAV, prepend=zVelUAV[:1])
+        # 4. Compute the acceleration from the velocity data using finite differences
+        x_uav_acc = np.diff(x_uav_acc, prepend=x_uav_acc[:1])
+        y_uav_acc = np.diff(y_uav_acc, prepend=y_uav_acc[:1])
+        z_uav_acc = np.diff(z_uav_acc, prepend=z_uav_acc[:1])
         
-        # Plot UAV route
-        acceleration_3D_plot.plot(timeUAV, np.sqrt(xAccUAV**2 + yAccUAV**2 + zAccUAV**2), linestyle="dashed", linewidth=1, 
-                       color="black", gid="UAVtracking", zorder=2)
-        x_acc_vs_time_plot.plot(timeUAV, xAccUAV, linestyle="dashed", linewidth=1, color="black", gid="UAVtracking", zorder=2)
-        y_acc_vs_time_plot.plot(timeUAV, yAccUAV, linestyle="dashed", linewidth=1, color="black", gid="UAVtracking", zorder=2)
-        x_acc_vs_time_plot.plot(timeUAV, zAccUAV, linestyle="dashed", linewidth=1, color="black", gid="UAVtracking", zorder=2)
+        # 5. Plot the UAV's tracked acceleration on the 3D acceleration plot and the individual acceleration versus time plots
+        info_3d = np.sqrt(x_uav_acc**2 + y_uav_acc**2 + z_uav_acc**2)
 
-        # Highlight UAV route positions
-        acceleration_3D_plot.scatter(timeUAV, np.sqrt(xAccUAV**2 + yAccUAV**2 + zAccUAV**2), color="black", s=10, gid="UAVtracking", 
-                          zorder=2)
-        x_acc_vs_time_plot.scatter(timeUAV, xAccUAV, color="black", s=10, gid="UAVtracking", zorder=2)
-        y_acc_vs_time_plot.scatter(timeUAV, yAccUAV, color="black", s=10, gid="UAVtracking", zorder=2)
-        x_acc_vs_time_plot.scatter(timeUAV, zAccUAV, color="black", s=10, gid="UAVtracking", zorder=2)
+        acceleration_3D_plot.plot(
+            times_uav, 
+            info_3d, 
+            linestyle="dashed", 
+            linewidth=1, 
+            color="black", 
+            gid="UAV_tracking", 
+            zorder=2
+        )
+        x_acc_vs_time_plot.plot(
+            times_uav, 
+            x_uav_acc, 
+            linestyle="dashed", 
+            linewidth=1, 
+            color="black", 
+            gid="UAV_tracking", 
+            zorder=2
+        )
+        y_acc_vs_time_plot.plot(
+            times_uav, 
+            y_uav_acc, 
+            linestyle="dashed", 
+            linewidth=1, 
+            color="black", 
+            gid="UAV_tracking", 
+            zorder=2
+        )
+        z_acc_vs_time_plot.plot(
+            times_uav, 
+            z_uav_acc, 
+            linestyle="dashed", 
+            linewidth=1, 
+            color="black", 
+            gid="UAV_tracking", 
+            zorder=2
+        )
+
+        # 6. Highlight the UAV's tracked positions on the plots using scatter plots
+        acceleration_3D_plot.scatter(times_uav, info_3d, color="black", s=10, gid="UAV_tracking", zorder=2)
+        x_acc_vs_time_plot.scatter(times_uav, x_uav_acc, color="black", s=10, gid="UAV_tracking", zorder=2)
+        y_acc_vs_time_plot.scatter(times_uav, y_uav_acc, color="black", s=10, gid="UAV_tracking", zorder=2)
+        z_acc_vs_time_plot.scatter(times_uav, z_uav_acc, color="black", s=10, gid="UAV_tracking", zorder=2)
 
 
 class ToggleUAVtracking(ToolToggleBase):
