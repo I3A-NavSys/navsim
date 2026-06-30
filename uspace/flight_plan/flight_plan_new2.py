@@ -1,5 +1,3 @@
-from os import times
-
 from tabulate import tabulate
 from typing import List, Optional, Any, Union
 import math
@@ -9,8 +7,6 @@ import mplcursors
 import matplotlib.pyplot as plt
 from matplotlib.backend_tools import ToolToggleBase
 from matplotlib.collections import PathCollection
-import multiprocessing as mp
-# import bisect
 from sortedcontainers import SortedList
 
 
@@ -29,24 +25,35 @@ class FlightPlan:
         radius: float=1, 
         max_var_lin_vel: float=5, 
         max_var_ang_vel: float=1, 
-        target_yaw=None
     ):
         self.id: str = id
         self.priority: int = priority
         self.radius: float = radius
         self.max_var_lin_vel = max_var_lin_vel        # maximum variation in linear  velocity   [  m/s]
         self.max_var_ang_vel = max_var_ang_vel        # maximum variation in angular velocity   [rad/s]
-        self.target_yaw = target_yaw
         self.waypoints: List[Waypoint] = []
         self.time_waypoints: SortedList[float] = SortedList([])
         self.labels_to_idx = {}
         self.length: int = 0
-        self.figure_processes = []
+        self.time_decimals = 3
+        self.position_decimals = 3
+        self.velocity_decimals = 3
 
     def __repr__(self):
-        waypoints_info = [[wp.label, wp.time, wp.pos, wp.vel, wp.acel, wp.jerk, wp.snap, wp.crakle] for wp in self.waypoints]
+        waypoints_info = [
+            [wp.label, wp.time, wp.pos, wp.vel, wp.acel, wp.jerk, wp.snap, wp.crakle] 
+            for wp in self.waypoints
+        ]
         waypoints_headers = ('label', 'time', 'position', 'velocity', 'acceleration', 'jerk', 'snap', 'crakle')
-        return f"FlightPlan with id '{self.id}':\n{tabulate(waypoints_info, headers=waypoints_headers, tablefmt='grid')}"
+        return (
+            f"FlightPlan with id '{self.id}':"
+            f"\n\tPriority: {self.priority}"
+            f"\n\tRadius: {self.radius}"
+            f"\n\tMax Var Lin Vel: {self.max_var_lin_vel}"
+            f"\n\tMax Var Ang Vel: {self.max_var_ang_vel}"
+            f"\n\tWaypoints ({self.length}):"
+            f"\n{tabulate(waypoints_info, headers=waypoints_headers, tablefmt='grid')}"
+        )
 
     # ----------------------------------
     # -------- BASE FUNCTIONS ----------
@@ -415,6 +422,40 @@ class FlightPlan:
 
         return [labels, times, positions, velocities, accelerations, jerks, snaps, crackles, headings]
     
+    def rotate_vector_by_quaternion(self, vector: np.ndarray, quaternion: np.ndarray, conjugate: bool) -> np.ndarray:
+        """
+        Rotates a vector according to a given quaternion.
+
+        Args:
+            - vector (np.ndarray) : The vector to rotate.
+            - quaternion (np.ndarray) : The quaternion representing the rotation.
+            - conjugate (bool) : Whether to use the conjugate of the quaternion.
+
+        Returns:
+            - np.ndarray: The rotated vector.
+        """
+
+        # 1. Extract the scalar and vector parts of the quaternion (assuming form q = [w, x, y, z])
+        w = quaternion[0]
+
+        # 1.1 If 'conjugate' is True, use the conjugate of the quaternion for the extraction
+        if conjugate:
+            u = -quaternion[1:4]
+        else:
+            u = quaternion[1:4]
+
+        # 2. Use Rodrigues' rotation formula to rotate the vector by the quaternion
+        t = 2.0 * np.cross(u, vector)
+        vector_rotated = vector + w * t + np.cross(u, t)
+
+        return np.round(vector_rotated, decimals=self.velocity_decimals)
+
+    def local_to_global_velocity(self, vector, quaternion):
+        return self.rotate_vector_by_quaternion(vector, quaternion, conjugate=False)
+
+    def global_to_local_velocity(self, vector, quaternion):
+        return self.rotate_vector_by_quaternion(vector, quaternion, conjugate=True)
+
     # ----------------------------------
     # -------- TIME MANAGEMENT ---------
     # ----------------------------------
@@ -555,7 +596,7 @@ class FlightPlan:
             new_vel_magnitudes = distances / delta_times
             new_velocities = normed_velocities * new_vel_magnitudes[:, np.newaxis]
             new_velocities = np.vstack((new_velocities, velocities[-1]))
-            new_velocities = np.round(new_velocities, 4)
+            new_velocities = np.round(new_velocities, self.velocity_decimals)
 
             # 6. Update the velocities of the waypoints
             for i, wp in enumerate(self.waypoints):
@@ -565,7 +606,7 @@ class FlightPlan:
             # If velocity is the key aspect, we adjust the times to ensure that the UAV can reach the next waypoint
             new_delta_times = distances / vel_magnitudes[:-1]
             new_times = np.cumsum(np.concatenate(([times[0]], new_delta_times)))
-            new_times = np.round(new_times, 4)
+            new_times = np.round(new_times, self.time_decimals)
 
             # 6. Update the times of the waypoints
             self.time_waypoints = SortedList(new_times)
@@ -944,563 +985,785 @@ class FlightPlan:
     # ----------------------------------
     # -------- NAVIGATION --------------
     # ----------------------------------
-    def get_command(self, time, pos, lin_vel, yaw, heading, t_to_solve) -> Command:
+    def get_command(self, current_time, uav_pos, uav_lin_vel, uav_ori_quaternion, target_heading, t_to_solve=2) -> Command:
         """
         Compute the navigation command for the UAV based on its current state and the flight plan.
 
         Args:
-            - time (float) : The current time.
-            - pos (np.ndarray) : The current position of the UAV.
-            - lin_vel (np.ndarray) : The current linear velocity of the UAV.
-            - yaw (float) : The current yaw of the UAV.
-            - heading (np.ndarray) : The desired heading direction for the UAV.
-            - t_to_solve (float) : The time duration over which to compute the command
+            - current_time (float) : The current time.
+            - uav_pos (np.ndarray) : The current position of the UAV.
+            - uav_lin_vel (np.ndarray) : The current linear velocity of the UAV in the world frame.
+            - uav_ori_quaternion (np.ndarray) : The current orientation quaternion of the UAV.
+            - target_heading (np.ndarray) : The desired heading direction for the UAV.
+            - t_to_solve (float) : The time duration over which to compute the command.
+
+        Returns:
+            - Command : The computed command for the UAV.
         """
+
+        # 1. Get the uav's current yaw from its orientation quaternion
+        w, x, y, z = uav_ori_quaternion
+        uav_yaw = math.atan2(2.0 * (w*z + x*y), 1.0 - 2.0 * (y*y + z*z))
+
+        # 2. Get the expected status of the UAV at the current time
+        expected_status = self.status_at_time(current_time)
+
+        # 3. Compute the correction velocity needed to reach the expected position in the given 't_to_solve' time
+        correction_vel = (expected_status.pos - uav_pos) / t_to_solve
+
+        # 4. Compute the commanded velocity by adding the expected velocity and the correction velocity
+        commanded_vel = expected_status.vel + correction_vel
+
+        # 5. Get the UAV's commanded velocity in the UAV's body frame
+        commanded_vel = self.global_to_local_velocity(commanded_vel, uav_ori_quaternion)
         
-        # CURRENT UAV YAW
-        _, _, UAVyaw = UAVrot.as_euler('xyz', degrees=False)
+        # 6. Compute the target yaw based on the expected velocity or the target heading
+        # 6.1 If the target heading is zero, use the expected velocity to determine the target direction
+        target_direction = target_heading
 
-        # EXPECTED UAV POSE
-        expected = self.status_at_time(currentTime)
+        if np.linalg.norm(target_heading) < 1e-9:
+            target_direction = expected_status.vel[:2]
 
-        # COMPUTING CORRECTION VELOCITY (to achieve status.pos in 'tToSolve' seconds)
-        crVel = (expected.pos - UAVpos) / tToSolve
+        target_yaw = math.atan2(target_direction[1], target_direction[0])
 
-        # COMPUTING COMMANDED VELOCITY
-        cmdVel = expected.vel + crVel
-        # print("cmdVel1:", cmdVel)
+        # 6.2 If target_yaw is 0, use the UAV's current yaw as the target yaw
+        if target_yaw == 0:
+            target_yaw = uav_yaw
 
-        # SMOOTHING COMMANDED VELOCITY
-        varVel = cmdVel - UAVvel
-        # varVelMagnitude = np.linalg.norm(varVel)
-        # if varVelMagnitude > self.max_var_lin_vel:
-        #     varVel /= varVelMagnitude # Normalize
-        #     varVel *= self.max_var_lin_vel
-        # print("varVel:", varVel)
+        # 7. Compute the error in yaw and normalize it to the range [-pi, pi]
+        error_yaw = target_yaw - uav_yaw
+        error_yaw = (error_yaw + math.pi) % (2 * math.pi) - math.pi
 
-        cmdVel = UAVvel + varVel
-        # print("cmdVel2:", cmdVel)
+        # 8. Compute the commanded angular velocity based on the error in yaw and the given 'time to solve'
+        commanded_ang_vel = round(error_yaw / t_to_solve, self.velocity_decimals)
 
-        # COMPUTING DRONE RELATIVE LINEAR VELOCITY
-        cmdRelVel = UAVrot.inv().apply(cmdVel)
-        # print("cmdRelVel:", cmdRelVel)
-
-        # COMPUTING TARGET ERROR YAW
-        if WPheading is None:
-            targetDir = expected.vel.copy()
-            targetDir[2] = 0
-
-        else:
-            targetDir = WPheading
-
-        if np.linalg.norm(targetDir) > 0:
-            self.target_yaw = np.arctan2(targetDir[1], targetDir[0])
-        elif self.target_yaw is None:
-            self.target_yaw = UAVyaw
-
-        errorYaw = self.target_yaw - UAVyaw
-        while errorYaw < -np.pi:
-            errorYaw += 2*np.pi
-
-        while np.pi < errorYaw:
-            errorYaw -= 2*np.pi
-
-        # COMPUTING TARGET ANGULAR VELOCITY
-        currentWel = errorYaw / tToSolve
-        
-        # if currentWel < -self.max_var_ang_vel:
-        #     currentWel = -self.max_var_ang_vel
-        
-        # if self.max_var_ang_vel < currentWel:
-        #     currentWel = self.max_var_ang_vel
-
-        # CREATING COMMANDED RELATIVE VELOCITY VECTOR
-        cmd = Command(
+        # 9. Return the computed command as a Command object
+        return Command(
             on=True,
-            velX=cmdRelVel[0],
-            velY=cmdRelVel[1],
-            velZ=cmdRelVel[2],
-            rotZ=currentWel,
-            duration=tToSolve
+            vel_x=commanded_vel[0],
+            vel_y=commanded_vel[1],
+            vel_z=commanded_vel[2],
+            rot_z=commanded_ang_vel,
+            duration=t_to_solve
         )
 
-        return cmd
-    
-    def get_isaacsim_command(self, time, pos, lin_vel, yaw, heading, t_to_solve):
-        # EXPECTED UAV POSE
-        expected = self.status_at_time(time)
-
-        # COMPUTING CORRECTION VELOCITY (to achieve status.pos in 'tToSolve' seconds)
-        correction_vel = (expected.pos - pos) / t_to_solve
-
-        # COMPUTING COMMANDED VELOCITY
-        command_linear_vel = expected.vel + correction_vel
-
-        # SMOOTHING COMMANDED VELOCITY
-        variation_vel = command_linear_vel - lin_vel
-        command_linear_vel = lin_vel + variation_vel
-
-        # COMPUTING TARGET ERROR YAW
-        if heading is None:
-            target_heading = expected.vel[:2]
-        else:
-            target_heading = heading
-
-        if np.linalg.norm(target_heading) > 0:
-            self.target_yaw = np.arctan2(target_heading[1], target_heading[0])
-        elif self.target_yaw is None:
-            self.target_yaw = yaw
-
-        yaw_error = self.target_yaw - yaw
-        # Normalize to [-pi, pi]
-        yaw_error = (yaw_error + np.pi) % (2 * np.pi) - np.pi
-
-        # COMPUTING TARGET ANGULAR VELOCITY
-        command_yaw_rotation = yaw_error / t_to_solve
-
-        return command_linear_vel, command_yaw_rotation
-
     # ----------------------------------
-    # -------- CONFLICT DETECTION ------
-    # ----------------------------------
-    def compare_to(self, fp2, time_step):
-        decimals = len(str(time_step).split(".")[1])
+    # -------- COMPARISON ANALYSIS -----
+    # ----------------------------------    
+    def compare_to(self, fp2: FlightPlan, time_step: float) -> dict:
+        """
+        Compare two FlightPlans and return a comprehensive analysis of their interaction.
+
+        Args:
+            - fp2 (FlightPlan) : The second flight plan to compare against.
+            - time_step (float) : The time step used to sample both traces.
+
+        Returns:
+            dict with the following keys:
+
+            - "overlap" (dict | None) : Temporal overlap info, or None if there is no overlap.
+                - "start" (float)    : Start time of the overlap.
+                - "end"   (float)    : End time of the overlap.
+                - "duration" (float) : Duration of the overlap.
+
+            - "times" (np.ndarray) : Time instants for the overlap period, shape (N,).
+
+            - "separation" (dict) : Distance statistics between the two plans during the overlap.
+                - "distances" (np.ndarray) : Separation distance at each instant, shape (N,).
+                - "min"      (float)       : Minimum separation distance.
+                - "max"      (float)       : Maximum separation distance.
+                - "mean"     (float)       : Mean separation distance.
+                - "std"      (float)       : Standard deviation of separation distance.
+                - "min_time" (float)       : Time of minimum separation (closest approach).
+                - "max_time" (float)       : Time of maximum separation.
+
+            - "relative_velocity" (dict) : Relative motion analysis.
+                - "closing_speed"      (np.ndarray) : Closing speed at each instant (positive = approaching), shape (N,).
+                - "angle_between"      (np.ndarray) : Angle between velocity vectors [rad], shape (N,).
+                - "mean_closing_speed" (float)      : Mean closing speed.
+                - "max_closing_speed"  (float)      : Maximum closing speed (peak approach rate).
+                - "mean_angle_between" (float)      : Mean angle between velocity vectors [rad].
+
+            - "conflicts" (dict) : Conflict detection based on combined safety radii.
+                - "detected"       (bool)        : Whether any conflict was detected.
+                - "combined_radius"(float)        : Sum of both plans' radii.
+                - "count"          (int)          : Number of time samples in conflict.
+                - "total_duration" (float)        : Total conflict duration [s].
+                - "times"          (np.ndarray)   : Time instants in conflict, shape (K,).
+                - "positions_fp1"  (np.ndarray)   : Positions of fp1 during conflict, shape (K, 3).
+                - "positions_fp2"  (np.ndarray)   : Positions of fp2 during conflict, shape (K, 3).
+                - "distances"      (np.ndarray)   : Separation distances during conflict, shape (K,).
+
+            - "closest_approach" (dict) : Details of the closest approach instant.
+                - "time"     (float)      : Time of closest approach.
+                - "distance" (float)      : Separation distance at closest approach.
+                - "pos_fp1"  (np.ndarray) : Position of fp1 at closest approach, shape (3,).
+                - "pos_fp2"  (np.ndarray) : Position of fp2 at closest approach, shape (3,).
+        """
 
         trace_1 = self.trace(time_step)
         trace_2 = fp2.trace(time_step)
 
-        trace_1_times = np.round(trace_1[:, 0], decimals)
-        trace_2_times = np.round(trace_2[:, 0], decimals)
+        times_1 = np.round(trace_1[:, 0], decimals=self.time_decimals)
+        times_2 = np.round(trace_2[:, 0], decimals=self.time_decimals)
 
-        # Early return when the two plans do not overlap in time
-        overlap_start = max(trace_1_times[0], trace_2_times[0])
-        overlap_end   = min(trace_1_times[-1], trace_2_times[-1])
+        # 1. Compute temporal overlap
+        overlap_start = max(times_1[0], times_2[0])
+        overlap_end   = min(times_1[-1], times_2[-1])
+
         if overlap_start > overlap_end:
-            return [], np.array([])
+            return {"overlap": None}
 
-        init_trace_1 = [[0]]
-        init_trace_2 = [[0]]
-        end_trace_1 = [[len(trace_1_times) - 1]]
-        end_trace_2 = [[len(trace_2_times) - 1]]
+        # 2. Find matching index ranges for the overlap period
+        i1 = int(np.searchsorted(times_1, overlap_start, side='left'))
+        e1 = int(np.searchsorted(times_1, overlap_end,   side='right'))
+        i2 = int(np.searchsorted(times_2, overlap_start, side='left'))
+        e2 = int(np.searchsorted(times_2, overlap_end,   side='right'))
 
-        if trace_1_times[0] < trace_2_times[0]:     init_trace_1 = np.where(trace_1_times == trace_2_times[0])
-        else:                                       init_trace_2 = np.where(trace_2_times == trace_1_times[0])
+        # 2.1 Trim to the same length to guard against floating-point edge cases
+        n    = min(e1 - i1, e2 - i2)
+        seg1 = trace_1[i1:i1 + n]
+        seg2 = trace_2[i2:i2 + n]
+        overlap_times = times_1[i1:i1 + n]
 
-        if trace_1_times[-1] < trace_2_times[-1]:   end_trace_2 = np.where(trace_2_times == trace_1_times[-1])
-        else:                                       end_trace_1 = np.where(trace_1_times == trace_2_times[-1])
+        # 3. Extract position and velocity arrays
+        pos1 = seg1[:, 1:4]
+        pos2 = seg2[:, 1:4]
+        vel1 = seg1[:, 4:7]
+        vel2 = seg2[:, 4:7]
 
-        i1, e1 = init_trace_1[0][0], end_trace_1[0][0]
-        i2, e2 = init_trace_2[0][0], end_trace_2[0][0]
-
-        # Vectorised Euclidean distance: no Python loop, no redundant np.abs
-        diff = trace_1[i1:e1, 1:4] - trace_2[i2:e2, 1:4]
+        # 4. Separation distances
+        diff      = pos1 - pos2
         distances = np.linalg.norm(diff, axis=1)
+        min_idx   = int(np.argmin(distances))
+        max_idx   = int(np.argmax(distances))
 
-        return distances, trace_1_times[i1:e1]
+        # 5. Closing speed: projection of relative velocity onto the separation unit vector
+        #    Positive value  → plans are approaching each other
+        #    Negative value  → plans are diverging
+        sep_norm       = np.linalg.norm(diff, axis=1, keepdims=True)
+        sep_norm_safe  = np.where(sep_norm < 1e-12, 1e-12, sep_norm)
+        sep_unit       = diff / sep_norm_safe
+        rel_vel        = vel2 - vel1
+        closing_speed  = -np.sum(rel_vel * sep_unit, axis=1)
+
+        # 6. Angle between velocity vectors at each instant
+        vel1_norm     = np.linalg.norm(vel1, axis=1, keepdims=True)
+        vel2_norm     = np.linalg.norm(vel2, axis=1, keepdims=True)
+        vel1_norm_safe = np.where(vel1_norm < 1e-12, 1e-12, vel1_norm)
+        vel2_norm_safe = np.where(vel2_norm < 1e-12, 1e-12, vel2_norm)
+        cos_angle     = np.sum((vel1 / vel1_norm_safe) * (vel2 / vel2_norm_safe), axis=1)
+        cos_angle     = np.clip(cos_angle, -1.0, 1.0)
+        angle_between = np.arccos(cos_angle)
+
+        # 7. Conflict detection based on combined safety radii
+        combined_radius  = self.radius + fp2.radius
+        conflict_mask    = distances < combined_radius
+        conflict_times   = overlap_times[conflict_mask]
+        conflict_pos1    = pos1[conflict_mask]
+        conflict_pos2    = pos2[conflict_mask]
+        conflict_dist    = distances[conflict_mask]
+
+        return {
+            "base_info": {
+                "fp1_id": self.id,
+                "fp2_id": fp2.id,
+                "fp1_priority": self.priority,
+                "fp2_priority": fp2.priority,
+                "fp1_radius": float(self.radius),
+                "fp2_radius": float(fp2.radius),
+            },
+            "overlap": {
+                "start":    float(overlap_start),
+                "end":      float(overlap_end),
+                "duration": float(overlap_end - overlap_start),
+            },
+            "times": overlap_times,
+            "separation": {
+                "distances": distances,
+                "min":       float(distances[min_idx]),
+                "max":       float(distances[max_idx]),
+                "mean":      float(np.mean(distances)),
+                "std":       float(np.std(distances)),
+                "min_time":  float(overlap_times[min_idx]),
+                "max_time":  float(overlap_times[max_idx]),
+            },
+            "relative_velocity": {
+                "closing_speed":       closing_speed,
+                "angle_between":       angle_between,
+                "mean_closing_speed":  float(np.mean(closing_speed)),
+                "max_closing_speed":   float(np.max(closing_speed)),
+                "mean_angle_between":  float(np.mean(angle_between)),
+            },
+            "conflicts": {
+                "detected":        bool(np.any(conflict_mask)),
+                "combined_radius": float(combined_radius),
+                "count":           int(np.sum(conflict_mask)),
+                "total_duration":  float(int(np.sum(conflict_mask)) * time_step),
+                "times":           conflict_times,
+                "positions_fp1":   conflict_pos1,
+                "positions_fp2":   conflict_pos2,
+                "distances":       conflict_dist,
+            },
+            "closest_approach": {
+                "time":     float(overlap_times[min_idx]),
+                "distance": float(distances[min_idx]),
+                "pos_fp1":  pos1[min_idx],
+                "pos_fp2":  pos2[min_idx],
+            },
+        }
+
+    def print_comparison(self, comparison_data) -> None:
+        """
+        Print a human-readable comparison between this FlightPlan and fp2.
+
+        Args:
+            - comparison_data (dict) : The comparison data returned by the compare_to method.
+        """
+
+        SEP   = "=" * 60
+        SEP_S = "-" * 60
+        RAD   = math.degrees
+
+        fp2_id = comparison_data["base_info"]["fp2_id"]
+        fp2_radius = comparison_data["base_info"]["fp2_radius"]
+
+        print(SEP)
+        print(f"  FLIGHT PLAN COMPARISON")
+        print(f"  '{self.id}'  vs  '{fp2_id}'")
+        print(SEP)
+
+        # ── Overlap ──────────────────────────────────────────────
+        overlap = comparison_data.get("overlap")
+        if overlap is None:
+            print("  No temporal overlap between the two flight plans.")
+            print(SEP)
+            return
+
+        print(f"\n{'TEMPORAL OVERLAP':^60}")
+        print(SEP_S)
+        overlap_table = [
+            ["Start time",  f"{overlap['start']:.3f} s"],
+            ["End time",    f"{overlap['end']:.3f} s"],
+            ["Duration",    f"{overlap['duration']:.3f} s"],
+        ]
+        print(tabulate(overlap_table, tablefmt="simple"))
+
+        # ── Separation ───────────────────────────────────────────
+        sep = comparison_data["separation"]
+        print(f"\n{'SEPARATION DISTANCE':^60}")
+        print(SEP_S)
+        sep_table = [
+            ["Minimum",  f"{sep['min']:.3f} m",  f"at t = {sep['min_time']:.3f} s"],
+            ["Maximum",  f"{sep['max']:.3f} m",  f"at t = {sep['max_time']:.3f} s"],
+            ["Mean",     f"{sep['mean']:.3f} m", ""],
+            ["Std dev",  f"{sep['std']:.3f} m",  ""],
+        ]
+        print(tabulate(sep_table, headers=["Stat", "Value", ""], tablefmt="simple"))
+
+        # ── Relative velocity ─────────────────────────────────────
+        rv = comparison_data["relative_velocity"]
+        print(f"\n{'RELATIVE VELOCITY':^60}")
+        print(SEP_S)
+        rv_table = [
+            ["Mean closing speed",  f"{rv['mean_closing_speed']:+.3f} m/s",
+             "(+ approaching / - diverging)"],
+            ["Max closing speed",   f"{rv['max_closing_speed']:+.3f} m/s", ""],
+            ["Mean angle between",  f"{RAD(rv['mean_angle_between']):.1f} deg", ""],
+        ]
+        print(tabulate(rv_table, headers=["Metric", "Value", "Note"], tablefmt="simple"))
+
+        # ── Closest approach ─────────────────────────────────────
+        ca = comparison_data["closest_approach"]
+        print(f"\n{'CLOSEST APPROACH':^60}")
+        print(SEP_S)
+        ca_table = [
+            ["Time",        f"{ca['time']:.3f} s"],
+            ["Distance",    f"{ca['distance']:.3f} m"],
+            [f"Pos '{self.id}'", f"[{ca['pos_fp1'][0]:.2f}, {ca['pos_fp1'][1]:.2f}, {ca['pos_fp1'][2]:.2f}] m"],
+            [f"Pos '{fp2_id}'",  f"[{ca['pos_fp2'][0]:.2f}, {ca['pos_fp2'][1]:.2f}, {ca['pos_fp2'][2]:.2f}] m"],
+        ]
+        print(tabulate(ca_table, tablefmt="simple"))
+
+        # ── Conflict detection ────────────────────────────────────
+        cf = comparison_data["conflicts"]
+        print(f"\n{'CONFLICT DETECTION':^60}")
+        print(SEP_S)
+        print(f"  Combined safety radius : {cf['combined_radius']:.3f} m  "
+              f"({self.radius:.3f} + {fp2_radius:.3f})")
+        if cf["detected"]:
+            print(f"  {'[!] CONFLICT DETECTED':}")
+            cf_table = [
+                ["Samples in conflict",  cf["count"]],
+                ["Total duration",       f"{cf['total_duration']:.3f} s"],
+                ["Min dist in conflict", f"{cf['distances'].min():.3f} m"],
+                ["Max dist in conflict", f"{cf['distances'].max():.3f} m"],
+                ["First conflict time",  f"{cf['times'][0]:.3f} s"],
+                ["Last conflict time",   f"{cf['times'][-1]:.3f} s"],
+            ]
+            print(tabulate(cf_table, headers=["Metric", "Value"], tablefmt="simple"))
+        else:
+            print("  No conflicts detected.")
+
+        print("\n" + SEP)
 
     # ----------------------------------
     # -------- INFO & FIGURES ----------
     # ----------------------------------
-    def print_waypoints(self) -> None:
-        """Prints all waypoints in the flight plan with their time, position, and velocity."""
-        table = [
-            [wp.label, wp.time, wp.pos, wp.vel, wp.acel, wp.jerk, wp.snap, wp.crakle] 
-            for wp in self.waypoints
-        ]
-        print(tabulate(
-            table, 
-            headers=[
-                "Label", 
-                "Time", 
-                "Position", 
-                "Velocity", 
-                "Acceleration", 
-                "Jerk", 
-                "Snap", 
-                "Crakle"
-            ]
-        ))
+    def attach_cursor_annotations(self, cursor, waypoints) -> None:
+        """
+        Attach annotations to a cursor for displaying waypoint information.
 
-    def attach_cursor_annotations(self, cursor, waypoints):
+        Args:
+            - cursor : The mplcursors cursor object to attach annotations to.
+            - waypoints : The list of waypoints corresponding to the cursor's data points.
+        """
+
         @cursor.connect("add")
         def on_add(sel):
             wp = waypoints[sel.index]
-            text = f"T: {wp.time}\n"
+            text = f"TIME: {wp.time}\n"
             text += f"POS: {wp.pos}\n"
             text += f"VEL: {wp.vel}\n"
             text += f"ACEL: {wp.acel}"
 
             sel.annotation.set_text(text)
 
-    def position_figure(self, figName, timeStep):
-        # Display the flight plan trajectory
-        
-        # Check if the flight plan is empty
-        if not self.waypoints:
-            print('The flight plan is empty')
-            return
+    def plot_position(self, fig_name, time_step) -> None:
+        """
+        Launch a matplotlib window to visualize the flight plan's position data over time.
+        It plots the 3D trajectory, position (X, Y, Z) versus time, and position error versus time.
 
-        # Build a process to show the figure without blocking the main thread
-        process = mp.Process(target=self.position_figure_process, args=(figName, timeStep, ))
-        self.figure_processes.append(process)
-        process.start()
+        Args:
+            - fig_name (str) : The name of the matplotlib figure window.
+            - time_step (float) : The time step used to sample the flight plan's trace
+        """
 
-    def position_figure_process(self, figName, timeStep):
-        # Create matplolib figure (window)
-        posFig = plt.figure(figName)
-        posFig.canvas.manager.toolmanager.add_tool("ToogleUAV", ToggleUAVtracking, gid="UAVtracking")
-        posFig.canvas.manager.toolbar.add_tool('ToogleUAV', 'navigation', 1)
+        # 1. Create a new figure for plotting
+        figure = plt.figure(fig_name)
+        figure.canvas.manager.toolmanager.add_tool("Toogle_UAV", ToggleUAVtracking, gid="UAV_tracking")
+        figure.canvas.manager.toolbar.add_tool('Toogle_UAV', 'navigation', 1)
 
-        # Figure settings
+        # 2. Define the color for the plots
         color = [0, 0.7, 1]
 
-        # Get the trace
-        tr = self.trace(timeStep)
-        tr_t = tr[:, 0]
-        tr_x = tr[:, 1]
-        tr_y = tr[:, 2]
-        tr_z = tr[:, 3]
+        # 3. Compute the trace of the flight plan at the specified time step
+        trace = self.trace(time_step)
+        trace_times = trace[:, 0]
+        trace_x = trace[:, 1]
+        trace_y = trace[:, 2]
+        trace_z = trace[:, 3]
 
-        # POSITION ERROR VERSUS TIME
-        # Create plot
-        xyzPosErrorPlot = posFig.add_subplot(6, 5, (26, 28))
+        # 4. Add a new subplot for the position error versus time plot
+        pos_error_vs_time_plot = figure.add_subplot(6, 5, (26, 28))
 
-        # Indicate axes' name
-        xyzPosErrorPlot.set_xlabel("t [s]")
-        xyzPosErrorPlot.set_ylabel("Error [m]")
+        # 4.1 Set the axes' labels
+        pos_error_vs_time_plot.set_xlabel("t [s]")
+        pos_error_vs_time_plot.set_ylabel("Error [m]")
 
-        # Set title
-        xyzPosErrorPlot.set_title("Position error versus time")
+        # 4.2 Set the title
+        pos_error_vs_time_plot.set_title("Position error versus time")
 
-        # Set grid to True
-        xyzPosErrorPlot.grid(True)
+        # 4.3 Set the grid to True
+        pos_error_vs_time_plot.grid(True)
 
-        # POSITION 3D
-        # Create plot
-        xyzPosPlot = posFig.add_subplot(6, 5, (1, 23), projection="3d")
+        # 5. Add a new subplot for the 3D position plot
+        position_3D_plot = figure.add_subplot(6, 5, (1, 23), projection="3d")
         
-        # Indicate axes' name
-        xyzPosPlot.set_xlabel("x [m]")
-        xyzPosPlot.set_ylabel("y [m]")
-        xyzPosPlot.set_zlabel("z [m]")
+        # 5.1 Set the axes' labels
+        position_3D_plot.set_xlabel("x [m]")
+        position_3D_plot.set_ylabel("y [m]")
+        position_3D_plot.set_zlabel("z [m]")
         
-        # Set title
-        xyzPosPlot.set_title("Position 3D")
+        # 5.2 Set the title
+        position_3D_plot.set_title("Position 3D")
         
-        # Set grid to True
-        xyzPosPlot.grid(True)
+        # 5.3 Set the grid to True
+        position_3D_plot.grid(True)
         
-        # Set plot info
-        xyzPosPlot.plot(tr_x, tr_y, tr_z, linewidth=2, color=color, zorder=1)
+        # 5.4 Plot the 3D trajectory of the flight plan
+        position_3D_plot.plot(trace_x, trace_y, trace_z, linewidth=2, color=color, zorder=1)
 
-        # POSITIONS VERSUS TIME
-        # Create plots
-        xPosTimePlot = posFig.add_subplot(6, 5, (4, 10))
-        yPosTimePlot = posFig.add_subplot(6, 5, (14, 20))
-        zPosTimePlot = posFig.add_subplot(6, 5, (24, 30))
+        # 6. Add new subplots for the position versus time plots for each axis (X, Y, Z)
+        x_pos_vs_time_plot = figure.add_subplot(6, 5, (4, 10))
+        y_pos_vs_time_plot = figure.add_subplot(6, 5, (14, 20))
+        z_pos_vs_time_plot = figure.add_subplot(6, 5, (24, 30))
         
-        # Indicate axes' names
-        xPosTimePlot.set_ylabel("x [m]")
-        yPosTimePlot.set_ylabel("y [m]")
-        zPosTimePlot.set_ylabel("z [m]")
-        zPosTimePlot.set_xlabel("t [s]")
+        # 6.1 Set the axes' labels for subplot
+        x_pos_vs_time_plot.set_ylabel("x [m]")
+        y_pos_vs_time_plot.set_ylabel("y [m]")
+        z_pos_vs_time_plot.set_ylabel("z [m]")
+        z_pos_vs_time_plot.set_xlabel("t [s]")
         
-        # Set title
-        xPosTimePlot.set_title("Position versus time")
+        # 6.2 Set the title for the X position versus time plot
+        x_pos_vs_time_plot.set_title("Position versus time")
         
-        # Set grid to True
-        xPosTimePlot.grid(True)
-        yPosTimePlot.grid(True)
-        zPosTimePlot.grid(True)
+        # 6.3 Set the grid to True for each subplot
+        x_pos_vs_time_plot.grid(True)
+        y_pos_vs_time_plot.grid(True)
+        z_pos_vs_time_plot.grid(True)
         
-        # Set plots info
-        xPosTimePlot.plot(tr_t, tr_x, linewidth=2, color=color, zorder=1)
-        yPosTimePlot.plot(tr_t, tr_y, linewidth=2, color=color, zorder=1)
-        zPosTimePlot.plot(tr_t, tr_z, linewidth=2, color=color, zorder=1)
+        # 6.4 Plot the position data for each axis versus time
+        x_pos_vs_time_plot.plot(trace_times, trace_x, linewidth=2, color=color, zorder=1)
+        y_pos_vs_time_plot.plot(trace_times, trace_y, linewidth=2, color=color, zorder=1)
+        z_pos_vs_time_plot.plot(trace_times, trace_z, linewidth=2, color=color, zorder=1)
 
-        # Get waypoints positions to highlight
-        xPos = []
-        yPos = []
-        zPos = []
-        t = []
+        # 7. Extract the positions and times of the waypoints for highlighting
+        waypoint_idxs = np.where(np.isin(trace_times, self.time_waypoints))[0]
+        x_waypoint_pos = trace_x[waypoint_idxs]
+        y_waypoint_pos = trace_y[waypoint_idxs]
+        z_waypoint_pos = trace_z[waypoint_idxs]
 
-        for wp in self.waypoints:
-            xPos.append(wp.pos[0])
-            yPos.append(wp.pos[1])
-            zPos.append(wp.pos[2])
-            t.append(wp.time)
+        # 7.1 Highlight the waypoints on the plots using scatter plots
+        position_3D_plot_scatter = position_3D_plot.scatter(
+            x_waypoint_pos, 
+            y_waypoint_pos, 
+            z_waypoint_pos, 
+            marker="o", 
+            color="blue", 
+            s=25, 
+            pickradius=30, 
+            zorder=3
+        )
+        x_pos_vs_time_plot_scatter = x_pos_vs_time_plot.scatter(
+            self.time_waypoints, 
+            x_waypoint_pos, 
+            marker="o", 
+            color="blue", 
+            s=25, 
+            pickradius=30, 
+            zorder=3
+        )
+        y_pos_vs_time_plot_scatter = y_pos_vs_time_plot.scatter(
+            self.time_waypoints, 
+            y_waypoint_pos, 
+            marker="o", 
+            color="blue", 
+            s=25, 
+            pickradius=30, 
+            zorder=3
+        )
+        z_pos_vs_time_plot_scatter = z_pos_vs_time_plot.scatter(
+            self.time_waypoints, 
+            z_waypoint_pos, 
+            marker="o", 
+            color="blue", 
+            s=25, 
+            pickradius=30, 
+            zorder=3
+        )
 
-        # Highlight waypoints positions
-        xyzPosPlot_scatter = xyzPosPlot.scatter(xPos, yPos, zPos, marker="o", color="blue", s=25, pickradius=30, zorder=3)
-        xPosTimePlot_scatter = xPosTimePlot.scatter(t, xPos, marker="o", color="blue", s=25, pickradius=30, zorder=3)
-        yPosTimePlot_scatter = yPosTimePlot.scatter(t, yPos, marker="o", color="blue", s=25, pickradius=30, zorder=3)
-        zPosTimePlot_scatter = zPosTimePlot.scatter(t, zPos, marker="o", color="blue", s=25, pickradius=30, zorder=3)
+        # 8. Attach cursor annotations to the scatter plots for displaying waypoint information
+        position_3D_plot_cursor = mplcursors.cursor(position_3D_plot_scatter, highlight=True)
+        x_pos_vs_time_plot_cursor = mplcursors.cursor(x_pos_vs_time_plot_scatter, highlight=True)
+        y_pos_vs_time_plot_cursor = mplcursors.cursor(y_pos_vs_time_plot_scatter, highlight=True)
+        z_pos_vs_time_plot_cursor = mplcursors.cursor(z_pos_vs_time_plot_scatter, highlight=True)
 
-        xyzPosPlot_cursor = mplcursors.cursor(xyzPosPlot_scatter, highlight=True)
-        xPosTimePlot_cursor = mplcursors.cursor(xPosTimePlot_scatter, highlight=True)
-        yPosTimePlot_cursor = mplcursors.cursor(yPosTimePlot_scatter, highlight=True)
-        zPosTimePlot_cursor = mplcursors.cursor(zPosTimePlot_scatter, highlight=True)
+        self.attach_cursor_annotations(position_3D_plot_cursor, self.waypoints)
+        self.attach_cursor_annotations(x_pos_vs_time_plot_cursor, self.waypoints)
+        self.attach_cursor_annotations(y_pos_vs_time_plot_cursor, self.waypoints)
+        self.attach_cursor_annotations(z_pos_vs_time_plot_cursor, self.waypoints)
 
-        self.attach_cursor_annotations(xyzPosPlot_cursor, self.waypoints)
-        self.attach_cursor_annotations(xPosTimePlot_cursor, self.waypoints)
-        self.attach_cursor_annotations(yPosTimePlot_cursor, self.waypoints)
-        self.attach_cursor_annotations(zPosTimePlot_cursor, self.waypoints)
+        # 9. Update limits to maintain scale in all axes
+        # 9.1 3D position plot limits
+        x_limit = max(np.abs(position_3D_plot.get_xlim3d()))
+        y_limit = max(np.abs(position_3D_plot.get_ylim3d()))
+        z_limit = max(np.abs(position_3D_plot.get_zlim3d()))
+        max_limit = max(x_limit, y_limit, z_limit)
 
-        # Update limits to maintain scale in all axes
-        xLim = max(np.abs(xyzPosPlot.get_xlim3d()))
-        yLim = max(np.abs(xyzPosPlot.get_ylim3d()))
-        zLim = max(np.abs(xyzPosPlot.get_zlim3d()))
-        maxLim = max(xLim, yLim, zLim)
+        position_3D_plot.set_xlim3d(-max_limit, max_limit)
+        position_3D_plot.set_ylim3d(-max_limit, max_limit)
+        position_3D_plot.set_zlim3d(-max_limit, max_limit)
 
-        xyzPosPlot.set_xlim3d(-maxLim, maxLim)
-        xyzPosPlot.set_ylim3d(-maxLim, maxLim)
-        xyzPosPlot.set_zlim3d(-maxLim, maxLim)
-
-        xLim = xPosTimePlot.get_ylim()
-        yLim = yPosTimePlot.get_ylim()
-        xRange = xLim[1] - xLim[0]
-        yRange = yLim[1] - yLim[0]
+        # 9.2 Position versus time plot limits
+        x_limit = x_pos_vs_time_plot.get_ylim()
+        y_limit = y_pos_vs_time_plot.get_ylim()
+        xRange = x_limit[1] - x_limit[0]
+        yRange = y_limit[1] - y_limit[0]
         
         maxRange = max(xRange, yRange)
         addition = maxRange / 2
 
-        xMidValue = (xLim[1] + xLim[0]) / 2
-        yMidValue = (yLim[1] + yLim[0]) / 2
+        xMidValue = (x_limit[1] + x_limit[0]) / 2
+        yMidValue = (y_limit[1] + y_limit[0]) / 2
 
-        xPosTimePlot.set_ylim(xMidValue - addition, xMidValue + addition)
-        yPosTimePlot.set_ylim(yMidValue - addition, yMidValue + addition)
+        x_pos_vs_time_plot.set_ylim(xMidValue - addition, xMidValue + addition)
+        y_pos_vs_time_plot.set_ylim(yMidValue - addition, yMidValue + addition)
 
-        plt.show()
+        # 10. Show the figure without blocking the execution of the program
+        plt.show(block=False)
 
-    def velocity_figure(self, figName, timeStep):
-        # Display the flight plan instant velocity
+    def plot_velocity(self, fig_name, time_step) -> None:
+        """
+        Launch a matplotlib window to visualize the flight plan's velocity data over time.
+        It plots the 3D velocity, and the individual velocity components (X, Y, Z) versus time.
 
-        # Check if the flight plan is empty
-        if not self.waypoints:
-            print('The flight plan is empty')
-            return
-        
-        # Build a process to show the figure without blocking the main thread
-        process = mp.Process(target=self.velocity_figure_process, args=(figName, timeStep, ))
-        self.figure_processes.append(process)
-        process.start()
+        Args:
+            - fig_name (str) : The name of the matplotlib figure window.
+            - time_step (float) : The time step used to sample the flight plan's trace
+        """
 
-    def velocity_figure_process(self, figName, timeStep):
-        # Create matplolib figure (window)
-        velFig = plt.figure(figName)
-        velFig.canvas.manager.toolmanager.add_tool("ToogleUAV", ToggleUAVtracking, gid="UAVtracking")
-        velFig.canvas.manager.toolbar.add_tool('ToogleUAV', 'navigation', 1)
+        # 1. Create a new figure for plotting
+        figure = plt.figure(fig_name)
+        figure.canvas.manager.toolmanager.add_tool("Toogle_UAV", ToggleUAVtracking, gid="UAV_tracking")
+        figure.canvas.manager.toolbar.add_tool('Toogle_UAV', 'navigation', 1)
 
-        # Figure settings
+        # 2. Define the color for the plots
         color = [0, 0.7, 1]
 
-        # Get the trace
-        tr = self.trace(timeStep)
-        tr_t = tr[:, 0]
-        tr_x = tr[:, 4]
-        tr_y = tr[:, 5]
-        tr_z = tr[:, 6]
+        # 3. Compute the trace of the flight plan at the specified time step
+        trace = self.trace(time_step)
+        trace_times = trace[:, 0]
+        trace_x = trace[:, 4]
+        trace_y = trace[:, 5]
+        trace_z = trace[:, 6]
 
-        # VELOCITY 3D
-        # Create plot
-        velPlot3D = velFig.add_subplot(4, 2, (1, 2))
+        # 4. Add a new subplot for the 3D velocity plot
+        velocity_3D_plot = figure.add_subplot(4, 2, (1, 2))
         
-        # Indicate axes' name
-        velPlot3D.set_ylabel("3D [m/s]")
+        # 4.1 Set the axes' labels
+        velocity_3D_plot.set_ylabel("3D [m/s]")
         
-        # Set title
-        velPlot3D.set_title("Velocity versus time")
+        # 4.2 Set the title
+        velocity_3D_plot.set_title("Velocity versus time")
         
-        # Set grid to True
-        velPlot3D.grid(True)
+        # 4.3 Set the grid to True
+        velocity_3D_plot.grid(True)
         
-        # Set plot info
-        velPlot3D.plot(tr_t, np.sqrt(tr_x**2 + tr_y**2 + tr_z**2), linewidth=2, color=color, zorder=1)
+        # 4.4 Set plot info
+        velocity_3D_plot.plot(
+            trace_times, 
+            np.sqrt(trace_x**2 + trace_y**2 + trace_z**2), 
+            linewidth=2, 
+            color=color, 
+            zorder=1
+        )
 
-        # VELOCITIES VERSUS TIME
-        # Create plots
-        xVelTimePlot = velFig.add_subplot(4, 2, (3, 4))
-        yVelTimePlot = velFig.add_subplot(4, 2, (5, 6))
-        zVelTimePlot = velFig.add_subplot(4, 2, (7, 8))
+        # 5. Add new subplots for the velocity versus time plots for each axis (X, Y, Z)
+        x_vel_vs_time_plot = figure.add_subplot(4, 2, (3, 4))
+        y_vel_vs_time_plot = figure.add_subplot(4, 2, (5, 6))
+        z_vel_vs_time_plot = figure.add_subplot(4, 2, (7, 8))
         
-        # Indicate axes' names
-        xVelTimePlot.set_ylabel("vx [m/s]")
-        yVelTimePlot.set_ylabel("vy [m/s]")
-        zVelTimePlot.set_ylabel("vz [m/s]")
-        zVelTimePlot.set_xlabel("t [s]")
+        # 5.1 Set the axes' labels for subplot
+        x_vel_vs_time_plot.set_ylabel("velocity x [m/s]")
+        y_vel_vs_time_plot.set_ylabel("velocity y [m/s]")
+        z_vel_vs_time_plot.set_ylabel("velocity z [m/s]")
+        z_vel_vs_time_plot.set_xlabel("time [s]")
         
-        # Set grid to True
-        xVelTimePlot.grid(True)
-        yVelTimePlot.grid(True)
-        zVelTimePlot.grid(True)
+        # 5.2 Set the grid to True
+        x_vel_vs_time_plot.grid(True)
+        y_vel_vs_time_plot.grid(True)
+        z_vel_vs_time_plot.grid(True)
         
-        # Set plots info
-        xVelTimePlot.plot(tr_t, tr_x, linewidth=2, color=color, zorder=1)
-        yVelTimePlot.plot(tr_t, tr_y, linewidth=2, color=color, zorder=1)
-        zVelTimePlot.plot(tr_t, tr_z, linewidth=2, color=color, zorder=1)
+        # 5.3 Set plots info
+        x_vel_vs_time_plot.plot(trace_times, trace_x, linewidth=2, color=color, zorder=1)
+        y_vel_vs_time_plot.plot(trace_times, trace_y, linewidth=2, color=color, zorder=1)
+        z_vel_vs_time_plot.plot(trace_times, trace_z, linewidth=2, color=color, zorder=1)
 
-        # Get waypoints velocities to highlight
-        xVel = []
-        yVel = []
-        zVel = []
-        t = []
+        # 6. Extract the positions and times of the waypoints for highlighting
+        waypoint_idxs = np.where(np.isin(trace_times, self.time_waypoints))[0]
+        x_waypoint_vel = trace_x[waypoint_idxs]
+        y_waypoint_vel = trace_y[waypoint_idxs]
+        z_waypoint_vel = trace_z[waypoint_idxs]
 
-        for wp in self.waypoints:
-            xVel.append(wp.vel[0])
-            yVel.append(wp.vel[1])
-            zVel.append(wp.vel[2])
-            t.append(wp.time)
+        # 6.1 Highlight the waypoints on the plots using scatter plots
+        x_vel_vs_time_plot_scatter = x_vel_vs_time_plot.scatter(
+            self.time_waypoints, 
+            x_waypoint_vel, 
+            marker="o", 
+            color="blue", 
+            s=25, 
+            pickradius=30, 
+            zorder=3
+        )
+        y_vel_vs_time_plot_scatter = y_vel_vs_time_plot.scatter(
+            self.time_waypoints, 
+            y_waypoint_vel, 
+            marker="o", 
+            color="blue", 
+            s=25, 
+            pickradius=30, 
+            zorder=3
+        )
+        z_vel_vs_time_plot_scatter = z_vel_vs_time_plot.scatter(
+            self.time_waypoints, 
+            z_waypoint_vel, 
+            marker="o", 
+            color="blue", 
+            s=25, 
+            pickradius=30, 
+            zorder=3
+        )
 
-        # Highlight waypoints positions
-        xVelTimePlot_scatter = xVelTimePlot.scatter(t, xVel, marker="o", color="blue", s=25, pickradius=30, zorder=3)
-        yVelTimePlot_scatter = yVelTimePlot.scatter(t, yVel, marker="o", color="blue", s=25, pickradius=30, zorder=3)
-        zVelTimePlot_scatter = zVelTimePlot.scatter(t, zVel, marker="o", color="blue", s=25, pickradius=30, zorder=3)
+        # 7. Attach cursor annotations to the scatter plots for displaying waypoint information
+        x_vel_vs_time_plot_cursor = mplcursors.cursor(x_vel_vs_time_plot_scatter, highlight=True)
+        y_vel_vs_time_plot_cursor = mplcursors.cursor(y_vel_vs_time_plot_scatter, highlight=True)
+        z_vel_vs_time_plot_cursor = mplcursors.cursor(z_vel_vs_time_plot_scatter, highlight=True)
 
-        xVelTimePlot_cursor = mplcursors.cursor(xVelTimePlot_scatter, highlight=True)
-        yVelTimePlot_cursor = mplcursors.cursor(yVelTimePlot_scatter, highlight=True)
-        zVelTimePlot_cursor = mplcursors.cursor(zVelTimePlot_scatter, highlight=True)
+        self.attach_cursor_annotations(x_vel_vs_time_plot_cursor, self.waypoints)
+        self.attach_cursor_annotations(y_vel_vs_time_plot_cursor, self.waypoints)
+        self.attach_cursor_annotations(z_vel_vs_time_plot_cursor, self.waypoints)
 
-        self.attach_cursor_annotations(xVelTimePlot_cursor, self.waypoints)
-        self.attach_cursor_annotations(yVelTimePlot_cursor, self.waypoints)
-        self.attach_cursor_annotations(zVelTimePlot_cursor, self.waypoints)
+        # 8. Update limits to maintain scale in all axes
+        # 8.1 3D velocity plot limits
+        limit_3d = max(np.abs(velocity_3D_plot.get_ylim()))
+        x_limit = max(np.abs(x_vel_vs_time_plot.get_ylim()))
+        y_limit = max(np.abs(y_vel_vs_time_plot.get_ylim()))
+        z_limit = max(np.abs(z_vel_vs_time_plot.get_ylim()))
+        max_limit = max(limit_3d, x_limit, y_limit, z_limit)
 
-        # Update limits to maintain scale in all axes
-        lim3D = max(np.abs(velPlot3D.get_ylim()))
-        xLim = max(np.abs(xVelTimePlot.get_ylim()))
-        yLim = max(np.abs(yVelTimePlot.get_ylim()))
-        zLim = max(np.abs(zVelTimePlot.get_ylim()))
-        maxLim = max(lim3D, xLim, yLim, zLim)
+        # 8.2 Position versus time plot limits
+        velocity_3D_plot.set_ylim(-max_limit, max_limit)
+        x_vel_vs_time_plot.set_ylim(-max_limit, max_limit)
+        y_vel_vs_time_plot.set_ylim(-max_limit, max_limit)
+        z_vel_vs_time_plot.set_ylim(-max_limit, max_limit)
 
-        velPlot3D.set_ylim(-maxLim, maxLim)
-        xVelTimePlot.set_ylim(-maxLim, maxLim)
-        yVelTimePlot.set_ylim(-maxLim, maxLim)
-        zVelTimePlot.set_ylim(-maxLim, maxLim)
+        # 9. Show the figure without blocking the execution of the program
+        plt.show(block=False)
 
-        plt.show()
+    def plot_acceleration(self, fig_name, time_step) -> None:
+        """
+        Launch a matplotlib window to visualize the flight plan's acceleration data over time.
+        It plots the 3D acceleration, and the individual acceleration components (X, Y, Z) versus time.
 
-    def acceleration_figure(self, figName, timeStep):
-        # Display the flight plan instant velocity
+        Args:
+            - fig_name (str) : The name of the matplotlib figure window.
+            - time_step (float) : The time step used to sample the flight plan's trace
+        """        
 
-        # Check if the flight plan is empty
-        if not self.waypoints:
-            print('The flight plan is empty')
-            return
+        # 1. Create a new figure for plotting
+        figure = plt.figure(fig_name)
 
-        # Build a process to show the figure without blocking the main thread
-        process = mp.Process(target=self.acceleration_figure_process, args=(figName, timeStep))
-        self.figure_processes.append(process)
-        process.start()
-
-    def acceleration_figure_process(self, figName, timeStep):
-        # Create matplolib figure (window)
-        accFig = plt.figure(figName)
-
-        # Figure settings
+        # 2. Define the color for the plots
         color = [0, 0.7, 1]
 
-        # Get the trace
-        tr = self.trace(timeStep)
-        tr_t = tr[:, 0]
-        tr_x = tr[:, 7]
-        tr_y = tr[:, 8]
-        tr_z = tr[:, 9]
+        # 3. Compute the trace of the flight plan at the specified time step
+        trace = self.trace(time_step)
+        trace_times = trace[:, 0]
+        trace_x = trace[:, 7]
+        trace_y = trace[:, 8]
+        trace_z = trace[:, 9]
 
-        # ACCELERATION 3D
-        # Create plot
-        accPlot3D = accFig.add_subplot(4, 2, (1, 2))
+        # 4. Add a new subplot for the 3D acceleration versus time plot
+        acceleration_3D_plot = figure.add_subplot(4, 2, (1, 2))
         
-        # Indicate axes' name
-        accPlot3D.set_ylabel("3D [m/s2]")
+        # 4.1 Set the axes' labels
+        acceleration_3D_plot.set_ylabel("3D [m/s2]")
         
-        # Set title
-        accPlot3D.set_title("Acceleration versus time")
+        # 4.2 Set the title
+        acceleration_3D_plot.set_title("Acceleration versus time")
         
-        # Set grid to True
-        accPlot3D.grid(True)
+        # 4.3 Set the grid to True
+        acceleration_3D_plot.grid(True)
         
-        # Set plot info
-        accPlot3D.plot(tr_t, np.sqrt(tr_x**2 + tr_y**2 + tr_z**2), linewidth=2, color=color, zorder=1)
+        # 4.4 Set plot info
+        acceleration_3D_plot.plot(
+            trace_times, 
+            np.sqrt(trace_x**2 + trace_y**2 + trace_z**2), 
+            linewidth=2, 
+            color=color, 
+            zorder=1
+        )
 
-        # ACCELERATIONS VERSUS TIME
-        # Create plots
-        xAccTimePlot = accFig.add_subplot(4, 2, (3, 4))
-        yAccTimePlot = accFig.add_subplot(4, 2, (5, 6))
-        zAccTimePlot = accFig.add_subplot(4, 2, (7, 8))
+        # 5. Add new subplots for the acceleration versus time plots for each axis (X, Y, Z)
+        x_acc_vs_time_plot = figure.add_subplot(4, 2, (3, 4))
+        y_acc_vs_time_plot = figure.add_subplot(4, 2, (5, 6))
+        z_acc_vs_time_plot = figure.add_subplot(4, 2, (7, 8))
         
-        # Indicate axes' names
-        xAccTimePlot.set_ylabel("ax [m/s2]")
-        yAccTimePlot.set_ylabel("ay [m/s2]")
-        zAccTimePlot.set_ylabel("az [m/s2]")
-        zAccTimePlot.set_xlabel("t [s]")
+        # 5.1 Set the axes' labels for subplot
+        x_acc_vs_time_plot.set_ylabel("acceleration x [m/s2]")
+        y_acc_vs_time_plot.set_ylabel("acceleration y [m/s2]")
+        z_acc_vs_time_plot.set_ylabel("acceleration z [m/s2]")
+        x_acc_vs_time_plot.set_xlabel("time [s]")
         
-        # Set grid to True
-        xAccTimePlot.grid(True)
-        yAccTimePlot.grid(True)
-        zAccTimePlot.grid(True)
+        # 5.2 Set the grid to True
+        x_acc_vs_time_plot.grid(True)
+        y_acc_vs_time_plot.grid(True)
+        z_acc_vs_time_plot.grid(True)
         
-        # Set plots info
-        xAccTimePlot.plot(tr_t, tr_x, linewidth=2, color=color, zorder=1)
-        yAccTimePlot.plot(tr_t, tr_y, linewidth=2, color=color, zorder=1)
-        zAccTimePlot.plot(tr_t, tr_z, linewidth=2, color=color, zorder=1)
+        # 5.3 Set plots info
+        x_acc_vs_time_plot.plot(trace_times, trace_x, linewidth=2, color=color, zorder=1)
+        y_acc_vs_time_plot.plot(trace_times, trace_y, linewidth=2, color=color, zorder=1)
+        z_acc_vs_time_plot.plot(trace_times, trace_z, linewidth=2, color=color, zorder=1)
 
-        # Get waypoints velocities to highlight
-        xAcc = []
-        yAcc = []
-        zAcc = []
-        t = []
+        # 6. Extract the positions and times of the waypoints for highlighting
+        waypoint_idxs = np.where(np.isin(trace_times, self.time_waypoints))[0]
+        x_waypoint_acc = trace_x[waypoint_idxs]
+        y_waypoint_acc = trace_y[waypoint_idxs]
+        z_waypoint_acc = trace_z[waypoint_idxs]
 
-        for wp in self.waypoints:
-            xAcc.append(wp.acel[0])
-            yAcc.append(wp.acel[1])
-            zAcc.append(wp.acel[2])
-            t.append(wp.time)
+        # 6.1 Highlight the waypoints on the plots using scatter plots
+        x_acc_vs_time_plot_scatter = x_acc_vs_time_plot.scatter(
+            self.time_waypoints, 
+            x_waypoint_acc, 
+            marker="o", 
+            color="blue", 
+            s=25, 
+            pickradius=30, 
+            zorder=2
+        )
+        y_acc_vs_time_plot_scatter = y_acc_vs_time_plot.scatter(
+            self.time_waypoints, 
+            y_waypoint_acc, 
+            marker="o", 
+            color="blue", 
+            s=25, 
+            pickradius=30, 
+            zorder=2
+        )
+        z_acc_vs_time_plot_scatter = z_acc_vs_time_plot.scatter(
+            self.time_waypoints, 
+            z_waypoint_acc, 
+            marker="o", 
+            color="blue", 
+            s=25, 
+            pickradius=30, 
+            zorder=2
+        )
 
-        # Highlight waypoints positions
-        xVelTimePlot_scatter = xAccTimePlot.scatter(t, xAcc, marker="o", color="blue", s=25, pickradius=30, zorder=2)
-        yVelTimePlot_scatter = yAccTimePlot.scatter(t, yAcc, marker="o", color="blue", s=25, pickradius=30, zorder=2)
-        zVelTimePlot_scatter = zAccTimePlot.scatter(t, zAcc, marker="o", color="blue", s=25, pickradius=30, zorder=2)
+        # 7. Attach cursor annotations to the scatter plots for displaying waypoint information
+        x_acc_vs_time_plot_cursor = mplcursors.cursor(x_acc_vs_time_plot_scatter, highlight=True)
+        y_acc_vs_time_plot_cursor = mplcursors.cursor(y_acc_vs_time_plot_scatter, highlight=True)
+        z_acc_vs_time_plot_cursor = mplcursors.cursor(z_acc_vs_time_plot_scatter, highlight=True)
 
-        xVelTimePlot_cursor = mplcursors.cursor(xVelTimePlot_scatter, highlight=True)
-        yVelTimePlot_cursor = mplcursors.cursor(yVelTimePlot_scatter, highlight=True)
-        zVelTimePlot_cursor = mplcursors.cursor(zVelTimePlot_scatter, highlight=True)
+        self.attach_cursor_annotations(x_acc_vs_time_plot_cursor, self.waypoints)
+        self.attach_cursor_annotations(y_acc_vs_time_plot_cursor, self.waypoints)
+        self.attach_cursor_annotations(z_acc_vs_time_plot_cursor, self.waypoints)
 
-        self.attach_cursor_annotations(xVelTimePlot_cursor, self.waypoints)
-        self.attach_cursor_annotations(yVelTimePlot_cursor, self.waypoints)
-        self.attach_cursor_annotations(zVelTimePlot_cursor, self.waypoints)
+        # 8. Update limits to maintain scale in all axes
+        limit_3D = max(np.abs(acceleration_3D_plot.get_ylim()))
+        x_limit = max(np.abs(x_acc_vs_time_plot.get_ylim()))
+        y_limit = max(np.abs(y_acc_vs_time_plot.get_ylim()))
+        z_limit = max(np.abs(z_acc_vs_time_plot.get_ylim()))
+        max_limit = max(limit_3D, x_limit, y_limit, z_limit)
 
-        # Update limits to maintain scale in all axes
-        lim3D = max(np.abs(accPlot3D.get_ylim()))
-        xLim = max(np.abs(xAccTimePlot.get_ylim()))
-        yLim = max(np.abs(yAccTimePlot.get_ylim()))
-        zLim = max(np.abs(zAccTimePlot.get_ylim()))
-        maxLim = max(lim3D, xLim, yLim, zLim)
+        acceleration_3D_plot.set_ylim(-max_limit, max_limit)
+        x_acc_vs_time_plot.set_ylim(-max_limit, max_limit)
+        y_acc_vs_time_plot.set_ylim(-max_limit, max_limit)
+        z_acc_vs_time_plot.set_ylim(-max_limit, max_limit)
 
-        accPlot3D.set_ylim(-maxLim, maxLim)
-        xAccTimePlot.set_ylim(-maxLim, maxLim)
-        yAccTimePlot.set_ylim(-maxLim, maxLim)
-        zAccTimePlot.set_ylim(-maxLim, maxLim)
+        # 9. Show the figure without blocking the execution of the program
+        plt.show(block=False)
 
-        plt.show()
-
-    def add_UAV_track_pos(self, figName, UAVinfo : List[Waypoint]):
-        posFig = plt.figure(figName)
+    def add_UAV_track_pos(self, fig_name, UAVinfo : List[Waypoint]):
+        posFig = plt.figure(fig_name)
         subplots = posFig.get_axes()
-        xyzPosErrorPlot = subplots[0]
-        xyzPosPlot = subplots[1]
-        xPosTimePlot = subplots[2]
-        yPosTimePlot = subplots[3]
-        zPosTimePlot = subplots[4]
+        pos_error_vs_time_plot = subplots[0]
+        position_3D_plot = subplots[1]
+        x_pos_vs_time_plot = subplots[2]
+        y_pos_vs_time_plot = subplots[3]
+        z_pos_vs_time_plot = subplots[4]
 
-        xPosUAV = []
-        yPosUAV = []
-        zPosUAV = []
+        x_waypoint_posUAV = []
+        y_waypoint_posUAV = []
+        z_waypoint_posUAV = []
         timeUAV = []
         errors = []
 
         for wp in UAVinfo:
-            xPosUAV.append(wp.pos[0])
-            yPosUAV.append(wp.pos[1])
-            zPosUAV.append(wp.pos[2])
+            x_waypoint_posUAV.append(wp.pos[0])
+            y_waypoint_posUAV.append(wp.pos[1])
+            z_waypoint_posUAV.append(wp.pos[2])
             timeUAV.append(wp.time)
 
             # Compute errors between UAV and flight plan
@@ -1509,31 +1772,31 @@ class FlightPlan:
             errors.append(error)
 
         # Plot UAV errors
-        xyzPosErrorPlot.plot(timeUAV, errors, linestyle="solid", linewidth=1, color="red")
+        pos_error_vs_time_plot.plot(timeUAV, errors, linestyle="solid", linewidth=1, color="red")
 
         # Plot UAV route
-        xyzPosPlot.plot(xPosUAV, yPosUAV, zPosUAV, linestyle="dashed", linewidth=1, color="black", 
+        position_3D_plot.plot(x_waypoint_posUAV, y_waypoint_posUAV, z_waypoint_posUAV, linestyle="dashed", linewidth=1, color="black", 
                                      gid="UAVtracking", zorder=2)
-        xPosTimePlot.plot(timeUAV, xPosUAV, linestyle="dashed", linewidth=1, color="black", 
+        x_pos_vs_time_plot.plot(timeUAV, x_waypoint_posUAV, linestyle="dashed", linewidth=1, color="black", 
                                          gid="UAVtracking", zorder=2)
-        yPosTimePlot.plot(timeUAV, yPosUAV, linestyle="dashed", linewidth=1, color="black", 
+        y_pos_vs_time_plot.plot(timeUAV, y_waypoint_posUAV, linestyle="dashed", linewidth=1, color="black", 
                                          gid="UAVtracking", zorder=2)
-        zPosTimePlot.plot(timeUAV, zPosUAV, linestyle="dashed", linewidth=1, color="black", 
+        z_pos_vs_time_plot.plot(timeUAV, z_waypoint_posUAV, linestyle="dashed", linewidth=1, color="black", 
                                          gid="UAVtracking", zorder=2)
 
         # Highlight UAV route positions
-        xyzPosPlot.scatter(xPosUAV, yPosUAV, zPosUAV, color="black", s=10, gid="UAVtracking", zorder=2)
-        xPosTimePlot.scatter(timeUAV, xPosUAV, color="black", s=10, gid="UAVtracking", zorder=2)
-        yPosTimePlot.scatter(timeUAV, yPosUAV, color="black", s=10, gid="UAVtracking", zorder=2)
-        zPosTimePlot.scatter(timeUAV, zPosUAV, color="black", s=10, gid="UAVtracking", zorder=2)
+        position_3D_plot.scatter(x_waypoint_posUAV, y_waypoint_posUAV, z_waypoint_posUAV, color="black", s=10, gid="UAVtracking", zorder=2)
+        x_pos_vs_time_plot.scatter(timeUAV, x_waypoint_posUAV, color="black", s=10, gid="UAVtracking", zorder=2)
+        y_pos_vs_time_plot.scatter(timeUAV, y_waypoint_posUAV, color="black", s=10, gid="UAVtracking", zorder=2)
+        z_pos_vs_time_plot.scatter(timeUAV, z_waypoint_posUAV, color="black", s=10, gid="UAVtracking", zorder=2)
 
-    def add_UAV_track_vel(self, figName, UAVinfo : List[Waypoint]):
-        posFig = plt.figure(figName)
+    def add_UAV_track_vel(self, fig_name, UAVinfo : List[Waypoint]):
+        posFig = plt.figure(fig_name)
         subplots = posFig.get_axes()
-        velPlot3D = subplots[0]
-        xVelTimePlot = subplots[1]
-        yVelTimePlot = subplots[2]
-        zVelTimePlot = subplots[3]
+        velocity_3D_plot = subplots[0]
+        x_vel_vs_time_plot = subplots[1]
+        y_vel_vs_time_plot = subplots[2]
+        z_vel_vs_time_plot = subplots[3]
 
         xVelUAV = []
         yVelUAV = []
@@ -1551,26 +1814,26 @@ class FlightPlan:
         zVelUAV = np.array(zVelUAV)
         
         # Plot UAV route
-        velPlot3D.plot(timeUAV, np.sqrt(xVelUAV**2 + yVelUAV**2 + zVelUAV**2), linestyle="dashed", linewidth=1, 
+        velocity_3D_plot.plot(timeUAV, np.sqrt(xVelUAV**2 + yVelUAV**2 + zVelUAV**2), linestyle="dashed", linewidth=1, 
                        color="black", gid="UAVtracking", zorder=2)
-        xVelTimePlot.plot(timeUAV, xVelUAV, linestyle="dashed", linewidth=1, color="black", gid="UAVtracking", zorder=2)
-        yVelTimePlot.plot(timeUAV, yVelUAV, linestyle="dashed", linewidth=1, color="black", gid="UAVtracking", zorder=2)
-        zVelTimePlot.plot(timeUAV, zVelUAV, linestyle="dashed", linewidth=1, color="black", gid="UAVtracking", zorder=2)
+        x_vel_vs_time_plot.plot(timeUAV, xVelUAV, linestyle="dashed", linewidth=1, color="black", gid="UAVtracking", zorder=2)
+        y_vel_vs_time_plot.plot(timeUAV, yVelUAV, linestyle="dashed", linewidth=1, color="black", gid="UAVtracking", zorder=2)
+        z_vel_vs_time_plot.plot(timeUAV, zVelUAV, linestyle="dashed", linewidth=1, color="black", gid="UAVtracking", zorder=2)
 
         # Highlight UAV route positions
-        velPlot3D.scatter(timeUAV, np.sqrt(xVelUAV**2 + yVelUAV**2 + zVelUAV**2), color="black", s=10, gid="UAVtracking", 
+        velocity_3D_plot.scatter(timeUAV, np.sqrt(xVelUAV**2 + yVelUAV**2 + zVelUAV**2), color="black", s=10, gid="UAVtracking", 
                           zorder=2)
-        xVelTimePlot.scatter(timeUAV, xVelUAV, color="black", s=10, gid="UAVtracking", zorder=2)
-        yVelTimePlot.scatter(timeUAV, yVelUAV, color="black", s=10, gid="UAVtracking", zorder=2)
-        zVelTimePlot.scatter(timeUAV, zVelUAV, color="black", s=10, gid="UAVtracking", zorder=2)
+        x_vel_vs_time_plot.scatter(timeUAV, xVelUAV, color="black", s=10, gid="UAVtracking", zorder=2)
+        y_vel_vs_time_plot.scatter(timeUAV, yVelUAV, color="black", s=10, gid="UAVtracking", zorder=2)
+        z_vel_vs_time_plot.scatter(timeUAV, zVelUAV, color="black", s=10, gid="UAVtracking", zorder=2)
 
-    def add_UAV_track_acc(self, figName, UAVinfo : List[Waypoint]):
-        posFig = plt.figure(figName)
+    def add_UAV_track_acc(self, fig_name, UAVinfo : List[Waypoint]):
+        posFig = plt.figure(fig_name)
         subplots = posFig.get_axes()
-        accPlot3D = subplots[0]
-        xAccTimePlot = subplots[1]
-        yAccTimePlot = subplots[2]
-        zAccTimePlot = subplots[3]
+        acceleration_3D_plot = subplots[0]
+        x_acc_vs_time_plot = subplots[1]
+        y_acc_vs_time_plot = subplots[2]
+        x_acc_vs_time_plot = subplots[3]
 
         xVelUAV = []
         yVelUAV = []
@@ -1588,23 +1851,19 @@ class FlightPlan:
         zAccUAV = np.diff(zVelUAV, prepend=zVelUAV[:1])
         
         # Plot UAV route
-        accPlot3D.plot(timeUAV, np.sqrt(xAccUAV**2 + yAccUAV**2 + zAccUAV**2), linestyle="dashed", linewidth=1, 
+        acceleration_3D_plot.plot(timeUAV, np.sqrt(xAccUAV**2 + yAccUAV**2 + zAccUAV**2), linestyle="dashed", linewidth=1, 
                        color="black", gid="UAVtracking", zorder=2)
-        xAccTimePlot.plot(timeUAV, xAccUAV, linestyle="dashed", linewidth=1, color="black", gid="UAVtracking", zorder=2)
-        yAccTimePlot.plot(timeUAV, yAccUAV, linestyle="dashed", linewidth=1, color="black", gid="UAVtracking", zorder=2)
-        zAccTimePlot.plot(timeUAV, zAccUAV, linestyle="dashed", linewidth=1, color="black", gid="UAVtracking", zorder=2)
+        x_acc_vs_time_plot.plot(timeUAV, xAccUAV, linestyle="dashed", linewidth=1, color="black", gid="UAVtracking", zorder=2)
+        y_acc_vs_time_plot.plot(timeUAV, yAccUAV, linestyle="dashed", linewidth=1, color="black", gid="UAVtracking", zorder=2)
+        x_acc_vs_time_plot.plot(timeUAV, zAccUAV, linestyle="dashed", linewidth=1, color="black", gid="UAVtracking", zorder=2)
 
         # Highlight UAV route positions
-        accPlot3D.scatter(timeUAV, np.sqrt(xAccUAV**2 + yAccUAV**2 + zAccUAV**2), color="black", s=10, gid="UAVtracking", 
+        acceleration_3D_plot.scatter(timeUAV, np.sqrt(xAccUAV**2 + yAccUAV**2 + zAccUAV**2), color="black", s=10, gid="UAVtracking", 
                           zorder=2)
-        xAccTimePlot.scatter(timeUAV, xAccUAV, color="black", s=10, gid="UAVtracking", zorder=2)
-        yAccTimePlot.scatter(timeUAV, yAccUAV, color="black", s=10, gid="UAVtracking", zorder=2)
-        zAccTimePlot.scatter(timeUAV, zAccUAV, color="black", s=10, gid="UAVtracking", zorder=2)
+        x_acc_vs_time_plot.scatter(timeUAV, xAccUAV, color="black", s=10, gid="UAVtracking", zorder=2)
+        y_acc_vs_time_plot.scatter(timeUAV, yAccUAV, color="black", s=10, gid="UAVtracking", zorder=2)
+        x_acc_vs_time_plot.scatter(timeUAV, zAccUAV, color="black", s=10, gid="UAVtracking", zorder=2)
 
-    def terminate_figure_processes(self):
-        for process in self.figure_processes:
-            process.terminate()
-        self.figure_processes = []
 
 class ToggleUAVtracking(ToolToggleBase):
     default_keymap = 'S'
