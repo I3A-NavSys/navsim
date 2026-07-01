@@ -33,7 +33,7 @@ class FlightPlan:
         self.max_var_ang_vel = max_var_ang_vel        # maximum variation in angular velocity   [rad/s]
         self.waypoints: List[Waypoint] = []
         self.time_waypoints: SortedList[float] = SortedList([])
-        self.labels_to_idx = {}
+        self.ids_to_idx = {}
         self.length: int = 0
         self.time_decimals = 3
         self.position_decimals = 3
@@ -41,10 +41,19 @@ class FlightPlan:
 
     def __repr__(self):
         waypoints_info = [
-            [wp.label, wp.time, wp.pos, wp.vel, wp.acel, wp.jerk, wp.snap, wp.crakle] 
+            [wp.id, wp.time, wp.pos, wp.vel, wp.acel, wp.jerk, wp.snap, wp.crakle] 
             for wp in self.waypoints
         ]
-        waypoints_headers = ('label', 'time', 'position', 'velocity', 'acceleration', 'jerk', 'snap', 'crakle')
+        waypoints_headers = (
+            'ID', 
+            'Time', 
+            'Position', 
+            'Velocity', 
+            'Acceleration', 
+            'Jerk', 
+            'Snap', 
+            'Crakle'
+        )
         return (
             f"FlightPlan with id '{self.id}':"
             f"\n\tPriority: {self.priority}"
@@ -52,13 +61,13 @@ class FlightPlan:
             f"\n\tMax Var Lin Vel: {self.max_var_lin_vel}"
             f"\n\tMax Var Ang Vel: {self.max_var_ang_vel}"
             f"\n\tWaypoints ({self.length}):"
-            f"\n{tabulate(waypoints_info, headers=waypoints_headers, tablefmt='grid')}"
+            f"\n\n{tabulate(waypoints_info, headers=waypoints_headers)}"
         )
 
     # ----------------------------------
     # -------- BASE FUNCTIONS ----------
     # ----------------------------------
-    def add_waypoint(self, wp=None, label=None, time=None, pos=None, vel=None, heading=[0,0]):
+    def add_waypoint(self, wp=None, id=None, time=None, pos=None, vel=None, heading=[0,0]):
         if wp is None:
             if time is None:
                 if self.length == 0:
@@ -83,19 +92,19 @@ class FlightPlan:
                     else:
                         vel = status.vel
 
-            if label == None:
+            if id == None:
                 if self.length == 0:
-                    label = "default_label_0"
+                    id = "default_id_0"
                 else:
-                    label = f"default_label_{self.length}"
+                    id = f"default_id_{self.length}"
 
-            wp = Waypoint(label=label, time=time, pos=pos, vel=vel, heading=heading)
+            wp = Waypoint(id=id, time=time, pos=pos, vel=vel, heading=heading)
         
         # Determine the index to insert the new waypoint based on its time
         index = self.time_waypoints.bisect_left(wp.time)
 
-        # Add label to the dictionary for quick access
-        self.labels_to_idx[wp.label] = index
+        # Add id to the dictionary for quick access
+        self.ids_to_idx[wp.id] = index
 
         # Replace if the same time already exists
         update_existing_wp = (
@@ -106,7 +115,7 @@ class FlightPlan:
         if update_existing_wp:
             old_wp = self.waypoints.pop(index)
             self.time_waypoints.pop(index)
-            self.labels_to_idx.pop(old_wp.label, None)
+            self.ids_to_idx.pop(old_wp.id, None)
 
             self.length -= 1
 
@@ -119,7 +128,7 @@ class FlightPlan:
     def remove_waypoint(
         self, 
         idx: Optional[int] = None,  
-        # label: Optional[str], 
+        # id: Optional[str], 
         time: Optional[float] = None
     ) -> None:
         """
@@ -143,7 +152,7 @@ class FlightPlan:
         if not remove_by_idx and not remove_by_time:
             wp = self.waypoints.pop()
             self.time_waypoints.pop()
-            self.labels_to_idx.pop(wp.label, None)
+            self.ids_to_idx.pop(wp.id, None)
             self.length -= 1
             return
         
@@ -159,7 +168,7 @@ class FlightPlan:
             
             wp = self.waypoints.pop(idx)
             self.time_waypoints.pop(idx)
-            self.labels_to_idx.pop(wp.label, None)
+            self.ids_to_idx.pop(wp.id, None)
             self.length -= 1
             return
         
@@ -171,23 +180,23 @@ class FlightPlan:
         
         wp = self.waypoints.pop(pointed_wp_idx)
         self.time_waypoints.pop(pointed_wp_idx)
-        self.labels_to_idx.pop(wp.label, None)
+        self.ids_to_idx.pop(wp.id, None)
         self.length -= 1
         return
 
-    def get_idx_by_label(self, label: str) -> Optional[int]:
+    def get_idx_by_id(self, id: str) -> Optional[int]:
         """
-        Get the index of a waypoint by its label.
+        Get the index of a waypoint by its id.
 
         Args:
-            - label (str) : The label of the waypoint to find.
+            - id (str) : The id of the waypoint to find.
 
         Returns:
             Optional[int] : The index of the waypoint if found, otherwise None.
         """
 
-        if label in self.labels_to_idx:
-            return self.labels_to_idx[label]
+        if id in self.ids_to_idx:
+            return self.ids_to_idx[id]
         return None
 
     def get_running_waypoint(self, time: float) -> Optional[Waypoint]:
@@ -284,7 +293,7 @@ class FlightPlan:
         flight_plan.length = self.length
         flight_plan.waypoints = [wp.copy() for wp in self.waypoints]
         flight_plan.time_waypoints = SortedList(self.time_waypoints)
-        flight_plan.labels_to_idx = dict(self.labels_to_idx)
+        flight_plan.ids_to_idx = dict(self.ids_to_idx)
             
         return flight_plan
 
@@ -304,7 +313,7 @@ class FlightPlan:
             "max_var_ang_vel": self.max_var_ang_vel,
             "target_yaw": self.target_yaw,
             "waypoints": {
-                "labels":   [wp.label    for wp in self.waypoints],
+                "ids":   [wp.id    for wp in self.waypoints],
                 "fly_over": [wp.fly_over for wp in self.waypoints],
                 "times":    [wp.time        for wp in self.waypoints],
                 "headings": np.array([wp.heading  for wp in self.waypoints]).tolist(),
@@ -336,7 +345,7 @@ class FlightPlan:
         # 2. Reset waypoints and related attributes
         self.waypoints = []
         self.time_waypoints = SortedList([])
-        self.labels_to_idx = {}
+        self.ids_to_idx = {}
         self.length = 0
 
         # 3. Load waypoints
@@ -345,7 +354,7 @@ class FlightPlan:
             return
 
         # 4. Extract waypoint attributes from the dictionary
-        labels   = wps_data.get("labels",   [])
+        ids   = wps_data.get("ids",   [])
         fly_over = wps_data.get("fly_over", [])
         times    = wps_data.get("times",    [])
         headings = wps_data.get("headings", [])
@@ -357,9 +366,9 @@ class FlightPlan:
         crakle   = wps_data.get("crakle",   [])
 
         # 5. Create and add waypoints to the flight plan
-        for i in range(len(labels)):
+        for i in range(len(ids)):
             wp = Waypoint(
-                label=labels[i],
+                id=ids[i],
                 time=times[i],
                 pos=pos[i],
                 vel=vel[i],
@@ -372,7 +381,7 @@ class FlightPlan:
             )
             self.waypoints.append(wp)
             self.time_waypoints.add(wp.time)
-            self.labels_to_idx[wp.label] = i
+            self.ids_to_idx[wp.id] = i
             self.length += 1
 
     def waypoints_to_arrays(self) -> List[np.ndarray]:
@@ -386,8 +395,8 @@ class FlightPlan:
         Example::
 
             flight_plan = FlightPlan()
-            flight_plan.add_waypoint(label="WP1", time=0, pos=[0, 0, 0], vel=[1, 0, 0])
-            flight_plan.add_waypoint(label="WP2", time=1, pos=[1, 0, 0], vel=[1, 0, 0])
+            flight_plan.add_waypoint(id="WP1", time=0, pos=[0, 0, 0], vel=[1, 0, 0])
+            flight_plan.add_waypoint(id="WP2", time=1, pos=[1, 0, 0], vel=[1, 0, 0])
             arrays = flight_plan.waypoints_to_arrays()
             # arrays[0] -> array([0., 1.])              shape (N,)    # times
             # arrays[1] -> array([[0,0,0],[1,0,0]])     shape (N, 3)  # positions
@@ -399,7 +408,7 @@ class FlightPlan:
             # arrays[7] -> array([[0,0],[0,0]])         shape (N, 2)  # headings
         """
 
-        labels        = np.empty(self.length, dtype=object)
+        ids = np.empty(self.length, dtype=object)
         times         = np.empty(self.length)
         positions     = np.empty((self.length, 3))
         velocities    = np.empty((self.length, 3))
@@ -410,7 +419,7 @@ class FlightPlan:
         headings      = np.empty((self.length, 2))
 
         for i, wp in enumerate(self.waypoints):
-            labels[i]        = wp.label
+            ids[i]        = wp.id
             times[i]         = wp.time
             positions[i]     = wp.pos
             velocities[i]    = wp.vel
@@ -420,7 +429,7 @@ class FlightPlan:
             crackles[i]      = wp.crakle
             headings[i]      = wp.heading
 
-        return [labels, times, positions, velocities, accelerations, jerks, snaps, crackles, headings]
+        return [ids, times, positions, velocities, accelerations, jerks, snaps, crackles, headings]
     
     def rotate_vector_by_quaternion(self, vector: np.ndarray, quaternion: np.ndarray, conjugate: bool) -> np.ndarray:
         """
@@ -554,7 +563,11 @@ class FlightPlan:
     # ----------------------------------
     # -------- PLAN MANAGEMENT ---------
     # ----------------------------------
-    def make_plan_feasible(self, is_time_key_aspect: bool, reconnect_waypoints: bool) -> None:
+    def make_plan_feasible(
+        self, 
+        is_time_key_aspect: bool, 
+        reconnect_waypoints: bool = False
+    ) -> None:
         """
         Makes the flight plan feasible by adjusting the times and velocities of the waypoints.
 
@@ -570,7 +583,7 @@ class FlightPlan:
         
         # 2. Convert waypoints to arrays for easier manipulation
         waypoint_arrays = self.waypoints_to_arrays()
-        labels = waypoint_arrays[0]
+        ids = waypoint_arrays[0]
         times = waypoint_arrays[1]
         positions = waypoint_arrays[2]
         velocities = waypoint_arrays[3]
@@ -613,7 +626,7 @@ class FlightPlan:
 
             self.waypoints = [
                 Waypoint(
-                    label=labels[i],
+                    id=ids[i],
                     time=new_times[i],
                     pos=positions[i],
                     vel=new_velocities[i],
@@ -634,7 +647,9 @@ class FlightPlan:
         """
 
         for i in range(self.length - 1):
-            self.waypoints[i].connect_to(self.waypoints[i + 1])
+            # self.waypoints[i].connect_to(self.waypoints[i + 1])
+            self.waypoints[i].set_JSC(self.waypoints[i + 1])
+            # self.waypoints[i].set_uniform_velocity(self.waypoints[i + 1])
 
     def smooth_waypoint_speed(self, waypoint: Union[str, int, float], ang_vel: float) -> None:
         """
@@ -642,13 +657,13 @@ class FlightPlan:
         while maintaining the speed.
 
         Args:
-            - waypoint (Union[str, int, float]) : The label, index, or time of the waypoint to smooth.
+            - waypoint (Union[str, int, float]) : The id, index, or time of the waypoint to smooth.
             - ang_vel (float) : The angular velocity to be used for smoothing the curve.
         """
 
-        # 1. Determine the index of the waypoint to smooth based on the input type (label or index)
+        # 1. Determine the index of the waypoint to smooth based on the input type (id or index)
         if isinstance(waypoint, str):
-            wp_idx: int = self.labels_to_idx.get(waypoint, None)
+            wp_idx: int = self.ids_to_idx.get(waypoint, None)
         elif isinstance(waypoint, int):
             wp_idx = waypoint
         elif isinstance(waypoint, float):
@@ -673,14 +688,14 @@ class FlightPlan:
 
         # 4. Check if the waypoint to smooth is a fly-over waypoint, which cannot be smoothed
         if wp_2.fly_over:
-            raise RuntimeError(f"Trying to smooth a fly over WP (waypoint: {wp_2.label})")
+            raise RuntimeError(f"Trying to smooth a fly over WP (waypoint: {wp_2.id})")
 
         # 5. Calculate the angle between the two segments formed by the waypoints
         angle = wp_1.angle_with(wp_2)
 
         # 5.1 Check if the angle is zero, which indicates a straight line and cannot be smoothed
         if angle == 0:
-            raise RuntimeError(f"Trying to smooth a straight line (waypoint: {wp_2.label})")
+            raise RuntimeError(f"Trying to smooth a straight line (waypoint: {wp_2.id})")
 
         # 6. Calculate the average velocity between the two waypoints to determine the radius of the curve
         # 6.1 Calculate the magnitudes of the velocities of the two waypoints
@@ -700,17 +715,17 @@ class FlightPlan:
         # 8.1 Check if there is enough time in the past to create the first new waypoint (wp_2A) 
         # before the original waypoint (wp_2)
         if wp_2.time - time_step <= wp_1.time:
-            raise Exception(f"There is not time enough in the past to smooth the curve (waypoint: {wp_2.label})")
+            raise Exception(f"There is not time enough in the past to smooth the curve (waypoint: {wp_2.id})")
         
         # 8.2 Check if there is enough time in the future to create the second new waypoint (wp_2B) 
         # after the original waypoint (wp_2)
         if wp_3.time <= wp_2B_init_time:
-            raise Exception(f"There is not time enough in the future to smooth the curve (waypoint: {wp_2.label})")
+            raise Exception(f"There is not time enough in the future to smooth the curve (waypoint: {wp_2.id})")
 
         # 9. Create two new waypoints (wp_2A and wp_2B) to replace the original waypoint (wp_2)
         # 9.1 Create the first new waypoint (wp_2A) before the original waypoint (wp_2)
         wp_2A = Waypoint(
-            label = f"{wp_2.label}_A",
+            id = f"{wp_2.id}_A",
             time  = wp_2.time - time_step,
             pos   = wp_2.pos - wp_1.vel * time_step,
             vel   = wp_1.vel
@@ -718,7 +733,7 @@ class FlightPlan:
 
         # 9.2 Create the second new waypoint (wp_2B) after the original waypoint (wp_2)
         wp_2B = Waypoint(
-            label = f"{wp_2.label}_B",
+            id = f"{wp_2.id}_B",
             pos   = wp_2.pos + wp_2.vel * time_step,
             vel   = wp_2.vel
         )
@@ -739,7 +754,7 @@ class FlightPlan:
         norm_w = math.sqrt(w[0]**2 + w[1]**2 + w[2]**2)
 
         if norm_w < 1e-12:
-            raise RuntimeError(f"Cannot find arc duration: v1+v2 ≈ 0 at waypoint {wp_2.label}")
+            raise RuntimeError(f"Cannot find arc duration: v1+v2 ≈ 0 at waypoint {wp_2.id}")
 
         T = 30.0 * time_step * norm_w / (7.0 * norm_w + 16.0 * avg_vel)
         wp_2B.time = wp_2A.time + T
@@ -751,7 +766,7 @@ class FlightPlan:
 
         # 12. Update the flight plan by removing the original waypoint (wp_2) and
         # adding the new waypoints (wp_2A and wp_2B)
-        wp_2_idx = self.labels_to_idx[wp_2.label]
+        wp_2_idx = self.ids_to_idx[wp_2.id]
 
         self.remove_waypoint(wp_2_idx)
         self.add_waypoint(wp_2A)
@@ -767,7 +782,7 @@ class FlightPlan:
         while maintaining the duration of the curve.
 
         Args:
-            - waypoint (Union[str, int]) : The label or index of the waypoint to smooth.
+            - waypoint (Union[str, int]) : The id or index of the waypoint to smooth.
             - ang_vel (float) : The angular velocity to be used for smoothing the curve.
             - lin_acel (float) : The linear acceleration to be used for smoothing the curve
         """
@@ -779,9 +794,9 @@ class FlightPlan:
         if lin_acel <= 0:
             raise ValueError("Linear acceleration must be a positive value.")
 
-        # 2. Determine the index of the waypoint to smooth based on the input type (label or index)
+        # 2. Determine the index of the waypoint to smooth based on the input type (id or index)
         if isinstance(waypoint, str):
-            wp_idx: int = self.labels_to_idx.get(waypoint, None)
+            wp_idx: int = self.ids_to_idx.get(waypoint, None)
         elif isinstance(waypoint, int):
             wp_idx = waypoint
         elif isinstance(waypoint, float):
@@ -806,14 +821,14 @@ class FlightPlan:
 
         # 5. Check if the waypoint to smooth is a fly-over waypoint, which cannot be smoothed
         if wp_2.fly_over:
-            raise RuntimeError(f"Trying to smooth a fly over WP (waypoint: {wp_2.label})")
+            raise RuntimeError(f"Trying to smooth a fly over WP (waypoint: {wp_2.id})")
         
         # 6. Calculate the angle between the two segments formed by the waypoints
         angle = wp_1.angle_with(wp_2)
 
         # 6.1 Check if the angle is zero, which indicates a straight line and cannot be smoothed
         if angle == 0:
-            raise RuntimeError(f"Trying to smooth a straight line (waypoint: {wp_2.label})")
+            raise RuntimeError(f"Trying to smooth a straight line (waypoint: {wp_2.id})")
 
         # 7 Compute the time spent in the curve based on the linear acceleration and the difference in velocities
         # 7.1 Calculate the magnitudes of the velocities of the two waypoints
@@ -835,17 +850,17 @@ class FlightPlan:
         # before the original waypoint (wp_2)
 
         if time_step >= wp_2.time - wp_1.time:
-            raise Exception(f"There is not time enough in the past to smooth the curve (waypoint: {wp_2.label})")
+            raise Exception(f"There is not time enough in the past to smooth the curve (waypoint: {wp_2.id})")
         
         # 10.2 Check if there is enough time in the future to create the second new waypoint (wp_2B)
         # after the original waypoint (wp_2)
         if time_step >= wp_3.time - wp_2.time:
-            raise Exception(f"There is not time enough in the future to smooth the curve (waypoint: {wp_2.label})")
+            raise Exception(f"There is not time enough in the future to smooth the curve (waypoint: {wp_2.id})")
         
         # 11. Create two new waypoints (wp_2A and wp_2B) to replace the original waypoint (wp_2)
         # 11.1 Create the first new waypoint (wp_2A) before the original waypoint (wp_2)
         wp_2A = Waypoint(
-            label = f"{wp_2.label}_A",
+            id = f"{wp_2.id}_A",
             time  = wp_2.time - time_step,
             pos   = wp_2.pos - wp_1.vel * time_step,
             vel   = wp_1.vel
@@ -853,7 +868,7 @@ class FlightPlan:
 
         # 11.2 Create the second new waypoint (wp_2B) after the original waypoint (wp_2)
         wp_2B = Waypoint(
-            label = f"{wp_2.label}_B",
+            id = f"{wp_2.id}_B",
             time  = wp_2.time + time_step,
             pos   = wp_2.pos + wp_2.vel * time_step,
             vel   = wp_2.vel
@@ -866,7 +881,7 @@ class FlightPlan:
 
         # 13. Update the flight plan by removing the original waypoint (wp_2) and
         # adding the new waypoints (wp_2A and wp_2B)
-        wp_2_idx = self.labels_to_idx[wp_2.label]
+        wp_2_idx = self.ids_to_idx[wp_2.id]
 
         self.remove_waypoint(wp_2_idx)
         self.add_waypoint(wp_2A)
@@ -894,12 +909,12 @@ class FlightPlan:
             return self.waypoints[-1]
 
         if time > self.time_waypoints[-1]:
-            return self.waypoints[-1].interpolation(time)
+            return self.waypoints[-1].interpolate(time)
 
         # 2. Get the running waypoint for the given time and return its interpolated status
         running_wp = self.get_running_waypoint(time)
 
-        return running_wp.interpolation(time)
+        return running_wp.interpolate(time)
     
     def trace(self, time_step: float) -> np.ndarray:
         """
@@ -1545,9 +1560,9 @@ class FlightPlan:
         z_vel_vs_time_plot = figure.add_subplot(4, 2, (7, 8))
         
         # 5.1 Set the axes' labels for subplot
-        x_vel_vs_time_plot.set_ylabel("velocity x [m/s]")
-        y_vel_vs_time_plot.set_ylabel("velocity y [m/s]")
-        z_vel_vs_time_plot.set_ylabel("velocity z [m/s]")
+        x_vel_vs_time_plot.set_ylabel("vel x [m/s]")
+        y_vel_vs_time_plot.set_ylabel("vel y [m/s]")
+        z_vel_vs_time_plot.set_ylabel("vel z [m/s]")
         z_vel_vs_time_plot.set_xlabel("time [s]")
         
         # 5.2 Set the grid to True
@@ -1671,9 +1686,9 @@ class FlightPlan:
         z_acc_vs_time_plot = figure.add_subplot(4, 2, (7, 8))
         
         # 5.1 Set the axes' labels for subplot
-        x_acc_vs_time_plot.set_ylabel("acceleration x [m/s2]")
-        y_acc_vs_time_plot.set_ylabel("acceleration y [m/s2]")
-        z_acc_vs_time_plot.set_ylabel("acceleration z [m/s2]")
+        x_acc_vs_time_plot.set_ylabel("accel x [m/s2]")
+        y_acc_vs_time_plot.set_ylabel("accel y [m/s2]")
+        z_acc_vs_time_plot.set_ylabel("accel z [m/s2]")
         x_acc_vs_time_plot.set_xlabel("time [s]")
         
         # 5.2 Set the grid to True
