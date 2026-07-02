@@ -51,8 +51,8 @@ from uspace.flight_plan.waypoint import Waypoint as WaypointOrig
 
 # Optimised (the new2 files).  These imports succeed thanks to the bug fixes
 # applied before this study (init_time -> start_time, angle_with return type).
-from uspace.flight_plan.flight_plan_new2 import FlightPlan as FlightPlanNew
-from uspace.flight_plan.waypoint_new2 import Waypoint as WaypointNew
+from uspace.flight_plan.flight_plan_new import FlightPlan as FlightPlanNew
+from uspace.flight_plan.waypoint_new import Waypoint as WaypointNew
 
 
 # ===========================================================================
