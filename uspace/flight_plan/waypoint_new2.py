@@ -2,8 +2,6 @@ import numpy as np
 import math
 
 class Waypoint:
-    # __slots__ eliminates per-instance __dict__, cutting ~200 B per object
-    # and slightly speeding up attribute access.
     __slots__ = (
         'id', 
         'time', 
@@ -218,12 +216,8 @@ class Waypoint:
         cos_angle = np.dot(self.vel, other_wp.vel) / (norm_wp1_vel * norm_wp2_vel)
 
         angle_rad = math.acos(max(-1.0, min(1.0, cos_angle)))
-        angle_deg = math.degrees(angle_rad)
 
-        return (
-            round(angle_rad, self.position_decimals), 
-            round(angle_deg, self.position_decimals)
-        )
+        return round(angle_rad, self.position_decimals)
 
     # ----------------------------------
     # -------- KINEMATIC MANAGEMENT -----

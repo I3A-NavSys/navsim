@@ -1,5 +1,5 @@
 from tabulate import tabulate
-from typing import List, Optional, Any, Union
+from typing import List, Optional, Any, Union, Iterable
 import math
 import numpy as np
 import matplotlib
@@ -67,46 +67,78 @@ class FlightPlan:
     # ----------------------------------
     # -------- BASE FUNCTIONS ----------
     # ----------------------------------
-    def add_waypoint(self, wp=None, id=None, time=None, pos=None, vel=None, heading=[0,0]):
+    def add_waypoint(
+        self, 
+        wp: Optional[Waypoint] = None, 
+        id: Optional[str] = None, 
+        time: float = None, 
+        pos: Optional[Iterable[float]] = None, 
+        vel: Optional[Iterable[float]] = None, 
+        heading: Iterable[float] = [0,0]
+    ) -> None:
+        """
+        Add a waypoint to the flight plan.
+        In case of missing parameters (pos or vel), the function will attempt to infer 
+        them based on the existing waypoints and their properties.
+        If a waypoint object is provided, it will be added directly.
+
+        Args:
+            - wp (Waypoint, optional) : A Waypoint object to be added. If provided, other parameters are ignored.
+            - id (str, optional) : The identifier for the waypoint. If not provided, a default id will be generated.
+            - time (float) : The time at which the waypoint should be reached. This is a required parameter.
+            - pos (Iterable[float], optional) : The position of the waypoint as a list of [x, y, z]. If not provided, it will be inferred.
+            - vel (Iterable[float], optional) : The velocity at the waypoint as a list of [vx, vy, vz]. If not provided, it will be inferred.
+            - heading (Iterable[float], optional) : The heading of the waypoint as a list of [1, 0.5]. Default value is [0, 0].
+        """
+
+        # 1. Check if the time parameter is provided, 
+        #    as it is essential for adding a waypoint
+        if time is None:
+            raise ValueError("Time must be provided for the waypoint.")
+        
+        # 2. If a Waypoint object is not provided, create one using the given parameters
         if wp is None:
-            if time is None:
-                if self.length == 0:
-                    time = 0
+            # 2.1 Stablish the conditions to infer missing parameters (id, pos, vel)
+            is_first_wp         =   self.length == 0
+            is_id_none          =   id is None
+            is_pos_none         =   pos is None
+            is_vel_none         =   vel is None
+            is_previous_time   =   not is_first_wp and time <= self.time_waypoints[0]
+
+            # 2.2 If the waypoint is not the first one, 
+            #     get the expected status at the given time
+            if not is_first_wp:
+                expected_status = self.status_at_time(time)
+
+            # 2.3 Infer missing parameters based on the conditions and expected status
+            if is_pos_none:
+                if is_first_wp:
+                    pos = [0, 0, 0]
                 else:
-                    time = self.finish_time() + 1
+                    pos = expected_status.pos
 
-            if self.length > 0:  status = self.status_at_time(time)
-
-            if pos is None:
-                if self.length == 0:
-                    pos = [0,0,0]
+            if is_vel_none:
+                if is_first_wp or is_previous_time:
+                    vel = [0, 0, 0]
                 else:
-                    pos = status.pos
+                    vel = expected_status.vel
 
-            if vel is None:
-                if self.length == 0:
-                    vel = [0,0,0]
-                else:
-                    if time <= self.init_time():
-                        vel = [0,0,0]
-                    else:
-                        vel = status.vel
-
-            if id == None:
-                if self.length == 0:
+            if is_id_none:
+                if is_first_wp:
                     id = "default_id_0"
                 else:
                     id = f"default_id_{self.length}"
 
+            # 2.4 Create a new Waypoint object with the provided or inferred parameters
             wp = Waypoint(id=id, time=time, pos=pos, vel=vel, heading=heading)
         
-        # Determine the index to insert the new waypoint based on its time
+        # 3. Determine the index to insert the new waypoint based on its time
         index = self.time_waypoints.bisect_left(wp.time)
 
-        # Add id to the dictionary for quick access
+        # 4. Add id to the dictionary for quick access
         self.ids_to_idx[wp.id] = index
 
-        # Replace if the same time already exists
+        # 5. Replace the waypoint if the same time already exists
         update_existing_wp = (
             (index < self.length and self.time_waypoints[index] == wp.time) or
             (index > 0 and index == self.length and self.time_waypoints[index - 1] == wp.time)
@@ -119,10 +151,11 @@ class FlightPlan:
 
             self.length -= 1
 
-        # Insert the new waypoint and its time into the sorted lists
+        # 6. Insert the new waypoint and its time into the corresponding data structures
         self.waypoints.insert(index, wp)
         self.time_waypoints.add(wp.time)
 
+        # 7. Update the length of the flight plan to reflect the addition of the new waypoint
         self.length += 1
 
     def remove_waypoint(
@@ -648,8 +681,6 @@ class FlightPlan:
 
         for i in range(self.length - 1):
             self.waypoints[i].connect_to(self.waypoints[i + 1])
-            # self.waypoints[i].set_JSC(self.waypoints[i + 1])
-            # self.waypoints[i].connect_to2(self.waypoints[i + 1])
 
     def smooth_waypoint_speed(self, waypoint: Union[str, int, float], ang_vel: float) -> None:
         """
