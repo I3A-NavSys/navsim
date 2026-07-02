@@ -647,9 +647,9 @@ class FlightPlan:
         """
 
         for i in range(self.length - 1):
-            # self.waypoints[i].connect_to(self.waypoints[i + 1])
-            self.waypoints[i].set_JSC(self.waypoints[i + 1])
-            # self.waypoints[i].set_uniform_velocity(self.waypoints[i + 1])
+            self.waypoints[i].connect_to(self.waypoints[i + 1])
+            # self.waypoints[i].set_JSC(self.waypoints[i + 1])
+            # self.waypoints[i].connect_to2(self.waypoints[i + 1])
 
     def smooth_waypoint_speed(self, waypoint: Union[str, int, float], ang_vel: float) -> None:
         """
@@ -1756,6 +1756,378 @@ class FlightPlan:
         x_acc_vs_time_plot.set_ylim(-max_limit, max_limit)
         y_acc_vs_time_plot.set_ylim(-max_limit, max_limit)
         z_acc_vs_time_plot.set_ylim(-max_limit, max_limit)
+
+        # 9. Show the figure without blocking the execution of the program
+        plt.show(block=False)
+
+    def plot_jerk(self, fig_name, time_step) -> None:
+        """
+        Launch a matplotlib window to visualize the flight plan's jerk data over time.
+        It plots the 3D jerk magnitude, and the individual jerk components (X, Y, Z) versus time.
+
+        Args:
+            - fig_name (str) : The name of the matplotlib figure window.
+            - time_step (float) : The time step used to sample the flight plan's trace
+        """
+
+        # 1. Create a new figure for plotting
+        figure = plt.figure(fig_name)
+
+        # 2. Define the color for the plots
+        color = [0, 0.7, 1]
+
+        # 3. Compute the trace of the flight plan at the specified time step
+        trace = self.trace(time_step)
+        trace_times = trace[:, 0]
+        trace_x = trace[:, 10]
+        trace_y = trace[:, 11]
+        trace_z = trace[:, 12]
+
+        # 4. Add a new subplot for the 3D jerk versus time plot
+        jerk_3D_plot = figure.add_subplot(4, 2, (1, 2))
+
+        # 4.1 Set the axes' labels
+        jerk_3D_plot.set_ylabel("3D [m/s3]")
+
+        # 4.2 Set the title
+        jerk_3D_plot.set_title("Jerk versus time")
+
+        # 4.3 Set the grid to True
+        jerk_3D_plot.grid(True)
+
+        # 4.4 Set plot info
+        jerk_3D_plot.plot(
+            trace_times,
+            np.sqrt(trace_x**2 + trace_y**2 + trace_z**2),
+            linewidth=2,
+            color=color,
+            zorder=1
+        )
+
+        # 5. Add new subplots for the jerk versus time plots for each axis (X, Y, Z)
+        x_jerk_vs_time_plot = figure.add_subplot(4, 2, (3, 4))
+        y_jerk_vs_time_plot = figure.add_subplot(4, 2, (5, 6))
+        z_jerk_vs_time_plot = figure.add_subplot(4, 2, (7, 8))
+
+        # 5.1 Set the axes' labels for subplot
+        x_jerk_vs_time_plot.set_ylabel("jerk x [m/s3]")
+        y_jerk_vs_time_plot.set_ylabel("jerk y [m/s3]")
+        z_jerk_vs_time_plot.set_ylabel("jerk z [m/s3]")
+        x_jerk_vs_time_plot.set_xlabel("time [s]")
+
+        # 5.2 Set the grid to True
+        x_jerk_vs_time_plot.grid(True)
+        y_jerk_vs_time_plot.grid(True)
+        z_jerk_vs_time_plot.grid(True)
+
+        # 5.3 Set plots info
+        x_jerk_vs_time_plot.plot(trace_times, trace_x, linewidth=2, color=color, zorder=1)
+        y_jerk_vs_time_plot.plot(trace_times, trace_y, linewidth=2, color=color, zorder=1)
+        z_jerk_vs_time_plot.plot(trace_times, trace_z, linewidth=2, color=color, zorder=1)
+
+        # 6. Extract the jerk and times of the waypoints for highlighting
+        waypoint_idxs = np.where(np.isin(trace_times, self.time_waypoints))[0]
+        x_waypoint_jerk = trace_x[waypoint_idxs]
+        y_waypoint_jerk = trace_y[waypoint_idxs]
+        z_waypoint_jerk = trace_z[waypoint_idxs]
+
+        # 6.1 Highlight the waypoints on the plots using scatter plots
+        x_jerk_vs_time_plot_scatter = x_jerk_vs_time_plot.scatter(
+            self.time_waypoints,
+            x_waypoint_jerk,
+            marker="o",
+            color="blue",
+            s=25,
+            pickradius=30,
+            zorder=2
+        )
+        y_jerk_vs_time_plot_scatter = y_jerk_vs_time_plot.scatter(
+            self.time_waypoints,
+            y_waypoint_jerk,
+            marker="o",
+            color="blue",
+            s=25,
+            pickradius=30,
+            zorder=2
+        )
+        z_jerk_vs_time_plot_scatter = z_jerk_vs_time_plot.scatter(
+            self.time_waypoints,
+            z_waypoint_jerk,
+            marker="o",
+            color="blue",
+            s=25,
+            pickradius=30,
+            zorder=2
+        )
+
+        # 7. Attach cursor annotations to the scatter plots for displaying waypoint information
+        x_jerk_vs_time_plot_cursor = mplcursors.cursor(x_jerk_vs_time_plot_scatter, highlight=True)
+        y_jerk_vs_time_plot_cursor = mplcursors.cursor(y_jerk_vs_time_plot_scatter, highlight=True)
+        z_jerk_vs_time_plot_cursor = mplcursors.cursor(z_jerk_vs_time_plot_scatter, highlight=True)
+
+        self.attach_cursor_annotations(x_jerk_vs_time_plot_cursor, self.waypoints)
+        self.attach_cursor_annotations(y_jerk_vs_time_plot_cursor, self.waypoints)
+        self.attach_cursor_annotations(z_jerk_vs_time_plot_cursor, self.waypoints)
+
+        # 8. Update limits to maintain scale in all axes
+        limit_3D = max(np.abs(jerk_3D_plot.get_ylim()))
+        x_limit = max(np.abs(x_jerk_vs_time_plot.get_ylim()))
+        y_limit = max(np.abs(y_jerk_vs_time_plot.get_ylim()))
+        z_limit = max(np.abs(z_jerk_vs_time_plot.get_ylim()))
+        max_limit = max(limit_3D, x_limit, y_limit, z_limit)
+
+        jerk_3D_plot.set_ylim(-max_limit, max_limit)
+        x_jerk_vs_time_plot.set_ylim(-max_limit, max_limit)
+        y_jerk_vs_time_plot.set_ylim(-max_limit, max_limit)
+        z_jerk_vs_time_plot.set_ylim(-max_limit, max_limit)
+
+        # 9. Show the figure without blocking the execution of the program
+        plt.show(block=False)
+
+    def plot_snap(self, fig_name, time_step) -> None:
+        """
+        Launch a matplotlib window to visualize the flight plan's snap data over time.
+        It plots the 3D snap magnitude, and the individual snap components (X, Y, Z) versus time.
+
+        Args:
+            - fig_name (str) : The name of the matplotlib figure window.
+            - time_step (float) : The time step used to sample the flight plan's trace
+        """
+
+        # 1. Create a new figure for plotting
+        figure = plt.figure(fig_name)
+
+        # 2. Define the color for the plots
+        color = [0, 0.7, 1]
+
+        # 3. Compute the trace of the flight plan at the specified time step
+        trace = self.trace(time_step)
+        trace_times = trace[:, 0]
+        trace_x = trace[:, 13]
+        trace_y = trace[:, 14]
+        trace_z = trace[:, 15]
+
+        # 4. Add a new subplot for the 3D snap versus time plot
+        snap_3D_plot = figure.add_subplot(4, 2, (1, 2))
+
+        # 4.1 Set the axes' labels
+        snap_3D_plot.set_ylabel("3D [m/s4]")
+
+        # 4.2 Set the title
+        snap_3D_plot.set_title("Snap versus time")
+
+        # 4.3 Set the grid to True
+        snap_3D_plot.grid(True)
+
+        # 4.4 Set plot info
+        snap_3D_plot.plot(
+            trace_times,
+            np.sqrt(trace_x**2 + trace_y**2 + trace_z**2),
+            linewidth=2,
+            color=color,
+            zorder=1
+        )
+
+        # 5. Add new subplots for the snap versus time plots for each axis (X, Y, Z)
+        x_snap_vs_time_plot = figure.add_subplot(4, 2, (3, 4))
+        y_snap_vs_time_plot = figure.add_subplot(4, 2, (5, 6))
+        z_snap_vs_time_plot = figure.add_subplot(4, 2, (7, 8))
+
+        # 5.1 Set the axes' labels for subplot
+        x_snap_vs_time_plot.set_ylabel("snap x [m/s4]")
+        y_snap_vs_time_plot.set_ylabel("snap y [m/s4]")
+        z_snap_vs_time_plot.set_ylabel("snap z [m/s4]")
+        x_snap_vs_time_plot.set_xlabel("time [s]")
+
+        # 5.2 Set the grid to True
+        x_snap_vs_time_plot.grid(True)
+        y_snap_vs_time_plot.grid(True)
+        z_snap_vs_time_plot.grid(True)
+
+        # 5.3 Set plots info
+        x_snap_vs_time_plot.plot(trace_times, trace_x, linewidth=2, color=color, zorder=1)
+        y_snap_vs_time_plot.plot(trace_times, trace_y, linewidth=2, color=color, zorder=1)
+        z_snap_vs_time_plot.plot(trace_times, trace_z, linewidth=2, color=color, zorder=1)
+
+        # 6. Extract the snap and times of the waypoints for highlighting
+        waypoint_idxs = np.where(np.isin(trace_times, self.time_waypoints))[0]
+        x_waypoint_snap = trace_x[waypoint_idxs]
+        y_waypoint_snap = trace_y[waypoint_idxs]
+        z_waypoint_snap = trace_z[waypoint_idxs]
+
+        # 6.1 Highlight the waypoints on the plots using scatter plots
+        x_snap_vs_time_plot_scatter = x_snap_vs_time_plot.scatter(
+            self.time_waypoints,
+            x_waypoint_snap,
+            marker="o",
+            color="blue",
+            s=25,
+            pickradius=30,
+            zorder=2
+        )
+        y_snap_vs_time_plot_scatter = y_snap_vs_time_plot.scatter(
+            self.time_waypoints,
+            y_waypoint_snap,
+            marker="o",
+            color="blue",
+            s=25,
+            pickradius=30,
+            zorder=2
+        )
+        z_snap_vs_time_plot_scatter = z_snap_vs_time_plot.scatter(
+            self.time_waypoints,
+            z_waypoint_snap,
+            marker="o",
+            color="blue",
+            s=25,
+            pickradius=30,
+            zorder=2
+        )
+
+        # 7. Attach cursor annotations to the scatter plots for displaying waypoint information
+        x_snap_vs_time_plot_cursor = mplcursors.cursor(x_snap_vs_time_plot_scatter, highlight=True)
+        y_snap_vs_time_plot_cursor = mplcursors.cursor(y_snap_vs_time_plot_scatter, highlight=True)
+        z_snap_vs_time_plot_cursor = mplcursors.cursor(z_snap_vs_time_plot_scatter, highlight=True)
+
+        self.attach_cursor_annotations(x_snap_vs_time_plot_cursor, self.waypoints)
+        self.attach_cursor_annotations(y_snap_vs_time_plot_cursor, self.waypoints)
+        self.attach_cursor_annotations(z_snap_vs_time_plot_cursor, self.waypoints)
+
+        # 8. Update limits to maintain scale in all axes
+        limit_3D = max(np.abs(snap_3D_plot.get_ylim()))
+        x_limit = max(np.abs(x_snap_vs_time_plot.get_ylim()))
+        y_limit = max(np.abs(y_snap_vs_time_plot.get_ylim()))
+        z_limit = max(np.abs(z_snap_vs_time_plot.get_ylim()))
+        max_limit = max(limit_3D, x_limit, y_limit, z_limit)
+
+        snap_3D_plot.set_ylim(-max_limit, max_limit)
+        x_snap_vs_time_plot.set_ylim(-max_limit, max_limit)
+        y_snap_vs_time_plot.set_ylim(-max_limit, max_limit)
+        z_snap_vs_time_plot.set_ylim(-max_limit, max_limit)
+
+        # 9. Show the figure without blocking the execution of the program
+        plt.show(block=False)
+
+    def plot_crackle(self, fig_name, time_step) -> None:
+        """
+        Launch a matplotlib window to visualize the flight plan's crackle data over time.
+        It plots the 3D crackle magnitude, and the individual crackle components (X, Y, Z) versus time.
+
+        Args:
+            - fig_name (str) : The name of the matplotlib figure window.
+            - time_step (float) : The time step used to sample the flight plan's trace
+        """
+
+        # 1. Create a new figure for plotting
+        figure = plt.figure(fig_name)
+
+        # 2. Define the color for the plots
+        color = [0, 0.7, 1]
+
+        # 3. Compute the trace of the flight plan at the specified time step
+        trace = self.trace(time_step)
+        trace_times = trace[:, 0]
+        trace_x = trace[:, 16]
+        trace_y = trace[:, 17]
+        trace_z = trace[:, 18]
+
+        # 4. Add a new subplot for the 3D crackle versus time plot
+        crackle_3D_plot = figure.add_subplot(4, 2, (1, 2))
+
+        # 4.1 Set the axes' labels
+        crackle_3D_plot.set_ylabel("3D [m/s5]")
+
+        # 4.2 Set the title
+        crackle_3D_plot.set_title("Crackle versus time")
+
+        # 4.3 Set the grid to True
+        crackle_3D_plot.grid(True)
+
+        # 4.4 Set plot info
+        crackle_3D_plot.plot(
+            trace_times,
+            np.sqrt(trace_x**2 + trace_y**2 + trace_z**2),
+            linewidth=2,
+            color=color,
+            zorder=1
+        )
+
+        # 5. Add new subplots for the crackle versus time plots for each axis (X, Y, Z)
+        x_crackle_vs_time_plot = figure.add_subplot(4, 2, (3, 4))
+        y_crackle_vs_time_plot = figure.add_subplot(4, 2, (5, 6))
+        z_crackle_vs_time_plot = figure.add_subplot(4, 2, (7, 8))
+
+        # 5.1 Set the axes' labels for subplot
+        x_crackle_vs_time_plot.set_ylabel("crackle x [m/s5]")
+        y_crackle_vs_time_plot.set_ylabel("crackle y [m/s5]")
+        z_crackle_vs_time_plot.set_ylabel("crackle z [m/s5]")
+        x_crackle_vs_time_plot.set_xlabel("time [s]")
+
+        # 5.2 Set the grid to True
+        x_crackle_vs_time_plot.grid(True)
+        y_crackle_vs_time_plot.grid(True)
+        z_crackle_vs_time_plot.grid(True)
+
+        # 5.3 Set plots info
+        x_crackle_vs_time_plot.plot(trace_times, trace_x, linewidth=2, color=color, zorder=1)
+        y_crackle_vs_time_plot.plot(trace_times, trace_y, linewidth=2, color=color, zorder=1)
+        z_crackle_vs_time_plot.plot(trace_times, trace_z, linewidth=2, color=color, zorder=1)
+
+        # 6. Extract the crackle and times of the waypoints for highlighting
+        waypoint_idxs = np.where(np.isin(trace_times, self.time_waypoints))[0]
+        x_waypoint_crackle = trace_x[waypoint_idxs]
+        y_waypoint_crackle = trace_y[waypoint_idxs]
+        z_waypoint_crackle = trace_z[waypoint_idxs]
+
+        # 6.1 Highlight the waypoints on the plots using scatter plots
+        x_crackle_vs_time_plot_scatter = x_crackle_vs_time_plot.scatter(
+            self.time_waypoints,
+            x_waypoint_crackle,
+            marker="o",
+            color="blue",
+            s=25,
+            pickradius=30,
+            zorder=2
+        )
+        y_crackle_vs_time_plot_scatter = y_crackle_vs_time_plot.scatter(
+            self.time_waypoints,
+            y_waypoint_crackle,
+            marker="o",
+            color="blue",
+            s=25,
+            pickradius=30,
+            zorder=2
+        )
+        z_crackle_vs_time_plot_scatter = z_crackle_vs_time_plot.scatter(
+            self.time_waypoints,
+            z_waypoint_crackle,
+            marker="o",
+            color="blue",
+            s=25,
+            pickradius=30,
+            zorder=2
+        )
+
+        # 7. Attach cursor annotations to the scatter plots for displaying waypoint information
+        x_crackle_vs_time_plot_cursor = mplcursors.cursor(x_crackle_vs_time_plot_scatter, highlight=True)
+        y_crackle_vs_time_plot_cursor = mplcursors.cursor(y_crackle_vs_time_plot_scatter, highlight=True)
+        z_crackle_vs_time_plot_cursor = mplcursors.cursor(z_crackle_vs_time_plot_scatter, highlight=True)
+
+        self.attach_cursor_annotations(x_crackle_vs_time_plot_cursor, self.waypoints)
+        self.attach_cursor_annotations(y_crackle_vs_time_plot_cursor, self.waypoints)
+        self.attach_cursor_annotations(z_crackle_vs_time_plot_cursor, self.waypoints)
+
+        # 8. Update limits to maintain scale in all axes
+        limit_3D = max(np.abs(crackle_3D_plot.get_ylim()))
+        x_limit = max(np.abs(x_crackle_vs_time_plot.get_ylim()))
+        y_limit = max(np.abs(y_crackle_vs_time_plot.get_ylim()))
+        z_limit = max(np.abs(z_crackle_vs_time_plot.get_ylim()))
+        max_limit = max(limit_3D, x_limit, y_limit, z_limit)
+
+        crackle_3D_plot.set_ylim(-max_limit, max_limit)
+        x_crackle_vs_time_plot.set_ylim(-max_limit, max_limit)
+        y_crackle_vs_time_plot.set_ylim(-max_limit, max_limit)
+        z_crackle_vs_time_plot.set_ylim(-max_limit, max_limit)
 
         # 9. Show the figure without blocking the execution of the program
         plt.show(block=False)
