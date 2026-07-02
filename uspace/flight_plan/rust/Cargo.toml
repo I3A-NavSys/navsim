@@ -1,0 +1,19 @@
+[package]
+name    = "flight_plan"
+version = "0.1.0"
+edition = "2021"
+description = "Rust port of the optimised FlightPlan / Waypoint from uspace/flight_plan/flight_plan_new.py"
+
+[profile.release]
+opt-level     = 3
+lto           = "thin"
+codegen-units = 1
+debug         = false
+
+[[bin]]
+name = "benchmark"
+path = "src/bin/benchmark.rs"
+
+[lib]
+name = "flight_plan"
+path = "src/lib.rs"
