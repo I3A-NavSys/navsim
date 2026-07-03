@@ -15,6 +15,8 @@
 
 use std::f64;
 
+use serde::{Deserialize, Serialize};
+
 /// 3D vector type used throughout the crate (plain `[f64; 3]`).
 pub type Vec3 = [f64; 3];
 
@@ -26,7 +28,7 @@ pub type Vec2 = [f64; 2];
 /// Stores position up to the 5th kinematic derivative (crakle) plus
 /// descriptive metadata (`id`, `time`, `fly_over`, `heading`, decimal
 /// precision knobs). The `Vec3` fields are `[f64; 3]` arrays.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Waypoint {
     /// Identifier used to refer to the waypoint.
     pub id: String,

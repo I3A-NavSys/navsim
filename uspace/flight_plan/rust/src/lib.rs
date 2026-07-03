@@ -24,4 +24,4 @@ pub mod flight_plan;
 
 pub use command::Command;
 pub use waypoint::Waypoint;
-pub use flight_plan::FlightPlan;
+pub use flight_plan::{FlightPlan, Trace};

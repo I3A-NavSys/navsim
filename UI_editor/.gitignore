@@ -1,8 +1,0 @@
-# UI_editor build artifacts
-frontend/node_modules/
-frontend/dist/
-frontend/.angular/
-
-# Python
-__pycache__/
-*.pyc

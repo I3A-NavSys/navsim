@@ -26,6 +26,8 @@
 
 use std::collections::HashMap;
 
+use serde::{Deserialize, Serialize};
+
 use crate::waypoint::Waypoint;
 
 /// A flight plan: a time-sorted list of `Waypoint`s plus an id-to-index
@@ -33,7 +35,7 @@ use crate::waypoint::Waypoint;
 /// (`waypoints: Vec<Waypoint>` and `time_waypoints: Vec<f64>`) are kept
 /// in sync on every mutation, mirroring the `SortedList` of times in the
 /// Python version.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FlightPlan {
     /// Identifier used to refer to the flight plan.
     pub id: String,
@@ -115,14 +117,14 @@ impl FlightPlan {
         vel: Option<[f64; 3]>,
         heading: Option<[f64; 2]>,
     ) {
-        let time = match time {
-            Some(t) => t,
-            None => panic!("Time must be provided for the waypoint."),
-        };
-
         let wp = match wp {
             Some(w) => w,
             None => {
+                // 0. Validate `time` only when `wp` itself is None — the
+                //    Python version accepts a fully-formed `Waypoint` and
+                //    ignores the other parameters, including `time`.
+                let time = time.expect("Time must be provided for the waypoint.");
+
                 let is_first_wp = self.length == 0;
                 let is_previous_time = !is_first_wp && time <= self.time_waypoints[0];
 
@@ -548,9 +550,89 @@ impl FlightPlan {
         out
     }
 
+    /// Variant of `trace` that returns a column-split `Trace` struct
+    /// directly serializable to JSON. The shape is the same as the
+    /// raw `Vec<f64>` returned by `trace` (`n_samples * 19`) but
+    /// split into named fields for ergonomic consumption from a
+    /// JavaScript frontend.
+    pub fn trace_struct(&self, time_step: f64) -> Trace {
+        let raw = self.trace(time_step);
+        const COLS: usize = 19;
+        let n = raw.len() / COLS;
+
+        let mut t      = Vec::with_capacity(n);
+        let mut pos    = Vec::with_capacity(n);
+        let mut vel    = Vec::with_capacity(n);
+        let mut acel   = Vec::with_capacity(n);
+        let mut jerk   = Vec::with_capacity(n);
+        let mut snap   = Vec::with_capacity(n);
+        let mut crakle = Vec::with_capacity(n);
+
+        for s in 0..n {
+            let base = s * COLS;
+            t.push(raw[base + 0]);
+            pos.push([raw[base + 1], raw[base + 2], raw[base + 3]]);
+            vel.push([raw[base + 4], raw[base + 5], raw[base + 6]]);
+            acel.push([raw[base + 7], raw[base + 8], raw[base + 9]]);
+            jerk.push([raw[base + 10], raw[base + 11], raw[base + 12]]);
+            snap.push([raw[base + 13], raw[base + 14], raw[base + 15]]);
+            crakle.push([raw[base + 16], raw[base + 17], raw[base + 18]]);
+        }
+
+        Trace { t, pos, vel, acel, jerk, snap, crakle }
+    }
+
     // ----------------------------------
     // -------- COPY ---------------------
     // ----------------------------------
+
+    /// Replace an existing waypoint by id with the given values.
+    /// Returns `true` if a waypoint was updated, `false` if no waypoint
+    /// with that id exists.
+    ///
+    /// This is an editor-friendly helper: the rest of the crate keeps
+    /// the original Python-style API. `time` is editable; when the
+    /// supplied time differs from the current one the waypoint is
+    /// removed and re-inserted at its correct sorted position, so the
+    /// flight plan stays strictly time-sorted.
+    pub fn replace_waypoint(
+        &mut self,
+        id: &str,
+        time: f64,
+        pos: [f64; 3],
+        vel: [f64; 3],
+    ) -> bool {
+        let idx = match self.ids_to_idx.get(id).copied() {
+            Some(i) => i,
+            None => return false,
+        };
+
+        // 1. Snapshot the existing waypoint and clone it so we keep the
+        //    higher-order derivatives (jerk, snap, crakle), metadata,
+        //    etc.
+        let mut new_wp = self.waypoints[idx].copy();
+        new_wp.time = time;
+        new_wp.pos = pos;
+        new_wp.vel = vel;
+
+        // 2. Remove the old waypoint first, then re-insert it through
+        //    `add_waypoint`. This guarantees the time-sorted invariant
+        //    holds even when the user changes the waypoint's time.
+        self.remove_waypoint(Some(idx), None);
+        self.add_waypoint(Some(new_wp), None, Some(time), Some(pos), Some(vel), None);
+        true
+    }
+
+    /// Remove a waypoint by id. Returns `true` if a waypoint was
+    /// removed.
+    pub fn remove_waypoint_by_id(&mut self, id: &str) -> bool {
+        let idx = match self.ids_to_idx.get(id).copied() {
+            Some(i) => i,
+            None => return false,
+        };
+        self.remove_waypoint(Some(idx), None);
+        true
+    }
 
     /// Make a deep copy of the flight plan. Mirrors `FlightPlan.copy()`.
     pub fn copy(&self) -> Self {
@@ -569,6 +651,33 @@ impl FlightPlan {
             velocity_decimals: self.velocity_decimals,
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Column-split trace produced by `FlightPlan::trace_struct`.
+// ---------------------------------------------------------------------------
+
+/// Column-split trace of a flight plan.
+///
+/// One row per sample, columns are `[x, y, z]`. Used by the editor
+/// frontend to feed Three.js (position trace) and Chart.js
+/// (derivatives) without dealing with flat row-major buffers in JS.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Trace {
+    /// Time of each sample (s).
+    pub t: Vec<f64>,
+    /// Position (m) per sample.
+    pub pos: Vec<[f64; 3]>,
+    /// Velocity (m/s) per sample.
+    pub vel: Vec<[f64; 3]>,
+    /// Acceleration (m/s²) per sample.
+    pub acel: Vec<[f64; 3]>,
+    /// Jerk (m/s³) per sample.
+    pub jerk: Vec<[f64; 3]>,
+    /// Snap (m/s⁴) per sample.
+    pub snap: Vec<[f64; 3]>,
+    /// Crakle (m/s⁵) per sample.
+    pub crakle: Vec<[f64; 3]>,
 }
 
 // ---------------------------------------------------------------------------

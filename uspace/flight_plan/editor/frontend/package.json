@@ -1,0 +1,36 @@
+{
+  "name": "flight-plan-editor",
+  "version": "0.1.0",
+  "description": "Angular frontend for the FlightPlan editor (Three.js 3D viewer + Chart.js derivatives).",
+  "scripts": {
+    "ng":      "ng",
+    "start":   "ng serve --port 4200 --proxy-config proxy.conf.json",
+    "build":   "ng build --configuration production",
+    "watch":   "ng build --watch --configuration development",
+    "lint":    "ng lint || true"
+  },
+  "private": true,
+  "dependencies": {
+    "@angular/animations":                "^17.3.0",
+    "@angular/common":                    "^17.3.0",
+    "@angular/compiler":                  "^17.3.0",
+    "@angular/core":                      "^17.3.0",
+    "@angular/forms":                     "^17.3.0",
+    "@angular/platform-browser":          "^17.3.0",
+    "@angular/platform-browser-dynamic":  "^17.3.0",
+    "@angular/router":                    "^17.3.0",
+    "rxjs":                               "~7.8.0",
+    "tslib":                              "^2.3.0",
+    "zone.js":                            "~0.14.3",
+    "three":                              "^0.160.0",
+    "chart.js":                           "^4.4.0",
+    "chartjs-plugin-annotation":          "^3.0.1"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-angular":      "^17.3.0",
+    "@angular/cli":                       "^17.3.0",
+    "@angular/compiler-cli":              "^17.3.0",
+    "@types/three":                       "^0.160.0",
+    "typescript":                         "~5.4.2"
+  }
+}

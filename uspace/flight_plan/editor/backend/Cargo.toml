@@ -1,0 +1,48 @@
+[package]
+name    = "flight-plan-editor"
+version = "0.1.0"
+edition = "2021"
+description = "HTTP backend for the FlightPlan editor (axum + tokio). Wraps the local `flight_plan` Rust crate."
+
+[[bin]]
+name = "flight-plan-editor"
+path = "src/main.rs"
+
+[dependencies]
+# Local FlightPlan / Waypoint port (path dependency so we always build
+# against the checked-out source under `../../rust/src`).
+flight_plan = { path = "../../rust" }
+
+# Serde runtime (the FlightPlan crate declares `serde` with `derive`
+# but doesn't re-export the runtime, so we need it here too).
+serde      = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Async HTTP server
+axum       = { version = "0.7", features = ["macros"] }
+tokio      = { version = "1", features = ["rt-multi-thread", "macros", "signal"] }
+tower      = { version = "0.4" }
+tower-http = { version = "0.5", features = ["cors", "fs", "trace"] }
+
+# Error / log / util
+anyhow      = "1"
+thiserror   = "1"
+tracing     = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Concurrency primitives
+parking_lot = "0.12"
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# UUIDs for plan / waypoint ids
+uuid = { version = "1", features = ["v4", "serde"] }
+
+# Time for the simulation tick
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+
+[profile.release]
+opt-level     = 3
+lto           = "thin"
+codegen-units = 1

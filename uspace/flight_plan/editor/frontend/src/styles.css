@@ -1,0 +1,202 @@
+/* ============================================================
+ *  FlightPlan Editor — global stylesheet
+ *
+ *  Single source of truth for the colour palette. Every colour
+ *  used in the application comes from `--palette`; tweak the
+ *  variables below to re-theme the whole UI.
+ *
+ *  Palette: dark "violet-mint" — a deep navy background, a
+ *  vivid violet primary accent, and mint/teal for secondary
+ *  signal. Drawn from a typical modern dark dashboard look
+ *  (Linear / Vercel / GitHub primer territory) so the editor
+ *  feels current while staying distinctly violet rather than
+ *  green.
+ * ============================================================ */
+:root {
+  /* -- palette ------------------------------------------------------- */
+  --bg-0:        #0b0d12;   /* page background               */
+  --bg-1:        #11141c;   /* surface (panel)                */
+  --bg-2:        #161a24;   /* raised surface (input, row)    */
+  --bg-3:        #1f2533;   /* hovered surface                */
+  --border:      #2a3142;
+  --border-soft: #202636;
+
+  --fg-0:        #f1f5ff;   /* primary text                   */
+  --fg-1:        #c9cfdc;   /* body text                      */
+  --fg-2:        #828aa1;   /* muted text                     */
+  --fg-3:        #565d72;   /* very muted (placeholder)        */
+
+  --accent:      #7c5cff;   /* primary violet                 */
+  --accent-2:    #a78bfa;   /* lighter accent                 */
+  --accent-soft: rgba(124, 92, 255, 0.18);
+
+  --teal:        #2dd4bf;   /* secondary signal               */
+  --mint:        #5eead4;
+  --warn:        #f59e0b;
+  --danger:      #f43f5e;
+  --success:     #4ade80;
+
+  --gold:        #fbbf24;
+
+  /* -- layout --------------------------------------------------------- */
+  --radius-sm:  6px;
+  --radius:    10px;
+  --radius-lg: 16px;
+
+  --shadow-1: 0 1px 2px rgba(0,0,0,.4);
+  --shadow-2: 0 6px 24px rgba(0,0,0,.45);
+  --shadow-3: 0 24px 60px rgba(0,0,0,.55);
+
+  --t-fast: 120ms ease;
+  --t-med:  220ms ease;
+}
+
+/* ----------------------------------------------------------- reset */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg-0);
+  color: var(--fg-1);
+  font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  letter-spacing: -0.005em;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button, input, textarea, select {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--accent-2);
+  text-decoration: none;
+}
+
+a:hover { color: var(--accent); }
+
+::placeholder { color: var(--fg-3); }
+
+/* --------------------------------------------------------- scrollbars */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 8px;
+  border: 2px solid var(--bg-0);
+}
+*::-webkit-scrollbar-thumb:hover { background: #3a4356; }
+
+/* --------------------------------------------------------- primitives */
+.btn {
+  background: var(--bg-2);
+  color: var(--fg-0);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: background var(--t-fast), border-color var(--t-fast),
+              color var(--t-fast), transform var(--t-fast);
+}
+.btn:hover {
+  background: var(--bg-3);
+  border-color: #3a4356;
+}
+.btn:active { transform: translateY(1px); }
+.btn.primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: #fff;
+}
+.btn.primary:hover { background: #6d4dee; }
+.btn.danger {
+  background: transparent;
+  border-color: rgba(244, 63, 94, 0.35);
+  color: var(--danger);
+}
+.btn.danger:hover { background: rgba(244, 63, 94, 0.10); }
+.btn.ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--fg-1);
+}
+.btn.ghost:hover { background: var(--bg-3); color: var(--fg-0); }
+.btn[disabled],
+.btn.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.input {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--fg-0);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 12px;
+  outline: none;
+  transition: border-color var(--t-fast), background var(--t-fast);
+  width: 100%;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+.input:hover { background: #1a1f2c; }
+.input:focus {
+  border-color: var(--accent);
+  background: var(--bg-1);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-2);
+  border: 1px solid rgba(124, 92, 255, 0.25);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.panel {
+  background: var(--bg-1);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-1);
+}
+
+.kbd {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  color: var(--fg-1);
+}
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(124, 92, 255, 0.5); }
+  70%  { box-shadow: 0 0 0 8px rgba(124, 92, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(124, 92, 255, 0); }
+}

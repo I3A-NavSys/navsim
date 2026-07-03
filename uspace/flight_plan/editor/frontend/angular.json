@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "ui-editor": {
+    "flight-plan-editor": {
       "projectType": "application",
       "schematics": {},
       "root": "",
@@ -17,16 +17,19 @@
             "index": "src/index.html",
             "browser": "src/main.ts",
             "polyfills": ["zone.js"],
-            "tsConfig": "tsconfig.json",
-            "assets": [],
-            "styles": ["src/styles.css"],
+            "tsConfig": "tsconfig.app.json",
+            "assets":  ["src/assets"],
+            "styles":  ["src/styles.css"],
             "scripts": []
           },
           "configurations": {
             "production": {
               "budgets": [
-                { "type": "initial",        "maximumWarning": "2mb", "maximumError": "5mb" },
-                { "type": "anyComponentStyle", "maximumWarning": "8kb", "maximumError": "16kb" }
+                {
+                  "type":  "initial",
+                  "maximumWarning": "3mb",
+                  "maximumError":   "6mb"
+                }
               ],
               "outputHashing": "all"
             },
@@ -37,8 +40,23 @@
             }
           },
           "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular-devkit/build-angular:dev-server",
+          "configurations": {
+            "production": {
+              "buildTarget": "flight-plan-editor:build:production"
+            },
+            "development": {
+              "buildTarget": "flight-plan-editor:build:development"
+            }
+          },
+          "defaultConfiguration": "development"
         }
       }
     }
+  },
+  "cli": {
+    "analytics": false
   }
 }
