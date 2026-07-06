@@ -26,7 +26,6 @@ import {
 import annotationPlugin from 'chartjs-plugin-annotation';
 
 import {
-  AXIS_INDEX,
   Axis,
   AXIS_LABELS,
   DERIVATIVE_LABELS,
@@ -67,12 +66,12 @@ Chart.register(
         </div>
         <div class="picker">
           <span class="label">Plans</span>
-          <ng-container *ngFor="let p of plans; let i = index">
+          <ng-container *ngFor="let p of plans">
             <button class="chip-btn"
                     [class.on]="selectedPlans.has(p.id)"
-                    [style.--c]="palette[i % palette.length]"
+                    [style.--c]="colorFor(p.id)"
                     (click)="togglePlan(p.id)">
-              <span class="dot" [style.background]="palette[i % palette.length]"></span>
+              <span class="dot" [style.background]="colorFor(p.id)"></span>
               {{ p.id }}
             </button>
           </ng-container>
@@ -197,9 +196,12 @@ export class DerivativesComponent implements AfterViewInit, OnChanges, OnDestroy
   readonly axes: Axis[] = ['x', 'y', 'z'];
   readonly labels = DERIVATIVE_LABELS;
   readonly axisLabel = AXIS_LABELS;
-  readonly palette = [
-    '#7c5cff', '#2dd4bf', '#fbbf24', '#f43f5e', '#5eead4', '#a78bfa',
-  ];
+
+  /** Stable colour per plan id — delegated to the shared service so
+   *  the chart line and the chip button always agree. */
+  colorFor(planId: string): string {
+    return this.colors.colorFor(planId);
+  }
 
   /** Currently-selected derivative subset (defaults to velocity). */
   selectedDerivatives: Set<Derivative> = new Set(['velocity']);

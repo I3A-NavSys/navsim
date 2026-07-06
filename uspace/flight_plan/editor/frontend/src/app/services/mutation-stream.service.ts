@@ -1,10 +1,5 @@
 import { Injectable } from '@angular/core';
-import {
-  BehaviorSubject,
-  Observable,
-  Subject,
-  of,
-} from 'rxjs';
+import { BehaviorSubject, Observable, of, Subject } from 'rxjs';
 import {
   catchError,
   debounceTime,
@@ -31,10 +26,8 @@ export type Mutation =
   | { kind: 'delete';     planId: string; id: string; _nonce?: number }
   | { kind: 'connect';    planId: string; _nonce?: number }
   | { kind: 'planAttr';   planId: string; payload: MutationPlanAttrPayload; _nonce?: number }
-  | { kind: 'visibility'; planId: string; visible: boolean; _nonce?: number }
   | { kind: 'planCreate'; payload: MutationPlanAttrPayload; _nonce?: number }
-  | { kind: 'planDelete'; planId: string; _nonce?: number }
-  | { kind: 'simSet';     payload: { reset?: boolean; time?: number }; _nonce?: number };
+  | { kind: 'planDelete'; planId: string; _nonce?: number };
 
 export interface MutationAddPayload {
   id?: string;
@@ -148,20 +141,11 @@ export class MutationStreamService implements MutationStream {
         return this.fp.connect(m.planId);
       case 'planAttr':
         return this.fp.updateAttributes(m.planId, m.payload);
-      case 'visibility':
-        return this.fp.setVisibility(m.planId, m.visible);
       case 'planCreate':
         return this.fp.create(m.payload);
       case 'planDelete':
         return this.fp.delete(m.planId).pipe(
           map(() => ({ kind: '__plan_deleted__', planId: m.planId } as PlanDeletedEvent)),
-        );
-      case 'simSet':
-        return this.fp.setSimTime(m.payload.time ?? null).pipe(
-          // simSet returns a number — wrap into a synthetic plan so the
-          // stream type stays uniform. Only used in callers that
-          // specifically subscribe to it.
-          map(() => this.emptyPlan('sim')),
         );
     }
   }

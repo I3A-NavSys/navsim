@@ -421,10 +421,6 @@ pub async fn get_sim(State(app): State<Arc<AppState>>) -> Json<serde_json::Value
     Json(json!({ "sim_time": *app.sim_time().lock() }))
 }
 
-/// Undo the last mutation. Returns the full updated plan list so
-
-
-
 /// Health check endpoint.
 pub async fn health(State(app): State<Arc<AppState>>) -> Json<serde_json::Value> {
     let plans = app.plans().lock();

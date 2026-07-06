@@ -2,11 +2,10 @@ import { Injectable } from '@angular/core';
 import { PALETTE } from './flight-plan.service';
 
 /**
- * Singleton service that owns the per-plan colour mapping. Using a
- * service (instead of calling `colorForPlan(planId)` everywhere)
- * guarantees the same colour is shown in the tab strip, the 3D
- * viewer, and the derivatives chart — so the user always sees a
- * single, stable hue per plan id.
+ * Singleton service that owns the per-plan colour mapping. Routing
+ * every consumer through the service guarantees that the tab strip,
+ * the 3D viewer, the derivatives chart, and the timeline ticks all
+ * agree on the same hue per plan id.
  *
  * Allocation policy:
  *   1. If the plan already has a slot, return it.

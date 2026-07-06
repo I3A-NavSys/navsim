@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 /** A 3-element array used for positions, velocities, etc. */
@@ -130,29 +130,6 @@ export const PALETTE = [
   '#22d3ee',  // cyan
 ] as const;
 
-/** Pick a palette colour for a flight plan by its index in the list. */
-export function colorForIndex(i: number): string {
-  return PALETTE[i % PALETTE.length];
-}
-
-/** Stable per-plan colour derived from a hash of the plan id. Using a
- *  hash guarantees that the plan keeps the same colour regardless
- *  of where it sits in the global plan list — critical because the
- *  user expects "PlanA" to remain "PlanA-blue" even after they
- *  create or delete other plans. */
-export function colorForPlan(planId: string): string {
-  // djb2 hash → palette index.
-  let h = 5381;
-  for (let i = 0; i < planId.length; i++) {
-    h = ((h << 5) + h) + planId.charCodeAt(i);
-    h |= 0;
-  }
-  // Bias by the plan's id length so two ids that hash to the same
-  // value (rare) still get different palette entries.
-  const idx = (Math.abs(h) + planId.length * 7) % PALETTE.length;
-  return PALETTE[idx];
-}
-
 /**
  * Centralised FlightPlan HTTP service. Every write endpoint returns
  * the updated plan (and the freshly computed trace), so the client
@@ -199,13 +176,6 @@ export class FlightPlanService {
     return this.http.patch<FlightPlan>(
       `/api/plans/${encodeURIComponent(planId)}`,
       patch,
-    );
-  }
-
-  setVisibility(planId: string, visible: boolean): Observable<FlightPlan> {
-    return this.http.post<FlightPlan>(
-      `/api/plans/${encodeURIComponent(planId)}/visibility`,
-      { visible },
     );
   }
 
@@ -259,21 +229,7 @@ export class FlightPlanService {
     );
   }
 
-  // ---- trace ------------------------------------------------------------
-  trace(planId: string, dt = 0.05): Observable<Trace> {
-    return this.http.get<Trace>(
-      `/api/plans/${encodeURIComponent(planId)}/trace`,
-      { params: { dt } as any },
-    );
-  }
-
   // ---- simulation clock --------------------------------------------------
-  getSimTime(): Observable<number> {
-    return this.http
-      .get<{ sim_time: number }>('/api/sim')
-      .pipe(map((r) => r.sim_time));
-  }
-
   setSimTime(sim_time: number | null): Observable<number> {
     const body =
       sim_time === null

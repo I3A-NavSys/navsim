@@ -18,8 +18,7 @@ import { FlightPlan, Vec3, Waypoint } from '../services/flight-plan.service';
           <span class="dot" [style.background]="color"></span>
           <input class="input id-input"
                  [ngModel]="plan?.id ?? ''"
-                 (blur)="onRenameId($event)"
-                 (keydown.enter)="onRenameId($event)"
+                 [readonly]="true"
                  title="Plan id" />
         </div>
         <div class="row-attr">
@@ -213,7 +212,6 @@ export class InfoPanelComponent {
   @Output() deleteWp     = new EventEmitter<string>();
   @Output() updateWp     = new EventEmitter<Waypoint>();
   @Output() updateAttr   = new EventEmitter<{ attr: string; value: any }>();
-  @Output() renameId     = new EventEmitter<string>();
 
   onPatchField(wpId: string, field: 'time', ev: Event): void {
     const value = parseFloat((ev.target as HTMLInputElement).value);
@@ -238,13 +236,10 @@ export class InfoPanelComponent {
   }
 
   onPatchId(oldId: string, ev: Event): void {
-    // id is read-only here — use the plan-id header for renaming.
+    // id is read-only — the per-row input is for display only. Snap
+    // back any edit the user managed to make (the input is `readonly`
+    // in the template, this is a belt-and-braces guard).
     (ev.target as HTMLInputElement).value = oldId;
-  }
-
-  onRenameId(ev: Event): void {
-    const v = (ev.target as HTMLInputElement).value.trim();
-    if (v) this.renameId.emit(v);
   }
 
   onDeleteWp(id: string, ev: Event): void {

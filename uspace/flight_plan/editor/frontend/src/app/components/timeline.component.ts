@@ -11,6 +11,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
 import { FlightPlan } from '../services/flight-plan.service';
+import { PlanColorService } from '../services/plan-color.service';
 
 /** Bottom timeline strip.
  *  Shows every waypoint of every visible flight plan as a labelled
@@ -141,6 +142,8 @@ import { FlightPlan } from '../services/flight-plan.service';
   `],
 })
 export class TimelineComponent implements OnChanges {
+  constructor(private colors: PlanColorService) {}
+
   @Input() plans: FlightPlan[] = [];
   @Input() simTime = 0;
   @Input() tMax = 0;
@@ -161,7 +164,10 @@ export class TimelineComponent implements OnChanges {
     const all: { time: number; id: string; color: string }[] = [];
     for (const p of this.plans) {
       if (!p.visible) continue;
-      const color = colorFor(this.plans.indexOf(p));
+      // Use the shared per-plan colour so the timeline ticks match
+      // the 3D viewer / chip / chart, regardless of where the plan
+      // sits in the global list.
+      const color = this.colors.colorFor(p.id);
       for (const w of p.waypoints) {
         all.push({ time: w.time, id: w.id, color });
       }
@@ -203,9 +209,4 @@ export class TimelineComponent implements OnChanges {
     const t = (x / rect.width) * this.tMax;
     this.simTimeChange.emit(+t.toFixed(3));
   }
-}
-
-function colorFor(i: number): string {
-  const PALETTE = ['#7c5cff', '#2dd4bf', '#fbbf24', '#f43f5e', '#5eead4', '#a78bfa'];
-  return PALETTE[i % PALETTE.length];
 }

@@ -1,8 +1,6 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  ElementRef,
-  NgZone,
   OnDestroy,
   OnInit,
 } from '@angular/core';
@@ -20,7 +18,6 @@ import {
   FlightPlan,
   FlightPlanService,
   PlanSummary,
-  Trace,
   Vec3,
   Waypoint,
 } from './services/flight-plan.service';
@@ -29,18 +26,7 @@ import {
   MutationStreamService,
   isPlanDeleted,
   MutationResult,
-  PlanDeletedEvent,
 } from './services/mutation-stream.service';
-
-/** State held in the layout grid for a draggable divider. */
-interface Divider {
-  /** Direction the splitter adjusts. */
-  axis: 'h' | 'v';
-  /** Flex-grow of the panel left / above the splitter. */
-  left: number;
-  /** Flex-grow of the panel right / below the splitter. */
-  right: number;
-}
 
 @Component({
   selector: 'app-root',
@@ -187,8 +173,7 @@ interface Divider {
                 (connect)="onConnect()"
                 (deleteWp)="onDeleteWp($event)"
                 (updateWp)="onUpdateWp($event)"
-                (updateAttr)="onUpdateAttr($event)"
-                (renameId)="onRenameId($event)">
+                (updateAttr)="onUpdateAttr($event)">
               </app-info-panel>
             </div>
 
@@ -465,9 +450,6 @@ export class AppComponent implements OnInit, OnDestroy {
   infoTop    = 1.2;
   infoBottom = 1.0;
 
-  // ---- drag state ----
-  private dragging: { axis: 'h' | 'v'; startPos: number; startLeft: number; startRight: number; key: string } | null = null;
-
   // ---- subscriptions ----
   private sub = new Subscription();
   private rafId = 0;
@@ -480,8 +462,6 @@ export class AppComponent implements OnInit, OnDestroy {
     private fp: FlightPlanService,
     private stream: MutationStreamService,
     private colors: PlanColorService,
-    private zone: NgZone,
-    private host: ElementRef<HTMLElement>,
   ) {
     // hot-pull the observables for the template.
     this.busy$  = this.stream.busy$;
@@ -741,14 +721,6 @@ export class AppComponent implements OnInit, OnDestroy {
   onConnect(): void {
     if (!this.currentPlanId) return;
     this.stream.push({ kind: 'connect', planId: this.currentPlanId });
-  }
-
-  onRenameId(newId: string): void {
-    // Reuse the planAttr endpoint to set `id` (server keeps the same
-    // plan; not ideal but the simplest way without a dedicated rename
-    // endpoint). For now, we leave the rename as a no-op in the UI.
-    // Future: add POST /api/plans/{id}/rename.
-    void newId;
   }
 
   // ----------------------------------------------------------------

@@ -5,7 +5,6 @@
 //! operate on the registry under a parking_lot mutex.
 
 use std::collections::BTreeMap;
-use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
@@ -36,25 +35,18 @@ struct Inner {
     sim_time: Mutex<f64>,
     /// Monotonic counter used to assign short ids.
     next_id: AtomicU64,
-    /// Static-files directory served at the URL root (`dist/`).
-    /// Kept on the state for future endpoints that need it
-    /// (e.g. an `/upload` that writes into `dist/...`).
-    #[allow(dead_code)]
-    dist_dir: PathBuf,
 }
 
 impl AppState {
     /// Build the initial (empty) state. The user has to click
     /// "New plan" to create their first flight plan.
-    pub fn new(dist_dir: PathBuf) -> Self {
+    pub fn new() -> Self {
         Self {
             inner: Arc::new(Inner {
                 plans: Mutex::new(BTreeMap::new()),
                 visible: Mutex::new(BTreeMap::new()),
                 sim_time: Mutex::new(0.0),
                 next_id: AtomicU64::new(1),
-                #[allow(dead_code)]
-                dist_dir,
             }),
         }
     }
@@ -72,13 +64,6 @@ impl AppState {
     /// Convenience: lock the simulation clock (seconds).
     pub fn sim_time(&self) -> &Mutex<f64> {
         &self.inner.sim_time
-    }
-
-    /// Static-files root (`dist/`) — kept for future endpoints that
-    /// need it.
-    #[allow(dead_code)]
-    pub fn dist_dir(&self) -> &PathBuf {
-        &self.inner.dist_dir
     }
 
     /// Generate a short, unique plan id (e.g. `Plan3`).

@@ -60,7 +60,7 @@ async fn main() -> Result<()> {
     let dist_dir = resolve_dist_dir(args.dist.clone());
     tracing::info!("serving static files from {}", dist_dir.display());
 
-    let state = AppState::new(dist_dir.clone());
+    let state = AppState::new();
     let app = router(state.clone(), dist_dir);
 
     let addr: SocketAddr = format!("{}:{}", args.host, args.port)
