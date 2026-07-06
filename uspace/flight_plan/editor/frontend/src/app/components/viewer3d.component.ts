@@ -976,13 +976,7 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
       mesh.position.set(pos[0], pos[1], pos[2]);
       const label = mesh.userData['label'] as CSS2DObject | undefined;
       if (label) label.position.set(pos[0], pos[1], pos[2] + 3);
-      // Refresh label text.
-      const html = `
-        <div class="row"><span class="id">${escapeHtml(wp.id)}</span></div>
-        <div class="row"><span class="t">t=${wp.time.toFixed(2)}s</span></div>
-        <div class="row"><span class="v">v=(${newWp.vel[0].toFixed(1)}, ${newWp.vel[1].toFixed(1)}, ${newWp.vel[2].toFixed(1)})</span></div>
-      `;
-      if (label) label.element.innerHTML = html;
+      if (label) label.element.innerHTML = this.buildLabelHtml(newWp);
     }
 
     // Arrow follows the WP.

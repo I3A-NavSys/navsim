@@ -54,8 +54,10 @@ fi
 unset PORT_FROM_ENV
 
 # ---------------------------------------------------------------
-# 1. Build the Angular bundle if it isn't there yet (or if
-#    --rebuild was passed).
+# 1. Build the Angular bundle if it isn't there yet, if any
+#    source file is newer than the existing bundle, or if
+#    --rebuild was passed. This guarantees `start.sh` always
+#    serves the latest frontend code.
 # ---------------------------------------------------------------
 NEED_FRONTEND_BUILD=false
 if [ "$FORCE_REBUILD" = true ] || [ "$SKIP_BUILD" = false ]; then
@@ -63,6 +65,30 @@ if [ "$FORCE_REBUILD" = true ] || [ "$SKIP_BUILD" = false ]; then
         NEED_FRONTEND_BUILD=true
     elif [ ! -d frontend/dist ] || [ ! -f frontend/dist/browser/index.html ]; then
         NEED_FRONTEND_BUILD=true
+    else
+        # Source-edit detection: rebuild whenever any input to the
+        # Angular compiler is newer than the existing bundle, so
+        # edits to the .ts/.html/.scss sources (or to the build
+        # config / npm deps) are always reflected in the next run.
+        NEWEST_SRC_FILE=$(find \
+            frontend/src \
+            frontend/angular.json \
+            frontend/package.json \
+            frontend/package-lock.json \
+            frontend/proxy.conf.json \
+            frontend/tsconfig.app.json \
+            frontend/tsconfig.json \
+            -type f -printf '%T@ %p\n' 2>/dev/null \
+            | sort -nr | head -1 | cut -d' ' -f2-)
+        NEWEST_BUNDLE_FILE=$(find frontend/dist -type f -printf '%T@ %p\n' 2>/dev/null \
+            | sort -nr | head -1 | cut -d' ' -f2-)
+
+        if [ -z "$NEWEST_BUNDLE_FILE" ]; then
+            NEED_FRONTEND_BUILD=true
+        elif [ -n "$NEWEST_SRC_FILE" ] \
+             && [ "$NEWEST_SRC_FILE" -nt "$NEWEST_BUNDLE_FILE" ]; then
+            NEED_FRONTEND_BUILD=true
+        fi
     fi
 fi
 
@@ -113,5 +139,5 @@ log "  Ctrl-C to stop."
 log ""
 
 pushd backend >/dev/null
-exec cargo run --release -- --port "$PORT"
+exec cargo-1.91 run --release -- --port "$PORT"
 popd >/dev/null
