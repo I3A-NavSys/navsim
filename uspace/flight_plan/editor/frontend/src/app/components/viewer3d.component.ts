@@ -894,13 +894,20 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
     geo.computeBoundingSphere();
   }
 
-  /** Adjust the trace line in real time while the user drags a WP
-   *  or its velocity. We can't recompute the C⁵ curve locally
-   *  without the higher-order derivatives, so we re-derive only
-   *  the segments touching the affected WP using linear blends of
-   *  the live local cache — accurate enough at the time-scale of
-   *  a drag (~60 Hz) and avoids re-allocating the 1000-sample
-   *  buffer each frame. */
+  /** Adjust the trace line in real time while the user drags a WP or
+   *  its velocity. We replay the same algorithm the backend uses in
+   *  `connect_waypoints()` so the local preview matches what the
+   *  `Connect` action will produce — the user never sees a visible
+   *  jump between the dragged preview and the post-Connect curve.
+   *
+   *  Per adjacent segment (a, b), we solve (a.jerk, a.snap, a.crakle)
+   *  — the higher-order derivatives of the *left* waypoint — so that
+   *  the 5th-order Taylor expansion from `a` evaluated at `b.time`
+   *  matches `(b.pos, b.vel, b.acel)`. The same Cramer's-rule 3x3
+   *  solve that lives in `flight_plan/waypoint.rs::connect_to` runs
+   *  here in TypeScript, per axis. The samples in segments unaffected
+   *  by the drag are simply left at the last server-authoritative
+   *  `plan.trace.pos` values. */
   private liveAdjustTrace(planId: string, draggedWpId: string): void {
     const line = this.planLines.get(planId);
     if (!line) return;
@@ -910,53 +917,90 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
     if (!plan) return;
     const tr = plan.trace;
     if (!tr.t || tr.t.length < 2) return;
+    const n = plan.waypoints.length;
+    if (n < 2) {
+      geo.attributes['position'].needsUpdate = true;
+      geo.computeBoundingSphere();
+      return;
+    }
+
+    // 1. Reset the buffer to the last server-authoritative trace so
+    //    we never leak the previous frame's local adjustments into
+    //    segments that aren't being re-derived this frame.
+    const src = tr.pos;
+    for (let i = 0; i < tr.t.length; i++) {
+      arr[i * 3]     = src[i][0];
+      arr[i * 3 + 1] = src[i][1];
+      arr[i * 3 + 2] = src[i][2];
+    }
 
     const idx = plan.waypoints.findIndex((w) => w.id === draggedWpId);
-    if (idx < 0) return;
-    const dragged = this.currentWPs.get(draggedWpId);
-    if (!dragged) return;
-
-    // Re-derive the segment between [idx-1, idx] (use linear blend
-    // of the previous WP and the live dragged WP) and [idx, idx+1].
-    const n = tr.t.length;
-    for (let i = 0; i < n; i++) {
-      const t = tr.t[i];
-      if (t < dragged.time) {
-        // Before the dragged WP — blend the previous waypoint
-        // with the live position of the dragged WP if we are past
-        // it, otherwise keep the server trace.
-        const prev = idx > 0 ? plan.waypoints[idx - 1] : null;
-        if (prev && t >= prev.time) {
-          const u = (t - prev.time) / Math.max(1e-9, dragged.time - prev.time);
-          const uClamped = Math.max(0, Math.min(1, u));
-          const px = prev.pos[0] + (dragged.pos[0] - prev.pos[0]) * uClamped;
-          const py = prev.pos[1] + (dragged.pos[1] - prev.pos[1]) * uClamped;
-          const pz = prev.pos[2] + (dragged.pos[2] - prev.pos[2]) * uClamped;
-          arr[i * 3]     = px;
-          arr[i * 3 + 1] = py;
-          arr[i * 3 + 2] = pz;
-        }
-        // Otherwise keep the server trace value.
-      } else if (t <= dragged.time + 1e-9) {
-        arr[i * 3]     = dragged.pos[0];
-        arr[i * 3 + 1] = dragged.pos[1];
-        arr[i * 3 + 2] = dragged.pos[2];
-      } else {
-        // After the dragged WP — blend the live dragged WP with
-        // the next waypoint.
-        const next = idx + 1 < plan.waypoints.length ? plan.waypoints[idx + 1] : null;
-        if (next && t <= next.time) {
-          const u = (t - dragged.time) / Math.max(1e-9, next.time - dragged.time);
-          const uClamped = Math.max(0, Math.min(1, u));
-          const px = dragged.pos[0] + (next.pos[0] - dragged.pos[0]) * uClamped;
-          const py = dragged.pos[1] + (next.pos[1] - dragged.pos[1]) * uClamped;
-          const pz = dragged.pos[2] + (next.pos[2] - dragged.pos[2]) * uClamped;
-          arr[i * 3]     = px;
-          arr[i * 3 + 1] = py;
-          arr[i * 3 + 2] = pz;
-        }
-      }
+    if (idx < 0) {
+      geo.attributes['position'].needsUpdate = true;
+      geo.computeBoundingSphere();
+      return;
     }
+
+    // 2. Re-derive the two segments adjacent to the dragged waypoint
+    //    via a local C⁵ Taylor solve, mirroring the backend.
+    const writeSegment = (i0: number, i1: number): void => {
+      if (i0 < 0 || i1 >= n) return;
+      const base0 = plan.waypoints[i0];
+      const base1 = plan.waypoints[i1];
+      const a = this.currentWPs.get(base0.id) ?? base0;
+      const b = this.currentWPs.get(base1.id) ?? base1;
+
+      // Solve A · [j,s,c]ᵀ = B per axis (Cramer's rule, like the Rust crate).
+      const t12 = b.time - a.time;
+      const t2 = t12 * t12;
+      const t3 = t2 * t12;
+      const t4 = t3 * t12;
+      const t5 = t4 * t12;
+      const A: Mat3 = [
+        [t3 / 6,    t4 / 24,    t5 / 120],
+        [t2 / 2,    t3 / 6,     t4 / 24],
+        [t12,       t2 / 2,     t3 / 6],
+      ];
+      const detA = det3(A);
+      if (Math.abs(detA) < 1e-12) return;  // 5th-order fit impossible; keep server trace.
+
+      const J: Vec3 = [0, 0, 0];
+      const S: Vec3 = [0, 0, 0];
+      const C: Vec3 = [0, 0, 0];
+      for (let axis = 0; axis < 3; axis++) {
+        const Bvec: Vec3 = [
+          b.pos[axis]  - a.pos[axis]  - a.vel[axis] * t12 - 0.5 * a.acel[axis] * t2,
+          b.vel[axis]  - a.vel[axis]  - a.acel[axis] * t12,
+          b.acel[axis] - a.acel[axis],
+        ];
+        J[axis] = det3(replaceCol(A, 0, Bvec)) / detA;
+        S[axis] = det3(replaceCol(A, 1, Bvec)) / detA;
+        C[axis] = det3(replaceCol(A, 2, Bvec)) / detA;
+      }
+
+      // 3. Sample the 5th-order Taylor polynomial for every trace
+      //    sample that falls inside this segment.
+      const p = a.pos, v = a.vel, acc = a.acel;
+      for (let i = 0; i < tr.t.length; i++) {
+        const t = tr.t[i];
+        if (t < a.time || t > b.time) continue;
+        const dt  = t - a.time;
+        const d2  = dt * dt;
+        const d3  = d2 * dt;
+        const d4  = d3 * dt;
+        const d5  = d4 * dt;
+        arr[i * 3]     = p[0] + v[0] * dt + 0.5 * acc[0] * d2
+                       + (J[0] / 6) * d3 + (S[0] / 24) * d4 + (C[0] / 120) * d5;
+        arr[i * 3 + 1] = p[1] + v[1] * dt + 0.5 * acc[1] * d2
+                       + (J[1] / 6) * d3 + (S[1] / 24) * d4 + (C[1] / 120) * d5;
+        arr[i * 3 + 2] = p[2] + v[2] * dt + 0.5 * acc[2] * d2
+                       + (J[2] / 6) * d3 + (S[2] / 24) * d4 + (C[2] / 120) * d5;
+      }
+    };
+
+    writeSegment(idx - 1, idx);
+    writeSegment(idx,     idx + 1);
+
     geo.attributes['position'].needsUpdate = true;
     geo.computeBoundingSphere();
   }
@@ -1235,6 +1279,9 @@ export class Viewer3dComponent implements AfterViewInit, OnChanges, OnDestroy {
       }
       // Update the cached velocity so the label shows the new vector.
       this.currentWPs.set(this.dragTarget.wpId, { ...wp, vel: newVel });
+      // The two segments that share this WP use the new tangent, so
+      // re-derive them so the curve follows the velocity drag.
+      this.liveAdjustTrace(planId, this.dragTarget.wpId);
       const mesh = this.findWpMesh(this.dragTarget.wpId);
       if (mesh) {
         const label = mesh.userData['label'] as CSS2DObject | undefined;
@@ -1378,4 +1425,29 @@ function escapeHtml(s: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+// ----- 3×3 matrix helpers used by `liveAdjustTrace` ---------------------
+type Mat3 = [
+  [number, number, number],
+  [number, number, number],
+  [number, number, number],
+];
+
+function det3(m: Mat3): number {
+  return m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1])
+       - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0])
+       + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+}
+
+function replaceCol(m: Mat3, col: 0 | 1 | 2, v: Vec3): Mat3 {
+  const out: Mat3 = [
+    [m[0][0], m[0][1], m[0][2]],
+    [m[1][0], m[1][1], m[1][2]],
+    [m[2][0], m[2][1], m[2][2]],
+  ];
+  out[0][col] = v[0];
+  out[1][col] = v[1];
+  out[2][col] = v[2];
+  return out;
 }
