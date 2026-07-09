@@ -42,6 +42,8 @@ parser.add_argument("--real-time", action="store_true", default=False, help="Run
 
 # ---- Teresa -----
 parser.add_argument("--see", action="store_true", default=False, help="Disable the option of stopping at the first episodes of evaluation")
+parser.add_argument("--record_states", action="store_true", default=False, help="Activa el registro de posiciones y velocidades del dron y el objetivo.")
+parser.add_argument("--states_csv_dir", type=str, default=None, help="Ruta de la carpeta donde exportar el CSV de trayectorias (por defecto, usa csv_path_metrics).")
 # -----------------
 
 
@@ -202,6 +204,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # Define el número máximo de pasos por episodio
     max_episode_steps = 1000  # o cualquier número de pasos que consideres adecuado
     cur_episode_length = np.zeros(env.num_envs)
+    recorded_states = [] # NUEVO: Lista para acumular los estados 3D paso a paso
     # -------------------------
 
     if args_cli.see:
@@ -267,6 +270,46 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
                 # ------- Teresa ---------
                 # obs, _, _, _ = env.step(actions) # original
                 obs, rew, done, info = env.step(actions)
+
+                # ------- REGISTRO DE TRAYECTORIAS (Teresa) ---------
+                if args_cli.record_states:
+                    try:
+                        # 1. Posición del DRON (Convertida de Mundial a Local)
+                        drone_pos_w = env.unwrapped.scene["aerotaxi"].data.root_pos_w
+                        env_origins = env.unwrapped.scene.env_origins
+                        drone_pos_local = (drone_pos_w - env_origins).cpu().numpy()
+                        
+                        drone_vel = env.unwrapped.scene["aerotaxi"].data.root_lin_vel_w.cpu().numpy()
+                        
+                        # 2. Posición del OBJETIVO (Ya está en Local en tu código)
+                        if hasattr(env.unwrapped, "command_manager"):
+                            # Accedemos directamente a la variable target_pos de tu clase UAVcommandTerm
+                            command_term = env.unwrapped.command_manager.get_term("vel_command")
+                            target_pos_local = command_term.target_pos.cpu().numpy()
+                        else:
+                            target_pos_local = np.zeros_like(drone_pos_local)
+
+                        # Guardamos el estado de CADA entorno en este step
+                        for env_idx in range(env.num_envs):
+                            if cur_episode_length[env_idx] < max_episode_steps and done[env_idx] == 0:
+                                recorded_states.append({
+                                    "step": int(cur_episode_length[env_idx]),
+                                    "env_id": env_idx,
+                                    "drone_x": drone_pos_local[env_idx, 0],
+                                    "drone_y": drone_pos_local[env_idx, 1],
+                                    "drone_z": drone_pos_local[env_idx, 2],
+                                    "drone_vel_x": drone_vel[env_idx, 0],
+                                    "drone_vel_y": drone_vel[env_idx, 1],
+                                    "drone_vel_z": drone_vel[env_idx, 2],
+                                    "target_x": target_pos_local[env_idx, 0],
+                                    "target_y": target_pos_local[env_idx, 1],
+                                    "target_z": target_pos_local[env_idx, 2]
+                                })
+                    except Exception as e:
+                        print(f"[WARNING] Error capturando estados 3D: {e}")
+                        args_cli.record_states = False  # Apagamos para no saturar la terminal con errores
+
+
                 rew = rew.cpu().numpy().squeeze()
                 done = done.cpu().numpy().squeeze()
                 rewbuffer += rew
@@ -364,6 +407,22 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
                 combined_df = pd.concat([existing_df, statistics_it], ignore_index=True)
                 combined_df.to_csv(csv_path, index=False)
             # ---------------------------------
+
+            # --------- EXPORTAR TRAYECTORIAS (Teresa) ----------------
+        if args_cli.record_states and len(recorded_states) > 0:
+            df_states = pd.DataFrame(recorded_states)
+            
+            # Determinamos dónde guardarlo
+            save_dir = args_cli.states_csv_dir if args_cli.states_csv_dir else runner.csv_path_metrics
+            if save_dir is None:
+                save_dir = log_dir
+                
+            os.makedirs(save_dir, exist_ok=True)
+            states_csv_path = os.path.join(save_dir, f"tracking_3D_{runner.cfg['run_name']}.csv")
+            
+            df_states.to_csv(states_csv_path, index=False)
+            print(f"[INFO] Trayectorias 3D exportadas con éxito a: {states_csv_path}")
+        # ---------------------------------------------------------
 
     # close the simulator
     env.close()
