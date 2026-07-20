@@ -11,16 +11,11 @@ services:
       - mosquitto-log:/mosquitto/log
 
   uspace_manager_dtblock:
-    build:
-      context: ../../
-      dockerfile: platgdia/dtblocks/uspace_manager/dockerfile
+    image: bmvictor/platgdia:uspace-manager-0.1.0
     container_name: Gestor_de_espacio_aereo
     restart: "no"
     depends_on:
       - mqtt_dtblock
-    # environment:
-    #   - MQTT_HOST_ADDRESS=${MQTT_HOST_ADDRESS}
-    #   - MQTT_HOST_PORT=${MQTT_HOST_PORT}
     env_file:
       - .env
     deploy:
@@ -30,16 +25,11 @@ services:
           memory: 500M
 
   vertiport_operator_dtblock:
-    build:
-      context: ../../
-      dockerfile: platgdia/dtblocks/vertiport_operator/dockerfile
+    image: bmvictor/platgdia:vertiport-operator-0.1.0
     container_name: Operador_de_vertipuertos
     restart: "no"
     depends_on:
       - uspace_manager_dtblock
-    # environment:
-    #   - MQTT_HOST_ADDRESS=${MQTT_HOST_ADDRESS}
-    #   - MQTT_HOST_PORT=${MQTT_HOST_PORT}
     env_file:
       - .env
     deploy:
@@ -49,17 +39,12 @@ services:
           memory: 500M
 
   uav_operator_dtblock:
-    build:
-      context: ../../
-      dockerfile: platgdia/dtblocks/uav_operator/dockerfile
+    image: bmvictor/platgdia:uav-operator-0.1.0
     container_name: Operador_de_UAVs
     restart: "no"
     depends_on:
       - uspace_manager_dtblock
       - vertiport_operator_dtblock
-    # environment:
-    #   - MQTT_HOST_ADDRESS=${MQTT_HOST_ADDRESS}
-    #   - MQTT_HOST_PORT=${MQTT_HOST_PORT}
     env_file:
       - .env
     deploy:
@@ -69,17 +54,12 @@ services:
           memory: 500M
 
   mission_manager_dtblock:
-    build:
-      context: ../../
-      dockerfile: platgdia/dtblocks/mission_manager/dockerfile
+    image: bmvictor/platgdia:mission-manager-0.1.0
     container_name: Gestor_de_clientes_UAM
     restart: "no"
     depends_on:
       - uspace_manager_dtblock
       - uav_operator_dtblock
-    # environment:
-    #   - MQTT_HOST_ADDRESS=${MQTT_HOST_ADDRESS}
-    #   - MQTT_HOST_PORT=${MQTT_HOST_PORT}
     env_file:
       - .env
     deploy:
