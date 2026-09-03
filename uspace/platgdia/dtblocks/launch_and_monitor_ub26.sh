@@ -12,13 +12,19 @@ SERVICES=$(docker compose ps --services)
 
 # 4. Iterate over each service and launch a new terminal window
 for SERVICE in $SERVICES; do
+    if [ "$SERVICE" == "mqtt_dtblock" ]; then
+        echo "Skipping log window for service: $SERVICE"
+        continue
+    fi
+    
     echo "Opening log window for service: $SERVICE"
     
     # Launch a new terminal window natively using gnome-terminal
     # 'docker-compose logs -f' streams the logs in real-time
     # 'exec bash' ensures the terminal window remains open even if the container crashes or stops
     # ptyxis --new-window -- bash -c "echo '=== Real-time Logs: $SERVICE ==='; echo ''; docker-compose logs -f $SERVICE; exec bash"
-    ptyxis --new-window -- bash -c "echo '=== Real-time Logs: $SERVICE ==='; echo ''; docker compose logs -f $SERVICE"
+    # ptyxis --new-window -- bash -c "echo '=== Real-time Logs: $SERVICE ==='; echo ''; docker compose logs -f $SERVICE"
+    ptyxis --new-window -- bash -c "printf '\033]0;%s\007' $SERVICE; docker compose logs -f $SERVICE"
 done
 
 echo "All log windows successfully opened."
@@ -27,4 +33,4 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # PYTHON_BIN="$(which python)"
 
 # ptyxis --new-window -- bash -c "echo '=== Validator Script ==='; echo ''; /bin/python3.14 ${SCRIPT_DIR}/validation/validation_dtb.py; exec bash"
-ptyxis --new-window -- bash -c "echo '=== Validator Script ==='; echo ''; ${SCRIPT_DIR}/../../../.venv/bin/python ${SCRIPT_DIR}/validation/validation_dtb.py; exec bash"
+# ptyxis --new-window -- bash -c "echo '=== Validator Script ==='; echo ''; ${SCRIPT_DIR}/../../../.venv/bin/python ${SCRIPT_DIR}/validation/validation_dtb.py; exec bash"
