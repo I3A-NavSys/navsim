@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-import pyproj
+from pyproj import CRS, Transformer
 
 
 class TypeSender:
@@ -63,25 +63,32 @@ class TimeManager:
         return real_time
 
 class GeospatialManager:
-    def __init__(self):
-        self.origin = None
-        self.transformer = None
+    def __init__(self, lon_origin:float, lat_origin:float, alt_origin:float=0.0):
+        # 1. Define the local topocentric coordinate system based on the origin
+        # crs_local = CRS.from_proj4(f"+proj=topocentric +ellps=WGS84 +lat_0={lat_origin} +lon_0={lon_origin} +h_0={alt_origin}")
 
-    def set_origin(self, lat, lon, alt=0):
-        self.origin = (lat, lon, alt)
-        self.transformer = pyproj.Transformer.from_crs(
-            "EPSG:4979",
-            "+proj=aeqd +lat_0={} +lon_0={} +x_0=0 +y_0=0".format(lat, lon),
-            always_xy=True
+        # 2. Define the WGS84 coordinate system
+        # crs_wgs84 = CRS.from_epsg(4979)
+
+        pipeline = (
+            f"+proj=pipeline "
+            f"+step +proj=topocentric +inv +ellps=WGS84 "
+            f"+lon_0={lon_origin} +lat_0={lat_origin} +h_0={alt_origin} "
+            f"+step +inv +proj=cart +ellps=WGS84"
         )
+
+        # 3. Create a transformer to convert between the two coordinate systems.
+        #    Note: always_xy=True ensures that the transformer expects (lon, lat) order for geographic coordinates.
+        # self.transformer = Transformer.from_crs(crs_local, crs_wgs84, always_xy=True)
+        self.transformer = Transformer.from_pipeline(pipeline)
     
-    def geo_to_sim(self, lat, lon, alt):
-        x, y, z = self.transformer.transform(lon, lat, alt)
-        return (x, y, z)  # IsaacSim coordinates
+    def geo_to_sim(self, lon, lat, alt):
+        x, y, z = self.transformer.transform(lon, lat, alt, direction="INVERSE")
+        return x, y, z
     
     def sim_to_geo(self, x, y, z):
-        lon, lat, alt = self.transformer.transform(x, y, z, direction="INVERSE")
-        return (lat, lon, alt)
+        lon, lat, alt = self.transformer.transform(x, y, z)
+        return lon, lat, alt
     
 class GeoConverter:
     def __init__(self):
@@ -90,7 +97,7 @@ class GeoConverter:
  
     def set_origin(self, epsg_origen=25830, epsg_destino=4326):
         self.origin = (epsg_origen, epsg_destino)
-        self.transformer = pyproj.Transformer.from_crs(epsg_origen, epsg_destino, always_xy=True)
+        self.transformer = Transformer.from_crs(epsg_origen, epsg_destino, always_xy=True)
    
     def get_UTM_from_idx(self, total_rows, array_idx_x, array_idx_y, x_origin, y_origin, cell_size):
         """
