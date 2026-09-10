@@ -9,7 +9,7 @@ from isaacsim.core.prims import RigidPrim
 from isaacsim.util.debug_draw import _debug_draw
 
 from .uav_control import UAVControl
-from uspace.flight_plan.flight_plan import FlightPlan
+from uspace.flight_plan.flight_plan_new import FlightPlan
 
 class UAVControlBridge(omni.ext.IExt):
     def on_startup(self, ext_id):
@@ -30,15 +30,16 @@ class UAVControlBridge(omni.ext.IExt):
         ]
 
         # UAV_0 FlightPlan
-        wps = 6
-        times = [0, 5, 40, 60, 120, 240]
+        times = [0, 5, 40, 60, 120, 230, 270, 280]
         pos = np.array([
             [1042, 1028, 708],
             [1042, 1028, 708],
             [1098, 1305, 780],
             [1169, 1681, 780],
             [922, 2966, 810],
-            [1112, 5347, 845]
+            [1028, 5347, 880],
+            [1081, 5605, 907],
+            [1081, 5605, 895]
         ])
         vel = np.array([
             np.array([0,0,0]),
@@ -46,18 +47,23 @@ class UAVControlBridge(omni.ext.IExt):
             (pos[2] - pos[1]) / np.linalg.norm(pos[2] - pos[1]) * 10,
             (pos[2] - pos[1]) / np.linalg.norm(pos[2] - pos[1]) * 20,
             (pos[4] - pos[3]) / np.linalg.norm(pos[4] - pos[3]) * 20,
+            (pos[6] - pos[5]) / np.linalg.norm(pos[5] - pos[4]) * 8,
+            np.array([0,0,-0.5]),
             np.array([0,0,0]),
         ])
-        vel[2:, 2] = 0.0
+        vel[2, 2] = 0.0
+        vel[3, 2] = 0.0
+        vel[4, 2] = 0.0
     
         fp = FlightPlan()
-        for i in range(wps):
-            fp.set_waypoint(
+        for i in range(len(times)):
+            fp.add_waypoint(
                 time=times[i],
                 pos=pos[i],
                 vel=vel[i]
             )
         fp.connect_waypoints()
+        fp.make_plan_feasible(is_time_key_aspect=True, reconnect_waypoints=True)
 
         flightplan_as_lists.append(fp.to_lists())
 
