@@ -1,3 +1,4 @@
+import numpy as np
 from datetime import datetime, timedelta
 from pyproj import CRS, Transformer
 
@@ -84,11 +85,11 @@ class GeospatialManager:
     
     def geo_to_sim(self, lon, lat, alt):
         x, y, z = self.transformer.transform(lon, lat, alt, direction="INVERSE")
-        return x, y, z
+        return np.column_stack((x, y, z))
     
     def sim_to_geo(self, x, y, z):
         lon, lat, alt = self.transformer.transform(x, y, z)
-        return lon, lat, alt
+        return np.column_stack((lon, lat, alt))
     
 class GeoConverter:
     def __init__(self):
