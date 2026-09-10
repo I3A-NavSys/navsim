@@ -6,6 +6,7 @@ import carb.events
 import omni.kit.app
 import omni.physx
 from isaacsim.core.prims import RigidPrim
+from isaacsim.util.debug_draw import _debug_draw
 
 from .uav_control import UAVControl
 from uspace.flight_plan.flight_plan import FlightPlan
@@ -30,7 +31,7 @@ class UAVControlBridge(omni.ext.IExt):
 
         # UAV_0 FlightPlan
         wps = 6
-        times = [0, 5, 40, 80, 140, 200]
+        times = [0, 5, 40, 60, 120, 240]
         pos = np.array([
             [1042, 1028, 708],
             [1042, 1028, 708],
@@ -45,8 +46,9 @@ class UAVControlBridge(omni.ext.IExt):
             (pos[2] - pos[1]) / np.linalg.norm(pos[2] - pos[1]) * 10,
             (pos[2] - pos[1]) / np.linalg.norm(pos[2] - pos[1]) * 20,
             (pos[4] - pos[3]) / np.linalg.norm(pos[4] - pos[3]) * 20,
-            (pos[4] - pos[3]) / np.linalg.norm(pos[4] - pos[3]) * 20,
+            np.array([0,0,0]),
         ])
+        vel[2:, 2] = 0.0
     
         fp = FlightPlan()
         for i in range(wps):
@@ -55,6 +57,7 @@ class UAVControlBridge(omni.ext.IExt):
                 pos=pos[i],
                 vel=vel[i]
             )
+        fp.connect_waypoints()
 
         flightplan_as_lists.append(fp.to_lists())
 
@@ -78,20 +81,18 @@ class UAVControlBridge(omni.ext.IExt):
             headings
         ]
 
-        return uav_physics_indices, current_flightplans
+        return uav_physics_indices, current_flightplans, fp.trace(0.1)[:, 1:4]
 
     def on_physics_step(self, step_size: int):
         if self.is_simulation_running:
             # Get current time
             current_time = self.timeline.get_current_time()
 
-            uav_physics_indices, current_flightplans = self.build_flightplans()
-
             # Update UAV control
-            if uav_physics_indices:
+            if self.uav_physics_indices:
                 self.uav_control.update(
-                    uav_physics_indices, 
-                    current_flightplans, 
+                    self.uav_physics_indices, 
+                    self.current_flightplans, 
                     current_time, 
                     step_size
                 )
@@ -99,6 +100,7 @@ class UAVControlBridge(omni.ext.IExt):
     def on_timeline_stop(self, event):
         if self.is_simulation_running:
             self.rigid_prim = None
+            self.debug_draw.clear_lines()
 
             self.is_simulation_running = False
 
@@ -110,6 +112,16 @@ class UAVControlBridge(omni.ext.IExt):
 
             # Relate UAV ids to physics buffer indices
             self.relate_uav_ids_to_physics_buffer()
+
+            # Build flightplans and get UAV physics indices
+            self.uav_physics_indices, self.current_flightplans, fp_trace = self.build_flightplans()
+
+            self.debug_draw.draw_lines_spline(
+                fp_trace,
+                (255/255, 0/255, 0/255, 1),  #rgb
+                5,
+                False
+            )
 
             # Start UAVControl
             self.uav_control = UAVControl(
@@ -145,6 +157,9 @@ class UAVControlBridge(omni.ext.IExt):
             self.COMMAND_REQUEST_EVENT, 
             self.on_command_request_event
         )
+
+        # Debug draw interface
+        self.debug_draw = _debug_draw.acquire_debug_draw_interface()
 
         # Timeline callbacks
         self.timeline = omni.timeline.get_timeline_interface()

@@ -1,42 +1,20 @@
 [core]
 reloadable = true
-order = 10
+order = 0
 
 [package]
-# Semantic Versioning is used: https://semver.org/
 version = "0.1.0"
-
-# Lists people or organizations that are considered the "authors" of the package.
-authors = ["NavSys"]
-
-# The title and description fields are primarily for displaying extension info in UI
-title = "NavSim - UAV Control"
-description="UAV control bridge to manage other extensions' services."
-
-# Path (relative to the root) or content of readme markdown file for UI.
-readme  = "docs/README.md"
-
-# URL of the extension source repository.
-repository = ""
-
-# One of categories for UI.
 category = "Physics"
-
-# Keywords for the extension
+title = "uav_control_bridge"
+description="UAV control bridge to manage other extensions' services."
+authors = ["Víctor Blázquez Milara", "Rafael Casado González", "Aurelio Bermúdez Marín"]
+repository = ""
 keywords = []
-
-# Location of change log file in target (final) folder of extension, relative to the root.
-# More info on writing changelog: https://keepachangelog.com/en/1.0.0/
 changelog="docs/CHANGELOG.md"
-
-# Preview image and icon. Folder named "data" automatically goes in git lfs (see .gitattributes file).
-# Preview image is shown in "Overview" of Extensions window. Screenshot of an extension might be a good preview image.
+readme  = "docs/README.md"
 preview_image = "data/preview.png"
-
-# Icon is shown in Extensions window, it is recommended to be square, of size 256x256.
 icon = "data/icon.png"
 
-# Use omni.ui to build simple UI
 [dependencies]
 "omni.kit.uiapp" = {}
 
@@ -44,6 +22,5 @@ icon = "data/icon.png"
 requirements = ["tabulate", "mplcursors"]
 use_online_index = true
 
-# Main python module this extension provides, it will be publicly available as "import mqtt_service".
 [[python.module]]
 name = "uav_control_bridge_python"
