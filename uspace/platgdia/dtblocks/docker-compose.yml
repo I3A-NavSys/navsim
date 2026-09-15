@@ -54,7 +54,7 @@ services:
           memory: 500M
 
   mission_manager_dtblock:
-    image: bmvictor/platgdia:mission-manager-0.1.0
+    image: bmvictor/platgdia:mission-manager-0.1.1
     container_name: Gestor_de_clientes_UAM
     restart: "no"
     depends_on:
