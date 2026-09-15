@@ -1,5 +1,5 @@
 from tabulate import tabulate
-from typing import List, Optional, Any, Union, Iterable
+from typing import List, Optional, Any, Union, Iterable, Self
 import math
 import numpy as np
 import matplotlib
@@ -308,7 +308,7 @@ class FlightPlan:
     # ----------------------------------
     # -------- AUXILIARY FUNCTIONS -----
     # ----------------------------------
-    def copy(self) -> FlightPlan:
+    def copy(self) -> Self:
         """
         Makes a deep copy of the flight plan
 
@@ -1096,7 +1096,7 @@ class FlightPlan:
     # ----------------------------------
     # -------- COMPARISON ANALYSIS -----
     # ----------------------------------    
-    def compare_to(self, fp2: FlightPlan, time_step: float) -> dict:
+    def compare_to(self, fp2: Self, time_step: float) -> dict:
         """
         Compare two FlightPlans and return a comprehensive analysis of their interaction.
 
