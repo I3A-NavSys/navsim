@@ -11,16 +11,15 @@ docker compose up -d --build
 :: 2. Wait briefly to allow all containers to spin up and register
 timeout /t 3 /nobreak >nul
 
-:: 3. Retrieve service names and launch a new terminal window for each
+:: 3. Retrieve service names and launch a dedicated Windows Terminal window for each
 for /f "tokens=*" %%S in ('docker compose ps --services') do (
     if /i "%%S"=="mqtt_dtblock" (
         echo Skipping log window for service: %%S
     ) else (
         echo Opening log window for service: %%S
         
-        :: 'start "Title"' sets the window title
-        :: 'cmd /k' keeps the window open even if the process stops or fails
-        start "%%S" cmd /k "title %%S && docker compose logs -f %%S"
+        :: Use '-d .' instead of '-d "%~dp0"' to prevent trailing backslash escaping issues
+        wt.exe -w new nt --title "%%S" -d . cmd /k "docker compose logs -f %%S"
     )
 )
 
@@ -28,6 +27,6 @@ echo All log windows successfully opened.
 
 :: Script directory and optional validator calls
 set "SCRIPT_DIR=%~dp0"
-:: rem start "Validator Script" cmd /k "title Validator Script && python "%SCRIPT_DIR%validation\validation_dtb.py""
+:: rem wt.exe -w new nt --title "Validator Script" -d . cmd /k "python validation\validation_dtb.py"
 
 endlocal
