@@ -1,5 +1,6 @@
 import numpy as np
 import math
+from typing import Self
 
 class Waypoint:
     __slots__ = (
@@ -54,7 +55,7 @@ class Waypoint:
     # ----------------------------------
     # -------- AUXILIARY FUNCTIONS -----
     # ----------------------------------
-    def copy(self) -> Waypoint:
+    def copy(self) -> Self:
         """
         Create a copy of the waypoint object.
 
@@ -112,7 +113,7 @@ class Waypoint:
         self.time += time_step
         self.time = round(self.time, self.time_decimals)
 
-    def time_to(self, other_wp: Waypoint) -> float:
+    def time_to(self, other_wp: Self) -> float:
         """
         Calculate the time difference between this waypoint and another waypoint.
 
@@ -128,7 +129,7 @@ class Waypoint:
     # ----------------------------------
     # -------- GEOMETRY MANAGEMENT -----
     # ----------------------------------
-    def distance_to(self, other_wp: Waypoint) -> float:
+    def distance_to(self, other_wp: Self) -> float:
         """
         Calculate the distance between this waypoint and another waypoint.
 
@@ -142,7 +143,7 @@ class Waypoint:
         pos_diff = other_wp.pos - self.pos
         return math.sqrt(pos_diff[0]**2 + pos_diff[1]**2 + pos_diff[2]**2)
 
-    def direction_to(self, other_wp: Waypoint) -> np.ndarray:
+    def direction_to(self, other_wp: Self) -> np.ndarray:
         """
         Calculate the direction vector from this waypoint to another waypoint.
 
@@ -165,7 +166,7 @@ class Waypoint:
         else:
             return pos_diff / distance
 
-    def course_to(self, other_wp: Waypoint) -> tuple[float, float]:
+    def course_to(self, other_wp: Self) -> tuple[float, float]:
         """
         Calculate the course from this waypoint to another waypoint.
 
@@ -191,7 +192,7 @@ class Waypoint:
 
         return angle_rad, angle_deg
 
-    def angle_with(self, other_wp: Waypoint) -> float:
+    def angle_with(self, other_wp: Self) -> float:
         """
         Calculate the angle between the velocity vectors of this waypoint and 
         another waypoint.
@@ -222,7 +223,7 @@ class Waypoint:
     # ----------------------------------
     # -------- KINEMATIC MANAGEMENT -----
     # ----------------------------------
-    def set_uniform_velocity(self, other_wp: Waypoint) -> None:
+    def set_uniform_velocity(self, other_wp: Self) -> None:
         """
         Set the velocity of this waypoint to achieve uniform motion towards another waypoint.
 
@@ -246,7 +247,7 @@ class Waypoint:
         self.vel = (other_wp.pos - self.pos) / time_diff
         self.vel = np.round(self.vel, self.velocity_decimals)
 
-    def connect_to(self, other_wp: Waypoint) -> None:
+    def connect_to(self, other_wp: Self) -> None:
         """
         Connects this waypoint to another waypoint by calculating the necessary kinematic 
         derivatives (jerk, snap and crakle).
@@ -297,7 +298,7 @@ class Waypoint:
         except np.linalg.LinAlgError:
             raise ValueError("Error. 5th-Order Interpolation not possible.")
 
-    def interpolate(self, other_time: float) -> Waypoint:
+    def interpolate(self, other_time: float) -> Self:
         """
         Interpolates a new waypoint from current waypoint's data at the specified time.
 
