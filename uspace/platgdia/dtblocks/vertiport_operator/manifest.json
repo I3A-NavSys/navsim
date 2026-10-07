@@ -1,0 +1,42 @@
+{
+  "project_name": "bmvictor-vertiport-operator",
+  "version": "0.2.0",
+  "required_env": [
+    {
+      "name": "MAX_VERT_OPS",
+      "description": "Es la cantidad de vertipuertos que se desean modelar. Debe haber, como mínimo, uno más que la cantidad de operadores de UAV que se hayan establecido."
+    },
+    {
+      "name": "VERT_OP_ID",
+      "description": "Se trata del identificador del operador de vertipuerto."
+    },
+    {
+      "name": "PRIVACY",
+      "description": "Indica si el vertipuerto es o no privado, es decir, si es el hangar donde un operador de UAVs deja aparcados sus UAVs de manera indefinida. Se debe indicar la privacidad del total de operadores de vertipuertos que se hayan indicado. Asimismo, debe haber un vertipuerto privado por cada operador de UAV, ni más ni menos."
+    },
+    {
+        "name": "VERT_OP_SERVICE_TYPES",
+        "description": "Se trata del tipo de servicio que ofrecerá cada operador de vertipuerto. Debe haber al menos un tipo de servicio por cada operador."
+    },
+    {
+        "name": "MAX_PADS",
+        "description": "Es el número de pads (pistas de aterrizaje) que cada operador de vertipuerto tendrá en su posesión."
+    },
+    {
+        "name": "PAD_SERVICE_TYPES",
+        "description": "Es el tipo de UAV que se permite aterrizaje en cada uno de los pads del vertipuerto."
+    },
+    {
+        "name": "LOCATION",
+        "description": "Se trata del lugar donde se situarán los vertipuertos en un sistema cartesiano, donde la componente 'Z' no se tendrá en consideración. Si el algoritmo de ruteo utilizado por el 'USpace Manager DTBlock' es el 'GRID', los valores de la posición deben ser múltiplos de 100 y, si no lo son, se ajustarán para que así sea."
+    },
+    {
+      "name": "MQTT_HOST_ADDRESS",
+      "description": "Es la dirección IP donde se alojará el host MQTT. Debe ser el mismo que el del resto de DTBlocks de los que depende."
+    },
+    {
+      "name": "MQTT_HOST_PORT",
+      "description": "Es el puerto utilizado para la escucha de los mensajes MQTT. Debe ser el mismo que el del resto de DTBlocks de los que depende."
+    }
+  ]
+}

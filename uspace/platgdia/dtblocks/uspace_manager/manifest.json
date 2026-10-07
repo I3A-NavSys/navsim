@@ -1,0 +1,18 @@
+{
+  "project_name": "bmvictor-uspace-manager",
+  "version": "0.2.0",
+  "required_env": [
+    {
+      "name": "ROUTING_ALGORITHM",
+      "description": "Se trata del algoritmo a utilizar para calcular las rutas libres de conflictos en el espacio aéreo."
+    },
+    {
+      "name": "MQTT_HOST_ADDRESS",
+      "description": "Es la dirección IP donde se alojará el host MQTT. Debe ser el mismo que el del resto de DTBlocks de los que depende."
+    },
+    {
+      "name": "MQTT_HOST_PORT",
+      "description": "Es el puerto utilizado para la escucha de los mensajes MQTT. Debe ser el mismo que el del resto de DTBlocks de los que depende."
+    }
+  ]
+}

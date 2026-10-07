@@ -1,0 +1,30 @@
+{
+  "project_name": "bmvictor-uav-operator",
+  "version": "0.2.0",
+  "required_env": [
+    {
+      "name": "MAX_UAV_OPS",
+      "description": "Es la cantidad de operadores cuyo comportamiento se quiere modelar."
+    },
+    {
+      "name": "UAV_OP_SERVICE_TYPES",
+      "description": "Se trata del tipo de servicio que ofrecerá cada operador de UAV. Debe haber al menos un tipo de servicio por cada operador."
+    },
+    {
+      "name": "UAV_FLEET",
+      "description": "Es la cantidad de UAVs que cada operador tiene en su posesión. Se debe indicar el tipo de servicio que soporta cada uno de los UAVs que el operador controla, que tiene que corresponder al tipo de pista de su operador de vertipuerto privado. Debe haber al menos un UAV con su tipo de servicio asignado por cada operador. La cantidad total de cada operador debe ser igual al valor de 'MAX_PADS' de su vertipuerto privado. Por ejemplo, si el operador de vertipuerto privado tiene 3 pistas, dos de 'DELIVERY' y una de 'PASSENGER_TRANSPORT', entonces el operador de UAV tendrá 3 UAVs, dos de 'DELIVERY' y uno de 'PASSENGER_TRANSPORT'."
+    },
+    {
+        "name": "PRIVATE_VERTIPORT_ID",
+        "description": "Es el identificador del operador de vertipuerto privado donde el operador de UAVs alojará a los drones (hangar). Debe corresponder con el identificador del operador de vertipuerto que tiene la propiedad 'PRIVACY' establecida a 'True'."
+    },
+    {
+      "name": "MQTT_HOST_ADDRESS",
+      "description": "Es la dirección IP donde se alojará el host MQTT. Debe ser el mismo que el del resto de DTBlocks de los que depende."
+    },
+    {
+      "name": "MQTT_HOST_PORT",
+      "description": "Es el puerto utilizado para la escucha de los mensajes MQTT. Debe ser el mismo que el del resto de DTBlocks de los que depende."
+    }
+  ]
+}

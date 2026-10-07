@@ -16,6 +16,7 @@ WORKDIR /app
 # This is a best practice to leverage Docker's layer caching mechanism.
 # If requirements.txt doesn't change, Docker skips the installation step on rebuilds.
 COPY platgdia/dtblocks/uav_operator/requirements.txt /app/requirements.txt
+COPY platgdia/dtblocks/uav_operator/manifest.json /app/manifest.json
 
 # 5. Install the required Python packages (like paho-mqtt)
 RUN pip install --no-cache-dir --root-user-action=ignore -r requirements.txt
