@@ -1,0 +1,9 @@
+# Base image from official Mosquitto
+FROM eclipse-mosquitto:2.0
+
+# Copy the configuration file directly inside the container image
+COPY platgdia/dtblocks/mqtt/mosquitto.conf /mosquitto/config/mosquitto.conf
+COPY platgdia/dtblocks/mqtt/manifest.json /app/manifest.json
+
+# Set permissions and expose the standard MQTT port
+EXPOSE 1883

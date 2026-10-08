@@ -1,0 +1,23 @@
+{
+    "project_name": "bmvictor-mqtt",
+    "version": "0.1.0",
+    "ports": [
+        {
+            "host_ip_var": "MQTT_HOST_ADDRESS",
+            "host_port_var": "MQTT_HOST_PORT",
+            "host_port_default": 1883,
+            "container_port": 1883,
+            "protocol": "tcp"
+        }
+    ],
+    "required_env": [
+        {
+            "name": "MQTT_HOST_ADDRESS",
+            "description": "Es la dirección IP donde se alojará el host MQTT. Debe ser el mismo que el del resto de DTBlocks de los que depende."
+        },
+        {
+            "name": "MQTT_HOST_PORT",
+            "description": "Es el puerto utilizado para la escucha de los mensajes MQTT. Debe ser el mismo que el del resto de DTBlocks de los que depende."
+        }
+    ]
+}
