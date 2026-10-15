@@ -4,7 +4,7 @@ services:
     container_name: Integrador_MQTT
     restart: unless-stopped
     ports:
-      - "${MQTT_HOST_ADDRESS}:${MQTT_HOST_PORT}:1883"
+      - "${MQTT_HOST_PORT:-1883}:1883"
 
   uspace_manager_dtblock:
     image: bmvictor/platgdia:uspace-manager-0.2.0
