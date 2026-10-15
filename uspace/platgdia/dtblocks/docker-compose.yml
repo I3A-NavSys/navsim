@@ -1,14 +1,10 @@
 services:
   mqtt_dtblock:
-    image: eclipse-mosquitto:2.0
+    image: bmvictor/platgdia:mqtt-0.1.0
     container_name: Integrador_MQTT
     restart: unless-stopped
     ports:
       - "${MQTT_HOST_ADDRESS}:${MQTT_HOST_PORT}:1883"
-    volumes:
-      - ../../mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
-      - mosquitto-data:/mosquitto/data
-      - mosquitto-log:/mosquitto/log
 
   uspace_manager_dtblock:
     image: bmvictor/platgdia:uspace-manager-0.2.0
