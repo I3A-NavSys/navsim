@@ -63,7 +63,3 @@ services:
         limits:
           cpus: '0.50'
           memory: 500M
-
-volumes:
-  mosquitto-data:
-  mosquitto-log:
