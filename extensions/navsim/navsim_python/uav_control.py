@@ -1,9 +1,9 @@
 import numpy as np
 
-from omni.isaac.core.prims import RigidPrimView
+from isaacsim.core.prims import RigidPrim
 
 class UAVControl:
-    def __init__(self, rigid_prim_view: RigidPrimView, uav_ids_to_physics_buffer: dict):
+    def __init__(self, rigid_prim_view: RigidPrim, uav_ids_to_physics_buffer: dict):
         # Runtime variables
         self.rigid_prim_view = rigid_prim_view
         self.uav_ids_to_physics_buffer = uav_ids_to_physics_buffer

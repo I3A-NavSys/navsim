@@ -1,0 +1,11 @@
+{
+    "schema_version": 2,
+    "commit": "b5d24811730fe8b90edd836d84fc49bce3601234",
+    "indexed_at": "2026-10-08T08:24:46Z",
+    "project": "home-usuario-navsim",
+    "nodes": 3264,
+    "edges": 13702,
+    "original_size": 11927552,
+    "compressed_size": 2313259,
+    "compression_level": 3
+}

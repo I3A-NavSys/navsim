@@ -24,6 +24,9 @@ class NavSimManager:
         self.back_counter_time = self.back_counter_time_max
 
         # Parameters
+        self.mqtt_host = "172.17.0.1"
+        self.mqtt_port = 1883
+
         self.mission_manager_amount = 1
         self.uav_operator_amount = 1
         self.vertiport_operator_amount = 10
@@ -70,6 +73,7 @@ class NavSimManager:
             self.back_counter_time = self.back_counter_time_max
             if self.mission_generation_task is not None:
                 self.mission_generation_task.cancel()
+                self.mission_generation_task = None
 
             for mission_manager in self.mission_managers:
                 mission_manager.last_mission_id = 0
@@ -79,7 +83,7 @@ class NavSimManager:
 
             for uspace_manager in self.uspace_managers:
                 uspace_manager.airspace.clear_grid()
-                # uspace_manager.missions = {}
+                uspace_manager.missions = {}
 
             # for vertiport_operator in self.vertiport_operators:
             #     vertiport_operator.missions = {}
@@ -104,17 +108,17 @@ class NavSimManager:
     # --------------------------
     def connect_entities_to_mqtt(self):
         for mission_mgr in self.mission_managers:
-            mission_mgr.connect_mqtt_client()
+            mission_mgr.connect_mqtt_client(self.mqtt_host, self.mqtt_port)
             
         for uspace_mgr in self.uspace_managers:
-            uspace_mgr.connect_mqtt_client()
+            uspace_mgr.connect_mqtt_client(self.mqtt_host, self.mqtt_port)
         
         for uav_op in self.uav_operators:
-            uav_op.connect_mqtt_client()
+            uav_op.connect_mqtt_client(self.mqtt_host, self.mqtt_port)
             uav_op.register_into_airspace()
 
         for vert_op in self.vertiport_operators:
-            vert_op.connect_mqtt_client()
+            vert_op.connect_mqtt_client(self.mqtt_host, self.mqtt_port)
             vert_op.register_into_airspace()
 
     def disconnect_entities_from_mqtt(self):
@@ -142,7 +146,13 @@ class NavSimManager:
 
     def scan_mission_managers(self):
         self.mission_managers = [
-            MissionManager(id=f"MISSION_MGR_{i}", name=f"Mission Manager {i}") 
+            MissionManager(
+                id=f"MISSION_MGR_{i}", 
+                name=f"Mission Manager {i}", 
+                service_types=[MissionType.PASSENGER_TRANSPORT],
+                verbose=True, 
+                random_seed=1
+            ) 
             for i in range(self.mission_manager_amount)
         ]
 
@@ -212,7 +222,8 @@ class NavSimManager:
                 name=uav_operator_name,
                 service_types=list(uav_operator_service_types),
                 private_vertiport_operator_id=private_vertiport_operator_id,
-                uavs=uav_operator_uavs
+                uavs=uav_operator_uavs,
+                verbose=True
             )
 
             uav_operator.time_manager = self.time_manager
@@ -312,14 +323,15 @@ class NavSimManager:
                 is_private=vertiport_is_private,
                 grid_connection=vertiport_grid_connection,
                 main_pad=main_pad,
-                pads=vertiport_operator_pads
+                pads=vertiport_operator_pads,
+                verbose=True
             )
 
             self.vertiport_operators.append(vertiport_operator)
 
     def scan_uspace_managers(self):
         self.uspace_managers = [
-            USpaceManager(id=f"USPACE_MGR_{i}", name=f"U-Space Manager {i}") 
+            USpaceManager(id=f"USPACE_MGR_{i}", name=f"U-Space Manager {i}", verbose=True) 
             for i in range(self.uspace_manager_amount)
         ]
 
@@ -330,6 +342,11 @@ class NavSimManager:
         # Find the prim paths for all vertiport operators and UAV operators in the stage
         uav_operator_prim_paths = find_matching_prim_paths("/*/*/UAV_OP_*")
         vertiport_operator_prim_paths = find_matching_prim_paths("/*/*/VERT_OP_*")
+
+        # If there are no UAV operators or vertiport operators in the stage, do not proceed with scanning
+        if not uav_operator_prim_paths or not vertiport_operator_prim_paths:
+            print("No UAV operators or vertiport operators found in the stage.")
+            return
 
         # Clear existing lists
         self.mission_managers = []

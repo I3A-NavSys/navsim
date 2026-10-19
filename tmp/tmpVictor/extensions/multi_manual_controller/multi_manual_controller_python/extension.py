@@ -1,113 +1,110 @@
 import sys, os
 import asyncio
-import torch
 
+import omni.timeline
+import omni.physx
 import carb
 import omni.ext
 import omni.ui as ui
-import omni.usd
 from omni.kit.viewport.window import ViewportWindow
 from omni.isaac.core.prims import RigidPrimView
 import omni.kit.app
-
     
 from .controller import Controller
-# from fleet.uav_matrix_control_quadcopter import UAVcontrol
-from fleet.uav_matrix_control import UAVcontrol
-
-project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
-if project_root_path not in sys.path:
-    sys.path.append(project_root_path)
+from .uav_control import UAVControl
 
 
 class MultiManualController(omni.ext.IExt):
     def on_startup(self, ext_id):
-        self.create_vars()
+        self.initialize_variables()
         self.build_ui()
 
     def on_shutdown(self):
         self.on_timeline_stop(None)
 
-    def on_physics_step(self, step_size:int):
-        if self.is_running:
-            self.current_time += step_size
-            self.uav_control.update(self.current_time, self.uavs, step_size)
-            self.controller.current_time = self.current_time
+    def on_physics_step(self, step_size:float):
+        if self.is_simulation_running:
+            # Get current time
+            current_time = self.timeline.get_current_time()
+
+            # Get control inputs from joysticks
+            cmd_local_linear_vel, cmd_yaw_rotation, amount_joysticks = self.controller.control()
+
+            # Update UAV control with the new commands
+            self.uav_control.update_command(
+                self.uav_physics_indices[:amount_joysticks], 
+                cmd_local_linear_vel, 
+                cmd_yaw_rotation, 
+                step_size
+            )
 
     def on_timeline_stop(self, event):
-        if self.is_running:
+        if self.is_simulation_running:
             self.controller.stop()
-            self.is_running = False
+            self.is_simulation_running = False
             self.current_time = 0
             self.rigid_prim_view = None
             self.uav_control = None
 
     def on_timeline_play(self, event):
-        if not self.is_running and self.is_controlling:
-            self.uavs = {}
-            self.torch_device = "cuda:0" if torch.cuda.is_available() else "cpu"
+        if not self.is_simulation_running and self.is_controlling:
+            self.uav_ids_to_physics_buffer = {}
 
-            try:
-                self.rigid_prim_view = RigidPrimView(["/World/UAVs/UAV_*",])
-                self.rigid_prim_view.initialize()
-            except Exception as e:
-                carb.log_warn(f"[REMOTE COMMAND ext] Error initializing RigidPrimView: {e}")
-                return
+            # Start RigidPrimView
+            self.rigid_prim_view = RigidPrimView(["/World/UAVs/UAV_*",])
+            self.rigid_prim_view.initialize()
 
-            self.init_uavs()
-            self.uav_control = UAVcontrol(
-                self.rigid_prim_view, 
-                self.torch_device, 
-                self.uavs, 
-                "", 
-                self.event_stream
-            )
+            # Relate UAV ids to physics buffer indices
+            self.relate_uav_ids_to_physics_buffer()
+
+            self.uav_control = UAVControl(self.rigid_prim_view)
             
-            self.is_running = True
+            # Set simulation as running
+            self.is_simulation_running = True
+
+            # Start controller
             self.controller.start(self.uav_control)
 
-    def init_uavs(self):
-        pos, _ = self.rigid_prim_view.get_world_poses(indices=range(self.rigid_prim_view.count))
+    def relate_uav_ids_to_physics_buffer(self):
+        # Get UAV prims
+        uavs = self.rigid_prim_view.prims
 
-        for i in range(self.rigid_prim_view.count):
-            uav_id = f"UAV_{i}"
-            uav_state = "idle"
-            uav_time = 0
-            uav_pos = pos[i]
-            uav_flightplan = None
+        for idx, uav in enumerate(uavs):
+            # Get UAV operator id and UAV id from prim attributes
+            uav_operator_id = uav.GetAttribute("NavSim:operator_id").Get()
+            uav_id = uav.GetAttribute("NavSim:id").Get()
 
-            self.uavs[uav_id] = {
-                "id": uav_id,
-                "state": uav_state,
-                "time": uav_time,
-                "pos": uav_pos,
-                "flightplan": uav_flightplan,
-                "request": None
-            }
+            # Relate UAV id to physics buffer index for each UAV
+            if uav_operator_id not in self.uav_ids_to_physics_buffer:
+                self.uav_ids_to_physics_buffer[uav_operator_id] = {}
 
-    def create_vars(self):
-        pass
+            self.uav_ids_to_physics_buffer[uav_operator_id][uav_id] = idx
+            self.uav_physics_indices.append(idx)
+
+    def initialize_variables(self):
+        # Control
+        self.is_simulation_running = False
         self.rigid_prim_view = None
         self.uav_control = None
-        self.current_time = 0
-        self.uavs = {}
+        self.uav_ids_to_physics_buffer = {} # {operator_id: {uav_id: physics_buffer_index}}
+        self.uav_physics_indices = []
 
-        self.event_stream = omni.kit.app.get_app_interface().get_message_bus_event_stream()
-
-        self.physx_interface = omni.physx.get_physx_interface()
-        self.on_physics_step_sub = self.physx_interface.subscribe_physics_on_step_events(
-            self.on_physics_step, 
-            True, 
-            0
-        )
-        
+        # Joysticks
         self.controller = Controller()
         self.max_joysticks = 4
-        self.is_running = False
         self.is_checking = False
         self.is_controlling = False
         self.joystick_checkers = []
 
+        # Physx callback
+        self.physx_interface = omni.physx.get_physx_interface()
+        self.on_physics_step_sub = self.physx_interface.subscribe_physics_on_step_events(
+            fn=self.on_physics_step, 
+            pre_step=True, 
+            order=10
+        )
+
+        # Timeline callbacks
         self.timeline = omni.timeline.get_timeline_interface()
         self.timeline_start_event_sub = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
             int(omni.timeline.TimelineEventType.PLAY), self.on_timeline_play)
@@ -115,32 +112,58 @@ class MultiManualController(omni.ext.IExt):
             int(omni.timeline.TimelineEventType.STOP), self.on_timeline_stop)
 
     def build_ui(self):
-        toggle_checking_button_style = {"background_color": ui.color("#db8f26"),
-                            "border_radius": 5, ":hovered": {"background_color": ui.color("#939393")}}
+        toggle_checking_button_style = {
+            "background_color": ui.color("#db8f26"),
+            "border_radius": 5, 
+            ":hovered": {"background_color": ui.color("#939393")}
+        }
         
-        checker_container_style = {"background_color": ui.color("#787878"), "border_color": ui.color.white, 
-                                    "border_width": 1, "border_radius": 5}
+        checker_container_style = {
+            "background_color": ui.color("#787878"), 
+            "border_color": ui.color.white, 
+            "border_width": 1, 
+            "border_radius": 5
+        }
         
-        checker_style = {"background_color": ui.color("#db8f26"), "border_color": ui.color.white,
-                        "border_width": 0, "border_radius": 5}
+        checker_style = {
+            "background_color": ui.color("#db8f26"), 
+            "border_color": ui.color.white,
+            "border_width": 0, 
+            "border_radius": 5
+        }
         
-        username_container_style = {"background_color": ui.color("#5b5b5b"), "border_color": ui.color.white, 
-                        "border_width": 1, "border_radius": 5}
+        username_container_style = {
+            "background_color": ui.color("#5b5b5b"), 
+            "border_color": ui.color.white, 
+            "border_width": 1, 
+            "border_radius": 5
+        }
         
         add_viewport_button_style = {"border_radius": 5}
 
-        toggle_control_button_style = {"background_color": ui.color("#952323"),
-                            "border_radius": 5, ":hovered": {"background_color": ui.color("#939393")}}
+        toggle_control_button_style = {
+            "background_color": ui.color("#952323"),
+            "border_radius": 5, 
+            ":hovered": {"background_color": ui.color("#939393")}
+        }
 
-        self.window = ui.Window("NavSim - Multi Manual Controller", width=0, height=0, 
-                                raster_policy=ui.RasterPolicy.NEVER)
+        self.window = ui.Window(
+            "NavSim - Multi Manual Controller", 
+            width=0, 
+            height=0, 
+            raster_policy=ui.RasterPolicy.NEVER
+        )
         
         with self.window.frame:
             with ui.VStack(height=0, spacing=10):
                 # Checking joystick part
                 # Check button
-                self.toggle_checking_button = ui.ToolButton(text="CHECK", height=50, 
-                        style=toggle_checking_button_style, clicked_fn=self.toggle_checking)
+                self.toggle_checking_button = ui.ToolButton(
+                    text="CHECK", 
+                    height=50, 
+                    style=toggle_checking_button_style, 
+                    clicked_fn=self.toggle_checking
+                )
                     
                 with ui.HStack(spacing=500):
                     # Checking part
@@ -153,7 +176,11 @@ class MultiManualController(omni.ext.IExt):
                         with ui.VStack(spacing=5):
                             with ui.ZStack():
                                 # User container
-                                ui.Rectangle(width=75, height=75, style=checker_container_style)
+                                ui.Rectangle(
+                                    width=75, 
+                                    height=75, 
+                                    style=checker_container_style
+                                )
                                 
                                 with ui.Frame(width=75, height=75):
                                     with ui.VStack(height=0, spacing=5):
@@ -162,32 +189,75 @@ class MultiManualController(omni.ext.IExt):
                                         with ui.HStack():
                                             # +X
                                             ui.Spacer(width=20)
-                                            x_checker.append(ui.Rectangle(width=10, height=10, style=checker_style))
+                                            x_checker.append(
+                                                ui.Rectangle(
+                                                    width=10, 
+                                                    height=10, 
+                                                    style=checker_style
+                                                )
+                                            )
                                             # +Z
                                             ui.Spacer(width=25)
-                                            z_checker.append(ui.Rectangle(width=10, height=10, style=checker_style))
+                                            z_checker.append(
+                                                ui.Rectangle(
+                                                    width=10, 
+                                                    height=10, 
+                                                    style=checker_style
+                                                )
+                                            )
                                             
                                         with ui.HStack():
                                             # +Y
                                             ui.Spacer(width=5)
-                                            y_checker.append(ui.Rectangle(width=10, height=10, style=checker_style))
+                                            y_checker.append(
+                                                ui.Rectangle(
+                                                    width=10, 
+                                                    height=10, 
+                                                    style=checker_style
+                                                )
+                                            )
                                             # -Y
                                             ui.Spacer(width=20)
-                                            y_checker.append(ui.Rectangle(width=10, height=10, style=checker_style))
-                                        
+                                            y_checker.append(
+                                                ui.Rectangle(
+                                                    width=10, 
+                                                    height=10, 
+                                                    style=checker_style
+                                                )
+                                            )
+
                                         with ui.HStack():
                                             # -X
                                             ui.Spacer(width=20)
-                                            x_checker.append(ui.Rectangle(width=10, height=10, style=checker_style))
+                                            x_checker.append(
+                                                ui.Rectangle(
+                                                    width=10, 
+                                                    height=10, 
+                                                    style=checker_style
+                                                )
+                                            )
                                             # -Z
                                             ui.Spacer(width=25)
-                                            z_checker.append(ui.Rectangle(width=10, height=10, style=checker_style))
+                                            z_checker.append(
+                                                ui.Rectangle(
+                                                    width=10, 
+                                                    height=10, 
+                                                    style=checker_style
+                                                )
+                                            )
 
                             # Username
                             with ui.ZStack():
-                                ui.Rectangle(width=75, height=20, style=username_container_style)
+                                ui.Rectangle(
+                                    width=75, 
+                                    height=20, 
+                                    style=username_container_style
+                                )
                                 with ui.Frame(width=75, height=20):
-                                    ui.Label("Jugador " + str(i+1), alignment=ui.Alignment.CENTER)
+                                    ui.Label(
+                                        "Jugador " + str(i+1), 
+                                        alignment=ui.Alignment.CENTER
+                                    )
 
                             user_checker.append(x_checker)
                             user_checker.append(y_checker)
@@ -197,16 +267,28 @@ class MultiManualController(omni.ext.IExt):
                 ui.Spacer(height=50)
 
                 # Add viewport button
-                self.add_viewports_button = ui.Button("ADD VIEWPORT", height=40, style= add_viewport_button_style,
-                                                       clicked_fn=self.add_viewports_nvidia_way)
+                self.add_viewports_button = ui.Button(
+                    "ADD VIEWPORT", 
+                    height=40, 
+                    style= add_viewport_button_style,
+                    clicked_fn=self.add_viewports_nvidia_way
+                )
                 
                 # Clean viewports button
-                self.clear_viewports_button = ui.Button("CLEAR VIEWPORTS", height=40, style= add_viewport_button_style,
-                                                        clicked_fn=self.clear_viewports)
+                self.clear_viewports_button = ui.Button(
+                    "CLEAR VIEWPORTS", 
+                    height=40, 
+                    style= add_viewport_button_style,
+                    clicked_fn=self.clear_viewports
+                )
 
                 # Control/Not control
-                self.toggle_control_button = ui.ToolButton(text="NO CONTROL", height=40,
-                                                    style=toggle_control_button_style, clicked_fn=self.toggle_control)
+                self.toggle_control_button = ui.ToolButton(
+                    text="NO CONTROL", 
+                    height=40,
+                    style=toggle_control_button_style, 
+                    clicked_fn=self.toggle_control
+                )
                 self.toggle_control_button.model.set_value(True)
 
     def toggle_control(self):

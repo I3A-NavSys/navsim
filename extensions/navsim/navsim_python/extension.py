@@ -6,7 +6,7 @@ import omni.timeline
 import omni.usd
 from pxr import Tf, Usd
 import omni.physx
-from omni.isaac.core.prims import RigidPrimView
+from isaacsim.core.prims import RigidPrim
 
 from navsim_utils.sim_utils import *
 from .ui_builder import UIBuilder
@@ -68,10 +68,10 @@ class NavSim(omni.ext.IExt):
         self.time_manager.start()
 
         # Start RigidPrimView
-        self.rigid_prim_view = RigidPrimView(
+        self.rigid_prim_view = RigidPrim(
             prim_paths_expr=["/World/*/*/*/UAV_*"],
             # prim_paths_expr=["/World/*/*/*/UAV_01", "/World/*/*/*/UAV_02"],
-            name="NavSimRigidPrimView",
+            name="NavSimRigidPrim",
         )
         self.rigid_prim_view.initialize()
 

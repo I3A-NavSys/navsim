@@ -1,0 +1,26 @@
+{
+  "project_name": "bmvictor-mission-manager",
+  "version": "0.2.0",
+  "required_env": [
+    {
+      "name": "MAX_MISSION_MNG",
+      "description": "Es la cantidad de clientes cuyo comportamiento se quiere modelar."
+    },
+    {
+      "name": "MAX_REQUEST_TIME",
+      "description": "Son los segundos de espera antes de que el cliente genere una nueva petición. Se debe establecer los segundos por cada cliente que se desee simular."
+    },
+    {
+      "name": "MISSION_MNG_SERVICE_TYPES",
+      "description": "Es el tipo de servicio que puede solicitar cada cliente."
+    },
+    {
+      "name": "MQTT_HOST_ADDRESS",
+      "description": "Es la dirección IP donde se alojará el host MQTT. Debe ser el mismo que el del resto de DTBlocks de los que depende."
+    },
+    {
+      "name": "MQTT_HOST_PORT",
+      "description": "Es el puerto utilizado para la escucha de los mensajes MQTT. Debe ser el mismo que el del resto de DTBlocks de los que depende."
+    }
+  ]
+}

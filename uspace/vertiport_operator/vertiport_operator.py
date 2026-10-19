@@ -17,7 +17,9 @@ class VertiportOperator:
         grid_connection=None, 
         main_pad=None, 
         pads=None,
+        verbose=False
     ):
+        self.verbose = verbose
         self.id: str = id
         self.name: str = name
         self.service_types: list[str] = service_types
@@ -62,12 +64,18 @@ class VertiportOperator:
         # MQTT Callbacks
         self.callback_topics = [
             f"{Topics.MISSION_VERTIPORT_SERVICE}/{self.id}",
+            f"{Topics.REQUEST_VERTIPORT_INFO}/{self.id}",
             f"{Topics.CANCEL_MISSION}/{self.id}",
         ]
 
         self.mqtt_client.message_callback_add(
             f"{Topics.MISSION_VERTIPORT_SERVICE}/{self.id}",
             self.on_request_vertiport_service
+        )
+
+        self.mqtt_client.message_callback_add(
+            f"{Topics.REQUEST_VERTIPORT_INFO}/{self.id}",
+            self.on_request_vertiport_info
         )
 
         self.mqtt_client.message_callback_add(
@@ -78,9 +86,9 @@ class VertiportOperator:
     # ----------------------
     # --- MQTT Methods -----
     # ----------------------
-    def connect_mqtt_client(self):
+    def connect_mqtt_client(self, host, port):
         if not self.mqtt_is_connected:
-            success = MQTTService.connect_client(self.mqtt_client)
+            success = MQTTService.connect_client(self.mqtt_client, host, port)
             if success:
                 self.mqtt_is_connected = True
 
@@ -198,11 +206,12 @@ class VertiportOperator:
         cancellation_reason
     ):
         # Logging
-        # print(f"[{self.id}] - Cancelling mission:")
-        # print(f"  Mission Manager ID: {mission_manager_id}")
-        # print(f"  Mission ID: {mission_id}")
-        # print(f"  Cancellation Reason: {cancellation_reason}")
-        # print()
+        if self.verbose:
+            print(f"[{self.id}] - Cancelling mission:")
+            print(f"  Mission Manager ID: {mission_manager_id}")
+            print(f"  Mission ID: {mission_id}")
+            print(f"  Cancellation Reason: {cancellation_reason}")
+            print()
 
         # Inform USpace manager about the cancellation
         topic = Topics.CANCEL_MISSION
@@ -451,11 +460,12 @@ class VertiportOperator:
         cancellation_reason = data.get("cancellation_reason", "")
         
         # Logging
-        # print(f"[{self.id}] - Cancelling mission:")
-        # print(f"  Mission Manager ID: {mission_manager_id}")
-        # print(f"  Mission ID: {mission_id}")
-        # print(f"  Cancellation Reason: {cancellation_reason}")
-        # print()
+        if self.verbose:
+            print(f"[{self.id}] - Cancelling mission:")
+            print(f"  Mission Manager ID: {mission_manager_id}")
+            print(f"  Mission ID: {mission_id}")
+            print(f"  Cancellation Reason: {cancellation_reason}")
+            print()
 
         # Free resources and update cancellation reason
         self.free_resources(
@@ -481,18 +491,19 @@ class VertiportOperator:
         stop_time = data["stop_time"]
 
         # Logging
-        # print(f"[{self.id}] - Received mission request:")
-        # print(f"  USpace Manager ID: {uspace_manager_id}")
-        # print(f"  UAV Operator ID: {uav_operator_id}")
-        # print(f"  Mission Manager ID: {mission_manager_id}")
-        # print(f"  Mission ID: {mission_id}")
-        # print(f"  Pad ID: {pad_id}")
-        # print(f"  Is Landing: {is_landing}")
-        # print(f"  Is Reversed: {is_reversed}")
-        # print(f"  Mission Type: {mission_type}")
-        # print(f"  Time: {time}")
-        # print(f"  Stop Time: {stop_time}")
-        # print()
+        if self.verbose:
+            print(f"[{self.id}] - Received mission request:")
+            print(f"  USpace Manager ID: {uspace_manager_id}")
+            print(f"  UAV Operator ID: {uav_operator_id}")
+            print(f"  Mission Manager ID: {mission_manager_id}")
+            print(f"  Mission ID: {mission_id}")
+            print(f"  Pad ID: {pad_id}")
+            print(f"  Is Landing: {is_landing}")
+            print(f"  Is Reversed: {is_reversed}")
+            print(f"  Mission Type: {mission_type}")
+            print(f"  Time: {time}")
+            print(f"  Stop Time: {stop_time}")
+            print()
 
         # Initialize mission entry if it doesn't exist
         if uav_operator_id not in self.missions:
@@ -611,3 +622,24 @@ class VertiportOperator:
             flightplan=flightplan,
             pad_id=pad_id
         )
+
+    def on_request_vertiport_info(self, client, userdata, msg):
+        data = json.loads(msg.payload.decode())
+
+        # Extract mission details
+        uav_operator_id = data["id"]
+
+        topic = f"{Topics.REQUEST_VERTIPORT_INFO}/{uav_operator_id}"
+
+        msg = {
+            "id": self.id,
+            "pads": {
+                pad_id: {
+                    "type": pad.type,
+                    "location": pad.location
+                }
+                for pad_id, pad in self.pads.items()
+            }
+        }
+        self.send_mqtt_msg(topic, json.dumps(msg))
+

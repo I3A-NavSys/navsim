@@ -1,6 +1,6 @@
 from tabulate import tabulate
 import json
-import random
+import numpy as np
 
 from uspace.mqtt.mqtt_service import MQTTService
 from uspace.uspace_manager.constants import Topics, MissionStatus, MissionType
@@ -8,12 +8,20 @@ from .mission import Mission
 
 
 class MissionManager:
-    def __init__(self, id=None, name=None):
-        # Test
-        random.seed(6)
+    def __init__(
+        self, 
+        id=None, 
+        name=None, 
+        service_types=[MissionType.DELIVERY, MissionType.PASSENGER_TRANSPORT], 
+        verbose=False, 
+        random_seed=0
+    ):
+        self.rng = np.random.default_rng(random_seed)
 
+        self.verbose = verbose
         self.id: str = id
         self.name: str = name
+        self.service_types: list[MissionType] = service_types
         self.missions: dict[str, Mission] = {}
         self.last_mission_id: int = 0
         self.uav_operators: dict[str, str] = {}
@@ -55,9 +63,9 @@ class MissionManager:
     # ----------------------
     # --- MQTT Methods -----
     # ----------------------
-    def connect_mqtt_client(self):
+    def connect_mqtt_client(self, host, port):
         if not self.mqtt_is_connected:
-            success = MQTTService.connect_client(self.mqtt_client)
+            success = MQTTService.connect_client(self.mqtt_client, host, port)
             if success:
                 self.mqtt_is_connected = True
 
@@ -89,8 +97,9 @@ class MissionManager:
             for key, value in data.items()
         ]
 
-        print(tabulate(formatted_data, headers=headers, tablefmt="grid"))
-        print()
+        if self.verbose:
+            print(tabulate(formatted_data, headers=headers, tablefmt="grid"))
+            print()
 
     def get_operators_by_service_type(self, service_type):
         uav_operators = [
@@ -103,7 +112,24 @@ class MissionManager:
             if service_type in op_data["service_types"]
         ]
 
-        return uav_operators, vertiport_operators
+        return sorted(uav_operators), sorted(vertiport_operators)
+
+    def notify_validation_service(self, mission_id):
+        mission = self.missions[mission_id]
+        
+        topic = Topics.VALIDATION_MISSION_STATUS_UPDATE
+        msg = {
+            "mission_manager_id": self.id,
+            "uav_operator_id": mission.uav_operator_id,
+            "mission_id": mission_id,
+            "mission_type": mission.mission_type,
+            "mission_status": mission.status,
+            "stop_list": mission.stop_list,
+            "stop_times": mission.stop_times,
+            "landing_time": mission.landing_time,
+            "cancellation_reason": mission.cancellation_reason,
+        }
+        self.send_mqtt_msg(topic, json.dumps(msg))
 
     # ----------------------
     # --- USpace Methods ---
@@ -123,26 +149,27 @@ class MissionManager:
         self.send_mqtt_msg(topic, json.dumps(msg))
 
     def request_uav_mission(self, current_time=0):
-        self.last_mission_id += 1
-
-        mission_id = f"MISSION_{self.last_mission_id}"
-        # mission_type = random.choice([MissionType.DELIVERY, MissionType.PASSENGER_TRANSPORT])
-        mission_type = MissionType.PASSENGER_TRANSPORT
-
+        # Choose MissionType randomly and get possible operators for that type until 
+        # choosing a type with at least one possible UAV operator and one possible Vertiport operator
+        mission_type = self.rng.choice(self.service_types)
         possible_uav_operators, possible_vertiport_operators = self.get_operators_by_service_type(mission_type)
 
-        if not possible_uav_operators or not possible_vertiport_operators:
-            return
-        
-        amount_stops = random.randint(1, len(possible_vertiport_operators))
+        while not possible_uav_operators or not possible_vertiport_operators:
+            mission_type = self.rng.choice(self.service_types)
+            possible_uav_operators, possible_vertiport_operators = self.get_operators_by_service_type(mission_type)
 
-        stop_list = random.sample(possible_vertiport_operators, amount_stops)
-        stop_times = [random.randint(10, 60) for _ in range(amount_stops)]
-        uav_operator_id = random.choice(possible_uav_operators)
-        landing_time = random.randint(
-            current_time + 300, 
-            current_time + 1000
-        )
+        amount_stops = self.rng.integers(1, len(possible_vertiport_operators))
+
+        stop_list = self.rng.choice(possible_vertiport_operators, size=amount_stops, replace=False).tolist()
+
+        stop_times = self.rng.integers(10, 60, amount_stops).tolist()
+
+        uav_operator_id = self.rng.choice(possible_uav_operators)
+
+        landing_time = int(self.rng.integers(current_time + 900, current_time + 43200))
+
+        self.last_mission_id += 1
+        mission_id = f"MISSION_{self.last_mission_id}"
 
         self.missions[mission_id] = Mission(
             id=mission_id,
@@ -154,20 +181,25 @@ class MissionManager:
             status=MissionStatus.PENDING
         )
 
+        # Notify Validation Service for time tracking
+        self.notify_validation_service(mission_id)
+
         # Logging
-        print("----------------------------------------------")
-        print(f"[{self.id}] - Requesting new UAV mission:")
-        print(f"  Mission ID: {mission_id}")
-        print(f"  Mission Type: {mission_type}")
-        print(f"  UAV Operator ID: {uav_operator_id}")
-        print(f"  Stop List: {stop_list}")
-        print(f"  Stop Times: {stop_times}")
-        print(f"  Landing Time: {landing_time}")
-        print()
+        if self.verbose:
+            print("----------------------------------------------")
+            print(f"[{self.id}] - Requesting new UAV mission:")
+            print(f"  Mission ID: {mission_id}")
+            print(f"  Mission Type: {mission_type}")
+            print(f"  UAV Operator ID: {uav_operator_id}")
+            print(f"  Stop List: {stop_list}")
+            print(f"  Stop Times: {stop_times}")
+            print(f"  Landing Time: {landing_time}")
+            print()
         
         topic = f"{Topics.MISSION_UAV_SERVICE}/{uav_operator_id}"
         msg = {
-            "id": self.id,
+            "mission_manager_id": self.id,
+            "uav_operator_id": uav_operator_id,
             "mission_id": mission_id,
             "mission_type": mission_type,
             "stop_list": stop_list,
@@ -187,35 +219,41 @@ class MissionManager:
         cancellation_reason = data.get("cancellation_reason", "")
         
         # Logging
-        # print(f"[{self.id}] - Cancelling mission:")
-        # print(f"  Mission ID: {mission_id}")
-        # print(f"  Cancellation Reason: {cancellation_reason}")
-        # print()
+        if self.verbose:
+            print(f"[{self.id}] - Cancelling mission:")
+            print(f"  Mission ID: {mission_id}")
+            print(f"  Cancellation Reason: {cancellation_reason}")
+            print()
 
         # Update mission status and cancellation reason
         self.missions[mission_id].status = MissionStatus.CANCELLED
         self.missions[mission_id].cancellation_reason = cancellation_reason
+
+        # Notify Validation Service
+        self.notify_validation_service(mission_id)
 
     def on_receive_vertiport_operator_list(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())
         self.vertiport_operators = data["vertiport_operators"]
 
         # Logging
-        # print(f"[{self.id}] - Received Vertiport operator list:")
-        # self.log_dict_table(self.vertiport_operators, ["ID", "Data"])
+        if self.verbose:
+            print(f"[{self.id}] - Received Vertiport operator list:")
+            self.log_dict_table(self.vertiport_operators, ["ID", "Data"])
 
     def on_receive_uav_operator_list(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())
         self.uav_operators = data["uav_operators"]
 
         # Logging
-        # print(f"[{self.id}] - Received UAV operator list:")
-        # self.log_dict_table(self.uav_operators, ["ID", "Data"])
+        if self.verbose:
+            print(f"[{self.id}] - Received UAV operator list:")
+            self.log_dict_table(self.uav_operators, ["ID", "Data"])
 
     def on_receive_uav_mission_update(self, client, userdata, msg):
         data = json.loads(msg.payload.decode())
 
-        uav_operator_id = data["id"]
+        uav_operator_id = data["uav_operator_id"]
         mission_id = data["mission_id"]
         mission_status = data["mission_status"]
 
@@ -224,9 +262,13 @@ class MissionManager:
         mission.status = mission_status
 
         # Logging
-        # print(f"[{self.id}] - Received mission status update:")
-        # print(f"  UAV Operator ID: {uav_operator_id}")
-        # print(f"  Mission ID: {mission_id}")
-        # print(f"  Mission Status: {mission_status}")
-        # print("----------------------------------------------")
-        # print()
+        if self.verbose:
+            print(f"[{self.id}] - Received mission status update:")
+            print(f"  UAV Operator ID: {uav_operator_id}")
+            print(f"  Mission ID: {mission_id}")
+            print(f"  Mission Status: {mission_status}")
+            print("----------------------------------------------")
+            print()
+
+        # Notify Validation Service
+        self.notify_validation_service(mission_id)

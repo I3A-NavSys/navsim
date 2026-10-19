@@ -1,0 +1,26 @@
+[core]
+reloadable = true
+order = 0
+
+[package]
+version = "0.1.0"
+category = "Physics"
+title = "uav_control_bridge"
+description="UAV control bridge to manage other extensions' services."
+authors = ["Víctor Blázquez Milara", "Rafael Casado González", "Aurelio Bermúdez Marín"]
+repository = ""
+keywords = []
+changelog="docs/CHANGELOG.md"
+readme  = "docs/README.md"
+preview_image = "data/preview.png"
+icon = "data/icon.png"
+
+[dependencies]
+"omni.kit.uiapp" = {}
+
+[python.pipapi]
+requirements = ["tabulate", "mplcursors"]
+use_online_index = true
+
+[[python.module]]
+name = "uav_control_bridge_python"

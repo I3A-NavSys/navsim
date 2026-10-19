@@ -1,0 +1,65 @@
+services:
+  mqtt_dtblock:
+    image: bmvictor/platgdia:mqtt-0.1.0
+    container_name: Integrador_MQTT
+    restart: unless-stopped
+    ports:
+      - "${MQTT_HOST_PORT:-1883}:1883"
+
+  uspace_manager_dtblock:
+    image: bmvictor/platgdia:uspace-manager-0.2.0
+    container_name: Gestor_de_espacio_aereo
+    restart: "no"
+    depends_on:
+      - mqtt_dtblock
+    env_file:
+      - .env
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 500M
+
+  vertiport_operator_dtblock:
+    image: bmvictor/platgdia:vertiport-operator-0.2.0
+    container_name: Operador_de_vertipuertos
+    restart: "no"
+    depends_on:
+      - uspace_manager_dtblock
+    env_file:
+      - .env
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 500M
+
+  uav_operator_dtblock:
+    image: bmvictor/platgdia:uav-operator-0.2.0
+    container_name: Operador_de_UAVs
+    restart: "no"
+    depends_on:
+      - uspace_manager_dtblock
+      - vertiport_operator_dtblock
+    env_file:
+      - .env
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 500M
+
+  mission_manager_dtblock:
+    image: bmvictor/platgdia:mission-manager-0.2.0
+    container_name: Gestor_de_clientes_UAM
+    restart: "no"
+    depends_on:
+      - uspace_manager_dtblock
+      - uav_operator_dtblock
+    env_file:
+      - .env
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 500M

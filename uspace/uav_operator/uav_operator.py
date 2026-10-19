@@ -16,13 +16,16 @@ class UAVOperator:
         name=None, 
         service_types=None, 
         private_vertiport_operator_id=None, 
-        uavs={}
+        uavs={},
+        verbose=False
     ):
+        self.verbose = verbose
         self.time_manager = None
         self.id: str = id
         self.name: str = name
         self.service_types: list[str] = service_types
         self.private_vertiport_operator_id: str = private_vertiport_operator_id
+        self.private_vertiport_operator_pads: dict[str, dict[str, Any]] = {}
         # Keep track of UAVs: {mission_type: {uav_id: UAV}}
         self.uavs: dict[str, dict[str, UAV]] = uavs
         # Keep track of missions' processing status (used when requesting routes): 
@@ -62,7 +65,8 @@ class UAVOperator:
             f"{Topics.REQUEST_ROUTE}/{self.id}",
             f"{Topics.CANCEL_MISSION}/{self.id}",
             f"{Topics.PRIVATE_VERTIPORT_TAKEOFF}/{self.id}",
-            f"{Topics.PRIVATE_VERTIPORT_LANDING}/{self.id}"
+            f"{Topics.PRIVATE_VERTIPORT_LANDING}/{self.id}",
+            f"{Topics.REQUEST_VERTIPORT_INFO}/{self.id}",
         ]
 
         self.mqtt_client.message_callback_add(
@@ -90,12 +94,17 @@ class UAVOperator:
             self.on_request_private_vertiport_landing_response
         )
 
+        self.mqtt_client.message_callback_add(
+            f"{Topics.REQUEST_VERTIPORT_INFO}/{self.id}",
+            self.on_request_vertiport_info_response
+        )
+
     # ----------------------
     # --- MQTT Methods -----
     # ----------------------
-    def connect_mqtt_client(self):
+    def connect_mqtt_client(self, host, port):
         if not self.mqtt_is_connected:
-            success = MQTTService.connect_client(self.mqtt_client)
+            success = MQTTService.connect_client(self.mqtt_client, host, port)
             if success:
                 self.mqtt_is_connected = True
                 
@@ -195,8 +204,22 @@ class UAVOperator:
             for key, value in data.items()
         ]
 
-        print(tabulate(formatted_data, headers=headers, tablefmt="grid"))
-        print()
+        if self.verbose:
+            print(tabulate(formatted_data, headers=headers, tablefmt="grid"))
+            print()
+
+    def notify_validation_service(self, mission_manager_id, mission_id):
+        uav_id = self.missions[mission_manager_id][mission_id]["assigned_uav_id"]
+        flightplans = self.missions[mission_manager_id][mission_id]["flightplans"]
+        
+        topic = Topics.VALIDATION_MISSION_UAV_SERVICE_RESPONSE
+        msg = {
+            "mission_manager_id": mission_manager_id,
+            "mission_id": mission_id,
+            "uav_id": uav_id,
+            "flightplans": [flightplan.to_dict() for flightplan in flightplans]
+        }
+        self.send_mqtt_msg(topic, json.dumps(msg))
 
     # ----------------------
     # --- USpace Methods ---
@@ -212,11 +235,12 @@ class UAVOperator:
 
     def cancel_mission(self, mission_manager_id, mission_id, cancellation_reason):
         # Logging
-        print(f"[{self.id}] - Cancelling mission:")
-        print(f"  Mission Manager ID: {mission_manager_id}")
-        print(f"  Mission ID: {mission_id}")
-        print(f"  Cancellation Reason: {cancellation_reason}")
-        print()
+        if self.verbose:
+            print(f"[{self.id}] - Cancelling mission:")
+            print(f"  Mission Manager ID: {mission_manager_id}")
+            print(f"  Mission ID: {mission_id}")
+            print(f"  Cancellation Reason: {cancellation_reason}")
+            print()
 
         # Select topics based on cancellation reason
         topics = [f"{Topics.CANCEL_MISSION}/{mission_manager_id}"]
@@ -277,10 +301,11 @@ class UAVOperator:
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
 
-    def send_mission_status_update(self, missiom_manager_id, mission_id, mission_status):
-        topic = f"{Topics.MISSION_STATUS_UPDATE}/{missiom_manager_id}"
+    def send_mission_status_update(self, mission_manager_id, mission_id, mission_status):
+        topic = f"{Topics.MISSION_STATUS_UPDATE}/{mission_manager_id}"
         msg = {
-            "id": self.id,
+            "mission_manager_id": mission_manager_id,
+            "uav_operator_id": self.id,
             "mission_id": mission_id,
             "mission_status": mission_status,
         }
@@ -335,6 +360,11 @@ class UAVOperator:
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
 
+    def request_private_vertiport_information(self):
+        topic = f"{Topics.REQUEST_VERTIPORT_INFO}/{self.private_vertiport_operator_id}"
+        msg = {"id": self.id}
+        self.send_mqtt_msg(topic, json.dumps(msg))
+
     # ----------------------
     # --- MQTT Callbacks ---
     # ----------------------
@@ -357,7 +387,7 @@ class UAVOperator:
         data = json.loads(msg.payload.decode())
 
         # Extract mission data
-        mission_manager_id = data["id"]
+        mission_manager_id = data["mission_manager_id"]
         mission_id = data["mission_id"]
         mission_type = data["mission_type"]
         stop_list = data["stop_list"]
@@ -365,13 +395,14 @@ class UAVOperator:
         landing_time = data["landing_time"]
 
         # Logging
-        # print(f"[{self.id}] - Received request for mission:")
-        # print(f"  Mission ID: {mission_id}")
-        # print(f"  Mission Type: {mission_type}")
-        # print(f"  Stop List: {stop_list}")
-        # print(f"  Stop Times: {stop_time}")
-        # print(f"  Landing Time: {landing_time}")
-        # print()
+        if self.verbose:
+            print(f"[{self.id}] - Received request for mission:")
+            print(f"  Mission ID: {mission_id}")
+            print(f"  Mission Type: {mission_type}")
+            print(f"  Stop List: {stop_list}")
+            print(f"  Stop Times: {stop_time}")
+            print(f"  Landing Time: {landing_time}")
+            print()
 
         # Return if mission type is not supported
         if mission_type not in self.uavs or self.uavs[mission_type] == {}:
@@ -445,14 +476,15 @@ class UAVOperator:
         flightplan.from_dict(raw_flightplan)
 
         # Logging
-        # print(f"[{self.id}] - Received new leg flightplan:")
-        # print(f"  USpace Manager ID: {uspace_manager_id}")
-        # print(f"  Mission Manager ID: {mission_manager_id}")
-        # print(f"  Mission ID: {mission_id}")
-        # print(f"  Landing Pad ID: {landing_pad_id}")
-        # print("  Flightplan waypoints:")
-        # flightplan.print_waypoints()
-        # print()
+        if self.verbose:
+            print(f"[{self.id}] - Received new leg flightplan:")
+            print(f"  USpace Manager ID: {uspace_manager_id}")
+            print(f"  Mission Manager ID: {mission_manager_id}")
+            print(f"  Mission ID: {mission_id}")
+            print(f"  Landing Pad ID: {landing_pad_id}")
+            print("  Flightplan waypoints:")
+            flightplan.print_waypoints()
+            print()
         
         # Store flightplan
         self.missions[mission_manager_id][mission_id]["flightplans"].append(flightplan)
@@ -493,10 +525,11 @@ class UAVOperator:
             return
 
         # Logging
-        # print(("----------------------------------------------------------"))
-        # print(f"[{self.id}] - Leg completed ({current_stop + 1} / {last_stop + 1}) for mission {mission_id}")
-        # print(("----------------------------------------------------------"))
-        # print()
+        if self.verbose:
+            print(("----------------------------------------------------------"))
+            print(f"[{self.id}] - Leg completed ({current_stop + 1} / {last_stop + 1}) for mission {mission_id}")
+            print(("----------------------------------------------------------"))
+            print()
 
         # Ask for next route
         origin_vertiport_id = stop_list[current_stop]
@@ -609,19 +642,20 @@ class UAVOperator:
         mission_dict["flightplans"][-1] = new_flightplan
 
         # Logging
-        print(("----------------------------------------------------"))
-        print(f"[{self.id}] - Mission {mission_id} completed all legs")
-        print(("----------------------------------------------------"))
-        print()
+        if self.verbose:
+            print(("----------------------------------------------------"))
+            print(f"[{self.id}] - Mission {mission_id} completed all legs")
+            print(("----------------------------------------------------"))
+            print()
         # for i, fp in enumerate(self.missions[mission_manager_id][mission_id]["flightplans"]):
         #     print(f"Leg {i+1}:")
         #     fp.print_waypoints()
         # print()
 
-        print("\tAssigned UAV: ", mission_dict["assigned_uav_id"])
-        print("\tStart time: ", mission_dict["flightplans"][0].init_time())
-        print("\tFinish time: ", mission_dict["flightplans"][0].finish_time())
-        print("\tNext FP time: ", mission_dict["flightplans"][1].init_time())
+            print("\tAssigned UAV: ", mission_dict["assigned_uav_id"])
+            print("\tStart time: ", mission_dict["flightplans"][0].init_time())
+            print("\tFinish time: ", mission_dict["flightplans"][0].finish_time())
+            print("\tNext FP time: ", mission_dict["flightplans"][1].init_time())
 
         # All legs completed, send mission status update to mission manager
         self.send_mission_status_update(
@@ -629,4 +663,38 @@ class UAVOperator:
             mission_id, 
             MissionStatus.IN_PROGRESS
         )
-        # TODO: send flightplan to UAV for execution
+        
+        self.notify_validation_service(mission_manager_id, mission_id)
+
+    def on_request_vertiport_info_response(self, client, userdata, msg):
+        data = json.loads(msg.payload.decode())
+
+        # Extract vertiport information
+        vertiport_operator_id = data["id"]
+        self.private_vertiport_operator_pads = data["pads"]
+
+        # Update UAVs' pad_id and location with the received vertiport information
+        assigned_pads = set()
+        
+        for mission_type, uav_dict in self.uavs.items():
+            for uav_id, uav in uav_dict.items():
+                for pad_id, pad_info in self.private_vertiport_operator_pads.items():
+                    if pad_id in assigned_pads:
+                        continue
+
+                    if pad_info["type"] == mission_type:
+                        uav.pad_id = pad_id
+                        uav.location = pad_info["location"]
+                        assigned_pads.add(pad_id)
+                        break
+                
+                if uav.pad_id == "":
+                    raise ValueError(f"No available pad found for UAV {uav_id} of mission type {mission_type} in vertiport {vertiport_operator_id}")
+
+        # Logging
+        if self.verbose:
+            print(f"[{self.id}] - Private vertiport information updated:")
+            print(f"  Vertiport Operator ID: {vertiport_operator_id}")
+            print(f"  Pads Info: {self.private_vertiport_operator_pads}")
+            print()
+

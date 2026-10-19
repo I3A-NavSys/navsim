@@ -46,6 +46,11 @@ class Topics:
 
     # Vertiport Operator Topics
     MISSION_VERTIPORT_SERVICE = "vertiport_operators/missions/request"
+    REQUEST_VERTIPORT_INFO = "vertiport_operators/info/request"
 
     # Mission Manager Topics
     MISSION_STATUS_UPDATE = "mission_managers/missions/status_update"
+
+    # Validation Topics
+    VALIDATION_MISSION_STATUS_UPDATE = "validation/mission_managers/missions/status_update"
+    VALIDATION_MISSION_UAV_SERVICE_RESPONSE = "validation/uav_operators/missions/request/response"

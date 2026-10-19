@@ -5,7 +5,7 @@ import os
 # Related third party imports
 from isaacsim.gui.components import ui
 from isaacsim.gui.components.element_wrappers import DropDown
-from omni.isaac.core.utils.stage import get_current_stage
+from isaacsim.core.utils.stage import get_current_stage
 from isaacsim.core.utils.prims import find_matching_prim_paths, get_prim_at_path
 
 
