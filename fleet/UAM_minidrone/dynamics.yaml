@@ -1,0 +1,63 @@
+# ==============================================================================
+# Configuración Dinámica y de Control Lineal — UAM Minidrone (Quadcopter)
+# ==============================================================================
+# Orden canónico de rotores en todos los vectores y filas de matrices:
+#   Índice 0: NE (Delantero Derecho  : +X, -Y)
+#   Índice 1: NW (Delantero Izquierdo: +X, +Y)
+#   Índice 2: SE (Trasero Derecho    : -X, -Y)
+#   Índice 3: SW (Trasero Izquierdo  : -X, +Y)
+# ==============================================================================
+
+model_name: "UAM_minidrone"
+aliases:
+  - "minidrone"
+  - "quadcopter"
+  - "delivery"
+  - "DELIVERY"
+usd_file: "1_rb_model.usd"
+
+physics:
+  gravity: 9.81
+  mass: 0.595                             # [kg] (DJI Air 2S)
+  inertia: [0.002028, 0.002028, 0.003967] # [Ix, Iy, Iz] [kg·m²]
+  # Posiciones [x, y, z] (m) respecto al Centro de Masas: [CoM, NE, NW, SE, SW]
+  bodies_positions:
+    - [ 0.000,  0.000, 0.000]  # 0: Centro de masas (Fuselaje)
+    - [ 0.075, -0.075, 0.010]  # 1: Rotor NE
+    - [ 0.075,  0.075, 0.010]  # 2: Rotor NW
+    - [-0.075, -0.075, 0.010]  # 3: Rotor SE
+    - [-0.075,  0.075, 0.010]  # 4: Rotor SW
+
+aerodynamics:
+  w_min: 0.0                            # Velocidad mínima de rotor [rad/s]
+  w_max: 628.3185                       # Velocidad máxima de rotor [rad/s] (6000 rpm)
+  w_hov: 291.45                         # Velocidad de sustentación (hover) [rad/s]
+  # Coeficientes de empuje por rotor: FT_i = kFT_i * w_i²  [NE, NW, SE, SW]
+  kFT: [1.7197e-05, 1.7197e-05, 1.7197e-05, 1.7197e-05]
+  # Coeficientes de par de arrastre de rotor en eje Z (incluye signo de giro):
+  # MDR_z = sum(kMDR_i * w_i²)  [NE (+), NW (-), SE (-), SW (+)]
+  kMDR: [3.6714e-08, -3.6714e-08, -3.6714e-08, 3.6714e-08]
+  # Coeficientes de rozamiento aerodinámico lineal: FD = -kFD * |v| * v  [x, y, z]
+  kFD: [1.1902e-04, 1.1902e-04, 3.64437e-03]
+  # Coeficientes de momento de rozamiento angular: MD = -kMD * |w| * w  [roll, pitch, yaw]
+  kMD: [1.1078e-04, 1.1078e-04, 7.8914e-05]
+
+control:
+  # Ley de control lineal en espacio de estados con acción integral:
+  #   u = Hs - Kx @ x - Ky @ E
+  # Vector de estado x (8x1): [roll, pitch, wx, wy, wz, vx_body, vy_body, vz_body]^T
+  # Vector de salida y (4x1): [vx_body, vy_body, vz_body, wz_body]^T
+  # Vector de mando  u (4x1): [w_NE, w_NW, w_SE, w_SW]^T
+  t_to_solve: 2.0
+  E_max: 15.0
+  Hs: [291.45, 291.45, 291.45, 291.45]
+  Kx:
+    - [-47.4820, -47.4820, -9.3626, -9.3626,  413.1508, -10.5091,  10.5091, 132.4440]
+    - [ 47.4820, -47.4820,  9.3626, -9.3626, -413.1508, -10.5091, -10.5091, 132.4440]
+    - [-47.4820,  47.4820, -9.3626,  9.3626, -413.1508,  10.5091,  10.5091, 132.4440]
+    - [ 47.4820,  47.4820,  9.3626,  9.3626,  413.1508,  10.5091, -10.5091, 132.4440]
+  Ky:
+    - [-8.1889,  8.1889, 294.3201,  918.1130]
+    - [-8.1889, -8.1889, 294.3201, -918.1130]
+    - [ 8.1889,  8.1889, 294.3201, -918.1130]
+    - [ 8.1889, -8.1889, 294.3201,  918.1130]

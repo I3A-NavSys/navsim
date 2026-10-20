@@ -1,0 +1,62 @@
+# ==============================================================================
+# Configuración Dinámica y de Control Lineal — UAM Aerotaxi
+# ==============================================================================
+# Orden canónico de rotores en todos los vectores y filas de matrices:
+#   Índice 0: NE (Delantero Derecho  : +X, -Y)
+#   Índice 1: NW (Delantero Izquierdo: +X, +Y)
+#   Índice 2: SE (Trasero Derecho    : -X, -Y)
+#   Índice 3: SW (Trasero Izquierdo  : -X, +Y)
+# ==============================================================================
+
+model_name: "UAM_aerotaxi"
+aliases:
+  - "aerotaxi"
+  - "passenger_transport"
+  - "PASSENGER_TRANSPORT"
+usd_file: "1_rb_model.usd"
+
+physics:
+  gravity: 9.81
+  mass: 2000.0                          # [kg]
+  inertia: [1041.67, 3041.67, 3333.33]  # [Ix, Iy, Iz] [kg·m²]
+  # Posiciones [x, y, z] (m) respecto al Centro de Masas: [CoM, NE, NW, SE, SW]
+  bodies_positions:
+    - [ 0.00,  0.00, 0.00]  # 0: Centro de masas (Fuselaje)
+    - [ 0.50, -1.95, 0.50]  # 1: Rotor NE
+    - [ 0.50,  1.95, 0.50]  # 2: Rotor NW
+    - [-2.50, -1.55, 0.50]  # 3: Rotor SE
+    - [-2.50,  1.55, 0.50]  # 4: Rotor SW
+
+aerodynamics:
+  w_min: 0.0                            # Velocidad mínima de rotor [rad/s]
+  w_max: 62.8319                        # Velocidad máxima de rotor [rad/s] (600 rpm)
+  w_hov: 41.8879                        # Velocidad de sustentación (hover) [rad/s] (400 rpm)
+  # Coeficientes de empuje por rotor: FT_i = kFT_i * w_i²  [NE, NW, SE, SW]
+  kFT: [4.6544, 4.6544, 0.9309, 0.9309]
+  # Coeficientes de par de arrastre de rotor en eje Z (incluye signo de giro):
+  # MDR_z = sum(kMDR_i * w_i²)  [NE (+), NW (-), SE (-), SW (+)]
+  kMDR: [5.9683, -5.9683, -1.4921, 1.4921]
+  # Coeficientes de rozamiento aerodinámico lineal: FD = -kFD * |v| * v  [x, y, z]
+  kFD: [3.0625, 4.0000, 7.8400]
+  # Coeficientes de momento de rozamiento angular: MD = -kMD * |w| * w  [roll, pitch, yaw]
+  kMD: [37.4010, 25.8580, 20.2514]
+
+control:
+  # Ley de control lineal en espacio de estados con acción integral:
+  #   u = Hs - Kx @ x - Ky @ E
+  # Vector de estado x (8x1): [roll, pitch, wx, wy, wz, vx_body, vy_body, vz_body]^T
+  # Vector de salida y (4x1): [vx_body, vy_body, vz_body, wz_body]^T
+  # Vector de mando  u (4x1): [w_NE, w_NW, w_SE, w_SW]^T
+  t_to_solve: 2.0
+  E_max: 150.0
+  Hs: [41.8879, 41.8879, 41.8879, 41.8879]
+  Kx:
+    - [-14.6551, -45.5032,  -4.1872, -13.0009,   3.8871,  -6.6331,   2.1363,  6.4114]
+    - [ 14.6551, -45.5032,   4.1872, -13.0009,  -3.8871,  -6.6331,  -2.1363,  6.4114]
+    - [-58.6206, 227.5161, -16.7487,  65.0046, -24.4514,  33.1656,   8.5453,  6.4114]
+    - [ 58.6206, 227.5161,  16.7487,  65.0046,  24.4514,  33.1656,  -8.5453,  6.4114]
+  Ky:
+    - [-3.1839,  1.0254, 4.2743,   2.5914]
+    - [-3.1839, -1.0254, 4.2743,  -2.5914]
+    - [15.9195,  4.1017, 4.2743, -16.3009]
+    - [15.9195, -4.1017, 4.2743,  16.3009]

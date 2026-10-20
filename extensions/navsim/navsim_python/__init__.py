@@ -7,4 +7,9 @@ project_root_path = path.abspath(path.join(current_file_path, "../../.."))
 if project_root_path not in sys.path:
     sys.path.append(project_root_path)
 
-from .extension import *
+from .uav_control import UAVControl
+
+try:
+    from .extension import *
+except ModuleNotFoundError:
+    pass
