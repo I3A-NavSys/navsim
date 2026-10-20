@@ -1,0 +1,166 @@
+#usda 1.0
+(
+    customLayerData = {
+        dictionary cameraSettings = {
+            dictionary Front = {
+                double3 position = (5, 0, 0)
+                double radius = 5
+            }
+            dictionary Perspective = {
+                double3 position = (12, -12, 6)
+                double3 target = (0, 0, 1.5)
+            }
+            dictionary Right = {
+                double3 position = (0, -5, 0)
+                double radius = 5
+            }
+            dictionary Top = {
+                double3 position = (0, 0, 5)
+                double radius = 5
+            }
+            string boundCamera = "/OmniverseKit_Persp"
+        }
+        dictionary omni_layer = {
+            string authoring_layer = "./scene.usd"
+        }
+        dictionary renderSettings = {
+            int "rtx:post:dlss:execMode" = 2
+        }
+    }
+    defaultPrim = "World"
+    endTimeCode = 1000000
+    metersPerUnit = 1
+    startTimeCode = 0
+    timeCodesPerSecond = 60
+    upAxis = "Z"
+)
+
+def Xform "World" (
+    prepend apiSchemas = ["OmniWGS84ReferencePositionAPI"]
+)
+{
+    uniform token omni:geospatial:wgs84:reference:tangentPlane = "ENU"
+    uniform double3 omni:geospatial:wgs84:reference:referencePosition = (38.9818, -1.857, 686)
+
+    def Scope "Environment" (
+        customData = {
+            bool "omni:kit:locked" = 1
+        }
+    )
+    {
+        def DomeLight "Light" (
+            customData = {
+                bool "omni:kit:locked" = 1
+            }
+        )
+        {
+            color3f inputs:color = (1, 1, 1)
+            float inputs:exposure = 0
+            float inputs:intensity = 1000
+            quatf xformOp:orient = (1, 0, 0, 0)
+            uniform token[] xformOpOrder = ["xformOp:orient"]
+        }
+
+        def PhysicsScene "PhysicsScene" (
+            customData = {
+                bool "omni:kit:locked" = 1
+            }
+        )
+        {
+            vector3f physics:gravityDirection = (0, 0, -1)
+            float physics:gravityMagnitude = 9.81
+            uniform token physxScene:broadphaseType = "GPU"
+            bool physxScene:enableCCD = 1
+            bool physxScene:enableGPUDynamics = 1
+            bool physxScene:enableStabilization = 1
+            uint physxScene:timeStepsPerSecond = 100
+        }
+
+        def Xform "GroundPlane" (
+            customData = {
+                bool "omni:kit:locked" = 1
+            }
+        )
+        {
+            quatf xformOp:orient = (1, 0, 0, 0)
+            float3 xformOp:scale = (45, 45, 45)
+            double3 xformOp:translate = (0, 0, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+
+            def Mesh "CollisionMesh" (
+                customData = {
+                    bool "omni:kit:locked" = 1
+                }
+            )
+            {
+                uniform bool doubleSided = 0
+                int[] faceVertexCounts = [4]
+                int[] faceVertexIndices = [0, 1, 2, 3]
+                normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)]
+                point3f[] points = [(-25, -25, 0), (25, -25, 0), (25, 25, 0), (-25, 25, 0)]
+                color3f[] primvars:displayColor = [(0.25, 0.28, 0.3)]
+                texCoord2f[] primvars:st = [(0, 0), (1, 0), (1, 1), (0, 1)] (
+                    interpolation = "varying"
+                )
+            }
+
+            def Plane "CollisionPlane" (
+                prepend apiSchemas = ["PhysicsCollisionAPI"]
+                customData = {
+                    bool "omni:kit:locked" = 1
+                }
+            )
+            {
+                uniform token axis = "Z"
+                uniform token purpose = "guide"
+            }
+        }
+    }
+
+    def Xform "Vertiports" (
+        customData = {
+            bool "omni:kit:locked" = 1
+        }
+    )
+    {
+        def Xform "Vertiport_01" (
+            prepend references = @../../vertiports/Passenger_transport_pad.usd@
+            customData = {
+                bool "omni:kit:locked" = 1
+            }
+        )
+        {
+            quatf xformOp:orient = (1, 0, 0, 0)
+            float3 xformOp:scale = (10, 10, 10)
+            double3 xformOp:translate = (0, 0, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+        }
+    }
+
+    def Xform "UAVs" (
+        customData = {
+            bool "omni:kit:locked" = 0
+        }
+    )
+    {
+        def Xform "UAV_01" (
+            prepend references = @../../fleet/UAM_aerotaxi/1_rb_model.usd@
+            customData = {
+                bool "omni:kit:locked" = 0
+            }
+        )
+        {
+            string NavSim:id = "ESP-UAV-2026-0001"
+            int NavSim:id_type = 2
+            int NavSim:ua_type = 2
+            string NavSim:operator_id = "ESP-OP-9876543210ab"
+            int NavSim:operator_id_type = 0
+            string NavSim:self_id_desc = "Aerotaxi Pasajeros V-01"
+            string NavSim:model = "UAM_aerotaxi"
+            quatf xformOp:orient = (1, 0, 0, 0)
+            float3 xformOp:scale = (1, 1, 1)
+            double3 xformOp:translate = (0, 0, 1.725)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+        }
+    }
+}

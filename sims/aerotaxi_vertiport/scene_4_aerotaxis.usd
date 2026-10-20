@@ -1,0 +1,443 @@
+#usda 1.0
+(
+    customLayerData = {
+        dictionary cameraSettings = {
+            dictionary Front = {
+                double3 position = (5, 0, 0)
+                double radius = 5
+            }
+            dictionary Perspective = {
+                double3 position = (50, -50, 30)
+                double3 target = (2.117087802844253e-7, -9.999998940766673, 2.0000011351391116)
+            }
+            dictionary Right = {
+                double3 position = (0, -5, 0)
+                double radius = 5
+            }
+            dictionary Top = {
+                double3 position = (0, 0, 50)
+                double radius = 50
+            }
+            string boundCamera = "/OmniverseKit_Persp"
+        }
+        dictionary omni_layer = {
+            string authoring_layer = "./scene_4_aerotaxis.usd"
+        }
+        dictionary renderSettings = {
+            double "rtx:directLighting:sampledLighting:maxRayUnexposedIntensity" = 6399.9990234375
+            double "rtx:indirectDiffuse:maxRayUnexposedIntensity" = 6399.9990234375
+            double "rtx:pathtracing:fireflyFilter:maxPerEmissiveUnexposedIntensity" = 3199.99951171875
+            double "rtx:pathtracing:fireflyFilter:maxUnexposedIntensityPerSample" = 3199.99951171875
+            double "rtx:pathtracing:fireflyFilter:maxUnexposedIntensityPerSampleDiffuse" = 3199.99951171875
+            int "rtx:post:dlss:execMode" = 2
+            double "rtx:raytracing:inscattering:maxRTSampleUnexposedIntensity" = 204799.96875
+            double "rtx:rtpt:fireflyFilter:maxPerEmissiveUnexposedIntensity" = 3199.99951171875
+            double "rtx:rtpt:fireflyFilter:maxUnexposedIntensityPerSample" = 3199.99951171875
+            double "rtx:rtpt:fireflyFilter:maxUnexposedIntensityPerSampleDiffuse" = 3199.99951171875
+            double "rtx:translucency:maxRayUnexposedIntensity" = 19199.998046875
+        }
+    }
+    defaultPrim = "World"
+    endTimeCode = 1000000
+    metersPerUnit = 1
+    startTimeCode = 0
+    timeCodesPerSecond = 60
+    upAxis = "Z"
+)
+
+def Xform "World" (
+    prepend apiSchemas = ["OmniWGS84ReferencePositionAPI"]
+)
+{
+    uniform double3 omni:geospatial:wgs84:reference:referencePosition = (38.9818, -1.857, 686)
+    uniform token omni:geospatial:wgs84:reference:tangentPlane = "ENU"
+
+    def Scope "Environment" (
+        customData = {
+            bool "omni:kit:locked" = 1
+        }
+    )
+    {
+        def DomeLight "Light" (
+            customData = {
+                bool "omni:kit:locked" = 1
+            }
+        )
+        {
+            color3f inputs:color = (1, 1, 1)
+            float inputs:exposure = 0
+            float inputs:intensity = 1000
+            quatf xformOp:orient = (1, 0, 0, 0)
+            uniform token[] xformOpOrder = ["xformOp:orient"]
+        }
+
+        def PhysicsScene "PhysicsScene" (
+            prepend apiSchemas = ["NewtonSceneAPI", "PhysxSceneAPI"]
+            customData = {
+                bool "omni:kit:locked" = 1
+            }
+        )
+        {
+            vector3f physics:gravityDirection = (0, 0, -1)
+            float physics:gravityMagnitude = 9.81
+            uniform token physxScene:broadphaseType = "GPU"
+            bool physxScene:enableCCD = 1
+            bool physxScene:enableGPUDynamics = 1
+            bool physxScene:enableStabilization = 1
+            uint physxScene:timeStepsPerSecond = 100
+        }
+
+        def Xform "GroundPlane" (
+            customData = {
+                bool "omni:kit:locked" = 1
+            }
+        )
+        {
+            quatf xformOp:orient = (1, 0, 0, 0)
+            float3 xformOp:scale = (100, 100, 100)
+            double3 xformOp:translate = (0, 0, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+
+            def Mesh "CollisionMesh" (
+                customData = {
+                    bool "omni:kit:locked" = 1
+                }
+            )
+            {
+                uniform bool doubleSided = 0
+                int[] faceVertexCounts = [4]
+                int[] faceVertexIndices = [0, 1, 2, 3]
+                normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)]
+                point3f[] points = [(-25, -25, 0), (25, -25, 0), (25, 25, 0), (-25, 25, 0)]
+                color3f[] primvars:displayColor = [(0.25, 0.28, 0.3)]
+                texCoord2f[] primvars:st = [(0, 0), (1, 0), (1, 1), (0, 1)] (
+                    interpolation = "varying"
+                )
+            }
+
+            def Plane "CollisionPlane" (
+                prepend apiSchemas = ["PhysicsCollisionAPI"]
+                customData = {
+                    bool "omni:kit:locked" = 1
+                }
+            )
+            {
+                uniform token axis = "Z"
+                uniform token purpose = "guide"
+            }
+        }
+    }
+
+    def Xform "Vertiports" (
+        customData = {
+            bool "omni:kit:locked" = 1
+        }
+    )
+    {
+        def Xform "Vertiport_01" (
+            customData = {
+                bool "omni:kit:locked" = 1
+            }
+            prepend references = @../../vertiports/Passenger_transport_service_vertiport.usd@
+        )
+        {
+            quatf xformOp:orient = (1, 0, 0, 0)
+            float3 xformOp:scale = (1, 1, 1)
+            double3 xformOp:translate = (0, 0, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+        }
+    }
+
+    def Xform "UAVs" (
+        customData = {
+            bool "omni:kit:locked" = 0
+        }
+    )
+    {
+        def Xform "UAV_01" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+            customData = {
+                bool "omni:kit:locked" = 0
+            }
+            prepend references = @../../fleet/UAM_aerotaxi/1_rb_model.usd@
+        )
+        {
+            string NavSim:id = "ESP-UAV-2026-0001"
+            int NavSim:id_type = 2
+            string NavSim:model = "UAM_aerotaxi"
+            string NavSim:operator_id = "ESP-OP-9876543210ab"
+            int NavSim:operator_id_type = 0
+            string NavSim:self_id_desc = "Aerotaxi Ruta V1"
+            int NavSim:ua_type = 2
+            float3 physics:diagonalInertia = (1041.67, 3041.67, 3333.33)
+            float physics:mass = 2000
+            float physxRigidBody:sleepThreshold = 0
+            quatf xformOp:orient = (0.9307558, -0.01965877, 0.066087164, -0.35908172)
+            float3 xformOp:scale = (1, 1, 1)
+            double3 xformOp:translate = (0, 0, 14.849527359008789)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+        }
+
+        def Xform "UAV_02" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+            customData = {
+                bool "omni:kit:locked" = 0
+            }
+            prepend references = @../../fleet/UAM_aerotaxi/1_rb_model.usd@
+        )
+        {
+            string NavSim:id = "ESP-UAV-2026-0002"
+            int NavSim:id_type = 2
+            string NavSim:model = "UAM_aerotaxi"
+            string NavSim:operator_id = "ESP-OP-9876543210ab"
+            int NavSim:operator_id_type = 0
+            string NavSim:self_id_desc = "Aerotaxi Ruta V2"
+            int NavSim:ua_type = 2
+            float3 physics:diagonalInertia = (1041.67, 3041.67, 3333.33)
+            float physics:mass = 2000
+            float physxRigidBody:sleepThreshold = 0
+            quatf xformOp:orient = (1, 0, 0, 0)
+            float3 xformOp:scale = (1, 1, 1)
+            double3 xformOp:translate = (0, -30, 1.725000023841858)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+        }
+
+        def Xform "UAV_03" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+            customData = {
+                bool "omni:kit:locked" = 0
+            }
+            prepend references = @../../fleet/UAM_aerotaxi/1_rb_model.usd@
+        )
+        {
+            string NavSim:id = "ESP-UAV-2026-0003"
+            int NavSim:id_type = 2
+            string NavSim:model = "UAM_aerotaxi"
+            string NavSim:operator_id = "ESP-OP-1122334455cd"
+            int NavSim:operator_id_type = 0
+            string NavSim:self_id_desc = "Aerotaxi Shuttl 03"
+            int NavSim:ua_type = 2
+            float3 physics:diagonalInertia = (1041.67, 3041.67, 3333.33)
+            float physics:mass = 2000
+            float physxRigidBody:sleepThreshold = 0
+            quatf xformOp:orient = (1, 0, 0, 0)
+            float3 xformOp:scale = (1, 1, 1)
+            double3 xformOp:translate = (32, 0, 1.725000023841858)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+        }
+
+        def Xform "UAV_04" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+            customData = {
+                bool "omni:kit:locked" = 0
+            }
+            prepend references = @../../fleet/UAM_aerotaxi/1_rb_model.usd@
+        )
+        {
+            string NavSim:id = "ESP-UAV-2026-0004"
+            int NavSim:id_type = 2
+            string NavSim:model = "UAM_aerotaxi"
+            string NavSim:operator_id = "ESP-OP-1122334455cd"
+            int NavSim:operator_id_type = 0
+            string NavSim:self_id_desc = "Aerotaxi Shuttl 04"
+            int NavSim:ua_type = 2
+            float3 physics:diagonalInertia = (1041.67, 3041.67, 3333.33)
+            float physics:mass = 2000
+            float physxRigidBody:sleepThreshold = 0
+            quatf xformOp:orient = (1, 0, 0, 0)
+            float3 xformOp:scale = (1, 1, 1)
+            double3 xformOp:translate = (-32, 0, 13.722311019897461)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+        }
+    }
+}
+
+def "Render" (
+    hide_in_stage_window = true
+    no_delete = true
+)
+{
+    def "OmniverseKit"
+    {
+        def "HydraTextures" (
+            hide_in_stage_window = true
+            no_delete = true
+        )
+        {
+            def RenderProduct "omni_kit_widget_viewport_ViewportTexture_0" (
+                prepend apiSchemas = ["OmniRtxSettingsCommonAdvancedAPI_1", "OmniRtxSettingsRtAdvancedAPI_1", "OmniRtxSettingsPtAdvancedAPI_1", "OmniRtxSettingsParticleFieldAPI_1", "OmniRtxPostColorGradingAPI_1", "OmniRtxPostChromaticAberrationAPI_1", "OmniRtxPostBloomPhysicalAPI_1", "OmniRtxPostMatteObjectAPI_1", "OmniRtxPostCompositingAPI_1", "OmniRtxPostDofAPI_1", "OmniRtxPostMotionBlurAPI_1", "OmniRtxPostTvNoiseAPI_1", "OmniRtxPostTonemapIrayReinhardAPI_1", "OmniRtxPostDebugSettingsAPI_1", "OmniRtxDebugSettingsAPI_1"]
+                hide_in_stage_window = true
+                no_delete = true
+            )
+            {
+                rel camera = </OmniverseKit_Persp>
+                token omni:rtx:ambientOcclusion:denoiserMode = "none"
+                token omni:rtx:background:source:texture:textureMode = "repeatMirrored"
+                token omni:rtx:background:source:type = "domeLight"
+                bool omni:rtx:debug:view:pixelDebug:enableFixedTextPos = 1
+                token omni:rtx:directLighting:sampledLighting:denoisingTechnique = "None"
+                bool omni:rtx:dlss:frameGeneration = 0
+                bool omni:rtx:indirectDiffuse:denoiser:enabled = 0
+                bool omni:rtx:material:db:syncLoads = 1
+                token omni:rtx:post:dlss:execMode = "quality"
+                bool omni:rtx:post:registeredCompositing:invertColorCorrection = 1
+                bool omni:rtx:post:registeredCompositing:invertToneMap = 1
+                bool omni:rtx:pt:adaptiveSampling:filterError = 0
+                uint omni:rtx:pt:adaptiveSampling:fixedSppIterations = 2
+                float omni:rtx:pt:fireflyFilter:maxPerEmissiveUnexposedIntensity = 3199.9995
+                float omni:rtx:pt:fireflyFilter:maxUnexposedIntensityPerSample = 3199.9995
+                float omni:rtx:pt:fireflyFilter:maxUnexposedIntensityPerSampleDiffuse = 3199.9995
+                uint omni:rtx:pt:maxSamplesPerLaunch = 2073600
+                uint omni:rtx:pt:mgpu:maxPixelsPerRegionExponent = 12
+                bool omni:rtx:reflections:denoiser:enabled = 0
+                token omni:rtx:rendermode = "RealTimePathTracing"
+                color3f omni:rtx:rt:ambientLight:color = (0.1, 0.1, 0.1)
+                bool omni:rtx:rt:demoire = 0
+                float omni:rtx:rt:directLighting:maxRayUnexposedIntensity = 6399.999
+                bool omni:rtx:rt:ecoMode:enabled
+                float omni:rtx:rt:indirectdiffuse:maxRayUnexposedIntensity = 6399.999
+                float omni:rtx:rt:inscattering:maxRTSampleUnexposedIntensity = 204799.97
+                bool omni:rtx:rt:lightcache:spatialCache:dontResolveConflicts = 1
+                float omni:rtx:rt:refractions:maxRayUnexposedIntensity = 19199.998
+                int omni:rtx:rt:sss:samples = 1
+                float omni:rtx:rtpt:fireflyFilter:maxPerEmissiveUnexposedIntensity = 3199.9995
+                float omni:rtx:rtpt:fireflyFilter:maxUnexposedIntensityPerSample = 3199.9995
+                float omni:rtx:rtpt:fireflyFilter:maxUnexposedIntensityPerSampleDiffuse = 3199.9995
+                uint omni:rtx:rtpt:maxVolumeBounces = 15
+                float omni:rtx:rtpt:modulatingRoughnessThreshold = 0.08
+                bool omni:rtx:scene:hydra:materialSyncLoads = 1
+                bool omni:rtx:scene:hydra:mdlMaterialWarmup = 1
+                rel orderedVars = </Render/Vars/LdrColor>
+                custom bool overrideClipRange = 0
+                uniform int2 resolution = (1280, 720)
+            }
+        }
+    }
+
+    def RenderSettings "OmniverseGlobalRenderSettings" (
+        prepend apiSchemas = ["OmniRtxSettingsGlobalRtAdvancedAPI_1", "OmniRtxSettingsGlobalPtAdvancedAPI_1"]
+        no_delete = true
+    )
+    {
+        rel products = </Render/OmniverseKit/HydraTextures/omni_kit_widget_viewport_ViewportTexture_0>
+    }
+
+    def "Vars" (
+        hide_in_stage_window = true
+        no_delete = true
+    )
+    {
+        def RenderVar "LdrColor" (
+            hide_in_stage_window = true
+            no_delete = true
+        )
+        {
+            uniform string sourceName = "LdrColor"
+            uniform token sourceType = "raw"
+        }
+    }
+}
+
+over "OmniverseKit_Persp" (
+    prepend apiSchemas = ["OmniRtxCameraAutoExposureAPI_1", "OmniRtxCameraExposureAPI_1"]
+    customData = {
+        dictionary omni = {
+            dictionary kit = {
+                bool hide_in_stage_window = 1
+                bool no_delete = 1
+            }
+        }
+    }
+    hide_in_stage_window = true
+    kind = "component"
+    no_delete = true
+)
+{
+    float2 clippingRange = (0.01, 10000000)
+    float exposure:fStop = 5
+    float exposure:responsivity = 1.1026709
+    float exposure:time = 0.02
+    float focalLength = 18.147562
+    float focusDistance = 400
+    custom uniform vector3d omni:kit:centerOfInterest = (-8.881784197001252e-15, -8.881784197001252e-16, -69.88562083862459)
+    float3 xformOp:rotateXYZ = (66.38089, -3.1805547e-15, 51.34019)
+    float3 xformOp:scale = (1, 1, 1)
+    double3 xformOp:translate = (50, -50, 30)
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+}
+
+over "OmniverseKit_Front" (
+    customData = {
+        dictionary omni = {
+            dictionary kit = {
+                bool hide_in_stage_window = 1
+                bool no_delete = 1
+            }
+        }
+    }
+    hide_in_stage_window = true
+    kind = "component"
+    no_delete = true
+)
+{
+    float2 clippingRange = (1, 10000000)
+    float horizontalAperture = 50
+    custom uniform vector3d omni:kit:centerOfInterest = (0, 0, -5)
+    token projection = "orthographic"
+    float verticalAperture = 50
+    float3 xformOp:rotateXYZ = (90, -1.2722219e-14, 90)
+    float3 xformOp:scale = (1, 1, 1)
+    double3 xformOp:translate = (5, 0, 0)
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+}
+
+over "OmniverseKit_Right" (
+    customData = {
+        dictionary omni = {
+            dictionary kit = {
+                bool hide_in_stage_window = 1
+                bool no_delete = 1
+            }
+        }
+    }
+    hide_in_stage_window = true
+    kind = "component"
+    no_delete = true
+)
+{
+    float2 clippingRange = (1, 10000000)
+    float horizontalAperture = 50
+    custom uniform vector3d omni:kit:centerOfInterest = (0, 0, -5)
+    token projection = "orthographic"
+    float verticalAperture = 50
+    float3 xformOp:rotateXYZ = (90, 7.06225e-31, -1.2722219e-14)
+    float3 xformOp:scale = (1, 1, 1)
+    double3 xformOp:translate = (0, -5, 0)
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+}
+
+over "OmniverseKit_Top" (
+    customData = {
+        dictionary omni = {
+            dictionary kit = {
+                bool hide_in_stage_window = 1
+                bool no_delete = 1
+            }
+        }
+    }
+    hide_in_stage_window = true
+    kind = "component"
+    no_delete = true
+)
+{
+    float2 clippingRange = (1, 10000000)
+    float horizontalAperture = 500
+    custom uniform vector3d omni:kit:centerOfInterest = (0, 0, -50)
+    token projection = "orthographic"
+    float verticalAperture = 500
+    float3 xformOp:rotateXYZ = (1.2722219e-14, -7.016709e-15, -90)
+    float3 xformOp:scale = (1, 1, 1)
+    double3 xformOp:translate = (0, 0, 50)
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+}
+
