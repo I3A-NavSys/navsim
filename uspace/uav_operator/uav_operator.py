@@ -2,7 +2,7 @@ from tabulate import tabulate
 import json
 from typing import Any
 
-from uspace.flight_plan.flight_plan import FlightPlan
+from flight_plan.flight_plan import FlightPlan
 from uspace.uspace_manager.constants import Topics, MissionStatus, UAVStatus, CancellationReason, MissionType
 from uspace.mqtt.mqtt_service import MQTTService
 from uspace.mission_manager.mission import Mission

@@ -1,7 +1,7 @@
 # Import necessary modules
 from omni.isaac.core.utils.stage import get_current_stage
 import carb.events
-from uspace.flight_plan.flight_plan import FlightPlan
+from flight_plan.flight_plan import FlightPlan
 import pickle
 import base64
 import omni.kit.app as app

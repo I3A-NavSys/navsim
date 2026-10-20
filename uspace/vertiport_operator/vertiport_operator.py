@@ -1,7 +1,7 @@
 import json
 from typing import Any
 
-from uspace.flight_plan.flight_plan import FlightPlan
+from flight_plan.flight_plan import FlightPlan
 from uspace.uspace_manager.constants import Topics, PadStatus, CancellationReason
 from .vertiport_pad import Pad
 from uspace.mqtt.mqtt_service import MQTTService

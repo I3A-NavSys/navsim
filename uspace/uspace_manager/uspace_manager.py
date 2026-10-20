@@ -2,8 +2,8 @@ from tabulate import tabulate
 import json
 from typing import Any
 
-from uspace.flight_plan.flight_plan import FlightPlan
-from uspace.grid_planner.grid_planner import GridPlanner
+from flight_plan.flight_plan import FlightPlan
+from grid_planner.grid_planner import GridPlanner
 from uspace.mqtt.mqtt_service import MQTTService
 from .constants import Topics, CancellationReason
 
