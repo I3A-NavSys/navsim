@@ -1,0 +1,104 @@
+<?xml version="1.0"?>
+<mavlink>
+  <version>3</version>
+  <dialect>0</dialect>
+
+  <enums>
+    <enum name="NAVSIM_UAV_STATE">
+      <description>Estado operativo del UAV en el simulador NavSim.</description>
+      <entry value="0" name="NAVSIM_UAV_STATE_IDLE">
+        <description>UAV en reposo / sin plan de vuelo activo.</description>
+      </entry>
+      <entry value="1" name="NAVSIM_UAV_STATE_BUSY">
+        <description>UAV ejecutando un plan de vuelo activo.</description>
+      </entry>
+      <entry value="2" name="NAVSIM_UAV_STATE_DEAD">
+        <description>UAV fuera de servicio.</description>
+      </entry>
+      <entry value="3" name="NAVSIM_UAV_STATE_MANUAL">
+        <description>UAV en control manual mediante joystick o consigna directa.</description>
+      </entry>
+    </enum>
+
+    <enum name="NAVSIM_FP_ACK_RESULT">
+      <description>Resultado de recepción de un FlightPlan por MAVLink.</description>
+      <entry value="0" name="NAVSIM_FP_ACK_ACCEPTED">
+        <description>Plan de vuelo completo recibido y cargado en el controlador.</description>
+      </entry>
+      <entry value="1" name="NAVSIM_FP_ACK_WAYPOINT_RECEIVED">
+        <description>Waypoint individual recibido correctamente (esperando el resto).</description>
+      </entry>
+      <entry value="2" name="NAVSIM_FP_ACK_INVALID">
+        <description>Plan de vuelo o waypoint inválido.</description>
+      </entry>
+    </enum>
+  </enums>
+
+  <messages>
+    <!-- Cabecera de FlightPlan (metadatos equivalentes a la clase Python FlightPlan) -->
+    <message id="12000" name="NAVSIM_FLIGHT_PLAN_HEADER">
+      <description>Cabecera de un FlightPlan con sus propiedades generales y número total de waypoints.</description>
+      <field type="char[32]" name="plan_id">Identificador único del FlightPlan (FlightPlan.id).</field>
+      <field type="int32_t" name="priority">Prioridad del plan de vuelo (FlightPlan.priority).</field>
+      <field type="float" name="radius" units="m">Radio de protección (FlightPlan.radius).</field>
+      <field type="float" name="max_var_lin_vel" units="m/s">Máxima variación de velocidad lineal (FlightPlan.max_var_lin_vel).</field>
+      <field type="float" name="max_var_ang_vel" units="rad/s">Máxima variación de velocidad angular (FlightPlan.max_var_ang_vel).</field>
+      <field type="float" name="target_yaw" units="rad">Yaw objetivo fijo o NaN para orientación según trayectoria (FlightPlan.target_yaw).</field>
+      <field type="uint16_t" name="num_waypoints">Número total de waypoints que componen el FlightPlan.</field>
+    </message>
+
+    <!-- Tramo / Waypoint con el polinomio de Taylor de grado 5 (equivalente a la clase Python Waypoint) -->
+    <message id="12001" name="NAVSIM_FLIGHT_PLAN_WAYPOINT">
+      <description>Waypoint de un FlightPlan con coeficientes del polinomio de Taylor de orden 5 en 3D (137 bytes).</description>
+      <field type="char[32]" name="plan_id">Identificador del FlightPlan al que pertenece este waypoint.</field>
+      <field type="uint16_t" name="seq">Índice del waypoint dentro del plan (0 .. num_waypoints-1).</field>
+      <field type="uint16_t" name="num_waypoints">Número total de waypoints del plan.</field>
+      <field type="char[16]" name="label">Etiqueta identificativa del waypoint (Waypoint.label / Waypoint.id).</field>
+      <field type="float" name="t" units="s">Instante de tiempo del waypoint (Waypoint.t / Waypoint.time).</field>
+      <field type="float[3]" name="pos" units="m">Posición [x, y, z] en el instante t (Waypoint.pos).</field>
+      <field type="float[3]" name="vel" units="m/s">Velocidad [vx, vy, vz] en el instante t (Waypoint.vel).</field>
+      <field type="float[3]" name="acel" units="m/s/s">Aceleración [ax, ay, az] en el instante t (Waypoint.acel).</field>
+      <field type="float[3]" name="jerk" units="m/s/s/s">Jerk [jx, jy, jz] en el instante t (Waypoint.jerk).</field>
+      <field type="float[3]" name="snap">Snap [sx, sy, sz] en el instante t [m/s^4] (Waypoint.snap).</field>
+      <field type="float[3]" name="crakle">Crackle [cx, cy, cz] en el instante t [m/s^5] (Waypoint.crakle).</field>
+      <field type="float[2]" name="heading">Vector de orientación horizontal [hx, hy] (Waypoint.heading).</field>
+      <field type="uint8_t" name="fly_over">1 si es punto de paso obligatorio, 0 en caso contrario (Waypoint.fly_over).</field>
+    </message>
+
+    <!-- Confirmación (ACK) de recepción de FlightPlan -->
+    <message id="12002" name="NAVSIM_FLIGHT_PLAN_ACK">
+      <description>Confirmación de recepción y activación de un FlightPlan en el UAV simulado.</description>
+      <field type="char[32]" name="plan_id">Identificador del FlightPlan.</field>
+      <field type="uint16_t" name="received_waypoints">Número de waypoints recibidos.</field>
+      <field type="uint16_t" name="num_waypoints">Número total esperado de waypoints.</field>
+      <field type="uint8_t" name="result" enum="NAVSIM_FP_ACK_RESULT">Código de resultado.</field>
+    </message>
+
+    <!-- Telemetría de retorno del UAV simulado -->
+    <message id="12003" name="NAVSIM_TELEMETRY">
+      <description>Telemetría completa de estado, cinemática y rotores enviada por cada UAV simulado.</description>
+      <field type="float" name="sim_time" units="s">Tiempo actual de simulación en segundos.</field>
+      <field type="uint8_t" name="uav_state" enum="NAVSIM_UAV_STATE">Estado operativo del UAV (IDLE=0, BUSY=1, DEAD=2).</field>
+      <field type="char[32]" name="plan_id">Identificador del FlightPlan activo (vacío si está en IDLE).</field>
+      <field type="int16_t" name="current_wp">Índice del waypoint actualmente en ejecución (-1 si IDLE).</field>
+      <field type="float[3]" name="pos" units="m">Posición en coordenadas de mundo [x, y, z].</field>
+      <field type="float[3]" name="euler" units="rad">Ángulos de Euler [roll, pitch, yaw].</field>
+      <field type="float[4]" name="quat">Cuaternión de orientación [w, x, y, z].</field>
+      <field type="float[3]" name="lin_vel" units="m/s">Velocidad lineal en coordenadas de mundo [vx, vy, vz].</field>
+      <field type="float[3]" name="ang_vel" units="rad/s">Velocidad angular en ejes cuerpo [wx, wy, wz].</field>
+      <field type="float[4]" name="rotor_speeds" units="rad/s">Velocidades angulares de los 4 rotores [w_NE, w_NW, w_SE, w_SW].</field>
+    </message>
+
+    <!-- Comando de control manual de vuelo vía joystick o interfaz -->
+    <message id="12004" name="NAVSIM_MANUAL_CONTROL">
+      <description>Comando de control manual de velocidades para el UAV.</description>
+      <field type="float" name="vel_x" units="m/s">Velocidad lineal deseada en X (eje cuerpo hacia adelante).</field>
+      <field type="float" name="vel_y" units="m/s">Velocidad lineal deseada en Y (eje cuerpo hacia izquierda/derecha).</field>
+      <field type="float" name="vel_z" units="m/s">Velocidad lineal deseada en Z (eje vertical arriba/abajo).</field>
+      <field type="float" name="rot_z" units="rad/s">Velocidad angular de guiñada (yaw rate en ejes cuerpo).</field>
+      <field type="uint32_t" name="buttons">Máscara de botones / flags de control.</field>
+      <field type="uint8_t" name="uav_id_num">Índice numérico del UAV objetivo (0-indexed).</field>
+      <field type="uint8_t" name="mode">Modo solicitado (0=DISARM/IDLE, 1=MANUAL, 2=AUTO, 3=HOVER).</field>
+    </message>
+  </messages>
+</mavlink>
