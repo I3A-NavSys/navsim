@@ -7,13 +7,13 @@ from os import path
 
 
 current_file_path = path.dirname(__file__)
-project_root_path = path.abspath(path.join(current_file_path, "../../../.."))
+project_root_path = path.abspath(path.join(current_file_path, "../../.."))
 if project_root_path not in sys.path:
     sys.path.append(project_root_path)
 
 from uspace.vertiport_operator.vertiport_operator import VertiportOperator
 from uspace.vertiport_operator.vertiport_pad import Pad
-from uspace.uspace_manager.constants import MissionType, PadStatus
+from uspace.uspace_manager.constants import Entities, MissionType, PadStatus
 
 
 def parse_str_list(str_list: str) -> list:
@@ -105,7 +105,7 @@ MQTT_HOST_PORT = int(os.getenv("MQTT_HOST_PORT", "1883"))
 grid_x_layer_height = 60
 
 # Build Vertiport Operators
-vertiport_operators = []
+vertiport_operators: list[VertiportOperator] = []
 
 for i in range(MAX_VERT_OPS):
     vert_op_location = LOCATION[i]
@@ -127,17 +127,26 @@ for i in range(MAX_VERT_OPS):
         )
     )
 
-# Wait a few seconds to ensure that the USpace Manager DTBlock are up and running before 
-# connecting to MQTT and making requests
-time.sleep(1)
+# # Wait for mqtt broker to initialize
+time.sleep(2)
 
 # Connect to MQTT Broker
 for vert_op in vertiport_operators:
     vert_op.connect_mqtt_client(MQTT_HOST_ADDRESS, MQTT_HOST_PORT)
 
+# Wait for U-Space Manager to be ready
+while not vertiport_operators[0].entity_readiness[Entities.USPACE_MANAGER]:
+    print(f"Vertiport Operators: Waiting for U-Space Manager to be ready...")
+    vertiport_operators[0].are_entities_ready()
+    time.sleep(1)
+
 # Register into USpace Manager
 for vert_op in vertiport_operators:
     vert_op.register_into_airspace()
+
+# Update self rediness status
+for vert_op in vertiport_operators:
+    vert_op.entity_readiness[Entities.VERTIPORT_OPERATOR] = True
 
 # Main Loop
 wait_event = threading.Event()

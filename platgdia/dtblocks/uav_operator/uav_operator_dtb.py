@@ -6,13 +6,13 @@ from os import path
 
 
 current_file_path = path.dirname(__file__)
-project_root_path = path.abspath(path.join(current_file_path, "../../../.."))
+project_root_path = path.abspath(path.join(current_file_path, "../../.."))
 if project_root_path not in sys.path:
     sys.path.append(project_root_path)
 
 from uspace.uav_operator.uav_operator import UAVOperator, UAV
-from uspace.uspace_manager.constants import MissionType, UAVStatus
-from platgdia.dtblocks.uav_operator.time_manager import TimeManager
+from uspace.uspace_manager.constants import Entities, MissionType, UAVStatus
+from time_manager import TimeManager
 
 def parse_str_list(str_list: str) -> list:
     '''
@@ -64,7 +64,7 @@ time_manager.start()
 time_manager.current_sim_time -= 1 # Adjust to sync with mission manager's time
 
 # Build UAV Operators
-uav_operators = []
+uav_operators: list[UAVOperator] = []
 
 for i in range(MAX_UAV_OPS):
     uavs = build_uavs(f"UAV_OP_{i}", UAV_FLEET[i])
@@ -81,21 +81,36 @@ for i in range(MAX_UAV_OPS):
     )
     uav_operators[i].time_manager = time_manager
 
-# Wait a few seconds to ensure that the USpace Manager DTBlock and the Vertiport Operator
-# DTBlocks are up and running before connecting to MQTT and making requests
+# Wait for mqtt broker to initialize
 time.sleep(2)
 
 # Connect to MQTT Broker
 for uav_op in uav_operators:
     uav_op.connect_mqtt_client(MQTT_HOST_ADDRESS, MQTT_HOST_PORT)
 
+# Wait for U-Space Manager to be ready
+while not uav_operators[0].entity_readiness[Entities.USPACE_MANAGER]:
+    print(f"UAV Operators: Waiting for U-Space Manager to be ready...")
+    uav_operators[0].are_entities_ready()
+    time.sleep(1)
+
 # Register into USpace Manager
 for uav_op in uav_operators:
     uav_op.register_into_airspace()
 
+# Wait for Vertiport Operators to be ready (with just one we know all are ready)
+while not uav_operators[0].entity_readiness[Entities.VERTIPORT_OPERATOR]:
+    print(f"UAV Operators: Waiting for Vertiport Operators to be ready...")
+    uav_operators[0].are_entities_ready()
+    time.sleep(1)
+
 # Request private vertiport information (pads info)
 for uav_op in uav_operators:
     uav_op.request_private_vertiport_information()
+
+# Update self readiness status
+for uav_op in uav_operators:
+    uav_op.entity_readiness[Entities.UAV_OPERATOR] = True
 
 # Main Loop
 try:

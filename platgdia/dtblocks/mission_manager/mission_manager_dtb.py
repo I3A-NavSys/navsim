@@ -6,11 +6,12 @@ from os import path
 
 
 current_file_path = path.dirname(__file__)
-project_root_path = path.abspath(path.join(current_file_path, "../../../.."))
+project_root_path = path.abspath(path.join(current_file_path, "../../.."))
 if project_root_path not in sys.path:
     sys.path.append(project_root_path)
 
 from uspace.mission_manager.mission_manager import MissionManager
+from uspace.uspace_manager.constants import Entities
 
 
 def parse_str_list(str_list: str) -> list:
@@ -52,18 +53,27 @@ mission_managers = [
     for i in range(MAX_MISSION_MNG)
 ]
 
-# Wait a few seconds to ensure that the USpace Manager and UAV Operator DTBlocks
-# are up and running before connecting to MQTT and making requests
-time.sleep(3)
+# Wait for mqtt broker to initialize
+time.sleep(2)
 
 # Connect to MQTT Broker
 for mng in mission_managers:
     mng.connect_mqtt_client(MQTT_HOST_ADDRESS, MQTT_HOST_PORT)
 
+# Wait for UAV operators to be ready (with just one we know all are ready)
+while not mission_managers[0].entity_readiness[Entities.UAV_OPERATOR]:
+    print(f"Mission Managers: Waiting for UAV Operators to be ready...")
+    mission_managers[0].are_entities_ready()
+    time.sleep(1)
+
 # Request UAV and Vertiport operators list
 for mng in mission_managers:
     mng.request_uav_operator_list()
     mng.request_vertiport_operator_list()
+
+# Update self readiness status
+for mng in mission_managers:
+    mng.entity_readiness[Entities.MISSION_MANAGER] = True
 
 # Main Loop
 try:

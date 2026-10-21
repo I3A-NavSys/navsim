@@ -3,7 +3,7 @@ import json
 import numpy as np
 
 from uspace.mqtt.mqtt_service import MQTTService
-from uspace.uspace_manager.constants import Topics, MissionStatus, MissionType
+from uspace.uspace_manager.constants import Entities, Topics, MissionStatus, MissionType
 from .mission import Mission
 
 
@@ -17,6 +17,14 @@ class MissionManager:
         random_seed=0
     ):
         self.rng = np.random.default_rng(random_seed)
+
+        self.verbose = verbose
+        self.entity_readiness = {
+            Entities.MISSION_MANAGER: False,
+            Entities.UAV_OPERATOR: False,
+            Entities.USPACE_MANAGER: False,
+            Entities.VERTIPORT_OPERATOR: False
+        }
 
         self.verbose = verbose
         self.id: str = id
@@ -38,6 +46,8 @@ class MissionManager:
             f"{Topics.REQUEST_UAV_OPERATOR_LIST}/{self.id}",
             f"{Topics.MISSION_STATUS_UPDATE}/{self.id}",
             f"{Topics.CANCEL_MISSION}/{self.id}",
+            Topics.ARE_READY,
+            f"{Topics.ARE_READY}/{self.id}",
         ]
 
         self.mqtt_client.message_callback_add(
@@ -58,6 +68,16 @@ class MissionManager:
         self.mqtt_client.message_callback_add(
             f"{Topics.CANCEL_MISSION}/{self.id}",
             self.on_cancel_mission
+        )
+
+        self.mqtt_client.message_callback_add(
+            Topics.ARE_READY,
+            self.on_readiness_question
+        )
+
+        self.mqtt_client.message_callback_add(
+            f"{Topics.ARE_READY}/{self.id}",
+            self.on_readiness_response
         )
 
     # ----------------------
@@ -91,6 +111,13 @@ class MissionManager:
     # -------------------------
     # --- Auxiliary Methods ---
     # -------------------------
+    def are_entities_ready(self):
+        topic = Topics.ARE_READY
+        msg = {
+            "id": self.id
+        }
+        self.send_mqtt_msg(topic, json.dumps(msg))
+
     def log_dict_table(self, data, headers):
         formatted_data = [
             [key, json.dumps(value, indent=2)] 
@@ -272,3 +299,36 @@ class MissionManager:
 
         # Notify Validation Service
         self.notify_validation_service(mission_id)
+
+    def on_readiness_question(self, client, userdata, msg):
+        data = json.loads(msg.payload.decode())
+
+        # Extract sender ID from the message
+        sender_id = data.get("id", "")
+
+        # Send self readiness status back to the sender
+        topic = f"{Topics.ARE_READY}/{sender_id}"
+        response_msg = {
+            "entity": Entities.MISSION_MANAGER,
+            "is_ready": self.entity_readiness[Entities.MISSION_MANAGER]
+        }
+        self.send_mqtt_msg(topic, json.dumps(response_msg))
+
+    def on_readiness_response(self, client, userdata, msg):
+        data = json.loads(msg.payload.decode())
+
+        # Extract entity and readiness status from the message
+        entity = data.get("entity", "")
+        is_ready = data.get("is_ready", False)
+
+        # Update the readiness status of the entity
+        if entity in self.entity_readiness:
+            self.entity_readiness[entity] = is_ready
+
+            # Logging
+            # if self.verbose:
+            #     print(f"[{self.id}] - Received readiness response:")
+            #     print(f"  Entity: {entity}")
+            #     print(f"  Is Ready: {is_ready}")
+            #     print("----------------------------------------------")
+            #     print()

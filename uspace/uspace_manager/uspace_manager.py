@@ -5,12 +5,19 @@ from typing import Any
 from flight_plan.flight_plan import FlightPlan
 from grid_planner.grid_planner import GridPlanner
 from uspace.mqtt.mqtt_service import MQTTService
-from .constants import Topics, CancellationReason
+from .constants import Entities, Topics, CancellationReason
 
 
 class USpaceManager:
     def __init__(self, id=None, name=None, verbose=False):
         self.verbose = verbose
+        self.entity_readiness = {
+            Entities.MISSION_MANAGER: False,
+            Entities.UAV_OPERATOR: False,
+            Entities.USPACE_MANAGER: False,
+            Entities.VERTIPORT_OPERATOR: False
+        }
+        
         self.id: str = id
         self.name: str = name
         self.airspace = GridPlanner(max_route_length=1000)
@@ -76,6 +83,8 @@ class USpaceManager:
             Topics.REQUEST_UAV_OPERATOR_LIST,
             Topics.REQUEST_VERTIPORT_OPERATOR_LIST,
             Topics.CANCEL_MISSION,
+            Topics.ARE_READY,
+            f"{Topics.ARE_READY}/{self.id}",
         ]
 
         self.mqtt_client.message_callback_add(
@@ -118,6 +127,16 @@ class USpaceManager:
             self.on_cancel_mission
         )
 
+        self.mqtt_client.message_callback_add(
+            Topics.ARE_READY,
+            self.on_readiness_question
+        )
+
+        self.mqtt_client.message_callback_add(
+            f"{Topics.ARE_READY}/{self.id}",
+            self.on_readiness_response
+        )
+
     # ----------------------
     # --- MQTT Methods -----
     # ----------------------
@@ -149,6 +168,13 @@ class USpaceManager:
     # -------------------------
     # --- Auxiliary Methods ---
     # -------------------------
+    def are_entities_ready(self):
+        topic = Topics.ARE_READY
+        msg = {
+            "id": self.id
+        }
+        self.send_mqtt_msg(topic, json.dumps(msg))
+
     def free_resources(
         self, 
         uav_operator_id, 
@@ -757,3 +783,36 @@ class USpaceManager:
             is_reversed=is_reversed,
             is_last_leg=False
         )
+
+    def on_readiness_question(self, client, userdata, msg):
+        data = json.loads(msg.payload.decode())
+
+        # Extract sender ID from the message
+        sender_id = data.get("id", "")
+
+        # Send self readiness status back to the sender
+        topic = f"{Topics.ARE_READY}/{sender_id}"
+        response_msg = {
+            "entity": Entities.USPACE_MANAGER,
+            "is_ready": self.entity_readiness[Entities.USPACE_MANAGER]
+        }
+        self.send_mqtt_msg(topic, json.dumps(response_msg))
+
+    def on_readiness_response(self, client, userdata, msg):
+        data = json.loads(msg.payload.decode())
+
+        # Extract entity and readiness status from the message
+        entity = data.get("entity", "")
+        is_ready = data.get("is_ready", False)
+
+        # Update the readiness status of the entity
+        if entity in self.entity_readiness:
+            self.entity_readiness[entity] = is_ready
+
+            # Logging
+            # if self.verbose:
+            #     print(f"[{self.id}] - Received readiness response:")
+            #     print(f"  Entity: {entity}")
+            #     print(f"  Is Ready: {is_ready}")
+            #     print("----------------------------------------------")
+            #     print()

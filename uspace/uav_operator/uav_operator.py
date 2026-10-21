@@ -3,7 +3,7 @@ import json
 from typing import Any
 
 from flight_plan.flight_plan import FlightPlan
-from uspace.uspace_manager.constants import Topics, MissionStatus, UAVStatus, CancellationReason, MissionType
+from uspace.uspace_manager.constants import Entities, Topics, MissionStatus, UAVStatus, CancellationReason, MissionType
 from uspace.mqtt.mqtt_service import MQTTService
 from uspace.mission_manager.mission import Mission
 from .uav import UAV
@@ -20,6 +20,13 @@ class UAVOperator:
         verbose=False
     ):
         self.verbose = verbose
+        self.entity_readiness = {
+            Entities.MISSION_MANAGER: False,
+            Entities.UAV_OPERATOR: False,
+            Entities.USPACE_MANAGER: False,
+            Entities.VERTIPORT_OPERATOR: False
+        }
+        
         self.time_manager = None
         self.id: str = id
         self.name: str = name
@@ -67,6 +74,8 @@ class UAVOperator:
             f"{Topics.PRIVATE_VERTIPORT_TAKEOFF}/{self.id}",
             f"{Topics.PRIVATE_VERTIPORT_LANDING}/{self.id}",
             f"{Topics.REQUEST_VERTIPORT_INFO}/{self.id}",
+            Topics.ARE_READY,
+            f"{Topics.ARE_READY}/{self.id}",
         ]
 
         self.mqtt_client.message_callback_add(
@@ -97,6 +106,16 @@ class UAVOperator:
         self.mqtt_client.message_callback_add(
             f"{Topics.REQUEST_VERTIPORT_INFO}/{self.id}",
             self.on_request_vertiport_info_response
+        )
+
+        self.mqtt_client.message_callback_add(
+            Topics.ARE_READY,
+            self.on_readiness_question
+        )
+
+        self.mqtt_client.message_callback_add(
+            f"{Topics.ARE_READY}/{self.id}",
+            self.on_readiness_response
         )
 
     # ----------------------
@@ -130,6 +149,13 @@ class UAVOperator:
     # -------------------------
     # --- Auxiliary Methods ---
     # -------------------------
+    def are_entities_ready(self):
+        topic = Topics.ARE_READY
+        msg = {
+            "id": self.id
+        }
+        self.send_mqtt_msg(topic, json.dumps(msg))
+
     def get_available_uavs(self):
         supported_mission_types = self.uavs.keys()
 
@@ -698,3 +724,35 @@ class UAVOperator:
             print(f"  Pads Info: {self.private_vertiport_operator_pads}")
             print()
 
+    def on_readiness_question(self, client, userdata, msg):
+        data = json.loads(msg.payload.decode())
+
+        # Extract sender ID from the message
+        sender_id = data.get("id", "")
+
+        # Send self readiness status back to the sender
+        topic = f"{Topics.ARE_READY}/{sender_id}"
+        response_msg = {
+            "entity": Entities.UAV_OPERATOR,
+            "is_ready": self.entity_readiness[Entities.UAV_OPERATOR]
+        }
+        self.send_mqtt_msg(topic, json.dumps(response_msg))
+
+    def on_readiness_response(self, client, userdata, msg):
+        data = json.loads(msg.payload.decode())
+
+        # Extract entity and readiness status from the message
+        entity = data.get("entity", "")
+        is_ready = data.get("is_ready", False)
+
+        # Update the readiness status of the entity
+        if entity in self.entity_readiness:
+            self.entity_readiness[entity] = is_ready
+
+            # Logging
+            # if self.verbose:
+            #     print(f"[{self.id}] - Received readiness response:")
+            #     print(f"  Entity: {entity}")
+            #     print(f"  Is Ready: {is_ready}")
+            #     print("----------------------------------------------")
+            #     print()

@@ -26,9 +26,16 @@ class CancellationReason:
     MAIN_PAD_OCCUPIED = "MAIN_PAD_OCCUPIED"
     NO_AVAILABLE_ROUTE = "NO_AVAILABLE_ROUTE"
 
+class Entities:
+    MISSION_MANAGER = "MISSION_MANAGER"
+    UAV_OPERATOR = "UAV_OPERATOR"
+    USPACE_MANAGER = "USPACE_MANAGER"
+    VERTIPORT_OPERATOR = "VERTIPORT_OPERATOR"
+
 class Topics:
     # General Topics
     CANCEL_MISSION = "general/missions/cancellation"
+    ARE_READY = "general/connection/are_ready"
 
     # USpace Manager Topics
     UAV_OPERATOR_REGISTER = "airspace/operators/register/uav"
