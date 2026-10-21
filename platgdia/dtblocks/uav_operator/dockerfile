@@ -23,7 +23,9 @@ RUN pip install --no-cache-dir --root-user-action=ignore -r requirements.txt
 
 # 6. Copy the rest of the application source code into the container
 # Assuming your code is inside a 'src' folder
-COPY . /app/uspace/
+COPY uspace /app/uspace/
+COPY flight_plan /app/flight_plan/
+COPY platgdia/dtblocks/uav_operator/time_manager.py /app/time_manager.py
 COPY platgdia/dtblocks/uav_operator/uav_operator_dtb.py /app/uav_operator_dtb.py
 
 # 7. Define the default command to execute when the container launches

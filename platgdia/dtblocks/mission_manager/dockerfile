@@ -23,7 +23,7 @@ RUN pip install --no-cache-dir --root-user-action=ignore -r requirements.txt
 
 # 6. Copy the rest of the application source code into the container
 # Assuming your code is inside a 'src' folder
-COPY . /app/uspace/
+COPY uspace /app/uspace/
 COPY platgdia/dtblocks/mission_manager/mission_manager_dtb.py /app/mission_manager_dtb.py
 
 # 7. Define the default command to execute when the container launches

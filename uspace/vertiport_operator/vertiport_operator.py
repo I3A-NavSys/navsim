@@ -2,7 +2,7 @@ import json
 from typing import Any
 
 from flight_plan.flight_plan import FlightPlan
-from uspace.uspace_manager.constants import Topics, PadStatus, CancellationReason
+from uspace.uspace_manager.constants import Entities, Topics, PadStatus, CancellationReason
 from .vertiport_pad import Pad
 from uspace.mqtt.mqtt_service import MQTTService
 
@@ -20,6 +20,13 @@ class VertiportOperator:
         verbose=False
     ):
         self.verbose = verbose
+        self.entity_readiness = {
+            Entities.MISSION_MANAGER: False,
+            Entities.UAV_OPERATOR: False,
+            Entities.USPACE_MANAGER: False,
+            Entities.VERTIPORT_OPERATOR: False
+        }
+
         self.id: str = id
         self.name: str = name
         self.service_types: list[str] = service_types
@@ -66,6 +73,8 @@ class VertiportOperator:
             f"{Topics.MISSION_VERTIPORT_SERVICE}/{self.id}",
             f"{Topics.REQUEST_VERTIPORT_INFO}/{self.id}",
             f"{Topics.CANCEL_MISSION}/{self.id}",
+            Topics.ARE_READY,
+            f"{Topics.ARE_READY}/{self.id}",
         ]
 
         self.mqtt_client.message_callback_add(
@@ -81,6 +90,16 @@ class VertiportOperator:
         self.mqtt_client.message_callback_add(
             f"{Topics.CANCEL_MISSION}/{self.id}",
             self.on_cancel_mission
+        )
+
+        self.mqtt_client.message_callback_add(
+            Topics.ARE_READY,
+            self.on_readiness_question
+        )
+
+        self.mqtt_client.message_callback_add(
+            f"{Topics.ARE_READY}/{self.id}",
+            self.on_readiness_response
         )
 
     # ----------------------
@@ -114,6 +133,13 @@ class VertiportOperator:
     # -------------------------
     # --- Auxiliary Methods ---
     # -------------------------
+    def are_entities_ready(self):
+        topic = Topics.ARE_READY
+        msg = {
+            "id": self.id
+        }
+        self.send_mqtt_msg(topic, json.dumps(msg))
+
     def free_resources(
         self, 
         uav_operator_id, 
@@ -643,3 +669,35 @@ class VertiportOperator:
         }
         self.send_mqtt_msg(topic, json.dumps(msg))
 
+    def on_readiness_question(self, client, userdata, msg):
+        data = json.loads(msg.payload.decode())
+
+        # Extract sender ID from the message
+        sender_id = data.get("id", "")
+
+        # Send self readiness status back to the sender
+        topic = f"{Topics.ARE_READY}/{sender_id}"
+        response_msg = {
+            "entity": Entities.VERTIPORT_OPERATOR,
+            "is_ready": self.entity_readiness[Entities.VERTIPORT_OPERATOR]
+        }
+        self.send_mqtt_msg(topic, json.dumps(response_msg))
+
+    def on_readiness_response(self, client, userdata, msg):
+        data = json.loads(msg.payload.decode())
+
+        # Extract entity and readiness status from the message
+        entity = data.get("entity", "")
+        is_ready = data.get("is_ready", False)
+
+        # Update the readiness status of the entity
+        if entity in self.entity_readiness:
+            self.entity_readiness[entity] = is_ready
+
+            # Logging
+            # if self.verbose:
+            #     print(f"[{self.id}] - Received readiness response:")
+            #     print(f"  Entity: {entity}")
+            #     print(f"  Is Ready: {is_ready}")
+            #     print("----------------------------------------------")
+            #     print()

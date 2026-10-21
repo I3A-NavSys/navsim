@@ -1,3 +1,4 @@
+import time
 import threading
 import os
 import json
@@ -6,11 +7,12 @@ from os import path
 
 
 current_file_path = path.dirname(__file__)
-project_root_path = path.abspath(path.join(current_file_path, "../../../.."))
+project_root_path = path.abspath(path.join(current_file_path, "../../.."))
 if project_root_path not in sys.path:
     sys.path.append(project_root_path)
 
 from uspace.uspace_manager.uspace_manager import USpaceManager
+from uspace.uspace_manager.constants import Entities
 
 
 def parse_str_list(str_list: str) -> list:
@@ -42,8 +44,14 @@ uspace_manager = USpaceManager(
     verbose=True
 )
 
+# Wait for mqtt broker to initialize
+time.sleep(2)
+
 # Connect to MQTT Broker
 uspace_manager.connect_mqtt_client(MQTT_HOST_ADDRESS, MQTT_HOST_PORT)
+
+# Update self readiness status
+uspace_manager.entity_readiness[Entities.USPACE_MANAGER] = True
 
 # Main Loop
 wait_event = threading.Event()

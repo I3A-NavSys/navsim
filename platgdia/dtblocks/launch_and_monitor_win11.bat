@@ -13,7 +13,7 @@ timeout /t 3 /nobreak >nul
 
 :: 3. Retrieve service names and launch a dedicated Windows Terminal window for each
 for /f "tokens=*" %%S in ('docker compose ps --services') do (
-    if /i "%%S"=="mqtt_dtblock" (
+    if /i "%%S"=="broker_mqtt" (
         echo Skipping log window for service: %%S
     ) else (
         echo Opening log window for service: %%S
