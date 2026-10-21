@@ -15,12 +15,13 @@ MAVLINK_HEADER_LEN = 10  # STX(1)+LEN(1)+INC(1)+CMP(1)+SEQ(1)+SYS(1)+COMP(1)+MSG
 MSG_ID_FLIGHT_PLAN_HEADER = 12000
 MSG_ID_FLIGHT_PLAN_WAYPOINT = 12001
 MSG_ID_FLIGHT_PLAN_ACK = 12002
-MSG_ID_TELEMETRY = 12003
+MSG_ID_FLIGHT_PLAN_STATUS = 12003
+MSG_ID_TELEMETRY = MSG_ID_FLIGHT_PLAN_STATUS
+MSG_ID_MANUAL_CONTROL = 12004
 MSG_ID_OPEN_DRONE_ID_BASIC_ID = 12900
 MSG_ID_OPEN_DRONE_ID_LOCATION = 12901
 MSG_ID_OPEN_DRONE_ID_SELF_ID = 12903
 MSG_ID_OPEN_DRONE_ID_OPERATOR_ID = 12905
-MSG_ID_MANUAL_CONTROL = 12004
 
 
 class NavSimUAVState(IntEnum):
@@ -98,7 +99,6 @@ class MavOdidTimeAcc(IntEnum):
     ACC_0_8S = 8
     ACC_0_9S = 9
     ACC_1_0S = 10
-
 
 
 # ==============================================================================
@@ -290,18 +290,43 @@ class MavFlightPlanAckMsg:
 
 
 @dataclass
-class MavTelemetryMsg:
-    sim_time: float
-    uav_state: int
-    plan_id: str
-    current_wp: int
-    pos: Tuple[float, float, float]
-    euler: Tuple[float, float, float]
-    quat: Tuple[float, float, float, float]
-    lin_vel: Tuple[float, float, float]
-    ang_vel: Tuple[float, float, float]
-    rotor_speeds: Tuple[float, float, float, float]
-    msg_id: int = MSG_ID_TELEMETRY
+class MavFlightPlanStatusMsg:
+    """
+    Mensaje NAVSIM_FLIGHT_PLAN_STATUS (ID: 12003).
+    Telemetría de retorno del UAV indicando el estado de ejecución de su ruta 4D
+    (polinomio de Taylor de orden 5):
+      - sim_time: tiempo actual de simulación [s]
+      - uav_state: estado operativo (IDLE=0, BUSY=1, DEAD=2, MANUAL=3)
+      - plan_id: identificador del FlightPlan activo (vacío si no hay plan)
+      - current_wp: índice del waypoint actual (0..total_wps-1, o -1 si no activo)
+      - total_wps: número total de waypoints del plan activo
+      - wp_label: etiqueta identificativa del waypoint actual (Waypoint.label)
+      - fp_init_time: instante de inicio del FlightPlan activo [s]
+      - fp_finish_time: instante de finalización del FlightPlan activo [s]
+      - wp_time: instante de referencia t_k del tramo polinómico activo [s]
+      - desired_pos: posición 3D deseada evaluada por el polinomio de Taylor [m]
+      - desired_vel: velocidad 3D deseada evaluada por el polinomio de Taylor [m/s]
+      - pos_error: error instantáneo 3D de seguimiento de posición [m]
+      - vel_error: error instantáneo 3D de seguimiento de velocidad [m/s]
+    """
+    sim_time: float = 0.0
+    uav_state: int = int(NavSimUAVState.IDLE)
+    plan_id: str = ""
+    current_wp: int = -1
+    total_wps: int = 0
+    wp_label: str = ""
+    fp_init_time: float = 0.0
+    fp_finish_time: float = 0.0
+    wp_time: float = 0.0
+    desired_pos: Tuple[float, float, float] = (0.0, 0.0, 0.0)
+    desired_vel: Tuple[float, float, float] = (0.0, 0.0, 0.0)
+    pos_error: Tuple[float, float, float] = (0.0, 0.0, 0.0)
+    vel_error: Tuple[float, float, float] = (0.0, 0.0, 0.0)
+    msg_id: int = MSG_ID_FLIGHT_PLAN_STATUS
+
+
+# Alias para compatibilidad
+MavTelemetryMsg = MavFlightPlanStatusMsg
 
 
 @dataclass
@@ -430,7 +455,7 @@ MavMessage = Union[
     MavFlightPlanHeaderMsg,
     MavFlightPlanWaypointMsg,
     MavFlightPlanAckMsg,
-    MavTelemetryMsg,
+    MavFlightPlanStatusMsg,
     MavOdidBasicIdMsg,
     MavOdidLocationMsg,
     MavOdidOperatorIdMsg,
@@ -444,28 +469,28 @@ MavMessage = Union[
 # ==============================================================================
 # En MAVLink v2 los campos del payload se ordenan de mayor a menor tamaño de tipo
 # primitivo (4 bytes -> 2 bytes -> 1 byte / char[]) para evitar alineamiento roto.
-_STRUCT_HEADER = struct.Struct("<iffffH32s")                # 54 bytes
-_STRUCT_WAYPOINT = struct.Struct("<f3f3f3f3f3f3f2fHH32s16sB")  # 137 bytes
-_STRUCT_ACK = struct.Struct("<HH32sB")                      # 37 bytes
-_STRUCT_TELEMETRY = struct.Struct("<f3f3f4f3f3f4fh32sB")     # 123 bytes
-_STRUCT_ODID_BASIC_ID = struct.Struct("<BB20sBB20s")        # 44 bytes
-_STRUCT_ODID_LOCATION = struct.Struct("<iiffffHHhBB20s7B")   # 59 bytes
-_STRUCT_ODID_OPERATOR_ID = struct.Struct("<BB20sB20s")       # 43 bytes
-_STRUCT_ODID_SELF_ID = struct.Struct("<BB20sB23s")           # 46 bytes
-_STRUCT_MANUAL_CONTROL = struct.Struct("<ffffIBB")          # 22 bytes
+_STRUCT_HEADER = struct.Struct("<iffffH32s")                      # 54 bytes
+_STRUCT_WAYPOINT = struct.Struct("<f3f3f3f3f3f3f2fHH32s16sB")     # 137 bytes
+_STRUCT_ACK = struct.Struct("<HH32sB")                            # 37 bytes
+_STRUCT_FLIGHT_PLAN_STATUS = struct.Struct("<ffff3f3f3f3fhH32s16sB")  # 117 bytes
+_STRUCT_TELEMETRY = _STRUCT_FLIGHT_PLAN_STATUS
+_STRUCT_ODID_BASIC_ID = struct.Struct("<BB20sBB20s")              # 44 bytes
+_STRUCT_ODID_LOCATION = struct.Struct("<iiffffHHhBB20s7B")        # 59 bytes
+_STRUCT_ODID_OPERATOR_ID = struct.Struct("<BB20sB20s")            # 43 bytes
+_STRUCT_ODID_SELF_ID = struct.Struct("<BB20sB23s")                # 46 bytes
+_STRUCT_MANUAL_CONTROL = struct.Struct("<ffffIBB")                # 22 bytes
 
 _CRC_EXTRA = {
     MSG_ID_FLIGHT_PLAN_HEADER: 173,
     MSG_ID_FLIGHT_PLAN_WAYPOINT: 89,
     MSG_ID_FLIGHT_PLAN_ACK: 214,
-    MSG_ID_TELEMETRY: 61,
+    MSG_ID_FLIGHT_PLAN_STATUS: 113,
     MSG_ID_OPEN_DRONE_ID_BASIC_ID: 114,
     MSG_ID_OPEN_DRONE_ID_LOCATION: 16,
     MSG_ID_OPEN_DRONE_ID_SELF_ID: 249,
     MSG_ID_OPEN_DRONE_ID_OPERATOR_ID: 49,
     MSG_ID_MANUAL_CONTROL: 55,
 }
-
 
 
 def _x25_crc(buffer: bytes, crc_extra: int) -> int:
@@ -606,20 +631,26 @@ class MAVLinkV2Codec:
         )
         return self._wrap_frame(MSG_ID_FLIGHT_PLAN_ACK, payload)
 
-    def pack_telemetry(self, msg: MavTelemetryMsg) -> bytes:
-        payload = _STRUCT_TELEMETRY.pack(
+    def pack_flight_plan_status(self, msg: MavFlightPlanStatusMsg) -> bytes:
+        """Empaqueta trama MAVLink v2 NAVSIM_FLIGHT_PLAN_STATUS (ID 12003)."""
+        payload = _STRUCT_FLIGHT_PLAN_STATUS.pack(
             float(msg.sim_time),
-            *map(float, msg.pos),
-            *map(float, msg.euler),
-            *map(float, msg.quat),
-            *map(float, msg.lin_vel),
-            *map(float, msg.ang_vel),
-            *map(float, msg.rotor_speeds),
+            float(msg.fp_init_time),
+            float(msg.fp_finish_time),
+            float(msg.wp_time),
+            *map(float, msg.desired_pos),
+            *map(float, msg.desired_vel),
+            *map(float, msg.pos_error),
+            *map(float, msg.vel_error),
             int(msg.current_wp),
+            int(msg.total_wps) & 0xFFFF,
             _encode_str(msg.plan_id, 32),
-            int(msg.uav_state),
+            _encode_str(msg.wp_label, 16),
+            int(msg.uav_state) & 0xFF,
         )
-        return self._wrap_frame(MSG_ID_TELEMETRY, payload)
+        return self._wrap_frame(MSG_ID_FLIGHT_PLAN_STATUS, payload)
+
+    pack_telemetry = pack_flight_plan_status
 
     def pack_odid_basic_id(self, msg: MavOdidBasicIdMsg) -> bytes:
         """Empaqueta trama MAVLink v2 OPEN_DRONE_ID_BASIC_ID (ID 12900)."""
@@ -799,19 +830,22 @@ class MAVLinkV2Codec:
                 result=res,
             )
 
-        if msg_id == MSG_ID_TELEMETRY and len(payload) == _STRUCT_TELEMETRY.size:
-            u = _STRUCT_TELEMETRY.unpack(payload)
-            return MavTelemetryMsg(
+        if msg_id == MSG_ID_FLIGHT_PLAN_STATUS and len(payload) == _STRUCT_FLIGHT_PLAN_STATUS.size:
+            u = _STRUCT_FLIGHT_PLAN_STATUS.unpack(payload)
+            return MavFlightPlanStatusMsg(
                 sim_time=u[0],
-                pos=u[1:4],
-                euler=u[4:7],
-                quat=u[7:11],
-                lin_vel=u[11:14],
-                ang_vel=u[14:17],
-                rotor_speeds=u[17:21],
-                current_wp=u[21],
-                plan_id=_decode_str(u[22]),
-                uav_state=u[23],
+                fp_init_time=u[1],
+                fp_finish_time=u[2],
+                wp_time=u[3],
+                desired_pos=u[4:7],
+                desired_vel=u[7:10],
+                pos_error=u[10:13],
+                vel_error=u[13:16],
+                current_wp=u[16],
+                total_wps=u[17],
+                plan_id=_decode_str(u[18]),
+                wp_label=_decode_str(u[19]),
+                uav_state=u[20],
             )
 
         if msg_id == MSG_ID_OPEN_DRONE_ID_BASIC_ID and len(payload) == _STRUCT_ODID_BASIC_ID.size:
@@ -887,4 +921,3 @@ class MAVLinkV2Codec:
             )
 
         return None
-

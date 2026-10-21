@@ -10,6 +10,7 @@ from .dialect import (
     MAVLinkV2Codec,
     MavFlightPlanAckMsg,
     MavFlightPlanHeaderMsg,
+    MavFlightPlanStatusMsg,
     MavFlightPlanWaypointMsg,
     MavManualControlMsg,
     MavOdidBasicIdMsg,
@@ -78,7 +79,7 @@ class _PendingFlightPlan:
 class UAVMavlinkEndpoint:
     """
     Endpoint MAVLink v2 sobre UDP para un único dron simulado.
-    Escucha en `rx_port` (p. ej. 14550 + idx) y envía telemetría/ACKs al último
+    Escucha en `rx_port` (p. ej. 15000 + idx) y envía telemetría/ACKs al último
     remitente conocido o a `(tx_host, tx_port)`.
     """
 
@@ -87,9 +88,9 @@ class UAVMavlinkEndpoint:
         uav_index: int,
         uav_id: str,
         rx_host: str = "0.0.0.0",
-        rx_port: int = 14550,
+        rx_port: int = 15000,
         tx_host: str = "127.0.0.1",
-        tx_port: int = 14650,
+        tx_port: int = 16000,
         identity: Optional[Any] = None,
     ):
         self.uav_index = uav_index
@@ -160,11 +161,6 @@ class UAVMavlinkEndpoint:
                 break
 
             self.last_cmd_addr = addr
-
-            # Si es un ping de sincronización o suscripción de monitor (p. ej. scripts/telemetry_monitor)
-            if data.strip().upper() == b"PING":
-                self.telemetry_destinations.add(addr)
-                continue
 
             for msg in self.codec.parse_bytes(data):
                 if isinstance(msg, MavFlightPlanHeaderMsg):
@@ -256,6 +252,16 @@ class UAVMavlinkEndpoint:
         ang_vel: np.ndarray,
         rotor_speeds: np.ndarray,
         georeference=None,
+        total_wps: int = 0,
+        wp_label: str = "",
+        fp_init_time: float = 0.0,
+        fp_finish_time: float = 0.0,
+        wp_time: float = 0.0,
+        desired_pos: Optional[np.ndarray] = None,
+        desired_vel: Optional[np.ndarray] = None,
+        pos_error: Optional[np.ndarray] = None,
+        vel_error: Optional[np.ndarray] = None,
+        time_reference: Optional[Any] = None,
     ) -> None:
         if self.sock is None:
             return
@@ -314,8 +320,11 @@ class UAVMavlinkEndpoint:
         else:
             odid_status = int(MavOdidStatus.AIRBORNE)
 
-        # Timestamp: segundos transcurridos tras la hora UTC actual
-        odid_timestamp = float(time.time() % 3600.0)
+        # Timestamp: segundos transcurridos tras la hora UTC actual (ASTM F3411)
+        if time_reference is not None:
+            odid_timestamp = float(time_reference.get_odid_timestamp(sim_time))
+        else:
+            odid_timestamp = float(time.time() % 3600.0)
         id_bytes = _encode_str(self.uav_id, 20)
 
         # ------------------------------------------------------------------
@@ -379,24 +388,83 @@ class UAVMavlinkEndpoint:
             )
             frames_to_send.extend(frame_op)
 
-        # Trama 4: OPEN_DRONE_ID_SELF_ID (ID 12903) - Descripción de propósito de vuelo
-        self_desc = getattr(self.identity, "self_id_desc", "") if self.identity else ""
-        if self_desc:
-            frame_self = self.codec.pack_odid_self_id(
-                MavOdidSelfIdMsg(
-                    target_system=0,
-                    target_component=0,
-                    id_or_mac=id_bytes,
-                    description_type=0,
-                    description=self_desc,
-                )
+        # Trama 4: OPEN_DRONE_ID_SELF_ID (ID 12903) - Descripción dinámica del propósito de vuelo / operación
+        # Se desacopla de los atributos físicos del dron: refleja la misión activa (plan_id) o el estado de vuelo
+        self_desc_fallback = getattr(self.identity, "self_id_desc", "") if self.identity else ""
+        if uav_state == int(NavSimUAVState.DEAD):
+            desc_type = 1  # 1 = EMERGENCY
+            self_desc = "EMERGENCY / FAILURE"
+        elif uav_state == int(NavSimUAVState.BUSY) and plan_id:
+            desc_type = 0  # 0 = TEXT
+            clean_plan = str(plan_id).strip()
+            self_desc = f"Mision: {clean_plan}" if len(clean_plan) <= 15 else clean_plan
+        elif uav_state == int(NavSimUAVState.MANUAL):
+            desc_type = 0
+            self_desc = "Control Manual"
+        else:
+            desc_type = 0
+            # Si no se define en USD, en reposo se emite una cadena vacía ""
+            self_desc = self_desc_fallback or ""
+
+        self_desc = str(self_desc)[:23]
+        frame_self = self.codec.pack_odid_self_id(
+            MavOdidSelfIdMsg(
+                target_system=0,
+                target_component=0,
+                id_or_mac=id_bytes,
+                description_type=desc_type,
+                description=self_desc,
             )
-            frames_to_send.extend(frame_self)
+        )
+        frames_to_send.extend(frame_self)
+
+        # Trama 5: NAVSIM_FLIGHT_PLAN_STATUS (ID 12003) - Progreso y seguimiento de ruta 4D (Polinomio de Taylor)
+        t_init_clean = float(fp_init_time) if math.isfinite(float(fp_init_time)) else 0.0
+        t_fin_clean = float(fp_finish_time) if math.isfinite(float(fp_finish_time)) else 0.0
+        t_wp_clean = float(wp_time) if math.isfinite(float(wp_time)) else 0.0
+        d_pos_tuple = (
+            (float(desired_pos[0]), float(desired_pos[1]), float(desired_pos[2]))
+            if desired_pos is not None
+            else (0.0, 0.0, 0.0)
+        )
+        d_vel_tuple = (
+            (float(desired_vel[0]), float(desired_vel[1]), float(desired_vel[2]))
+            if desired_vel is not None
+            else (0.0, 0.0, 0.0)
+        )
+        e_pos_tuple = (
+            (float(pos_error[0]), float(pos_error[1]), float(pos_error[2]))
+            if pos_error is not None
+            else (0.0, 0.0, 0.0)
+        )
+        e_vel_tuple = (
+            (float(vel_error[0]), float(vel_error[1]), float(vel_error[2]))
+            if vel_error is not None
+            else (0.0, 0.0, 0.0)
+        )
+
+        frame_fp_status = self.codec.pack_flight_plan_status(
+            MavFlightPlanStatusMsg(
+                sim_time=float(sim_time),
+                uav_state=int(uav_state),
+                plan_id=str(plan_id),
+                current_wp=int(current_wp),
+                total_wps=int(total_wps),
+                wp_label=str(wp_label),
+                fp_init_time=t_init_clean,
+                fp_finish_time=t_fin_clean,
+                wp_time=t_wp_clean,
+                desired_pos=d_pos_tuple,
+                desired_vel=d_vel_tuple,
+                pos_error=e_pos_tuple,
+                vel_error=e_vel_tuple,
+            )
+        )
+        frames_to_send.extend(frame_fp_status)
 
         raw_bytes = bytes(frames_to_send)
         for dest in self.telemetry_destinations:
             try:
-                # Enviamos el datagrama UDP conteniendo ÚNICAMENTE tramas estándar ASTM F3411 / EUROCAE ED-282
                 self.sock.sendto(raw_bytes, dest)
             except OSError:
                 pass
@@ -412,18 +480,20 @@ class FleetMavlinkManager:
     def __init__(
         self,
         uav_ids: List[str],
-        base_rx_port: int = 14550,
-        base_tx_port: int = 14650,
-        telemetry_rate_hz: float = 20.0,
+        base_rx_port: int = 15000,
+        base_tx_port: int = 16000,
+        telemetry_rate_hz: float = 1.0,
         georeference=None,
         identities: Optional[List[Any]] = None,
+        time_reference=None,
     ):
         self.logger = logging.getLogger("NavSim.MAVLink")
         self.uav_ids = list(uav_ids)
         self.identities = list(identities) if identities else []
         self.base_rx_port = base_rx_port
         self.base_tx_port = base_tx_port
-        self.telemetry_period = 1.0 / max(telemetry_rate_hz, 0.1)
+        self.telemetry_rate_hz = max(0.1, float(telemetry_rate_hz))
+        self.telemetry_period = 1.0 / self.telemetry_rate_hz
         if georeference is None:
             try:
                 from extensions.navsim.navsim_python.georeference import WGS84Georeference
@@ -431,6 +501,13 @@ class FleetMavlinkManager:
             except Exception:
                 georeference = None
         self.georeference = georeference
+        if time_reference is None:
+            try:
+                from extensions.navsim.navsim_python.time_reference import NavSimTimeReference
+                time_reference = NavSimTimeReference()
+            except Exception:
+                time_reference = None
+        self.time_reference = time_reference
         self._last_telemetry_time: float = -1.0
 
         self.endpoints: List[UAVMavlinkEndpoint] = [
@@ -444,21 +521,32 @@ class FleetMavlinkManager:
             for i, uid in enumerate(self.uav_ids)
         ]
 
+    def set_telemetry_rate(self, rate_hz: float) -> None:
+        """Actualiza dinámicamente la tasa de emisión de telemetría en Hz."""
+        self.telemetry_rate_hz = max(0.1, float(rate_hz))
+        self.telemetry_period = 1.0 / self.telemetry_rate_hz
+
     def set_georeference(self, georeference) -> None:
         """Actualiza la referencia geodésica WGS-84 en tiempo real."""
         self.georeference = georeference
 
+    def set_time_reference(self, time_reference) -> None:
+        """Actualiza la referencia temporal UTC en tiempo real."""
+        self.time_reference = time_reference
+
     def start(self) -> None:
-        for ep in self.endpoints:
+        endpoints = getattr(self, "endpoints", None) or []
+        for ep in endpoints:
             ep.open()
-        if self.endpoints:
+        if endpoints:
             self.logger.info(
-                f"MAVLink UDP activo para {len(self.endpoints)} UAVs "
-                f"(puertos RX {self.endpoints[0].rx_port}..{self.endpoints[-1].rx_port})"
+                f"MAVLink UDP activo para {len(endpoints)} UAVs "
+                f"(puertos RX {endpoints[0].rx_port}..{endpoints[-1].rx_port})"
             )
 
     def stop(self) -> None:
-        for ep in self.endpoints:
+        endpoints = getattr(self, "endpoints", None) or []
+        for ep in endpoints:
             ep.send_stop_notification()
             ep.close()
         self._last_telemetry_time = -1.0
@@ -501,6 +589,15 @@ class FleetMavlinkManager:
         world_lin_vels: np.ndarray,
         local_ang_vels: np.ndarray,
         rotors_vel: np.ndarray,
+        total_wps: Optional[np.ndarray] = None,
+        wp_labels: Optional[List[str]] = None,
+        fp_init_times: Optional[np.ndarray] = None,
+        fp_finish_times: Optional[np.ndarray] = None,
+        wp_times: Optional[np.ndarray] = None,
+        desired_positions: Optional[np.ndarray] = None,
+        desired_velocities: Optional[np.ndarray] = None,
+        pos_errors: Optional[np.ndarray] = None,
+        vel_errors: Optional[np.ndarray] = None,
     ) -> None:
         last_time = getattr(self, "_last_telemetry_time", -1.0)
         if (
@@ -523,5 +620,14 @@ class FleetMavlinkManager:
                 ang_vel=local_ang_vels[idx],
                 rotor_speeds=rotors_vel[idx],
                 georeference=self.georeference,
+                total_wps=int(total_wps[idx]) if total_wps is not None else 0,
+                wp_label=str(wp_labels[idx]) if wp_labels is not None else "",
+                fp_init_time=float(fp_init_times[idx]) if fp_init_times is not None else 0.0,
+                fp_finish_time=float(fp_finish_times[idx]) if fp_finish_times is not None else 0.0,
+                wp_time=float(wp_times[idx]) if wp_times is not None else 0.0,
+                desired_pos=desired_positions[idx] if desired_positions is not None else None,
+                desired_vel=desired_velocities[idx] if desired_velocities is not None else None,
+                pos_error=pos_errors[idx] if pos_errors is not None else None,
+                vel_error=vel_errors[idx] if vel_errors is not None else None,
+                time_reference=self.time_reference,
             )
-

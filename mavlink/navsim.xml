@@ -74,19 +74,22 @@
       <field type="uint8_t" name="result" enum="NAVSIM_FP_ACK_RESULT">Código de resultado.</field>
     </message>
 
-    <!-- Telemetría de retorno del UAV simulado -->
-    <message id="12003" name="NAVSIM_TELEMETRY">
-      <description>Telemetría completa de estado, cinemática y rotores enviada por cada UAV simulado.</description>
+    <!-- Telemetría de progreso y seguimiento de ruta 4D (Polinomio de Taylor de orden 5) -->
+    <message id="12003" name="NAVSIM_FLIGHT_PLAN_STATUS">
+      <description>Telemetría de estado de ejecución del FlightPlan 4D, waypoint activo, ventana temporal y error de seguimiento respecto al polinomio de Taylor (117 bytes).</description>
       <field type="float" name="sim_time" units="s">Tiempo actual de simulación en segundos.</field>
-      <field type="uint8_t" name="uav_state" enum="NAVSIM_UAV_STATE">Estado operativo del UAV (IDLE=0, BUSY=1, DEAD=2).</field>
-      <field type="char[32]" name="plan_id">Identificador del FlightPlan activo (vacío si está en IDLE).</field>
-      <field type="int16_t" name="current_wp">Índice del waypoint actualmente en ejecución (-1 si IDLE).</field>
-      <field type="float[3]" name="pos" units="m">Posición en coordenadas de mundo [x, y, z].</field>
-      <field type="float[3]" name="euler" units="rad">Ángulos de Euler [roll, pitch, yaw].</field>
-      <field type="float[4]" name="quat">Cuaternión de orientación [w, x, y, z].</field>
-      <field type="float[3]" name="lin_vel" units="m/s">Velocidad lineal en coordenadas de mundo [vx, vy, vz].</field>
-      <field type="float[3]" name="ang_vel" units="rad/s">Velocidad angular en ejes cuerpo [wx, wy, wz].</field>
-      <field type="float[4]" name="rotor_speeds" units="rad/s">Velocidades angulares de los 4 rotores [w_NE, w_NW, w_SE, w_SW].</field>
+      <field type="float" name="fp_init_time" units="s">Instante de inicio del FlightPlan activo (0.0 si no hay plan).</field>
+      <field type="float" name="fp_finish_time" units="s">Instante de finalización del FlightPlan activo (0.0 si no hay plan).</field>
+      <field type="float" name="wp_time" units="s">Instante de referencia t_k del tramo polinómico activo (0.0 si no hay plan).</field>
+      <field type="float[3]" name="desired_pos" units="m">Posición 3D deseada evaluada por el polinomio de Taylor en sim_time [x, y, z].</field>
+      <field type="float[3]" name="desired_vel" units="m/s">Velocidad 3D deseada evaluada por el polinomio de Taylor en sim_time [vx, vy, vz].</field>
+      <field type="float[3]" name="pos_error" units="m">Error instantáneo de posición respecto al polinomio 4D [ex, ey, ez].</field>
+      <field type="float[3]" name="vel_error" units="m/s">Error instantáneo de velocidad respecto al polinomio 4D [evx, evy, evz].</field>
+      <field type="int16_t" name="current_wp">Índice del waypoint actualmente en ejecución (0..total_wps-1, o -1 si IDLE/MANUAL).</field>
+      <field type="uint16_t" name="total_wps">Número total de waypoints del FlightPlan activo (0 si no hay plan).</field>
+      <field type="char[32]" name="plan_id">Identificador del FlightPlan activo (vacío si no hay plan).</field>
+      <field type="char[16]" name="wp_label">Etiqueta identificativa del waypoint actual (Waypoint.label).</field>
+      <field type="uint8_t" name="uav_state" enum="NAVSIM_UAV_STATE">Estado operativo del UAV (IDLE=0, BUSY=1, DEAD=2, MANUAL=3).</field>
     </message>
 
     <!-- Comando de control manual de vuelo vía joystick o interfaz -->
