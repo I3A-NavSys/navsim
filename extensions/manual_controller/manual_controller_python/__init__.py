@@ -8,10 +8,21 @@ project_root_path = path.abspath(path.join(current_file_path, "../../.."))
 if project_root_path not in sys.path:
     sys.path.insert(0, project_root_path)
 
-# En Isaac Sim, si mavlink ya estaba cargado previamente en memoria antes de añadir
-# MavManualControlMsg, los módulos en sys.modules pueden estar desactualizados.
-# Forzamos recarga limpia para garantizar que todas las clases existan.
-for mod_name in ("mavlink.dialect", "mavlink.udp_manager", "mavlink"):
+# En Isaac Sim, forzamos recarga limpia de submódulos para que cualquier cambio
+# en código se refleje inmediatamente al activar/desactivar la extensión en Kit.
+for mod_name in (
+    "mavlink.dialect",
+    "mavlink.udp_manager",
+    "mavlink",
+    "manual_controller_python.controller_logic",
+    "manual_controller_python.keyboard_input",
+    "manual_controller_python.joystick_input",
+    "manual_controller_python.extension",
+    "extensions.manual_controller.manual_controller_python.controller_logic",
+    "extensions.manual_controller.manual_controller_python.keyboard_input",
+    "extensions.manual_controller.manual_controller_python.joystick_input",
+    "extensions.manual_controller.manual_controller_python.extension",
+):
     if mod_name in sys.modules:
         try:
             importlib.reload(sys.modules[mod_name])
@@ -19,4 +30,3 @@ for mod_name in ("mavlink.dialect", "mavlink.udp_manager", "mavlink"):
             pass
 
 from .extension import *
-

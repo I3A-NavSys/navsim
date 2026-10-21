@@ -8,7 +8,7 @@ class KeyboardInput:
         self.keyboard = self.app_window.get_keyboard() if self.app_window else None
         self.input = carb.input.acquire_input_interface()
         self.keyboard_sub_id = None
-        self.inputs = [0.0] * 9
+        self.inputs = [0.0] * 10
         self.acc = 0.05
 
     def start(self):
@@ -18,7 +18,7 @@ class KeyboardInput:
             self.keyboard_sub_id = self.input.subscribe_to_keyboard_events(
                 self.keyboard, self.on_keyboard_input
             )
-        self.inputs = [0.0] * 9
+        self.inputs = [0.0] * 10
         self.acc = 0.05
 
     def stop(self):
@@ -28,7 +28,7 @@ class KeyboardInput:
             except Exception:
                 pass
             self.keyboard_sub_id = None
-        self.inputs = [0.0] * 9
+        self.inputs = [0.0] * 10
 
     def on_keyboard_input(self, e: carb.input.KeyboardEvent):
         # Forward (W -> +X vel)
@@ -204,3 +204,10 @@ class KeyboardInput:
                 self.inputs[8] = -1
             elif e.type == KeyboardEventType.KEY_RELEASE:
                 self.inputs[8] = 0
+
+        # Reset camera (R o Numpad 5)
+        if e.input in (carb.input.KeyboardInput.R, carb.input.KeyboardInput.NUMPAD_5):
+            if e.type == KeyboardEventType.KEY_PRESS:
+                self.inputs[9] = 1.0
+            elif e.type == KeyboardEventType.KEY_RELEASE:
+                self.inputs[9] = 0.0

@@ -5,9 +5,9 @@ order = 10
 [package]
 version = "2.0.0"
 category = "Simulation"
-title = "NavSim - Manual Controller"
+title = "NavSim - Joystick"
 description = "Controlador manual para UAVs mediante joystick y MAVLink v2 en Isaac Sim"
-authors = ["Rafael Casado", "Víctor Blázquez", "Iker Nebot", "Aurelio Bermúdez"]
+authors = ["Unidad de Transferencia de Conocimiento en Movilidad Aérea Avanzada Mediante Aeronaves No Tripuladas (UCLM-UAS)"]
 repository = ""
 keywords = ["controller", "UAV", "Drone", "joystick", "mavlink"]
 changelog = "docs/CHANGELOG.md"
