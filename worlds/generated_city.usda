@@ -1074,7 +1074,6 @@ def Xform "City"
     }
 
     def "UAM_aerotaxi" (
-        delete payload = @../../fleet/UAM_aerotaxi/UAM_aerotaxi.usd@
         add payload = @..\fleet\UAM_aerotaxi\1_rb_model.usd@
     )
     {
