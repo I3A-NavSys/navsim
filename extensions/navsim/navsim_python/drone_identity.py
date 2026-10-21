@@ -12,6 +12,7 @@ según la normativa internacional ASTM F3411-22a y el estándar europeo EUROCAE 
 Incluye validadores en tiempo real para:
   - Detección inmediata de conflictos por duplicidad de identificadores en el espacio aéreo.
   - Validación de campos obligatorios faltantes o erróneos en cada Prim de UAV del escenario USD.
+  - Reconocimiento dinámico de aeronaves por atributos NavSim, sin restricción sobre el nombre del Prim.
 """
 
 from dataclasses import dataclass, field
@@ -186,18 +187,83 @@ class FleetValidationReport:
 
 
 # ==============================================================================
-# Funciones de Inspección y Validación
+# Funciones de Inspección, Detección y Validación
 # ==============================================================================
+def is_navsim_drone_prim(prim: Any) -> bool:
+    """
+    Determina si un Prim de USD representa una aeronave gestionada por NavSim.
+    El reconocimiento se basa en la presencia de atributos del espacio de nombres 'NavSim:',
+    sin imponer ninguna restricción sobre el nombre del Prim en el árbol de la escena.
+    """
+    if not prim or not prim.IsValid() or not prim.IsActive():
+        return False
+
+    # Descartar luces, cámaras, escenas físicas o planos
+    type_name = prim.GetTypeName()
+    if type_name in {"DomeLight", "DistantLight", "SphereLight", "RectLight", "Camera", "PhysicsScene", "Plane"}:
+        return False
+
+    # Recoger nombres de atributos con prefijo NavSim:
+    nav_attrs = {attr.GetName() for attr in prim.GetAttributes() if attr.GetName().startswith("NavSim:")}
+
+    # Descartar prims de vertipuertos o pads a menos que estén explícitamente marcados con ua_type
+    path_str = prim.GetPath().pathString
+    if ("Vertiport" in path_str or "Pad" in path_str) and "NavSim:ua_type" not in nav_attrs:
+        return False
+
+    # Atributos determinantes de aeronave (identidad, categoría, modelo, operador o flag uav)
+    drone_markers = {"NavSim:ua_type", "NavSim:model", "NavSim:uav_model", "NavSim:operator_id", "NavSim:is_uav", "NavSim:id"}
+    if nav_attrs.intersection(drone_markers):
+        return True
+
+    # Fallback para prims de drones históricos con prefijos conocidos
+    prim_name = prim.GetName()
+    if prim_name.startswith(("UAV_", "uav_", "dron_", "Dron_", "drone_", "Drone_")):
+        return True
+
+    return False
+
+
+def find_navsim_drone_prims(stage: Any) -> List[Any]:
+    """
+    Recorre el escenario USD y descubre todos los Prims de dron activos basándose
+    en sus propiedades NavSim, sin importar su nombre o ubicación en la jerarquía.
+    Evita descender a los hijos (rotores, fuselaje, etc.) de un dron ya identificado.
+    """
+    if not stage:
+        return []
+
+    drones = []
+
+    def _traverse(prim):
+        if is_navsim_drone_prim(prim):
+            drones.append(prim)
+            return  # Dron raíz encontrado; no descender a sus submallas/rotores
+        for child in prim.GetChildren():
+            _traverse(child)
+
+    pseudo_root = stage.GetPseudoRoot()
+    if pseudo_root:
+        for root in pseudo_root.GetChildren():
+            _traverse(root)
+
+    # Ordenar deterministamente por ruta USD
+    drones.sort(key=lambda p: str(p.GetPath()))
+    return drones
+
+
 def inspect_prim_identity(prim: Any, fleet_catalog: Optional[Any] = None) -> UAVStandardIdentity:
     """
-    Extrae y valida todos los atributos ASTM F3411 de un Prim USD específico:
-      - `NavSim:id`: Identificador UAS oficial (UAS ID).
-      - `NavSim:id_type`: Tipo de identificador (1=Serial, 2=CAA...).
-      - `NavSim:ua_type`: Categoría de aeronave (1=Ala fija, 2=Multirrotor...).
-      - `NavSim:operator_id`: Registro oficial de operador.
-      - `NavSim:operator_id_type`: Tipo de operador.
-      - `NavSim:self_id_desc`: Descripción de misión.
-      - `NavSim:model`: Modelo dinámico en catálogo fleet/.
+    Extrae y valida los atributos NavSim / ASTM F3411 de un Prim USD específico:
+      1. `NavSim:id` (Obligatorio): Identificador UAS oficial único (`uas_id`).
+      2. `NavSim:id_type` (Obligatorio): Tipo de identificador (1=Serial, 2=CAA...).
+      3. `NavSim:ua_type` (Obligatorio): Categoría de aeronave (1=Ala fija, 2=Multirrotor...).
+      4. `NavSim:operator_id` (Obligatorio): Registro oficial de operador civil.
+      5. `NavSim:operator_id_type` (Opcional, defecto=0): Tipo de registro de operador (0=CAA).
+      6. `NavSim:self_id_desc` (Opcional, defecto=""): Rol o texto en reposo. En telemetría emite "" si no se define.
+
+    El modelo físico y dinámico no requiere atributo USD; se detecta automáticamente
+    mediante la referencia o payload de USD que vincula el asset en `fleet/`.
     """
     prim_path = str(prim.GetPath())
     prim_name = str(prim.GetName())
@@ -273,20 +339,44 @@ def inspect_prim_identity(prim: Any, fleet_catalog: Optional[Any] = None) -> UAV
     except (ValueError, TypeError):
         operator_id_type = 0
 
-    # 6. Descripción de Misión (NavSim:self_id_desc)
+    # 6. Rol / Descripción por Defecto en Reposo (NavSim:self_id_desc - OPCIONAL)
+    # El propósito del vuelo en operación activa se deriva dinámicamente de la misión (plan_id / modo de vuelo)
     desc_attr = prim.GetAttribute("NavSim:self_id_desc")
     if not desc_attr or not desc_attr.IsValid():
         desc_attr = prim.GetAttribute("NavSim:description")
     raw_desc = desc_attr.Get() if (desc_attr and desc_attr.IsValid()) else ""
     self_id_desc = str(raw_desc).strip()[:23] if raw_desc else ""
 
-    # 7. Modelo Dinámico (NavSim:model)
+    # 7. Modelo Dinámico (Deducido automáticamente de la referencia o payload original en fleet/)
     model_candidate = None
-    for attr_name in ("NavSim:model", "NavSim:uav_model", "NavSim:type"):
-        attr = prim.GetAttribute(attr_name)
-        if attr and attr.IsValid() and attr.Get():
-            model_candidate = str(attr.Get()).strip()
-            break
+    try:
+        pay = prim.GetMetadata("payload")
+        if pay:
+            for item in list(getattr(pay, "addedItems", [])) + list(getattr(pay, "prependedItems", [])) + list(getattr(pay, "explicitItems", [])):
+                if hasattr(item, "assetPath") and item.assetPath:
+                    model_candidate = str(item.assetPath)
+                    break
+    except Exception:
+        pass
+
+    if not model_candidate:
+        try:
+            ref = prim.GetMetadata("references")
+            if ref:
+                for item in list(getattr(ref, "addedItems", [])) + list(getattr(ref, "prependedItems", [])) + list(getattr(ref, "explicitItems", [])):
+                    if hasattr(item, "assetPath") and item.assetPath:
+                        model_candidate = str(item.assetPath)
+                        break
+        except Exception:
+            pass
+
+    # Fallback a compatibilidad previa con atributos o ruta del Prim
+    if not model_candidate:
+        for attr_name in ("NavSim:model", "NavSim:uav_model", "NavSim:type"):
+            attr = prim.GetAttribute(attr_name)
+            if attr and attr.IsValid() and attr.Get():
+                model_candidate = str(attr.Get()).strip()
+                break
     if not model_candidate:
         model_candidate = prim_path
 

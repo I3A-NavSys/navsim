@@ -23,24 +23,28 @@ if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
 from .drone_config import FleetCatalog
-from .drone_identity import FleetValidationReport, inspect_prim_identity, validate_fleet_prims
+from .drone_identity import (
+    FleetValidationReport,
+    find_navsim_drone_prims,
+    inspect_prim_identity,
+    validate_fleet_prims,
+)
 from .georeference import WGS84Georeference
+from .time_reference import NavSimTimeReference
 from .uav_control import UAVControl
 from .ui_builder import UIBuilder
 
 
-UAV_PRIM_PATTERNS = [
-    "/World/*/*/*/UAV_*",
-    "/World/*/*/UAV_*",
-    "/World/*/UAV_*",
-    "/World/UAV_*",
-]
+_ACTIVE_NAVSIM_INSTANCE: Optional["NavSim"] = None
 
 
-_ACTIVE_NAVSIM_INSTANCE: Optional[NavSim] = None
+def get_active_navsim() -> Optional["NavSim"]:
+    """Retorna la instancia global activa de la extensión NavSim."""
+    global _ACTIVE_NAVSIM_INSTANCE
+    return _ACTIVE_NAVSIM_INSTANCE
 
 
-def _deduplicate_and_patch_navsim_instances(current: Optional[NavSim] = None) -> None:
+def _deduplicate_and_patch_navsim_instances(current: Optional["NavSim"] = None) -> None:
     """Mantiene la referencia activa a la instancia NavSim actual."""
     global _ACTIVE_NAVSIM_INSTANCE
     if current is not None:
@@ -51,12 +55,13 @@ class NavSim(omni.ext.IExt):
     """
     Extensión única de simulación NavSim en Isaac Sim.
     Responsabilidades exclusivas:
-      1. Descubrir los UAVs en la escena USD y validar su identidad y unicidad según
-         el estándar internacional ASTM F3411 / EUROCAE ED-282 (Open Remote ID).
+      1. Descubrir los UAVs en la escena USD reconociéndolos dinámicamente por la presencia
+         de propiedades 'NavSim:' (sin imponer restricciones en el nombre ni ruta del Prim)
+         y validar su identidad y unicidad según el estándar ASTM F3411 / EUROCAE ED-282.
       2. Configurar la dinámica de cada aeronave a partir de `fleet/<modelo>/dynamics.yaml`.
       3. Ejecutar el bucle vectorizado de control lineal y física de cuerpo rígido (`RigidPrim`).
-      4. Recibir planes de vuelo polinómicos y emitir telemetría mediante MAVLink v2 UDP
-         (un puerto UDP por dron: `14550 + idx`).
+      4. Recibir planes de vuelo polinómicos 4D y emitir telemetría mediante MAVLink v2 UDP
+         (un puerto UDP por dron: `15000 + idx`).
     """
 
     # Atributos por defecto a nivel de clase para garantizar que cualquier acceso
@@ -69,11 +74,21 @@ class NavSim(omni.ext.IExt):
     is_simulation_running: bool = False
     fleet_catalog: Optional[FleetCatalog] = None
     georeference: Optional[WGS84Georeference] = None
+    time_reference: Optional[NavSimTimeReference] = None
     timeline: Optional[Any] = None
     logger: Optional[logging.Logger] = None
-    base_rx_port: int = 14550
-    base_tx_port: int = 14650
-    telemetry_rate_hz: float = 20.0
+    base_rx_port: int = 15000
+    base_tx_port: int = 16000
+    telemetry_rate_hz: float = 1.0
+    _menu_items: Optional[Any] = None
+
+    def set_telemetry_rate(self, rate_hz: float) -> None:
+        """Configura la tasa de telemetría de la simulación en Hz."""
+        self.telemetry_rate_hz = max(0.1, min(100.0, float(rate_hz)))
+        if getattr(self, "mavlink_manager", None) is not None:
+            self.mavlink_manager.set_telemetry_rate(self.telemetry_rate_hz)
+        if getattr(self, "logger", None) is not None:
+            self.logger.info(f"Frecuencia de telemetría fijada a {self.telemetry_rate_hz:.1f} Hz")
 
     def _ensure_initialized(self) -> None:
         """Garantiza la inicialización segura de componentes de la extensión."""
@@ -83,8 +98,10 @@ class NavSim(omni.ext.IExt):
             "mavlink.udp_manager",
             "extensions.navsim.navsim_python.drone_identity",
             "extensions.navsim.navsim_python.georeference",
+            "extensions.navsim.navsim_python.time_reference",
             "navsim_python.drone_identity",
             "navsim_python.georeference",
+            "navsim_python.time_reference",
         ):
             if mod_name in sys.modules:
                 try:
@@ -100,17 +117,19 @@ class NavSim(omni.ext.IExt):
         if not hasattr(self, "latest_validation_report"):
             self.latest_validation_report = None
         if not hasattr(self, "base_rx_port"):
-            self.base_rx_port = 14550
+            self.base_rx_port = 15000
         if not hasattr(self, "base_tx_port"):
-            self.base_tx_port = 14650
+            self.base_tx_port = 16000
         if not hasattr(self, "telemetry_rate_hz"):
-            self.telemetry_rate_hz = 20.0
+            self.telemetry_rate_hz = 1.0
         if getattr(self, "timeline", None) is None:
             self.timeline = omni.timeline.get_timeline_interface()
         if getattr(self, "fleet_catalog", None) is None:
             self.fleet_catalog = FleetCatalog()
         if getattr(self, "georeference", None) is None:
             self.georeference = WGS84Georeference()
+        if getattr(self, "time_reference", None) is None:
+            self.time_reference = NavSimTimeReference()
         if getattr(self, "ui_builder", None) is None:
             try:
                 self.ui_builder = UIBuilder(self)
@@ -133,9 +152,9 @@ class NavSim(omni.ext.IExt):
         self.uav_control = None
         self.mavlink_manager = None
 
-        self.base_rx_port = 14550
-        self.base_tx_port = 14650
-        self.telemetry_rate_hz = 20.0
+        self.base_rx_port = 15000
+        self.base_tx_port = 16000
+        self.telemetry_rate_hz = 1.0
 
         # Suscripciones al Timeline de Isaac Sim
         self.timeline = omni.timeline.get_timeline_interface()
@@ -174,6 +193,16 @@ class NavSim(omni.ext.IExt):
             if self.logger:
                 self.logger.warning(f"Error detectando georreferenciación en startup: {e}")
 
+        self._last_time_ui_update = 0.0
+
+        # Cronorreferenciación UTC (origen temporal sim_time = 0.0)
+        self.time_reference = NavSimTimeReference()
+        try:
+            self.detect_and_apply_stage_time_reference()
+        except Exception as e:
+            if self.logger:
+                self.logger.warning(f"Error detectando cronorreferenciación en startup: {e}")
+
         # UI de monitorización y georreferenciación
         try:
             self.ui_builder = UIBuilder(self)
@@ -190,11 +219,26 @@ class NavSim(omni.ext.IExt):
             if self.logger:
                 self.logger.warning(f"Error validando flota en startup: {e}")
 
+        # Registro en el menú superior de Isaac Sim (Window > NavSim > Consola)
+        self._menu_items = None
+        try:
+            self._register_menu_item()
+        except Exception as e:
+            if getattr(self, "logger", None):
+                self.logger.warning(f"No se pudo registrar menú de Consola: {e}")
+
     def on_shutdown(self) -> None:
         global _ACTIVE_NAVSIM_INSTANCE
         if _ACTIVE_NAVSIM_INSTANCE is self:
             _ACTIVE_NAVSIM_INSTANCE = None
-        self._teardown_simulation()
+        try:
+            self._unregister_menu_item()
+        except Exception:
+            pass
+        try:
+            self._teardown_simulation()
+        except Exception:
+            pass
         if hasattr(self, "ui_builder") and self.ui_builder is not None:
             try:
                 self.ui_builder.cleanup()
@@ -214,6 +258,130 @@ class NavSim(omni.ext.IExt):
         self.usd_context = None
         self.timeline = None
 
+    def _register_menu_item(self) -> None:
+        """Registra la opción 'Consola' en el menú superior de Isaac Sim: Window > NavSim > Consola."""
+        try:
+            import omni.kit.menu.utils
+
+            def on_toggle_console():
+                self.toggle_console_window()
+
+            def is_console_visible():
+                return bool(self.ui_builder and self.ui_builder.window and self.ui_builder.window.visible)
+
+            sub_items = [
+                omni.kit.menu.utils.MenuItemDescription(
+                    name="Consola",
+                    ticked_fn=is_console_visible,
+                    onclick_fn=on_toggle_console,
+                )
+            ]
+            self._menu_items = [
+                omni.kit.menu.utils.MenuItemDescription(
+                    name="NavSim",
+                    sub_menu=sub_items,
+                )
+            ]
+            omni.kit.menu.utils.add_menu_items(self._menu_items, "Window")
+            try:
+                omni.kit.menu.utils.refresh_menu_items("Window")
+            except Exception:
+                pass
+        except Exception as e:
+            if getattr(self, "logger", None):
+                self.logger.warning(f"No se pudo registrar menú Window > NavSim > Consola: {e}")
+
+    def _unregister_menu_item(self) -> None:
+        """Elimina la opción de menú al desactivar la extensión."""
+        if getattr(self, "_menu_items", None) is not None:
+            try:
+                import omni.kit.menu.utils
+                omni.kit.menu.utils.remove_menu_items(self._menu_items, "Window")
+            except Exception:
+                pass
+            self._menu_items = None
+
+    def on_window_visibility_changed(self, visible: bool = False) -> None:
+        """Sincroniza el tick del menú superior de Isaac Sim cuando la visibilidad de la ventana cambia."""
+        try:
+            import omni.kit.menu.utils
+            omni.kit.menu.utils.refresh_menu_items("Window")
+        except Exception:
+            pass
+
+    def toggle_console_window(self) -> None:
+        """Alterna la visibilidad de la ventana NavSim - Consola desde el menú superior de Isaac Sim."""
+        if self.ui_builder and self.ui_builder.window:
+            new_visible = not self.ui_builder.window.visible
+            self.ui_builder.window.visible = new_visible
+            if new_visible:
+                try:
+                    self.ui_builder.window.focus()
+                except Exception:
+                    pass
+        else:
+            self.rebuild_ui()
+            if self.ui_builder and self.ui_builder.window:
+                self.ui_builder.window.visible = True
+                try:
+                    self.ui_builder.window.focus()
+                except Exception:
+                    pass
+        try:
+            import omni.kit.menu.utils
+            omni.kit.menu.utils.refresh_menu_items("Window")
+        except Exception:
+            pass
+
+    def play_or_pause_simulation(self) -> None:
+        """Alterna entre PLAY y PAUSA en la simulación."""
+        if self.timeline is None:
+            return
+        if hasattr(self.timeline, "is_playing") and self.timeline.is_playing():
+            self.timeline.pause()
+        else:
+            self.timeline.play()
+
+    def stop_simulation(self) -> None:
+        """Detiene la simulación y reinicia el tiempo al instante inicial."""
+        if self.timeline is None:
+            return
+        self.timeline.stop()
+
+    def focus_prim_in_viewport(self, prim_path: str) -> bool:
+        """Selecciona y enfoca la cámara del Viewport activo sobre el prim indicado."""
+        if not prim_path:
+            return False
+        try:
+            import omni.usd
+            usd_context = getattr(self, "usd_context", None) or omni.usd.get_context()
+            usd_context.get_selection().set_selected_prim_paths([prim_path], True)
+        except Exception as e:
+            if getattr(self, "logger", None):
+                self.logger.warning(f"Error seleccionando prim '{prim_path}': {e}")
+
+        try:
+            from omni.kit.viewport.utility import frame_viewport_prims
+            framed = frame_viewport_prims(prims=[prim_path])
+            if framed:
+                return True
+        except Exception:
+            pass
+
+        try:
+            from omni.kit.viewport.utility import frame_viewport_selection
+            return bool(frame_viewport_selection())
+        except Exception as e:
+            if getattr(self, "logger", None):
+                self.logger.warning(f"Error enfocando prim '{prim_path}' en Viewport: {e}")
+            return False
+
+    def get_uav_mode(self, uav_idx: int) -> int:
+        """Devuelve el modo actual del dron: 0=DISARMED, 1=MANUAL, 2=AUTO, 3=HOVER, 4=SYSTEM_FAILURE."""
+        if not self.is_simulation_running or self.uav_control is None:
+            return 0
+        return self.uav_control.get_uav_mode(uav_idx)
+
     def post_notification(self, message: str, is_error: bool = False, duration: int = 8) -> None:
         """Muestra una notificación en la interfaz de Omniverse Kit y registra en el log de carb."""
         if is_error:
@@ -229,7 +397,8 @@ class NavSim(omni.ext.IExt):
 
     def validate_current_fleet(self) -> FleetValidationReport:
         """
-        Inspecciona todos los Prims de UAV en el escenario actual y valida:
+        Inspecciona todos los Prims de aeronave en el escenario actual (identificados
+        dinámicamente por sus atributos NavSim) y valida:
           1. Duplicidad de identificadores UAS (conflicto crítico en el aire).
           2. Cumplimiento de atributos requeridos por ASTM F3411 / ED-282.
         Actualiza el reporte en la interfaz y emite notificaciones si corresponde.
@@ -239,17 +408,7 @@ class NavSim(omni.ext.IExt):
             self.fleet_catalog.reload()
 
         stage = omni.usd.get_context().get_stage()
-        prims = []
-        if stage is not None:
-            found_paths = set()
-            for pat in UAV_PRIM_PATTERNS:
-                for p in find_matching_prim_paths(pat):
-                    found_paths.add(p)
-
-            for p in sorted(found_paths):
-                prim = stage.GetPrimAtPath(p)
-                if prim and prim.IsValid():
-                    prims.append(prim)
+        prims = find_navsim_drone_prims(stage)
 
         report = validate_fleet_prims(prims, fleet_catalog=self.fleet_catalog)
         self.latest_validation_report = report
@@ -259,23 +418,57 @@ class NavSim(omni.ext.IExt):
         if ui is not None:
             ui.update_validation_report(report)
 
-        # Si hay conflictos críticos, emitir notificación visual inmediata
+        # Si hay conflictos críticos, emitir notificación visual inmediata y volcar a consola
         if report.has_conflicts:
             conflict_summary = " | ".join(report.conflicts)
+            carb.log_error("[NavSim] [CONFLICTO CRÍTICO ASTM F3411] Identificadores duplicados en el aire:")
+            print("[NavSim] [CONFLICTO CRÍTICO ASTM F3411] Identificadores duplicados en el aire:")
+            for c_item in report.conflicts:
+                carb.log_error(f"[NavSim]   * {c_item}")
+                print(f"[NavSim]   * {c_item}")
+
             self.post_notification(
-                f"🚨 CONFLICTO ASTM F3411: Identificador duplicado en {len(report.conflicts)} caso(s). "
+                f"[CONFLICTO] ASTM F3411: Identificador duplicado en {len(report.conflicts)} caso(s). "
                 f"Dos aeronaves no pueden emitir el mismo ID.",
                 is_error=True,
                 duration=10,
             )
             if self.logger:
                 self.logger.error(f"[NavSim ASTM F3411 CONFLICTO] {conflict_summary}")
+
         elif not report.is_valid and report.uav_count > 0:
+            invalid_drones = [ident for ident in report.identities if not ident.is_valid]
+            num_inv = len(invalid_drones)
+            summary_msg = (
+                f"[NavSim] [AVISO ASTM F3411] {num_inv} de {report.uav_count} aeronave(s) "
+                f"tienen atributos incompletos ({len(report.incomplete_errors)} faltas en total):"
+            )
+            carb.log_warn(summary_msg)
+            print(summary_msg)
+
+            for ident in invalid_drones:
+                drone_hdr = f"[NavSim] Aeronave '{ident.uas_id}' (Prim: {ident.prim_path}):"
+                carb.log_warn(drone_hdr)
+                print(drone_hdr)
+                for err in ident.errors:
+                    err_line = f"    * {err}"
+                    carb.log_warn(err_line)
+                    print(err_line)
+
+            for w in report.warnings:
+                w_line = f"[NavSim] (Aviso) {w}"
+                carb.log_warn(w_line)
+                print(w_line)
+
             self.post_notification(
-                f"⚠️ AVISO ASTM F3411: {len(report.incomplete_errors)} error(es) de atributos en drones de la flota.",
+                f"[AVISO] ASTM F3411: {len(report.incomplete_errors)} atributos faltantes en {num_inv} aeronaves. Ver Consola.",
                 is_error=False,
                 duration=6,
             )
+        elif report.is_valid and report.uav_count > 0:
+            ok_msg = f"[NavSim] Validación correcta: {report.uav_count} aeronave(s) conformes a ASTM F3411."
+            carb.log_info(ok_msg)
+            print(ok_msg)
 
         return report
 
@@ -288,7 +481,14 @@ class NavSim(omni.ext.IExt):
             if self.logger:
                 self.logger.info("Escenario USD cargado/abierto. Limpiando estado de extensión.")
             self._teardown_simulation()
+            ui = getattr(self, "ui_builder", None)
+            if ui is not None and not hasattr(ui, "_date_model"):
+                try:
+                    self.rebuild_ui()
+                except Exception:
+                    pass
             self.detect_and_apply_stage_georeference()
+            self.detect_and_apply_stage_time_reference()
             self.validate_current_fleet()
             ui = getattr(self, "ui_builder", None)
             if ui is not None:
@@ -312,6 +512,16 @@ class NavSim(omni.ext.IExt):
         try:
             current_time = self.timeline.get_current_time()
 
+            # 0. Comprobar si se ha alcanzado el instante final programado de la simulación
+            if self.time_reference and self.time_reference.has_reached_end(current_time):
+                end_str = self.time_reference.get_end_time_str()
+                carb.log_info(f"[NavSim] Instante final alcanzado ({end_str} UTC). Congelando simulación en el tiempo.")
+                if self.timeline:
+                    self.timeline.pause()
+                if self.ui_builder:
+                    self.ui_builder.update_sim_time(current_time, is_playing=False, is_paused=True)
+                return
+
             # 1. Sondear recepción no bloqueante de nuevos planes de vuelo polinómicos por MAVLink
             new_plans = self.mavlink_manager.poll_new_flight_plans()
             if new_plans:
@@ -334,7 +544,12 @@ class NavSim(omni.ext.IExt):
             # 3. Paso vectorizado de control (AUTO + MANUAL), control lineal y fuerzas en CoM
             self.uav_control.step(current_time, step_size)
 
-            # 4. Emitir telemetría MAVLink de vuelta por cada dron
+            # 4. Actualizar tiempo simulado y reloj dinámico en la consola UI (a ~10 Hz)
+            if self.ui_builder and (current_time - self._last_time_ui_update >= 0.1 or current_time < self._last_time_ui_update):
+                self._last_time_ui_update = current_time
+                self.ui_builder.update_sim_time(current_time, is_playing=True, is_paused=False)
+
+            # 5. Emitir telemetría MAVLink de vuelta por cada dron (ASTM F3411 + estado 4D Taylor)
             self.mavlink_manager.maybe_send_telemetry(
                 sim_time=current_time,
                 uav_states=self.uav_control.uav_states,
@@ -346,6 +561,15 @@ class NavSim(omni.ext.IExt):
                 world_lin_vels=self.uav_control.world_linear_vels,
                 local_ang_vels=self.uav_control.local_angular_vels,
                 rotors_vel=self.uav_control.rotors_vel,
+                total_wps=self.uav_control.fp_num_wps,
+                wp_labels=self.uav_control.current_wp_labels,
+                fp_init_times=self.uav_control.fp_init_times,
+                fp_finish_times=self.uav_control.fp_finish_times,
+                wp_times=self.uav_control.current_wp_times,
+                desired_positions=self.uav_control.desired_positions,
+                desired_velocities=self.uav_control.desired_velocities,
+                pos_errors=self.uav_control.pos_errors,
+                vel_errors=self.uav_control.vel_errors,
             )
         except Exception as e:
             carb.log_error(f"[NavSim] Error en on_physics_step: {e}")
@@ -374,10 +598,10 @@ class NavSim(omni.ext.IExt):
             report = self.validate_current_fleet()
 
             if report.uav_count == 0:
-                carb.log_warn("[NavSim] Aviso: No se encontraron Prims UAV_* en el escenario.")
+                carb.log_warn("[NavSim] Aviso: No se encontraron aeronaves con propiedades NavSim en el escenario.")
                 ui = getattr(self, "ui_builder", None)
                 if ui is not None:
-                    ui.update_status("Aviso: No se encontraron Prims UAV_* en el escenario.")
+                    ui.update_status("Aviso: No se encontraron aeronaves con propiedades NavSim en el escenario.")
                 return
 
             # 2. Bloquear simulación si existe conflicto crítico por ID duplicado en el aire
@@ -393,16 +617,17 @@ class NavSim(omni.ext.IExt):
                     ui.update_status(err_msg)
                 return
 
-            # Localizar patrones de Prims UAV existentes en el Stage actual
-            active_patterns = [
-                pat for pat in UAV_PRIM_PATTERNS if find_matching_prim_paths(pat)
-            ]
-            if not active_patterns:
-                carb.log_warn("[NavSim] No se encontraron rutas activas de UAV.")
+            # Descubrir dinámicamente todos los prims de aeronaves activas en el Stage
+            stage = omni.usd.get_context().get_stage()
+            drone_prims = find_navsim_drone_prims(stage)
+            if not drone_prims:
+                carb.log_warn("[NavSim] No se encontraron rutas activas de aeronaves.")
                 return
 
+            drone_paths = [str(p.GetPath()) for p in drone_prims]
+
             self.rigid_prim_view = RigidPrim(
-                prim_paths_expr=active_patterns,
+                prim_paths_expr=drone_paths,
                 name="NavSimRigidPrim",
             )
             self.rigid_prim_view.initialize()
@@ -429,6 +654,7 @@ class NavSim(omni.ext.IExt):
                 base_tx_port=self.base_tx_port,
                 telemetry_rate_hz=self.telemetry_rate_hz,
                 georeference=self.georeference,
+                time_reference=self.time_reference,
                 identities=uav_identities,
             )
             self.mavlink_manager.start()
@@ -444,11 +670,15 @@ class NavSim(omni.ext.IExt):
                 if len(uav_ids) == 1
                 else f"{self.base_tx_port}..{self.base_tx_port + len(uav_ids) - 1}"
             )
-            status_text = f"Simulación activa: {len(uav_ids)} UAVs | RX: {rx_str} | TX Telemetría: {tx_str}"
+            status_text = f"Simulación activa: {len(uav_ids)} aeronaves | RX: {rx_str} | TX Telemetría: {tx_str}"
             carb.log_info(f"[NavSim] {status_text}")
+            self._last_time_ui_update = 0.0
             ui = getattr(self, "ui_builder", None)
             if ui is not None:
                 ui.update_status(status_text)
+                ui.update_comms_simulation_state(True)
+                ui.update_sim_time(0.0, is_playing=True, is_paused=False)
+                ui.update_play_pause_button(is_playing=True)
         except Exception as e:
             err = f"Error crítico iniciando simulación en on_timeline_play: {e}\n{traceback.format_exc()}"
             carb.log_error(f"[NavSim] {err}")
@@ -459,7 +689,10 @@ class NavSim(omni.ext.IExt):
                 ui.update_status(f"Error al iniciar: {e}")
 
     def on_timeline_pause(self, event) -> None:
-        pass
+        curr_time = self.timeline.get_current_time() if self.timeline else 0.0
+        if getattr(self, "ui_builder", None) is not None:
+            self.ui_builder.update_sim_time(curr_time, is_playing=False, is_paused=True)
+            self.ui_builder.update_play_pause_button(is_playing=False)
 
     def on_timeline_stop(self, event) -> None:
         global _ACTIVE_NAVSIM_INSTANCE
@@ -470,9 +703,13 @@ class NavSim(omni.ext.IExt):
         self._teardown_simulation()
         self.validate_current_fleet()
         carb.log_info("[NavSim] Simulación detenida.")
+        self._last_time_ui_update = 0.0
         ui = getattr(self, "ui_builder", None)
         if ui is not None:
             ui.update_status("Estado: Simulación detenida.")
+            ui.update_comms_simulation_state(False)
+            ui.update_sim_time(0.0, is_playing=False, is_paused=False)
+            ui.update_play_pause_button(is_playing=False)
 
     # ==========================================================================
     # Utilidades Internas
@@ -515,10 +752,19 @@ class NavSim(omni.ext.IExt):
     def _teardown_simulation(self) -> None:
         self.is_simulation_running = False
         if self.mavlink_manager is not None:
-            self.mavlink_manager.stop()
+            try:
+                self.mavlink_manager.stop()
+            except Exception:
+                pass
             self.mavlink_manager = None
         self.uav_control = None
         self.rigid_prim_view = None
+        ui = getattr(self, "ui_builder", None)
+        if ui is not None:
+            try:
+                ui.update_comms_simulation_state(False)
+            except Exception:
+                pass
 
     def detect_and_apply_stage_georeference(self) -> bool:
         """
@@ -540,3 +786,66 @@ class NavSim(omni.ext.IExt):
             if ui is not None:
                 ui.sync_georef_ui()
         return detected
+
+    def detect_and_apply_stage_time_reference(self) -> bool:
+        """
+        Inspecciona el Stage USD actual buscando metadatos de cronorreferenciación UTC.
+        Si se detectan, actualiza self.time_reference y la interfaz de usuario.
+        """
+        try:
+            stage = omni.usd.get_context().get_stage()
+        except Exception:
+            stage = None
+
+        ref, detected = NavSimTimeReference.detect_from_stage(stage)
+        if detected:
+            self.time_reference = ref
+            if self.mavlink_manager is not None:
+                self.mavlink_manager.set_time_reference(self.time_reference)
+            ui = getattr(self, "ui_builder", None)
+            if ui is not None:
+                ui.sync_time_ui()
+        return detected
+
+    def reset_time_to_system_clock(self) -> None:
+        """Restablece el anclaje temporal UTC al reloj del sistema."""
+        if self.time_reference is None:
+            self.time_reference = NavSimTimeReference()
+        else:
+            self.time_reference.reset_to_system_clock()
+        if self.mavlink_manager is not None:
+            self.mavlink_manager.set_time_reference(self.time_reference)
+        ui = getattr(self, "ui_builder", None)
+        if ui is not None:
+            ui.sync_time_ui()
+
+    def rebuild_ui(self) -> None:
+        """Destruye y reconstruye la ventana NavSim - Consola con los últimos submódulos."""
+        try:
+            import importlib
+            from . import time_reference, ui_builder
+            importlib.reload(time_reference)
+            importlib.reload(ui_builder)
+            from .ui_builder import UIBuilder
+        except Exception:
+            from .ui_builder import UIBuilder
+
+        if getattr(self, "ui_builder", None) is not None:
+            try:
+                self.ui_builder.cleanup()
+            except Exception:
+                pass
+            self.ui_builder = None
+
+        try:
+            self.ui_builder = UIBuilder(self)
+            self.ui_builder.build_ui()
+            if getattr(self, "latest_validation_report", None) is not None:
+                self.ui_builder.update_validation_report(self.latest_validation_report)
+            if hasattr(self.ui_builder, "sync_georef_ui"):
+                self.ui_builder.sync_georef_ui()
+            if hasattr(self.ui_builder, "sync_time_ui"):
+                self.ui_builder.sync_time_ui()
+        except Exception as e:
+            if self.logger:
+                self.logger.warning(f"Error reconstruyendo UI: {e}")

@@ -3,11 +3,11 @@ reloadable = true
 order = 0
 
 [package]
-version = "0.2.0"
+version = "2.0.0"
 category = "Simulation"
-title = "navsim"
+title = "NavSim - Consola"
 description = "Motor físico/inercial vectorizado y transceptor MAVLink v2 para flotas heterogéneas de UAVs en Isaac Sim."
-authors = ["Víctor Blázquez Milara", "Iker Nebot Amoriza", "Rafael Casado González", "Aurelio Bermúdez Marín"]
+authors = ["Unidad de Transferencia de Conocimiento en Movilidad Aérea Avanzada Mediante Aeronaves No Tripuladas (UCLM-UAS)"]
 repository = ""
 keywords = ["uav", "mavlink", "isaacsim", "dynamics"]
 changelog = "docs/CHANGELOG.md"
@@ -19,6 +19,8 @@ icon = "data/icon.png"
 "omni.kit.uiapp" = {}
 "isaacsim.gui.components" = {}
 "isaacsim.core.api" = {}
+"omni.kit.menu.utils" = {}
+"omni.kit.viewport.utility" = {}
 
 [python.pipapi]
 requirements = [

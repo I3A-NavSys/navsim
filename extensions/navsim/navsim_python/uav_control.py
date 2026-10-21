@@ -47,10 +47,23 @@ class UAVControl:
         self.forces_to_apply = np.zeros((self.amount_uavs, 3), dtype=np.float64)
         self.torques_to_apply = np.zeros((self.amount_uavs, 3), dtype=np.float64)
 
-        # Estado de planes de vuelo (almacenamiento pre-alojado por evento, sin recrear a 100 Hz)
+        # Estado de planes de vuelo 4D (almacenamiento pre-alojado por evento, sin recrear a 100 Hz)
         self.uav_states = np.full(self.amount_uavs, int(NavSimUAVState.IDLE), dtype=np.int32)
+        # Modos operativos 1:1 con la máquina de estados:
+        # 0=DISARMED, 1=MANUAL, 2=AUTO, 3=HOVER, 4=SYSTEM_FAILURE
+        self.uav_modes = np.zeros(self.amount_uavs, dtype=np.int32)
         self.active_plan_ids: List[str] = ["" for _ in range(self.amount_uavs)]
         self.current_wp_indices = np.full(self.amount_uavs, -1, dtype=np.int32)
+        self.fp_num_wps = np.zeros(self.amount_uavs, dtype=np.int32)
+        self.fp_wp_labels: List[List[str]] = [[] for _ in range(self.amount_uavs)]
+        self.current_wp_labels: List[str] = ["" for _ in range(self.amount_uavs)]
+        self.current_wp_times = np.zeros(self.amount_uavs, dtype=np.float64)
+
+        # Referencias instantáneas y error de seguimiento del polinomio de Taylor 4D
+        self.desired_positions = np.zeros((self.amount_uavs, 3), dtype=np.float64)
+        self.desired_velocities = np.zeros((self.amount_uavs, 3), dtype=np.float64)
+        self.pos_errors = np.zeros((self.amount_uavs, 3), dtype=np.float64)
+        self.vel_errors = np.zeros((self.amount_uavs, 3), dtype=np.float64)
 
         self._max_wps = 1
         self.has_plan = np.zeros(self.amount_uavs, dtype=bool)
@@ -70,6 +83,11 @@ class UAVControl:
         self.manual_linear_vel = np.zeros((self.amount_uavs, 3), dtype=np.float64)
         self.manual_yaw_vel = np.zeros(self.amount_uavs, dtype=np.float64)
         self.manual_cmd_times = np.full(self.amount_uavs, -np.inf, dtype=np.float64)
+
+        # Política de finalización de rutas 4D:
+        # True = Auto-Disarm al aterrizar en vertipuerto (0 RPM, DISARMED)
+        # False = Mantenerse en HOVER sobre el último waypoint
+        self.auto_disarm_on_finish: bool = True
 
     # ==========================================================================
     # Configuración de Inercia y Masa en los Prims USD / PhysX
@@ -172,12 +190,30 @@ class UAVControl:
         self.fp_init_times[uav_idx] = float(times[0])
         self.fp_finish_times[uav_idx] = float(times[-1])
         self.has_plan[uav_idx] = True
+        self.uav_modes[uav_idx] = 2  # AUTO
         self.active_plan_ids[uav_idx] = str(fp.id)
+        self.fp_num_wps[uav_idx] = num_wps
+        self.fp_wp_labels[uav_idx] = [str(wp.label) for wp in fp.waypoints]
+        self.current_wp_indices[uav_idx] = 0
+        self.current_wp_labels[uav_idx] = self.fp_wp_labels[uav_idx][0]
+        self.current_wp_times[uav_idx] = float(times[0])
         self.E[uav_idx, :, 0] = 0.0
 
         # Al recibir una ruta nueva pasa a modo AUTO
         self.manual_active[uav_idx] = False
         self.uav_states[uav_idx] = int(NavSimUAVState.BUSY)
+
+    def _clear_fp_telemetry_state(self, uav_idx: int) -> None:
+        self.active_plan_ids[uav_idx] = ""
+        self.current_wp_indices[uav_idx] = -1
+        self.fp_num_wps[uav_idx] = 0
+        self.fp_wp_labels[uav_idx] = []
+        self.current_wp_labels[uav_idx] = ""
+        self.current_wp_times[uav_idx] = 0.0
+        self.desired_positions[uav_idx, :] = 0.0
+        self.desired_velocities[uav_idx, :] = 0.0
+        self.pos_errors[uav_idx, :] = 0.0
+        self.vel_errors[uav_idx, :] = 0.0
 
     def set_manual_control(
         self,
@@ -196,35 +232,53 @@ class UAVControl:
         if uav_idx < 0 or uav_idx >= self.amount_uavs:
             return
 
-        if mode == 0:  # DISARM / IDLE
+        if mode == 0:  # DISARM / IDLE (Corte total de motores)
             self.manual_active[uav_idx] = False
             self.has_plan[uav_idx] = False
+            self._clear_fp_telemetry_state(uav_idx)
             self.uav_states[uav_idx] = int(NavSimUAVState.IDLE)
+            self.uav_modes[uav_idx] = 0  # DISARMED
             self.rotors_vel[uav_idx, :] = 0.0
-            self.reset_dynamics(np.array([uav_idx]))
+            self.forces_to_apply[uav_idx] = 0.0
+            self.torques_to_apply[uav_idx] = 0.0
+            self.E[uav_idx, :, 0] = 0.0
+            self.u[uav_idx] = 0.0
+            self.manual_linear_vel[uav_idx, :] = 0.0
+            self.manual_yaw_vel[uav_idx] = 0.0
 
         elif mode == 1:  # MANUAL
             self.manual_active[uav_idx] = True
             self.uav_states[uav_idx] = int(NavSimUAVState.MANUAL)
+            self.uav_modes[uav_idx] = 1  # MANUAL
             self.manual_linear_vel[uav_idx, 0] = float(vel_x)
             self.manual_linear_vel[uav_idx, 1] = float(vel_y)
             self.manual_linear_vel[uav_idx, 2] = float(vel_z)
             self.manual_yaw_vel[uav_idx] = float(rot_z)
             self.manual_cmd_times[uav_idx] = sim_time
+            self.pos_errors[uav_idx, :] = 0.0
+            self.vel_errors[uav_idx, :] = 0.0
 
         elif mode == 2:  # AUTO
             self.manual_active[uav_idx] = False
             if self.has_plan[uav_idx] and sim_time <= self.fp_finish_times[uav_idx]:
                 self.uav_states[uav_idx] = int(NavSimUAVState.BUSY)
+                self.uav_modes[uav_idx] = 2  # AUTO
             else:
                 self.uav_states[uav_idx] = int(NavSimUAVState.IDLE)
+                # Si se solicita AUTO sin un plan de vuelo válido:
+                # Failsafe a HOVER si estaba en vuelo, o permanece DISARMED si estaba en reposo
+                prev_mode = int(self.uav_modes[uav_idx])
+                self.uav_modes[uav_idx] = 3 if prev_mode in (1, 3) else 0
 
         elif mode == 3:  # HOVER
             self.manual_active[uav_idx] = True
             self.uav_states[uav_idx] = int(NavSimUAVState.MANUAL)
+            self.uav_modes[uav_idx] = 3  # HOVER
             self.manual_linear_vel[uav_idx, :] = 0.0
             self.manual_yaw_vel[uav_idx] = 0.0
             self.manual_cmd_times[uav_idx] = sim_time
+            self.pos_errors[uav_idx, :] = 0.0
+            self.vel_errors[uav_idx, :] = 0.0
 
     def update_flight_plans_batch(self, new_plans: Dict[int, FlightPlanData]) -> None:
         for uav_idx, fp in new_plans.items():
@@ -244,15 +298,34 @@ class UAVControl:
         auto_expired_mask = (
             self.has_plan
             & (~self.manual_active)
-            & (current_time > self.fp_finish_times)
+            & (current_time >= self.fp_finish_times)
         )
         if np.any(auto_expired_mask):
             for idx in np.nonzero(auto_expired_mask)[0]:
                 self.has_plan[idx] = False
-                self.active_plan_ids[idx] = ""
-                self.current_wp_indices[idx] = -1
-                self.uav_states[idx] = int(NavSimUAVState.IDLE)
-                self.rotors_vel[idx, :] = 0.0
+                self._clear_fp_telemetry_state(idx)
+                if getattr(self, "auto_disarm_on_finish", True):
+                    # Auto-Disarm al completar la ruta 4D:
+                    # Las trayectorias depositan la aeronave en el vertipuerto (v=0, a=0).
+                    # Corte automático de motores a 0 RPM y paso a estado DISARMED.
+                    self.manual_active[idx] = False
+                    self.uav_states[idx] = int(NavSimUAVState.IDLE)
+                    self.uav_modes[idx] = 0  # DISARMED
+                    self.rotors_vel[idx, :] = 0.0
+                    self.forces_to_apply[idx, :] = 0.0
+                    self.torques_to_apply[idx, :] = 0.0
+                    self.E[idx, :, 0] = 0.0
+                    self.u[idx] = 0.0
+                    self.manual_linear_vel[idx, :] = 0.0
+                    self.manual_yaw_vel[idx] = 0.0
+                else:
+                    # Fallback a HOVER si se desactiva el Auto-Disarm
+                    self.manual_active[idx] = True
+                    self.manual_linear_vel[idx, :] = 0.0
+                    self.manual_yaw_vel[idx] = 0.0
+                    self.manual_cmd_times[idx] = current_time
+                    self.uav_states[idx] = int(NavSimUAVState.MANUAL)
+                    self.uav_modes[idx] = 3  # HOVER activo
 
         # 3. Identificar UAVs activos en modo AUTO
         auto_mask = (
@@ -281,6 +354,8 @@ class UAVControl:
                 if (current_time - self.manual_cmd_times[idx]) > 1.0:
                     manual_lin_vel[m_i, :] = 0.0
                     manual_yaw_rot[m_i] = 0.0
+                    if self.uav_modes[idx] == 1:
+                        self.uav_modes[idx] = 3  # Failsafe de enlace: pasar a HOVER
                 else:
                     manual_lin_vel[m_i, :] = self.manual_linear_vel[idx]
                     manual_yaw_rot[m_i] = self.manual_yaw_vel[idx]
@@ -290,7 +365,10 @@ class UAVControl:
 
         # 5. Unificar todos los UAVs activos (AUTO + MANUAL)
         if auto_indices.size == 0 and manual_indices.size == 0:
-            self.reset_dynamics(self.all_indices)
+            self.forces_to_apply[:] = 0.0
+            self.torques_to_apply[:] = 0.0
+            self.rotors_vel[:] = 0.0
+            self.apply_dynamics(self.all_indices)
             return
 
         if auto_indices.size > 0 and manual_indices.size > 0:
@@ -313,8 +391,8 @@ class UAVControl:
 
         # 7. Dinámica y fuerzas aerodinámicas en CoM
         self.compute_dynamics(active_indices)
-        self.apply_dynamics(active_indices)
         self.reset_dynamics(active_indices)
+        self.apply_dynamics(self.all_indices)
 
     def imu(self) -> None:
         self.positions, self.orientations = self.rigid_prim_view.get_world_poses()
@@ -334,6 +412,12 @@ class UAVControl:
         self.current_wp_indices[uav_indices] = target_indices
 
         running_times = self.fp_times[uav_indices, target_indices]
+        self.current_wp_times[uav_indices] = running_times
+        for i_sub, uav_i in enumerate(uav_indices):
+            wp_i = int(target_indices[i_sub])
+            labels = self.fp_wp_labels[uav_i]
+            self.current_wp_labels[uav_i] = labels[wp_i] if 0 <= wp_i < len(labels) else ""
+
         running_pos = self.fp_positions[uav_indices, target_indices]
         running_vel = self.fp_velocities[uav_indices, target_indices]
         running_accel = self.fp_accelerations[uav_indices, target_indices]
@@ -352,6 +436,12 @@ class UAVControl:
             running_snap,
             running_crackel,
         )
+
+        # Guardar consigna 4D evaluada y errores de seguimiento para telemetría MAVLink (ID 12003)
+        self.desired_positions[uav_indices] = expected_pos
+        self.desired_velocities[uav_indices] = expected_vel
+        self.pos_errors[uav_indices] = self.positions[uav_indices] - expected_pos
+        self.vel_errors[uav_indices] = self.world_linear_vels[uav_indices] - expected_vel
 
         cmd_world_linear_vel, cmd_yaw_rotation = self.get_command(
             expected_pos,
@@ -472,6 +562,7 @@ class UAVControl:
             self.forces_to_apply[mask] = 0.0
             self.torques_to_apply[mask] = 0.0
             self.E[mask, :, 0] = 0.0
+            self.rotors_vel[mask, :] = 0.0
 
     # ==========================================================================
     # Funciones Matemáticas Vectorizadas
@@ -584,3 +675,13 @@ class UAVControl:
         command_yaw_rotation = yaw_error / t_to_solve[:, 0]
 
         return command_linear_vel, command_yaw_rotation
+
+    def get_uav_mode(self, uav_idx: int) -> int:
+        """
+        Devuelve el modo operativo actual del UAV según la máquina de estados:
+          0=DISARMED, 1=MANUAL, 2=AUTO, 3=HOVER, 4=SYSTEM_FAILURE
+        """
+        if hasattr(self, "uav_modes") and 0 <= uav_idx < len(self.uav_modes):
+            return int(self.uav_modes[uav_idx])
+        return 0
+
