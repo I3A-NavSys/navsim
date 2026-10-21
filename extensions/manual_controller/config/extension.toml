@@ -21,6 +21,7 @@ icon = "data/icon.png"
 "isaacsim.core.api" = {}
 "omni.kit.viewport.window" = {}
 "omni.kit.viewport.utility" = {}
+"omni.kit.menu.utils" = {}
 
 [python.pipapi]
 requirements = ["pygame"]

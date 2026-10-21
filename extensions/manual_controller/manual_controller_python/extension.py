@@ -151,16 +151,33 @@ class ManualController(omni.ext.IExt):
     """
 
     def on_startup(self, ext_id: str) -> None:
+        self._menu_items = None
         self.init_vars()
         self.build_ui()
         self.refresh_uav_list()
+        try:
+            self._register_menu_item()
+        except Exception:
+            pass
 
     def on_shutdown(self) -> None:
+        try:
+            self._unregister_menu_item()
+        except Exception:
+            pass
+
         self.stop_control()
         if hasattr(self, "manual_control") and self.manual_control:
             self.manual_control.destroy()
 
         if hasattr(self, "window") and self.window:
+            try:
+                if getattr(self.window, "set_visibility_changed_listener", None):
+                    self.window.set_visibility_changed_listener(None)
+                elif hasattr(self.window, "set_visibility_changed_fn"):
+                    self.window.set_visibility_changed_fn(None)
+            except Exception:
+                pass
             try:
                 self.window.destroy()
             except Exception:
@@ -182,6 +199,81 @@ class ManualController(omni.ext.IExt):
         self.on_stop_sub = None
         self.plots_update_sub = None
         self.on_stage_event_sub = None
+
+    def _register_menu_item(self) -> None:
+        """Registra la opción 'Joystick' en el menú superior de Isaac Sim: Window > NavSim > Joystick."""
+        try:
+            import omni.kit.menu.utils
+
+            def on_toggle_joystick():
+                self.toggle_joystick_window()
+
+            def is_joystick_visible():
+                return bool(hasattr(self, "window") and self.window and self.window.visible)
+
+            sub_items = [
+                omni.kit.menu.utils.MenuItemDescription(
+                    name="Joystick",
+                    ticked_fn=is_joystick_visible,
+                    onclick_fn=on_toggle_joystick,
+                )
+            ]
+            self._menu_items = [
+                omni.kit.menu.utils.MenuItemDescription(
+                    name="NavSim",
+                    sub_menu=sub_items,
+                )
+            ]
+            omni.kit.menu.utils.add_menu_items(self._menu_items, "Window")
+            try:
+                omni.kit.menu.utils.refresh_menu_items("Window")
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+    def _unregister_menu_item(self) -> None:
+        """Elimina la opción de menú al desactivar la extensión."""
+        if getattr(self, "_menu_items", None) is not None:
+            try:
+                import omni.kit.menu.utils
+                omni.kit.menu.utils.remove_menu_items(self._menu_items, "Window")
+                omni.kit.menu.utils.refresh_menu_items("Window")
+            except Exception:
+                pass
+            self._menu_items = None
+
+    def on_window_visibility_changed(self, visible: bool = False) -> None:
+        """Sincroniza el tick del menú superior de Isaac Sim cuando la visibilidad de la ventana cambia."""
+        try:
+            import omni.kit.menu.utils
+            omni.kit.menu.utils.refresh_menu_items("Window")
+        except Exception:
+            pass
+
+    def toggle_joystick_window(self) -> None:
+        """Alterna la visibilidad de la ventana NavSim - Joystick desde el menú superior de Isaac Sim."""
+        if hasattr(self, "window") and self.window:
+            new_visible = not self.window.visible
+            self.window.visible = new_visible
+            if new_visible:
+                try:
+                    self.window.focus()
+                except Exception:
+                    pass
+        else:
+            self.build_ui()
+            if hasattr(self, "window") and self.window:
+                self.window.visible = True
+                try:
+                    self.window.focus()
+                except Exception:
+                    pass
+        try:
+            import omni.kit.menu.utils
+            omni.kit.menu.utils.refresh_menu_items("Window")
+        except Exception:
+            pass
 
     def init_vars(self) -> None:
         self.uav_paths: List[str] = []
@@ -327,12 +419,30 @@ class ManualController(omni.ext.IExt):
     # Interfaz de Usuario (UI)
     # ==========================================================================
     def build_ui(self) -> None:
+        if hasattr(self, "window") and self.window:
+            try:
+                if getattr(self.window, "set_visibility_changed_listener", None):
+                    self.window.set_visibility_changed_listener(None)
+                elif hasattr(self.window, "set_visibility_changed_fn"):
+                    self.window.set_visibility_changed_fn(None)
+            except Exception:
+                pass
+            try:
+                self.window.destroy()
+            except Exception:
+                pass
+            self.window = None
+
         self.window = ui.Window(
             "NavSim - Joystick",
             width=520,
             height=660,
             raster_policy=ui.RasterPolicy.NEVER,
         )
+        if getattr(self.window, "set_visibility_changed_listener", None):
+            self.window.set_visibility_changed_listener(self.on_window_visibility_changed)
+        elif hasattr(self.window, "set_visibility_changed_fn"):
+            self.window.set_visibility_changed_fn(self.on_window_visibility_changed)
 
         with self.window.frame:
             with ui.ScrollingFrame(
