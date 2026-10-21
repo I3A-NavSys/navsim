@@ -116,6 +116,22 @@ ISAAC_COLLAPSABLE_STYLE = {
         "font_size": 14.5,
         "color": 0xFFDDDDDD,
     },
+    "Button": {
+        "margin": 0,
+        "border_radius": 2,
+    },
+    "Button:disabled": {
+        "background_color": 0xFF202020,
+        "border_color": 0x0,
+        "margin": 0,
+    },
+    "Button:disabled:hovered": {
+        "background_color": 0xFF202020,
+        "margin": 0,
+    },
+    "Button.Label:disabled": {
+        "color": 0xFF606060,
+    },
 }
 
 LABEL_STYLE_GREY = {"color": 0xFF9E9E9E}
@@ -193,6 +209,9 @@ class ManualController(omni.ext.IExt):
         self.state_label = None
         self.joy_device_label = None
         self.joystick_test_buttons = []
+        self._uav_collapsable = None
+        self.uav_combo_frame = None
+        self.uav_combo = None
         self.app_update_sub = None
 
         self.on_physics_step_sub = None
@@ -279,6 +298,9 @@ class ManualController(omni.ext.IExt):
         self.uav_paths: List[str] = []
         self.selected_uav_idx = 0
         self.selected_uav_path = ""
+        self._uav_collapsable = None
+        self.uav_combo_frame = None
+        self.uav_combo = None
 
         self.linear_vel_limit = 2.0
         self.ang_vel_limit = 1.0
@@ -378,6 +400,11 @@ class ManualController(omni.ext.IExt):
 
         return sorted(list(set(paths)))
 
+    def _on_uav_frame_collapsed_changed(self, collapsed: bool) -> None:
+        """Al expandir la sección UAV, refresca automáticamente la lista de aeronaves."""
+        if not collapsed:
+            self.refresh_uav_list()
+
     def refresh_uav_list(self) -> None:
         self.uav_paths = self.scan_uavs()
         if not hasattr(self, "uav_combo_frame") or self.uav_combo_frame is None:
@@ -389,16 +416,28 @@ class ManualController(omni.ext.IExt):
                 ui.Spacer(height=3)
                 if self.uav_paths:
                     items = [self.manual_control.get_uas_id(p) for p in self.uav_paths]
+
+                    # Preservar el dron previamente seleccionado para no perder el foco
+                    prev_path = getattr(self, "selected_uav_path", "")
+                    sel_idx = 0
+                    if prev_path and prev_path in self.uav_paths:
+                        sel_idx = self.uav_paths.index(prev_path)
+                    elif 0 <= getattr(self, "selected_uav_idx", 0) < len(self.uav_paths):
+                        sel_idx = self.selected_uav_idx
+                    else:
+                        sel_idx = 0
+
+                    self.selected_uav_idx = sel_idx
+                    self.selected_uav_path = self.uav_paths[sel_idx]
+
                     self.uav_combo = ui.ComboBox(
-                        0, *items,
+                        sel_idx, *items,
                         height=24,
                     )
                     self.uav_combo.model.add_item_changed_fn(self.on_uav_selected)
-                    self.selected_uav_idx = 0
-                    self.selected_uav_path = self.uav_paths[0]
                     self.manual_control.set_uav(self.selected_uav_path, self.selected_uav_idx)
                     if hasattr(self, "port_label") and self.port_label:
-                        self.port_label.text = "15000"
+                        self.port_label.text = str(15000 + sel_idx)
                     if hasattr(self, "update_state_display"):
                         self.update_state_display()
                 else:
@@ -451,17 +490,18 @@ class ManualController(omni.ext.IExt):
             ):
                 with ui.VStack(spacing=6, height=0):
                     # --- Desplegable: UAV ---
-                    with ui.CollapsableFrame("UAV", collapsed=False, style=ISAAC_COLLAPSABLE_STYLE, build_header_fn=build_isaac_header):
+                    self._uav_collapsable = ui.CollapsableFrame(
+                        "UAV",
+                        collapsed=False,
+                        style=ISAAC_COLLAPSABLE_STYLE,
+                        build_header_fn=build_isaac_header,
+                    )
+                    self._uav_collapsable.set_collapsed_changed_fn(self._on_uav_frame_collapsed_changed)
+                    with self._uav_collapsable:
                         with ui.VStack(spacing=4, style={"margin_left": 8, "margin_right": 8, "margin_top": 6, "margin_bottom": 8}):
                             with ui.HStack(height=26, spacing=6):
                                 ui.Label("Aeronave", width=80, alignment=ui.Alignment.LEFT_CENTER, style=LABEL_STYLE_GREY)
                                 self.uav_combo_frame = ui.Frame()
-                                ui.Button(
-                                    "Refrescar",
-                                    width=80,
-                                    height=24,
-                                    clicked_fn=self.refresh_uav_list,
-                                )
 
                             with ui.HStack(height=24, spacing=6):
                                 ui.Label("Estado", width=80, alignment=ui.Alignment.LEFT_CENTER, style=LABEL_STYLE_GREY)
