@@ -1,6 +1,11 @@
+import warnings
 import numpy as np
 import logging
 import carb
+
+# Suppress setuptools/pkg_resources deprecation warning from pygame internals
+warnings.filterwarnings("ignore", message=".*pkg_resources is deprecated.*")
+
 try:
     import pygame
 except ImportError:
@@ -75,7 +80,7 @@ class Joysticks:
         
         Returns:
             Tuple of (list of connected joystick IDs, dictionary of joystick ID to input array).
-            The array contains [axis_pitch, axis_roll, axis_altitude, axis_yaw, button_rotors, button_reset].
+            The array contains [axis_pitch, axis_roll, axis_altitude, axis_yaw, button_boost, button_reset].
         """
         if not self.initialized or pygame is None:
             return self.joysticks_ids, self.joysticks_inputs

@@ -1,5 +1,5 @@
 import asyncio
-import carb
+import carb.settings
 import omni.ext
 import omni.kit.app
 import omni.physx
@@ -23,6 +23,11 @@ class MultiManualController(omni.ext.IExt):
     """Extension allowing multi-user manual joystick teleoperation for simulated UAV swarms."""
 
     def on_startup(self, ext_id):
+        # Configure RTX transform history storage to accommodate multi-viewport rendering
+        settings = carb.settings.get_settings()
+        if settings.get("/rtx/scenedb/maxHistoryTransformCount") < 256:
+            settings.set("/rtx/scenedb/maxHistoryTransformCount", 256)
+
         self.initialize_variables()
         self.build_ui()
 

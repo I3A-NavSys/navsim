@@ -232,16 +232,16 @@ class UAVControl:
         # Rotor thrusts along body Z-axis: shape (M, 4)
         thrust_z = self.thrust_coeffs * square_rotors_vel
 
-        # Body aerodynamic drag forces
-        active_lin_vel = self.local_linear_vels[uav_physics_indices]
+        # Body aerodynamic drag forces with velocity bounding to prevent quadratic divergence
+        active_lin_vel = np.clip(self.local_linear_vels[uav_physics_indices], -100.0, 100.0)
         fd = self.drag_force_coeffs * np.abs(active_lin_vel) * active_lin_vel
 
         # Rotor drag moments
         mdr_z = self.drag_moment_coeffs * square_rotors_vel
         mdr_torque_z = mdr_z[:, 1] - mdr_z[:, 0] - mdr_z[:, 3] + mdr_z[:, 2]
 
-        # Body rotational friction moments
-        active_ang_vel = self.local_angular_vels[uav_physics_indices]
+        # Body rotational friction moments with angular velocity bounding
+        active_ang_vel = np.clip(self.local_angular_vels[uav_physics_indices], -50.0, 50.0)
         md = self.friction_moment_coeffs * np.abs(active_ang_vel) * active_ang_vel
 
         # Total body-frame forces: fd + sum of rotor thrusts along Z
@@ -255,6 +255,22 @@ class UAVControl:
         self.torques_to_apply[uav_physics_indices, 0] = torque_thrust_x + md[:, 0]
         self.torques_to_apply[uav_physics_indices, 1] = torque_thrust_y + md[:, 1]
         self.torques_to_apply[uav_physics_indices, 2] = mdr_torque_z + md[:, 2]
+
+        # Numerical safety clamps: protect against NaN/Inf and extreme physics impulses
+        np.nan_to_num(self.forces_to_apply[uav_physics_indices], copy=False)
+        np.nan_to_num(self.torques_to_apply[uav_physics_indices], copy=False)
+        np.clip(
+            self.forces_to_apply[uav_physics_indices],
+            -50000.0,
+            50000.0,
+            out=self.forces_to_apply[uav_physics_indices],
+        )
+        np.clip(
+            self.torques_to_apply[uav_physics_indices],
+            -10000.0,
+            10000.0,
+            out=self.torques_to_apply[uav_physics_indices],
+        )
 
     def apply_dynamics(self, uav_to_update_idx):
         """Applies computed forces and torques directly to the simulation rigid body view."""
