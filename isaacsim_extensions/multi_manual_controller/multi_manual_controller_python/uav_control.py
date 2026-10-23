@@ -85,6 +85,40 @@ class UAVControl:
         self.forces_to_apply = np.zeros((self.amount_uavs, 3), dtype=np.float32)
         self.torques_to_apply = np.zeros((self.amount_uavs, 3), dtype=np.float32)
 
+        # Cache initial spawn poses to enable fallback reset
+        init_positions, init_orientations = self.rigid_prim_view.get_world_poses(clone=True)
+        self.initial_positions = np.array(init_positions, dtype=np.float32, copy=True)
+        self.initial_orientations = np.array(init_orientations, dtype=np.float32, copy=True)
+
+        # Ring buffer tracking safe flight poses (~1.0s history at 60 Hz) prior to physics destabilization
+        self.healthy_buffer_size = 60
+        self.healthy_positions = np.zeros((self.amount_uavs, self.healthy_buffer_size, 3), dtype=np.float32)
+        self.healthy_orientations = np.zeros((self.amount_uavs, self.healthy_buffer_size, 4), dtype=np.float32)
+        self.healthy_buffer_count = np.full(self.amount_uavs, self.healthy_buffer_size, dtype=np.int32)
+        self.healthy_buffer_idx = np.zeros(self.amount_uavs, dtype=np.int32)
+        self.is_destabilized = np.zeros(self.amount_uavs, dtype=bool)
+        self.healthy_recovery_frames = np.zeros(self.amount_uavs, dtype=np.int32)
+        self.prev_world_linear_vels = np.zeros((self.amount_uavs, 3), dtype=np.float32)
+
+        # Prime the buffer with initial spawn poses
+        for uav_idx in range(self.amount_uavs):
+            self.healthy_positions[uav_idx, :] = self.initial_positions[uav_idx]
+            self.healthy_orientations[uav_idx, :] = self.initial_orientations[uav_idx]
+
+    def refresh_initial_poses(self):
+        """Updates cached initial spawn poses from the current stage configuration."""
+        init_positions, init_orientations = self.rigid_prim_view.get_world_poses(clone=True)
+        self.initial_positions = np.array(init_positions, dtype=np.float32, copy=True)
+        self.initial_orientations = np.array(init_orientations, dtype=np.float32, copy=True)
+
+        for uav_idx in range(self.amount_uavs):
+            self.healthy_positions[uav_idx, :] = self.initial_positions[uav_idx]
+            self.healthy_orientations[uav_idx, :] = self.initial_orientations[uav_idx]
+            self.healthy_buffer_count[uav_idx] = self.healthy_buffer_size
+            self.healthy_buffer_idx[uav_idx] = 0
+            self.is_destabilized[uav_idx] = False
+            self.healthy_recovery_frames[uav_idx] = 0
+
     # -----------------------
     # -- Control Functions --
     # -----------------------
@@ -92,8 +126,27 @@ class UAVControl:
         """
         Reads UAV state from the physics simulation view without unnecessary cloning.
         Queries transforms and combined velocities in single operations.
+        Includes a safety watchdog to intercept NaN/Inf and coordinate divergence.
         """
         self.positions, self.orientations = self.rigid_prim_view.get_world_poses(clone=False)
+
+        # Telemetry watchdog: detect coordinate divergence before reaching RTX BVH limits (2^40)
+        invalid_mask = np.isnan(self.positions).any(axis=1) | np.isinf(self.positions).any(axis=1)
+        oob_mask = (
+            (np.abs(self.positions[:, 0]) > 20000.0)
+            | (np.abs(self.positions[:, 1]) > 20000.0)
+            | (self.positions[:, 2] > 10000.0)
+            | (self.positions[:, 2] < -500.0)
+        )
+        rogue_indices = np.where(invalid_mask | oob_mask)[0]
+        if len(rogue_indices) > 0:
+            carb.log_warn(
+                f"[UAVControl] Watchdog intercepted divergent UAV coordinates for indices: {rogue_indices.tolist()}. "
+                "Executing emergency reset to last stable pose before physics divergence."
+            )
+            self.reset_pose(rogue_indices.tolist())
+            self.positions, self.orientations = self.rigid_prim_view.get_world_poses(clone=False)
+
         self.eulers = self.quaternion_to_euler(self.orientations)
 
         # Fetch both linear and angular velocities in a single physics view query
@@ -109,6 +162,54 @@ class UAVControl:
             self.world_angular_vels,
             self.orientations,
         )
+
+        # Update historical ring buffer with stable flight poses
+        self._update_healthy_pose_buffer()
+
+    def _update_healthy_pose_buffer(self):
+        """Records valid, stable flight poses into ring buffers to enable pre-divergence resets."""
+        lin_speeds = np.linalg.norm(self.world_linear_vels, axis=1)
+        ang_speeds = np.linalg.norm(self.world_angular_vels, axis=1)
+
+        # Body-up alignment in world coordinates: 1.0 - 2.0 * (qx^2 + qy^2)
+        up_alignments = 1.0 - 2.0 * (self.orientations[:, 1] ** 2 + self.orientations[:, 2] ** 2)
+
+        # Velocity change magnitude between steps to detect sudden collision impact impulses
+        delta_v_mags = np.linalg.norm(self.world_linear_vels - self.prev_world_linear_vels, axis=1)
+        self.prev_world_linear_vels[:] = self.world_linear_vels
+
+        for i in range(self.amount_uavs):
+            is_physically_wild = (
+                lin_speeds[i] > 20.0
+                or ang_speeds[i] > 12.0
+                or up_alignments[i] < 0.2
+                or delta_v_mags[i] > 3.0
+                or np.isnan(lin_speeds[i])
+                or np.isinf(lin_speeds[i])
+            )
+
+            if is_physically_wild:
+                # Freeze buffer immediately upon impact/anomaly to preserve the pre-crash flight state
+                self.is_destabilized[i] = True
+                self.healthy_recovery_frames[i] = 0
+            elif self.is_destabilized[i]:
+                # Require 1 second (60 consecutive frames) of steady, upright flight to confirm recovery
+                if lin_speeds[i] < 15.0 and ang_speeds[i] < 5.0 and up_alignments[i] > 0.7 and delta_v_mags[i] < 1.0:
+                    self.healthy_recovery_frames[i] += 1
+                    if self.healthy_recovery_frames[i] >= 60:
+                        self.is_destabilized[i] = False
+                        self.healthy_recovery_frames[i] = 0
+                else:
+                    self.healthy_recovery_frames[i] = 0
+
+            # Only record safe poses while flight physics is well-behaved
+            if not self.is_destabilized[i]:
+                slot = self.healthy_buffer_idx[i]
+                self.healthy_positions[i, slot] = self.positions[i]
+                self.healthy_orientations[i, slot] = self.orientations[i]
+                self.healthy_buffer_idx[i] = (slot + 1) % self.healthy_buffer_size
+                if self.healthy_buffer_count[i] < self.healthy_buffer_size:
+                    self.healthy_buffer_count[i] += 1
 
     def navigation(
         self,
@@ -232,16 +333,16 @@ class UAVControl:
         # Rotor thrusts along body Z-axis: shape (M, 4)
         thrust_z = self.thrust_coeffs * square_rotors_vel
 
-        # Body aerodynamic drag forces with velocity bounding to prevent quadratic divergence
-        active_lin_vel = np.clip(self.local_linear_vels[uav_physics_indices], -100.0, 100.0)
+        # Body aerodynamic drag forces with realistic velocity bounding to prevent quadratic feedback loop
+        active_lin_vel = np.clip(self.local_linear_vels[uav_physics_indices], -25.0, 25.0)
         fd = self.drag_force_coeffs * np.abs(active_lin_vel) * active_lin_vel
 
         # Rotor drag moments
         mdr_z = self.drag_moment_coeffs * square_rotors_vel
         mdr_torque_z = mdr_z[:, 1] - mdr_z[:, 0] - mdr_z[:, 3] + mdr_z[:, 2]
 
-        # Body rotational friction moments with angular velocity bounding
-        active_ang_vel = np.clip(self.local_angular_vels[uav_physics_indices], -50.0, 50.0)
+        # Body rotational friction moments with realistic angular velocity bounding
+        active_ang_vel = np.clip(self.local_angular_vels[uav_physics_indices], -20.0, 20.0)
         md = self.friction_moment_coeffs * np.abs(active_ang_vel) * active_ang_vel
 
         # Total body-frame forces: fd + sum of rotor thrusts along Z
@@ -256,19 +357,25 @@ class UAVControl:
         self.torques_to_apply[uav_physics_indices, 1] = torque_thrust_y + md[:, 1]
         self.torques_to_apply[uav_physics_indices, 2] = mdr_torque_z + md[:, 2]
 
-        # Numerical safety clamps: protect against NaN/Inf and extreme physics impulses
+        # Numerical safety clamps: protect against NaN/Inf and extreme physics impulse spikes
         np.nan_to_num(self.forces_to_apply[uav_physics_indices], copy=False)
         np.nan_to_num(self.torques_to_apply[uav_physics_indices], copy=False)
         np.clip(
-            self.forces_to_apply[uav_physics_indices],
-            -50000.0,
-            50000.0,
-            out=self.forces_to_apply[uav_physics_indices],
+            self.forces_to_apply[uav_physics_indices, :2],
+            -10000.0,
+            10000.0,
+            out=self.forces_to_apply[uav_physics_indices, :2],
+        )
+        np.clip(
+            self.forces_to_apply[uav_physics_indices, 2],
+            -5000.0,
+            45000.0,
+            out=self.forces_to_apply[uav_physics_indices, 2],
         )
         np.clip(
             self.torques_to_apply[uav_physics_indices],
-            -10000.0,
-            10000.0,
+            -5000.0,
+            5000.0,
             out=self.torques_to_apply[uav_physics_indices],
         )
 
@@ -338,6 +445,8 @@ class UAVControl:
             self.servo_control(uav_physics_indices, cmd_local_linear_vel, cmd_yaw_rotation, step_size)
             self.compute_dynamics(uav_physics_indices)
             self.apply_dynamics(uav_physics_indices)
+
+        self.reset_dynamics(uav_physics_indices)
 
     # -------------------------
     # -- Auxiliary Functions --
@@ -526,8 +635,14 @@ class UAVControl:
 
         return command_linear_vel, command_yaw_rotation
 
-    def reset_pose(self, uav_indices: list[int]):
-        """Resets pose, velocity, dynamic states, and forces for the requested UAVs."""
+    def reset_pose(self, uav_indices: list[int] | None = None):
+        """
+        Resets pose, velocity, dynamic states, and forces for the requested UAVs back to
+        the position and heading they had before physics destabilized / diverged.
+        """
+        if uav_indices is None:
+            uav_indices = self.rigid_prim_uav_indices.tolist()
+
         uav_amount = len(uav_indices)
         if uav_amount == 0:
             return
@@ -539,25 +654,58 @@ class UAVControl:
         self.e[uav_indices] = 0.0
         self.E[uav_indices] = 0.0
         self.u[uav_indices] = 0.0
-        self.rotors_vel[uav_indices] = 0.0
+        self.rotors_vel[uav_indices] = self.w_hov
         self.forces_to_apply[uav_indices] = 0.0
         self.torques_to_apply[uav_indices] = 0.0
 
-        current_positions, _ = self.rigid_prim_view.get_world_poses(
-            indices=uav_indices,
-            clone=False,
-            usd=False,
-        )
+        reset_positions = np.zeros((uav_amount, 3), dtype=np.float32)
+        reset_orientations = np.zeros((uav_amount, 4), dtype=np.float32)
 
-        new_orientations = np.zeros((uav_amount, 4), dtype=np.float32)
-        new_orientations[:, 0] = 1.0  # Unit quaternion identity [1, 0, 0, 0]
+        for out_idx, uav_idx in enumerate(uav_indices):
+            count = self.healthy_buffer_count[uav_idx]
+            if count > 0:
+                # Select a pose from ~0.5s prior to destabilization to guarantee free-air obstacle clearance
+                offset = min(self.healthy_buffer_size // 2, count - 1)
+                safe_slot = (self.healthy_buffer_idx[uav_idx] - 1 - offset) % self.healthy_buffer_size
+                target_pos = self.healthy_positions[uav_idx, safe_slot].copy()
+                target_rot = self.healthy_orientations[uav_idx, safe_slot].copy()
+            else:
+                target_pos = self.initial_positions[uav_idx].copy()
+                target_rot = self.initial_orientations[uav_idx].copy()
+
+            # Ensure minimum elevation clearance above spawn ground level
+            min_safe_z = self.initial_positions[uav_idx, 2] + 0.05
+            if target_pos[2] < min_safe_z:
+                target_pos[2] = min_safe_z
+
+            # Extract yaw while leveling roll and pitch to 0 for an upright, level hover recovery
+            target_euler = self.quaternion_to_euler(target_rot)
+            yaw = target_euler[2]
+            half_yaw = yaw * 0.5
+            level_rot = np.array([np.cos(half_yaw), 0.0, 0.0, np.sin(half_yaw)], dtype=np.float32)
+
+            reset_positions[out_idx] = target_pos
+            reset_orientations[out_idx] = level_rot
+
+            # Clear destabilization state and re-prime history with the clean recovery state
+            self.is_destabilized[uav_idx] = False
+            self.healthy_recovery_frames[uav_idx] = 0
+            self.healthy_positions[uav_idx, :] = target_pos
+            self.healthy_orientations[uav_idx, :] = level_rot
+            self.healthy_buffer_count[uav_idx] = self.healthy_buffer_size
+            self.healthy_buffer_idx[uav_idx] = 0
+            self.prev_world_linear_vels[uav_idx] = 0.0
+
         new_velocities = np.zeros((uav_amount, 6), dtype=np.float32)
 
-        carb.log_info(f"[UAVControl] Resetting UAV pose for indices: {uav_indices}")
+        carb.log_info(
+            f"[UAVControl] Resetting UAV pose for indices {uav_indices} "
+            f"to pre-destabilization position: {reset_positions.tolist()}"
+        )
 
         self.rigid_prim_view.set_world_poses(
-            positions=current_positions,
-            orientations=new_orientations,
+            positions=reset_positions,
+            orientations=reset_orientations,
             indices=uav_indices,
             usd=False,
         )

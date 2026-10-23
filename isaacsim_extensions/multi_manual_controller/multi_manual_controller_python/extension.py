@@ -23,11 +23,6 @@ class MultiManualController(omni.ext.IExt):
     """Extension allowing multi-user manual joystick teleoperation for simulated UAV swarms."""
 
     def on_startup(self, ext_id):
-        # Configure RTX transform history storage to accommodate multi-viewport rendering
-        settings = carb.settings.get_settings()
-        if settings.get("/rtx/scenedb/maxHistoryTransformCount") < 256:
-            settings.set("/rtx/scenedb/maxHistoryTransformCount", 256)
-
         self.initialize_variables()
         self.build_ui()
 
@@ -87,6 +82,10 @@ class MultiManualController(omni.ext.IExt):
                 cmd_yaw_rotation,
                 step_size,
             )
+        else:
+            # Keep telemetry and watchdog active while clearing residual forces
+            self.uav_control.imu()
+            self.uav_control.reset_dynamics([])
 
     def on_timeline_stop(self, event):
         """Handles simulation stop event."""
@@ -102,6 +101,13 @@ class MultiManualController(omni.ext.IExt):
     def on_timeline_play(self, event):
         """Initializes RigidPrim and UAV controller when timeline starts playing."""
         if not self.is_simulation_running and self.is_controlling:
+            # Configure RTX transform history storage to accommodate multi-viewport rendering
+            if self.carb_settings.get("/rtx/scenedb/maxHistoryTransformCount") < 256:
+                self.carb_settings.set("/rtx/scenedb/maxHistoryTransformCount", 256)
+
+            # Cap max depenetration velocity in physics engine
+            self.carb_settings.set("/physics/maxDepenetrationVelocity", 8.0)
+                
             self.uav_physics_indices.clear()
             self.uav_ids_to_physics_buffer.clear()
 
@@ -196,6 +202,9 @@ class MultiManualController(omni.ext.IExt):
         self.timeline_stop_event_sub = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
             int(omni.timeline.TimelineEventType.STOP), self.on_timeline_stop
         )
+
+        # Carb settings
+        self.carb_settings = carb.settings.get_settings()
 
     def ui_build_player_checker(self, player_id, checker_container_style, checker_style, username_container_style):
         """Constructs UI indicators for a single joystick."""
