@@ -1,7 +1,6 @@
-version: "3.8"
 services:
   broker_mqtt:
-    image: bmvictor/platgdia:mqtt-0.1.0
+    image: bmvictor/platgdia:mqtt-0.2.0
     container_name: broker_mqtt
     ports:
       - "${MQTT_HOST_PORT:-1883}:1883"
