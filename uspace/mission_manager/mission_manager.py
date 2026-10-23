@@ -26,7 +26,6 @@ class MissionManager:
             Entities.VERTIPORT_OPERATOR: False
         }
 
-        self.verbose = verbose
         self.id: str = id
         self.name: str = name
         self.service_types: list[MissionType] = service_types

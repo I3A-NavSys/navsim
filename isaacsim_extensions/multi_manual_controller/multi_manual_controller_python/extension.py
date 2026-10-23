@@ -1,80 +1,151 @@
-import sys, os
 import asyncio
-
-import omni.timeline
-import omni.physx
-import carb
+import carb.settings
 import omni.ext
+import omni.kit.app
+import omni.physx
+import omni.timeline
 import omni.ui as ui
 from omni.kit.viewport.window import ViewportWindow
-from isaacsim.core.prims import RigidPrim
-import omni.kit.app
-    
+
+try:
+    from isaacsim.core.prims import RigidPrim
+except ImportError:
+    try:
+        from isaacsim.core.experimental.prims import RigidPrim
+    except ImportError:
+        RigidPrim = None
+
 from .controller import Controller
 from .uav_control import UAVControl
 
 
 class MultiManualController(omni.ext.IExt):
+    """Extension allowing multi-user manual joystick teleoperation for simulated UAV swarms."""
+
     def on_startup(self, ext_id):
         self.initialize_variables()
         self.build_ui()
 
     def on_shutdown(self):
+        """Releases all callbacks, UI elements, async tasks, and viewports cleanly on shutdown."""
+        # Stop simulation control if currently running
         self.on_timeline_stop(None)
 
-    def on_physics_step(self, step_size:float):
-        if self.is_simulation_running:
-            # Get current time
-            current_time = self.timeline.get_current_time()
+        # Stop joystick checking task if active
+        if self.is_checking:
+            self.is_checking = False
+            self.stop_checking()
 
-            # Get control inputs from joysticks
-            cmd_local_linear_vel, cmd_yaw_rotation, amount_joysticks = self.controller.control()
+        if self._checking_task and not self._checking_task.done():
+            self._checking_task.cancel()
+            self._checking_task = None
 
-            # Update UAV control with the new commands
+        # Unsubscribe physics step callback
+        if self.on_physics_step_sub is not None:
+            self.on_physics_step_sub = None
+
+        # Unsubscribe timeline event callbacks
+        if self.timeline_start_event_sub is not None:
+            self.timeline_start_event_sub = None
+        if self.timeline_stop_event_sub is not None:
+            self.timeline_stop_event_sub = None
+
+        # Clean up viewports created by this extension
+        for vp in self.created_viewports:
+            try:
+                if hasattr(vp, "viewport_widget") and vp.viewport_widget:
+                    vp.viewport_widget.destroy()
+                vp.destroy()
+            except Exception:
+                pass
+        self.created_viewports.clear()
+
+        # Destroy UI window
+        if self.window:
+            self.window.destroy()
+            self.window = None
+
+    def on_physics_step(self, step_size: float):
+        """Physics step event callback running on simulation update."""
+        if not self.is_simulation_running or self.uav_control is None:
+            return
+
+        # Poll joystick inputs mapped to UAV buffer indices
+        cmd_local_linear_vel, cmd_yaw_rotation, amount_joysticks = self.controller.control(
+            self.uav_physics_indices
+        )
+
+        if amount_joysticks > 0:
             self.uav_control.update_command(
-                self.uav_physics_indices[:amount_joysticks], 
-                cmd_local_linear_vel, 
-                cmd_yaw_rotation, 
-                step_size
+                self.uav_physics_indices[:amount_joysticks],
+                cmd_local_linear_vel,
+                cmd_yaw_rotation,
+                step_size,
             )
+        else:
+            # Keep telemetry and watchdog active while clearing residual forces
+            self.uav_control.imu()
+            self.uav_control.reset_dynamics([])
 
     def on_timeline_stop(self, event):
+        """Handles simulation stop event."""
         if self.is_simulation_running:
             self.controller.stop()
             self.is_simulation_running = False
-            self.current_time = 0
+            self.current_time = 0.0
             self.rigid_prim_view = None
             self.uav_control = None
+            self.uav_physics_indices.clear()
+            self.uav_ids_to_physics_buffer.clear()
 
     def on_timeline_play(self, event):
+        """Initializes RigidPrim and UAV controller when timeline starts playing."""
         if not self.is_simulation_running and self.is_controlling:
-            self.uav_ids_to_physics_buffer = {}
+            # Configure RTX transform history storage to accommodate multi-viewport rendering
+            if self.carb_settings.get("/rtx/scenedb/maxHistoryTransformCount") < 256:
+                self.carb_settings.set("/rtx/scenedb/maxHistoryTransformCount", 256)
 
-            # Start RigidPrim
-            self.rigid_prim_view = RigidPrim(["/World/UAVs/UAV_*",])
-            self.rigid_prim_view.initialize()
+            # Cap max depenetration velocity in physics engine
+            self.carb_settings.set("/physics/maxDepenetrationVelocity", 8.0)
+                
+            self.uav_physics_indices.clear()
+            self.uav_ids_to_physics_buffer.clear()
 
-            # Relate UAV ids to physics buffer indices
+            # Initialize RigidPrim with optimized flags (disabling expensive contact sensor preparation)
+            try:
+                self.rigid_prim_view = RigidPrim(
+                    prim_paths_expr="/World/UAVs/UAV_*",
+                    reset_xform_properties=False,
+                    track_contact_forces=False,
+                    prepare_contact_sensors=False,
+                )
+                self.rigid_prim_view.initialize()
+            except Exception as e:
+                carb.log_error(f"[MultiManualController] Failed to initialize RigidPrim view: {e}")
+                return
+
+            if self.rigid_prim_view.count == 0:
+                carb.log_warn("[MultiManualController] No UAV prims found at '/World/UAVs/UAV_*'.")
+                return
+
             self.relate_uav_ids_to_physics_buffer()
-
             self.uav_control = UAVControl(self.rigid_prim_view)
-            
-            # Set simulation as running
             self.is_simulation_running = True
-
-            # Start controller
             self.controller.start(self.uav_control)
 
     def relate_uav_ids_to_physics_buffer(self):
-        # Get UAV prims
+        """Maps USD prim attributes to physics buffer array indices."""
+        self.uav_ids_to_physics_buffer.clear()
+        self.uav_physics_indices.clear()
+
         uavs = self.rigid_prim_view.prims
-
         for idx, uav in enumerate(uavs):
-            # Get UAV operator id and UAV id from prim attributes
-            uav_operator_id = uav.GetAttribute("NavSim:operator_id").Get()
-            uav_id = uav.GetAttribute("NavSim:id").Get()
+            op_attr = uav.GetAttribute("NavSim:operator_id")
+            id_attr = uav.GetAttribute("NavSim:id")
 
-            # Relate UAV id to physics buffer index for each UAV
+            uav_operator_id = op_attr.Get() if (op_attr and op_attr.IsValid()) else "default"
+            uav_id = id_attr.Get() if (id_attr and id_attr.IsValid()) else uav.GetName()
+
             if uav_operator_id not in self.uav_ids_to_physics_buffer:
                 self.uav_ids_to_physics_buffer[uav_operator_id] = {}
 
@@ -82,50 +153,70 @@ class MultiManualController(omni.ext.IExt):
             self.uav_physics_indices.append(idx)
 
     def initialize_variables(self):
-        # Control
+        """Initializes state variables and subscriptions."""
         self.is_simulation_running = False
         self.rigid_prim_view = None
         self.uav_control = None
-        self.uav_ids_to_physics_buffer = {} # {operator_id: {uav_id: physics_buffer_index}}
+        self.uav_ids_to_physics_buffer = {}
         self.uav_physics_indices = []
+        self.created_viewports = []
 
-        # Joysticks
+        # Joysticks and controller
         self.controller = Controller()
         self.max_joysticks = 4
         self.is_checking = False
         self.is_controlling = False
         self.joystick_checkers = []
+        self._checking_task = None
 
-        # Physx callback
+        # Pre-cached UI style dictionaries to prevent re-allocation during UI polling
+        self.style_active = {
+            "background_color": ui.color("#6f9523"),
+            "border_color": ui.color.white,
+            "border_width": 0,
+            "border_radius": 5,
+        }
+        self.style_inactive = {
+            "background_color": ui.color("#db8f26"),
+            "border_color": ui.color.white,
+            "border_width": 0,
+            "border_radius": 5,
+        }
+
+        # Track previous UI indicator states (4 joysticks x 3 axes x 2 directions) to skip unchanged styles
+        self._prev_checker_states = [[[False, False], [False, False], [False, False]] for _ in range(self.max_joysticks)]
+
+        # PhysX step callback
         self.physx_interface = omni.physx.get_physx_interface()
         self.on_physics_step_sub = self.physx_interface.subscribe_physics_on_step_events(
-            fn=self.on_physics_step, 
-            pre_step=True, 
-            order=10
+            fn=self.on_physics_step,
+            pre_step=True,
+            order=10,
         )
 
         # Timeline callbacks
         self.timeline = omni.timeline.get_timeline_interface()
         self.timeline_start_event_sub = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
-            int(omni.timeline.TimelineEventType.PLAY), self.on_timeline_play)
+            int(omni.timeline.TimelineEventType.PLAY), self.on_timeline_play
+        )
         self.timeline_stop_event_sub = self.timeline.get_timeline_event_stream().create_subscription_to_pop_by_type(
-            int(omni.timeline.TimelineEventType.STOP), self.on_timeline_stop)
+            int(omni.timeline.TimelineEventType.STOP), self.on_timeline_stop
+        )
+
+        # Carb settings
+        self.carb_settings = carb.settings.get_settings()
 
     def ui_build_player_checker(self, player_id, checker_container_style, checker_style, username_container_style):
+        """Constructs UI indicators for a single joystick."""
         user_checker = []
         x_checker = []
         y_checker = []
         z_checker = []
-    
+
         with ui.VStack(spacing=5):
             with ui.ZStack():
-                # User container
-                ui.Rectangle(
-                    width=75, 
-                    height=75, 
-                    style=checker_container_style
-                )
-                
+                ui.Rectangle(width=75, height=75, style=checker_container_style)
+
                 with ui.Frame(width=75, height=75):
                     with ui.VStack(height=0, spacing=5):
                         ui.Spacer(height=10)
@@ -133,75 +224,31 @@ class MultiManualController(omni.ext.IExt):
                         with ui.HStack():
                             # +X
                             ui.Spacer(width=20)
-                            x_checker.append(
-                                ui.Rectangle(
-                                    width=10, 
-                                    height=10, 
-                                    style=checker_style
-                                )
-                            )
+                            x_checker.append(ui.Rectangle(width=10, height=10, style=checker_style))
                             # +Z
                             ui.Spacer(width=25)
-                            z_checker.append(
-                                ui.Rectangle(
-                                    width=10, 
-                                    height=10, 
-                                    style=checker_style
-                                )
-                            )
-                            
+                            z_checker.append(ui.Rectangle(width=10, height=10, style=checker_style))
+
                         with ui.HStack():
                             # +Y
                             ui.Spacer(width=5)
-                            y_checker.append(
-                                ui.Rectangle(
-                                    width=10, 
-                                    height=10, 
-                                    style=checker_style
-                                )
-                            )
+                            y_checker.append(ui.Rectangle(width=10, height=10, style=checker_style))
                             # -Y
                             ui.Spacer(width=20)
-                            y_checker.append(
-                                ui.Rectangle(
-                                    width=10, 
-                                    height=10, 
-                                    style=checker_style
-                                )
-                            )
+                            y_checker.append(ui.Rectangle(width=10, height=10, style=checker_style))
 
                         with ui.HStack():
                             # -X
                             ui.Spacer(width=20)
-                            x_checker.append(
-                                ui.Rectangle(
-                                    width=10, 
-                                    height=10, 
-                                    style=checker_style
-                                )
-                            )
+                            x_checker.append(ui.Rectangle(width=10, height=10, style=checker_style))
                             # -Z
                             ui.Spacer(width=25)
-                            z_checker.append(
-                                ui.Rectangle(
-                                    width=10, 
-                                    height=10, 
-                                    style=checker_style
-                                )
-                            )
+                            z_checker.append(ui.Rectangle(width=10, height=10, style=checker_style))
 
-            # Username
             with ui.ZStack():
-                ui.Rectangle(
-                    width=75, 
-                    height=20, 
-                    style=username_container_style
-                )
+                ui.Rectangle(width=75, height=20, style=username_container_style)
                 with ui.Frame(width=75, height=20):
-                    ui.Label(
-                        "Jugador " + str(player_id+1), 
-                        alignment=ui.Alignment.CENTER
-                    )
+                    ui.Label(f"Jugador {player_id + 1}", alignment=ui.Alignment.CENTER)
 
             user_checker.append(x_checker)
             user_checker.append(y_checker)
@@ -209,59 +256,58 @@ class MultiManualController(omni.ext.IExt):
             self.joystick_checkers.append(user_checker)
 
     def build_ui(self):
+        """Constructs the extension UI window."""
         toggle_checking_button_style = {
             "background_color": ui.color("#db8f26"),
-            "border_radius": 5, 
-            ":hovered": {"background_color": ui.color("#939393")}
+            "border_radius": 5,
+            ":hovered": {"background_color": ui.color("#939393")},
         }
-        
+
         checker_container_style = {
-            "background_color": ui.color("#787878"), 
-            "border_color": ui.color.white, 
-            "border_width": 1, 
-            "border_radius": 5
-        }
-        
-        checker_style = {
-            "background_color": ui.color("#db8f26"), 
+            "background_color": ui.color("#787878"),
             "border_color": ui.color.white,
-            "border_width": 0, 
-            "border_radius": 5
+            "border_width": 1,
+            "border_radius": 5,
         }
-        
+
+        checker_style = {
+            "background_color": ui.color("#db8f26"),
+            "border_color": ui.color.white,
+            "border_width": 0,
+            "border_radius": 5,
+        }
+
         username_container_style = {
-            "background_color": ui.color("#5b5b5b"), 
-            "border_color": ui.color.white, 
-            "border_width": 1, 
-            "border_radius": 5
+            "background_color": ui.color("#5b5b5b"),
+            "border_color": ui.color.white,
+            "border_width": 1,
+            "border_radius": 5,
         }
-        
+
         add_viewport_button_style = {"border_radius": 5}
 
         toggle_control_button_style = {
             "background_color": ui.color("#952323"),
-            "border_radius": 5, 
-            ":hovered": {"background_color": ui.color("#939393")}
+            "border_radius": 5,
+            ":hovered": {"background_color": ui.color("#939393")},
         }
 
         self.window = ui.Window(
-            "NavSim - Multi Manual Controller", 
-            width=0, 
-            height=0, 
+            "NavSim - Multi Manual Controller",
+            width=0,
+            height=0,
             raster_policy=ui.RasterPolicy.NEVER,
         )
-        
+
         with self.window.frame:
             with ui.HStack(width=0, height=0, spacing=10):
-                # Checking joystick part
                 with ui.VStack(height=0):
-                    # Check button
                     self.toggle_checking_button = ui.Button(
-                        text="CHECK", 
-                        height=50, 
+                        text="CHECK",
+                        height=50,
                         width=160,
-                        style=toggle_checking_button_style, 
-                        clicked_fn=self.toggle_checking
+                        style=toggle_checking_button_style,
+                        clicked_fn=self.toggle_checking,
                     )
 
                     ui.Spacer(height=10)
@@ -279,265 +325,194 @@ class MultiManualController(omni.ext.IExt):
                     ui.Spacer(height=10)
                     ui.Separator(width=160, style={"color": ui.color("#939393")})
                     ui.Spacer(height=10)
-        
-                    # Add viewport button
+
                     self.add_viewports_button = ui.Button(
-                        "ADD VIEWPORT", 
-                        height=40, 
+                        "ADD VIEWPORT",
+                        height=40,
                         width=160,
-                        style= add_viewport_button_style,
-                        clicked_fn=self.add_viewports_nvidia_way
-                    )
-                    
-                    # Clean viewports button
-                    self.clear_viewports_button = ui.Button(
-                        "CLEAR VIEWPORTS", 
-                        height=40, 
-                        width=160,
-                        style= add_viewport_button_style,
-                        clicked_fn=self.clear_viewports
+                        style=add_viewport_button_style,
+                        clicked_fn=self.add_viewports_nvidia_way,
                     )
 
-                    # Control/Not control
+                    self.clear_viewports_button = ui.Button(
+                        "CLEAR VIEWPORTS",
+                        height=40,
+                        width=160,
+                        style=add_viewport_button_style,
+                        clicked_fn=self.clear_viewports,
+                    )
+
                     self.toggle_control_button = ui.Button(
-                        text="NO CONTROL", 
+                        text="NO CONTROL",
                         height=40,
                         width=160,
                         style=toggle_control_button_style,
-                        clicked_fn=self.toggle_control
+                        clicked_fn=self.toggle_control,
                     )
 
     def toggle_control(self):
+        """Toggles active manual control state."""
         if self.is_controlling:
-            style={
+            style = {
                 "background_color": ui.color("#952323"),
-                "border_radius": 5, 
-                ":hovered": {"background_color": ui.color("#939393")}}
+                "border_radius": 5,
+                ":hovered": {"background_color": ui.color("#939393")},
+            }
             self.toggle_control_button.set_style(style)
             self.toggle_control_button.text = "NO CONTROL"
-
             self.is_controlling = False
-
         else:
-            style={
+            style = {
                 "background_color": ui.color("#6f9523"),
-                "border_radius": 5, 
-                ":hovered": {"background_color": ui.color("#939393")}
+                "border_radius": 5,
+                ":hovered": {"background_color": ui.color("#939393")},
             }
             self.toggle_control_button.set_style(style)
             self.toggle_control_button.text = "CONTROL"
-
             self.is_controlling = True
 
     def toggle_checking(self):
+        """Toggles real-time joystick hardware state visualizer."""
         if self.is_checking:
-            style={
+            style = {
                 "background_color": ui.color("#db8f26"),
-                "border_radius": 5, 
-                ":hovered": {"background_color": ui.color("#939393")}
+                "border_radius": 5,
+                ":hovered": {"background_color": ui.color("#939393")},
             }
             self.toggle_checking_button.set_style(style)
             self.toggle_checking_button.text = "CHECK"
-
             self.is_checking = False
             self.stop_checking()
-
         else:
-            style={
+            style = {
                 "background_color": ui.color("#e14e27"),
-                "border_radius": 5, 
-                ":hovered": {"background_color": ui.color("#939393")}
+                "border_radius": 5,
+                ":hovered": {"background_color": ui.color("#939393")},
             }
             self.toggle_checking_button.set_style(style)
             self.toggle_checking_button.text = "CHECKING"
-
             self.is_checking = True
-            asyncio.ensure_future(self.start_checking())
+            self._checking_task = asyncio.ensure_future(self.start_checking())
 
     async def start_checking(self):
+        """Background coroutine to poll joystick axes for UI testing."""
         self.controller.joysticks.start()
 
         while self.is_checking:
             joystick_inputs = self.controller.check_joysticks()
+            self.update_joystick_ui(joystick_inputs)
+            await asyncio.sleep(0.2)
 
-            # Batch UI updates to reduce GPU calls
-            await self.update_joystick_ui(joystick_inputs)
-            await asyncio.sleep(0.2)  # Increase delay to 200ms
+    def update_joystick_ui(self, joystick_inputs: dict):
+        """Updates indicator rectangles only when state changes occur, avoiding GPU redraw spikes."""
+        joy_ids = self.controller.joysticks.joysticks_ids
+        num_joysticks = min(len(joy_ids), self.max_joysticks)
 
-    async def update_joystick_ui(self, joystick_inputs):
-        """Batch UI updates to reduce GPU stress"""
-        style_active = {"background_color": ui.color("#6f9523"), "border_color": ui.color.white, 
-                    "border_width": 0, "border_radius": 5}
-        style_inactive = {"background_color": ui.color("#db8f26"), "border_color": ui.color.white, 
-                        "border_width": 0, "border_radius": 5}
-        
-        for i in range(min(len(joystick_inputs), self.max_joysticks)):
-            input_vals = joystick_inputs[i]
-            x_value, y_value, z_value = input_vals[0], input_vals[1], input_vals[2]
-            
-            # Update all UI elements for this joystick at once
+        for i in range(num_joysticks):
+            joy_id = joy_ids[i]
+            input_vals = joystick_inputs.get(joy_id)
+            if input_vals is None:
+                continue
+
+            x_val, y_val, z_val = input_vals[0], input_vals[1], input_vals[2]
             checkers = self.joystick_checkers[i]
-            
-            # X-axis
-            checkers[0][0].set_style(style_active if x_value < 0 else style_inactive)
-            checkers[0][1].set_style(style_active if x_value > 0 else style_inactive)
-            
-            # Y-axis  
-            checkers[1][0].set_style(style_active if y_value < 0 else style_inactive)
-            checkers[1][1].set_style(style_active if y_value > 0 else style_inactive)
-            
-            # Z-axis
-            checkers[2][0].set_style(style_active if z_value < 0 else style_inactive)
-            checkers[2][1].set_style(style_active if z_value > 0 else style_inactive)
+            prev_states = self._prev_checker_states[i]
+
+            # X-axis (-X and +X)
+            neg_x = x_val < 0.0
+            pos_x = x_val > 0.0
+            if prev_states[0][0] != neg_x:
+                checkers[0][0].set_style(self.style_active if neg_x else self.style_inactive)
+                prev_states[0][0] = neg_x
+            if prev_states[0][1] != pos_x:
+                checkers[0][1].set_style(self.style_active if pos_x else self.style_inactive)
+                prev_states[0][1] = pos_x
+
+            # Y-axis (-Y and +Y)
+            neg_y = y_val < 0.0
+            pos_y = y_val > 0.0
+            if prev_states[1][0] != neg_y:
+                checkers[1][0].set_style(self.style_active if neg_y else self.style_inactive)
+                prev_states[1][0] = neg_y
+            if prev_states[1][1] != pos_y:
+                checkers[1][1].set_style(self.style_active if pos_y else self.style_inactive)
+                prev_states[1][1] = pos_y
+
+            # Z-axis (-Z and +Z)
+            neg_z = z_val < 0.0
+            pos_z = z_val > 0.0
+            if prev_states[2][0] != neg_z:
+                checkers[2][0].set_style(self.style_active if neg_z else self.style_inactive)
+                prev_states[2][0] = neg_z
+            if prev_states[2][1] != pos_z:
+                checkers[2][1].set_style(self.style_active if pos_z else self.style_inactive)
+                prev_states[2][1] = pos_z
 
     def stop_checking(self):
+        """Resets joystick polling and restores default UI indicator colors."""
         self.controller.joysticks.stop()
 
-        style={
-            "background_color": ui.color("#db8f26"), 
-            "border_color": ui.color.white, 
-            "border_width": 0, 
-            "border_radius": 5
-        }
-        
-        for checker in self.joystick_checkers:
-            for axis in checker:
-                for rectangle in axis:
-                    rectangle.set_style(style)
-
-    def add_viewports(self):
-        viewport_width = ui.Workspace.get_main_window_width()/4
-        viewport_height = ui.Workspace.get_main_window_height()/3
-        
-        async def create_viewports_safely():
-            """Create viewports one by one to avoid GPU overload"""
-            try:
-                for i in range(1):
-                    window_name = f"User {i + 1}"
-                    
-                    # Check if viewport already exists
-                    existing_viewports = ViewportWindow.get_viewport_window_instances()
-                    if any(vp.name == window_name for vp in existing_viewports):
-                        print(f"Viewport '{window_name}' already exists, skipping...")
-                        continue
-                    
-                    # Create viewport with error handling
-                    try:
-                        new_viewport = ViewportWindow.ViewportWindow(
-                            name=window_name, 
-                            width=int(viewport_width), 
-                            height=int(viewport_height)
-                        )
-                        
-                        # Optional: Configure viewport settings to reduce GPU load
-                        if hasattr(new_viewport, 'viewport_widget') and new_viewport.viewport_widget:
-                            # Reduce rendering quality for additional viewports
-                            pass
-                        
-                        print(f"Successfully created viewport: {window_name}")
-                        
-                        # Wait between viewport creations to prevent GPU overload
-                        await asyncio.sleep(0.5)
-                        
-                    except Exception as e:
-                        carb.log_error(f"Failed to create viewport '{window_name}': {e}")
-                        break  # Stop creating more viewports if one fails
-                        
-            except Exception as e:
-                carb.log_error(f"Error in viewport creation process: {e}")
-        
-        # Start the async viewport creation
-        asyncio.ensure_future(create_viewports_safely())
+        for i, checker in enumerate(self.joystick_checkers):
+            for axis_idx, axis in enumerate(checker):
+                for dir_idx, rectangle in enumerate(axis):
+                    rectangle.set_style(self.style_inactive)
+                    self._prev_checker_states[i][axis_idx][dir_idx] = False
 
     def clear_viewports(self):
-        """Safely clear viewports one by one"""
+        """Safely destroys only the extra viewports instantiated by this extension."""
         async def clear_viewports_safely():
-            viewport_instances = ViewportWindow.get_instances()
-            
-            for viewport_window in viewport_instances:
-                if viewport_window.name == "Viewport":  # Keep main viewport
-                    continue
-                    
+            for vp in list(self.created_viewports):
                 try:
-                    if hasattr(viewport_window, 'viewport_widget') and viewport_window.viewport_widget:
-                        viewport_window.viewport_widget.destroy()
-                    viewport_window.destroy()
-                    # print(f"Destroyed viewport: {viewport_window.name}")
-                    
-                    # Small delay between destructions
-                    await asyncio.sleep(0.1)
-                    
+                    if hasattr(vp, "viewport_widget") and vp.viewport_widget:
+                        vp.viewport_widget.destroy()
+                    vp.destroy()
+                    self.created_viewports.remove(vp)
+                    await asyncio.sleep(0.05)
                 except Exception as e:
-                    carb.log_error(f"Error destroying viewport {viewport_window.name}: {e}")
-        
+                    carb.log_error(f"[MultiManualController] Error destroying viewport: {e}")
+
         asyncio.ensure_future(clear_viewports_safely())
 
     def add_viewports_nvidia_way(self):
-        """NVIDIA's recommended approach for multiple viewports"""
-        
-        # Calculate safe viewport dimensions
+        """Spawns camera viewports using recommended non-docking configuration."""
         window_width = ui.Workspace.get_main_window_width()
         window_height = ui.Workspace.get_main_window_height()
-        
-        # Create smaller viewports to reduce GPU load
-        viewport_width = int(window_width / 3)  # Smaller than /4
-        viewport_height = int(window_height / 4)  # Smaller than /3
-        
+
+        viewport_width = max(int(window_width / 3), 320)
+        viewport_height = max(int(window_height / 4), 240)
+
         async def create_viewports_safely():
-            created_viewports = []
-            
-            try:
-                viewports = ViewportWindow.get_instances()
-                viewports_names = [vp.name for vp in viewports]
-                for i in range(3):
-                    viewport_name = f"Camera_{i+1}"
-                    
-                    # Check if viewport already exists
-                    if viewport_name in viewports_names:
-                        carb.log_warn(f"Viewport {viewport_name} already exists")
-                        continue
-                    
-                    # Create viewport with NVIDIA's method
+            existing_names = [vp.name for vp in ViewportWindow.get_instances()]
+
+            for i in range(3):
+                viewport_name = f"Camera_{i + 1}"
+                if viewport_name in existing_names:
+                    carb.log_warn(f"[MultiManualController] Viewport '{viewport_name}' already exists.")
+                    continue
+
+                try:
                     viewport_window = ViewportWindow(
                         name=viewport_name,
                         width=viewport_width,
                         height=viewport_height,
-                        dockPreference=ui.DockPreference.DISABLED  # Don't auto-dock
+                        dockPreference=ui.DockPreference.DISABLED,
                     )
-                    
-                    # Configure viewport settings to reduce GPU load
+
                     if viewport_window.viewport_api:
-                        # Reduce rendering quality
-                        viewport_window.viewport_api.set_texture_resolution((512, 512))  # Lower resolution
-                        
-                        # Disable expensive features
-                        # render_settings = viewport_window.viewport_api.get_render_settings()
-                        # if render_settings:
-                        #     render_settings.set_anti_aliasing_mode(0)  # Disable AA
-                        #     render_settings.set_ambient_occlusion_enabled(False)
-                        #     render_settings.set_screen_space_reflection_enabled(False)
-                    
-                    created_viewports.append(viewport_window)
-                    carb.log_info(f"Created viewport: {viewport_name}")
-                    
-                    # Critical: Wait for GPU to process
+                        # Cap texture resolution to 512x512 to preserve frame rates
+                        viewport_window.viewport_api.set_texture_resolution((512, 512))
+
+                    self.created_viewports.append(viewport_window)
+                    carb.log_info(f"[MultiManualController] Created viewport: {viewport_name}")
+
                     await self.wait_for_gpu_ready()
-                    
-            except Exception as e:
-                carb.log_error(f"Failed to create viewports: {e}")
-                # Clean up any created viewports
-                for vp in created_viewports:
-                    try:
-                        vp.destroy()
-                    except:
-                        pass
-        
-        # Execute async
+                except Exception as e:
+                    carb.log_error(f"[MultiManualController] Failed to create viewport '{viewport_name}': {e}")
+                    break
+
         asyncio.ensure_future(create_viewports_safely())
 
     async def wait_for_gpu_ready(self):
-        """Wait for GPU to be ready for next operation"""
-        # Force a frame update
+        """Allows GPU frame update before next viewport initialization to prevent crashes."""
         await omni.kit.app.get_app().next_update_async()
-        # Additional small delay
-        await asyncio.sleep(0.2)
+        await asyncio.sleep(0.1)

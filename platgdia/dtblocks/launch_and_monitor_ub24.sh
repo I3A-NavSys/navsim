@@ -22,7 +22,7 @@ for SERVICE in $SERVICES; do
     # Launch a new terminal window natively using gnome-terminal
     # 'docker-compose logs -f' streams the logs in real-time
     # 'exec bash' ensures the terminal window remains open even if the container crashes or stops
-    # gnome-terminal --new-window -- bash -c "printf '\033]0;%s\007' $SERVICE; docker compose logs -f $SERVICE; exec bash"
+    # gnome-terminal -- bash -c "printf '\033]0;%s\007' $SERVICE; docker compose logs -f $SERVICE; exec bash"
     gnome-terminal -- bash -c "printf '\033]0;%s\007' $SERVICE; docker compose logs -f $SERVICE"
 done
 

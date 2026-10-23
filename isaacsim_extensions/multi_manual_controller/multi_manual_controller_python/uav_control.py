@@ -1,118 +1,253 @@
 import numpy as np
+import carb
+try:
+    from isaacsim.core.prims import RigidPrim
+except ImportError:
+    try:
+        from isaacsim.core.experimental.prims import RigidPrim
+    except ImportError:
+        RigidPrim = object
 
-from isaacsim.core.prims import RigidPrim
+
+# Precomputed Taylor series inverse factorials for trajectory evaluation
+INV_FACTORIAL_3 = 1.0 / 6.0
+INV_FACTORIAL_4 = 1.0 / 24.0
+INV_FACTORIAL_5 = 1.0 / 120.0
+
 
 class UAVControl:
+    """Controls a fleet of multirotor UAVs using physics-based aerodynamics and modern state-space control."""
+
     def __init__(self, rigid_prim_view: RigidPrim):
-        # Runtime variables
         self.rigid_prim_view = rigid_prim_view
         self.amount_uavs = self.rigid_prim_view.count
         self.rigid_prim_uav_indices = np.arange(self.amount_uavs)
 
-        # UAVs parameters
+        # UAV telemetry and kinematics
         self.positions = None
         self.orientations = None
         self.eulers = None
-        self.global_linear_vels = None
-        self.global_angular_vels = None
+        self.world_linear_vels = None
+        self.world_angular_vels = None
         self.local_linear_vels = None
         self.local_angular_vels = None
 
-        # UAV classic modern control
+        # Multirotor limits and operating points
         self.w_max = 62.8319
         self.w_min = 0.0
         self.w_hov = 41.8879
 
-        self.rotors_vel = np.zeros((self.amount_uavs, 4))
+        self.rotors_vel = np.zeros((self.amount_uavs, 4), dtype=np.float32)
 
-        self.thrust_coeffs = np.array([4.6544, 4.6544, 0.9309, 0.9309])
-        self.drag_force_coeffs = -np.array([3.0625, 4.0000, 7.8400])
-        self.drag_moment_coeffs = np.array([5.9683, 5.9683, 1.4921, 1.4921])
-        self.friction_moment_coeffs = -np.array([37.4010, 25.8580, 20.2514])
-        
+        # Aerodynamic parameters
+        self.thrust_coeffs = np.array([4.6544, 4.6544, 0.9309, 0.9309], dtype=np.float32)
+        self.drag_force_coeffs = -np.array([3.0625, 4.0000, 7.8400], dtype=np.float32)
+        self.drag_moment_coeffs = np.array([5.9683, 5.9683, 1.4921, 1.4921], dtype=np.float32)
+        self.friction_moment_coeffs = -np.array([37.4010, 25.8580, 20.2514], dtype=np.float32)
+
+        # State-space control gain matrices
         self.Kx = np.array([
             [-14.6551, -45.5032, -4.1872, -13.0009, 3.8871, -6.6331, 2.1363, 6.4114],
             [14.6551, -45.5032, 4.1872, -13.0009, -3.8871, -6.6331, -2.1363, 6.4114],
             [-58.6206, 227.5161, -16.7487, 65.0046, -24.4514, 33.1656, 8.5453, 6.4114],
-            [58.6206, 227.5161, 16.7487, 65.0046, 24.4514, 33.1656, -8.5453, 6.4114]
-        ])
+            [58.6206, 227.5161, 16.7487, 65.0046, 24.4514, 33.1656, -8.5453, 6.4114],
+        ], dtype=np.float32)
+
         self.Ky = np.array([
             [-3.1839, 1.0254, 4.2743, 2.5914],
             [-3.1839, -1.0254, 4.2743, -2.5914],
             [15.9195, 4.1017, 4.2743, -16.3009],
-            [15.9195, -4.1017, 4.2743, 16.3009]
-        ])
+            [15.9195, -4.1017, 4.2743, 16.3009],
+        ], dtype=np.float32)
 
-        self.Hs = np.full((4, 1), self.w_hov)
-        self.r = np.zeros((self.amount_uavs, 4, 1))
-        self.x = np.zeros((self.amount_uavs, 8, 1))
-        self.y = np.zeros((self.amount_uavs, 4, 1))
-        self.e = np.zeros((self.amount_uavs, 4, 1))
-        self.E = np.zeros((self.amount_uavs, 4, 1))
-        self.u = np.zeros((self.amount_uavs, 4, 1))
-        self.E_max = 150
+        self.Hs = np.full((4, 1), self.w_hov, dtype=np.float32)
+        self.r = np.zeros((self.amount_uavs, 4, 1), dtype=np.float32)
+        self.x = np.zeros((self.amount_uavs, 8, 1), dtype=np.float32)
+        self.y = np.zeros((self.amount_uavs, 4, 1), dtype=np.float32)
+        self.e = np.zeros((self.amount_uavs, 4, 1), dtype=np.float32)
+        self.E = np.zeros((self.amount_uavs, 4, 1), dtype=np.float32)
+        self.u = np.zeros((self.amount_uavs, 4, 1), dtype=np.float32)
+        self.E_max = 150.0
 
-        # Physics
+        # Rotor positions relative to body frame [x, y, z]
         self.bodies_positions = np.array([
-            [0, 0, 0], [0.5, 1.95, 0.5], [0.5, -1.95, 0.5],
-            [-2.5, 1.55, 0.5], [-2.5, -1.55, 0.5]
-        ])
-        self.forces_to_apply = np.zeros((self.amount_uavs, 3))
-        self.torques_to_apply = np.zeros((self.amount_uavs, 3))
+            [0.0, 0.0, 0.0],
+            [0.5, 1.95, 0.5],
+            [0.5, -1.95, 0.5],
+            [-2.5, 1.55, 0.5],
+            [-2.5, -1.55, 0.5],
+        ], dtype=np.float32)
+
+        # Precompute rotor lever arms for analytical torque computation (eliminating np.cross and 3D tensors)
+        self.rotor_rx = self.bodies_positions[1:, 0]
+        self.rotor_ry = self.bodies_positions[1:, 1]
+
+        self.forces_to_apply = np.zeros((self.amount_uavs, 3), dtype=np.float32)
+        self.torques_to_apply = np.zeros((self.amount_uavs, 3), dtype=np.float32)
+
+        # Cache initial spawn poses to enable fallback reset
+        init_positions, init_orientations = self.rigid_prim_view.get_world_poses(clone=True)
+        self.initial_positions = np.array(init_positions, dtype=np.float32, copy=True)
+        self.initial_orientations = np.array(init_orientations, dtype=np.float32, copy=True)
+
+        # Ring buffer tracking safe flight poses (~1.0s history at 60 Hz) prior to physics destabilization
+        self.healthy_buffer_size = 60
+        self.healthy_positions = np.zeros((self.amount_uavs, self.healthy_buffer_size, 3), dtype=np.float32)
+        self.healthy_orientations = np.zeros((self.amount_uavs, self.healthy_buffer_size, 4), dtype=np.float32)
+        self.healthy_buffer_count = np.full(self.amount_uavs, self.healthy_buffer_size, dtype=np.int32)
+        self.healthy_buffer_idx = np.zeros(self.amount_uavs, dtype=np.int32)
+        self.is_destabilized = np.zeros(self.amount_uavs, dtype=bool)
+        self.healthy_recovery_frames = np.zeros(self.amount_uavs, dtype=np.int32)
+        self.prev_world_linear_vels = np.zeros((self.amount_uavs, 3), dtype=np.float32)
+
+        # Prime the buffer with initial spawn poses
+        for uav_idx in range(self.amount_uavs):
+            self.healthy_positions[uav_idx, :] = self.initial_positions[uav_idx]
+            self.healthy_orientations[uav_idx, :] = self.initial_orientations[uav_idx]
+
+    def refresh_initial_poses(self):
+        """Updates cached initial spawn poses from the current stage configuration."""
+        init_positions, init_orientations = self.rigid_prim_view.get_world_poses(clone=True)
+        self.initial_positions = np.array(init_positions, dtype=np.float32, copy=True)
+        self.initial_orientations = np.array(init_orientations, dtype=np.float32, copy=True)
+
+        for uav_idx in range(self.amount_uavs):
+            self.healthy_positions[uav_idx, :] = self.initial_positions[uav_idx]
+            self.healthy_orientations[uav_idx, :] = self.initial_orientations[uav_idx]
+            self.healthy_buffer_count[uav_idx] = self.healthy_buffer_size
+            self.healthy_buffer_idx[uav_idx] = 0
+            self.is_destabilized[uav_idx] = False
+            self.healthy_recovery_frames[uav_idx] = 0
 
     # -----------------------
     # -- Control Functions --
     # -----------------------
     def imu(self):
-        self.positions, self.orientations = self.rigid_prim_view.get_world_poses()
+        """
+        Reads UAV state from the physics simulation view without unnecessary cloning.
+        Queries transforms and combined velocities in single operations.
+        Includes a safety watchdog to intercept NaN/Inf and coordinate divergence.
+        """
+        self.positions, self.orientations = self.rigid_prim_view.get_world_poses(clone=False)
+
+        # Telemetry watchdog: detect coordinate divergence before reaching RTX BVH limits (2^40)
+        invalid_mask = np.isnan(self.positions).any(axis=1) | np.isinf(self.positions).any(axis=1)
+        oob_mask = (
+            (np.abs(self.positions[:, 0]) > 20000.0)
+            | (np.abs(self.positions[:, 1]) > 20000.0)
+            | (self.positions[:, 2] > 10000.0)
+            | (self.positions[:, 2] < -500.0)
+        )
+        rogue_indices = np.where(invalid_mask | oob_mask)[0]
+        if len(rogue_indices) > 0:
+            carb.log_warn(
+                f"[UAVControl] Watchdog intercepted divergent UAV coordinates for indices: {rogue_indices.tolist()}. "
+                "Executing emergency reset to last stable pose before physics divergence."
+            )
+            self.reset_pose(rogue_indices.tolist())
+            self.positions, self.orientations = self.rigid_prim_view.get_world_poses(clone=False)
+
         self.eulers = self.quaternion_to_euler(self.orientations)
-        self.world_linear_vels = self.rigid_prim_view.get_linear_velocities(clone=True)
-        self.world_angular_vels = self.rigid_prim_view.get_angular_velocities(clone=True)
+
+        # Fetch both linear and angular velocities in a single physics view query
+        velocities = self.rigid_prim_view.get_velocities(clone=False)
+        self.world_linear_vels = velocities[:, :3]
+        self.world_angular_vels = velocities[:, 3:6]
+
         self.local_linear_vels = self.global_to_local_velocity(
-            self.world_linear_vels, 
-            self.orientations
+            self.world_linear_vels,
+            self.orientations,
         )
         self.local_angular_vels = self.global_to_local_velocity(
-            self.world_angular_vels, 
-            self.orientations
+            self.world_angular_vels,
+            self.orientations,
         )
-    
+
+        # Update historical ring buffer with stable flight poses
+        self._update_healthy_pose_buffer()
+
+    def _update_healthy_pose_buffer(self):
+        """Records valid, stable flight poses into ring buffers to enable pre-divergence resets."""
+        lin_speeds = np.linalg.norm(self.world_linear_vels, axis=1)
+        ang_speeds = np.linalg.norm(self.world_angular_vels, axis=1)
+
+        # Body-up alignment in world coordinates: 1.0 - 2.0 * (qx^2 + qy^2)
+        up_alignments = 1.0 - 2.0 * (self.orientations[:, 1] ** 2 + self.orientations[:, 2] ** 2)
+
+        # Velocity change magnitude between steps to detect sudden collision impact impulses
+        delta_v_mags = np.linalg.norm(self.world_linear_vels - self.prev_world_linear_vels, axis=1)
+        self.prev_world_linear_vels[:] = self.world_linear_vels
+
+        for i in range(self.amount_uavs):
+            is_physically_wild = (
+                lin_speeds[i] > 20.0
+                or ang_speeds[i] > 12.0
+                or up_alignments[i] < 0.2
+                or delta_v_mags[i] > 3.0
+                or np.isnan(lin_speeds[i])
+                or np.isinf(lin_speeds[i])
+            )
+
+            if is_physically_wild:
+                # Freeze buffer immediately upon impact/anomaly to preserve the pre-crash flight state
+                self.is_destabilized[i] = True
+                self.healthy_recovery_frames[i] = 0
+            elif self.is_destabilized[i]:
+                # Require 1 second (60 consecutive frames) of steady, upright flight to confirm recovery
+                if lin_speeds[i] < 15.0 and ang_speeds[i] < 5.0 and up_alignments[i] > 0.7 and delta_v_mags[i] < 1.0:
+                    self.healthy_recovery_frames[i] += 1
+                    if self.healthy_recovery_frames[i] >= 60:
+                        self.is_destabilized[i] = False
+                        self.healthy_recovery_frames[i] = 0
+                else:
+                    self.healthy_recovery_frames[i] = 0
+
+            # Only record safe poses while flight physics is well-behaved
+            if not self.is_destabilized[i]:
+                slot = self.healthy_buffer_idx[i]
+                self.healthy_positions[i, slot] = self.positions[i]
+                self.healthy_orientations[i, slot] = self.orientations[i]
+                self.healthy_buffer_idx[i] = (slot + 1) % self.healthy_buffer_size
+                if self.healthy_buffer_count[i] < self.healthy_buffer_size:
+                    self.healthy_buffer_count[i] += 1
+
     def navigation(
-        self, 
-        uav_physics_indices, 
-        current_time, 
-        fp_times, 
-        fp_positions, 
-        fp_velocities, 
-        fp_accelerations, 
-        fp_jerks, 
-        fp_snaps, 
-        fp_crackels, 
-        fp_headings
+        self,
+        uav_physics_indices,
+        current_time,
+        fp_times,
+        fp_positions,
+        fp_velocities,
+        fp_accelerations,
+        fp_jerks,
+        fp_snaps,
+        fp_crackels,
+        fp_headings,
     ):
+        """Evaluates trajectory polynomials and calculates target guidance velocities."""
         target_indices = self.get_running_idx(fp_times, current_time)
 
         running_data = self.extract_running_data(
-            fp_times, 
-            fp_positions, 
-            fp_velocities, 
-            fp_accelerations, 
-            fp_jerks, 
-            fp_snaps, 
-            fp_crackels, 
+            fp_times,
+            fp_positions,
+            fp_velocities,
+            fp_accelerations,
+            fp_jerks,
+            fp_snaps,
+            fp_crackels,
             fp_headings,
-            target_indices
+            target_indices,
         )
 
         expected_pos, expected_vel = self.status_at_time(
             current_time,
-            running_data[0],  # times
-            running_data[1],  # positions
-            running_data[2],  # velocities
-            running_data[3],  # accelerations
-            running_data[4],  # jerks
-            running_data[5],  # snaps
-            running_data[6],  # crackels
+            running_data[0],
+            running_data[1],
+            running_data[2],
+            running_data[3],
+            running_data[4],
+            running_data[5],
+            running_data[6],
         )
 
         cmd_world_linear_vel, cmd_yaw_rotation = self.get_command(
@@ -121,119 +256,152 @@ class UAVControl:
             self.positions[uav_physics_indices],
             self.world_linear_vels[uav_physics_indices],
             self.eulers[uav_physics_indices, 2],
-            running_data[7],  # headings
-            2
+            running_data[7],
+            2.0,
         )
 
         cmd_local_linear_vel = self.global_to_local_velocity(
             cmd_world_linear_vel,
-            self.orientations[uav_physics_indices]
+            self.orientations[uav_physics_indices],
         )
 
         return cmd_local_linear_vel, cmd_yaw_rotation
 
-    def servo_control(self, uav_physics_indices, command_linear_vel, command_angular_vel, step_size):
-        # Assign the model reference to be followed
-        self.r[uav_physics_indices, 0, 0] = command_linear_vel[:, 0]  # bXdot
-        self.r[uav_physics_indices, 1, 0] = command_linear_vel[:, 1]  # bYdot
-        self.r[uav_physics_indices, 2, 0] = command_linear_vel[:, 2]  # bZdot
-        self.r[uav_physics_indices, 3, 0] = command_angular_vel     # hZdot
+    def servo_control(self, uav_physics_indices, command_linear_vel, command_angular_vel, step_size: float):
+        """Computes feedback control inputs and saturates rotor angular velocities in-place."""
+        if len(uav_physics_indices) == 0:
+            return
 
-        # Assign model state
+        # Reference trajectory inputs
+        self.r[uav_physics_indices, 0, 0] = command_linear_vel[:, 0]
+        self.r[uav_physics_indices, 1, 0] = command_linear_vel[:, 1]
+        self.r[uav_physics_indices, 2, 0] = command_linear_vel[:, 2]
+        self.r[uav_physics_indices, 3, 0] = command_angular_vel
+
+        # Current state feedback: [roll, pitch, bWx, bWy, bWz, bXdot, bYdot, bZdot]
         self.x[uav_physics_indices, :2, 0] = self.eulers[uav_physics_indices, :2]
-        self.x[uav_physics_indices, 2:5, 0] = self.local_angular_vels[uav_physics_indices] # bWx, bWy, bWz
-        self.x[uav_physics_indices, 5:8, 0] = self.local_linear_vels[uav_physics_indices]  # bXdot, bYdot, bZdot
+        self.x[uav_physics_indices, 2:5, 0] = self.local_angular_vels[uav_physics_indices]
+        self.x[uav_physics_indices, 5:8, 0] = self.local_linear_vels[uav_physics_indices]
 
-        # Assign model output
-        self.y[uav_physics_indices, 0, 0] = self.x[uav_physics_indices, 5, 0]        # bXdot
-        self.y[uav_physics_indices, 1, 0] = self.x[uav_physics_indices, 6, 0]        # bYdot
-        self.y[uav_physics_indices, 2, 0] = self.x[uav_physics_indices, 7, 0]        # bZdot
-        self.y[uav_physics_indices, 3, 0] = self.x[uav_physics_indices, 4, 0]        # bWz
+        # Model output
+        self.y[uav_physics_indices, 0, 0] = self.x[uav_physics_indices, 5, 0]
+        self.y[uav_physics_indices, 1, 0] = self.x[uav_physics_indices, 6, 0]
+        self.y[uav_physics_indices, 2, 0] = self.x[uav_physics_indices, 7, 0]
+        self.y[uav_physics_indices, 3, 0] = self.x[uav_physics_indices, 4, 0]
 
-        # Error between the output and the reference 
+        # Output tracking error
         self.e[uav_physics_indices] = self.y[uav_physics_indices] - self.r[uav_physics_indices]
 
-        # Cumulative error
+        # Integrated cumulative error updated and saturated in-place
         self.E[uav_physics_indices] += self.e[uav_physics_indices] * step_size
-        self.E = np.clip(self.E, -self.E_max, self.E_max)
-
-        # Dynamic system control
-        self.u[uav_physics_indices] = (
-            self.Hs - 
-            (self.Kx @ self.x[uav_physics_indices]) - 
-            (self.Ky @ self.E[uav_physics_indices])
+        np.clip(
+            self.E[uav_physics_indices],
+            -self.E_max,
+            self.E_max,
+            out=self.E[uav_physics_indices],
         )
 
-        # Rotor speed saturation
-        self.u = np.clip(self.u, self.w_min, self.w_max)
+        # Full-state feedback control law
+        self.u[uav_physics_indices] = (
+            self.Hs
+            - (self.Kx @ self.x[uav_physics_indices])
+            - (self.Ky @ self.E[uav_physics_indices])
+        )
 
-        # Assign rotor speed
-        self.rotors_vel[uav_physics_indices, 0] = self.u[uav_physics_indices, 1, 0]
-        self.rotors_vel[uav_physics_indices, 1] = self.u[uav_physics_indices, 0, 0]
-        self.rotors_vel[uav_physics_indices, 2] = self.u[uav_physics_indices, 3, 0]
-        self.rotors_vel[uav_physics_indices, 3] = self.u[uav_physics_indices, 2, 0]
+        # Saturate commanded rotor velocities in-place
+        np.clip(
+            self.u[uav_physics_indices],
+            self.w_min,
+            self.w_max,
+            out=self.u[uav_physics_indices],
+        )
+
+        # Vectorized assignment of rotor speeds: u indices [1, 0, 3, 2] map to rotors [0, 1, 2, 3]
+        self.rotors_vel[uav_physics_indices] = self.u[uav_physics_indices, :, 0][:, [1, 0, 3, 2]]
 
     def compute_dynamics(self, uav_physics_indices):
-        square_rotors_vel = self.rotors_vel * self.rotors_vel
+        """
+        Computes aerodynamic forces and moments using analytical torque derivation.
+        Eliminates intermediate 3D tensor allocations and general cross products.
+        """
+        if len(uav_physics_indices) == 0:
+            return
 
-        # Thrust forces
+        active_rotors = self.rotors_vel[uav_physics_indices]
+        square_rotors_vel = active_rotors * active_rotors
+
+        # Rotor thrusts along body Z-axis: shape (M, 4)
         thrust_z = self.thrust_coeffs * square_rotors_vel
-        
-        # Drag forces
-        fd = (
-            self.drag_force_coeffs * 
-            np.abs(self.local_linear_vels) * 
-            self.local_linear_vels
-        )
-        
-        # Drag moments
+
+        # Body aerodynamic drag forces with realistic velocity bounding to prevent quadratic feedback loop
+        active_lin_vel = np.clip(self.local_linear_vels[uav_physics_indices], -25.0, 25.0)
+        fd = self.drag_force_coeffs * np.abs(active_lin_vel) * active_lin_vel
+
+        # Rotor drag moments
         mdr_z = self.drag_moment_coeffs * square_rotors_vel
-        mdr = np.zeros((self.amount_uavs, 3))
-        mdr[:, 2] = mdr_z[:, 1] - mdr_z[:, 0] - mdr_z[:, 3] + mdr_z[:, 2]
-        
-        # Friction moments
-        md = (
-            self.friction_moment_coeffs * 
-            np.abs(self.local_angular_vels) * 
-            self.local_angular_vels
+        mdr_torque_z = mdr_z[:, 1] - mdr_z[:, 0] - mdr_z[:, 3] + mdr_z[:, 2]
+
+        # Body rotational friction moments with realistic angular velocity bounding
+        active_ang_vel = np.clip(self.local_angular_vels[uav_physics_indices], -20.0, 20.0)
+        md = self.friction_moment_coeffs * np.abs(active_ang_vel) * active_ang_vel
+
+        # Total body-frame forces: fd + sum of rotor thrusts along Z
+        self.forces_to_apply[uav_physics_indices, :2] = fd[:, :2]
+        self.forces_to_apply[uav_physics_indices, 2] = fd[:, 2] + np.sum(thrust_z, axis=1)
+
+        # Analytical body torques: r_i x [0, 0, T_i] = [r_iy * T_i, -r_ix * T_i, 0]
+        torque_thrust_x = np.sum(thrust_z * self.rotor_ry, axis=1)
+        torque_thrust_y = -np.sum(thrust_z * self.rotor_rx, axis=1)
+
+        self.torques_to_apply[uav_physics_indices, 0] = torque_thrust_x + md[:, 0]
+        self.torques_to_apply[uav_physics_indices, 1] = torque_thrust_y + md[:, 1]
+        self.torques_to_apply[uav_physics_indices, 2] = mdr_torque_z + md[:, 2]
+
+        # Numerical safety clamps: protect against NaN/Inf and extreme physics impulse spikes
+        np.nan_to_num(self.forces_to_apply[uav_physics_indices], copy=False)
+        np.nan_to_num(self.torques_to_apply[uav_physics_indices], copy=False)
+        np.clip(
+            self.forces_to_apply[uav_physics_indices, :2],
+            -10000.0,
+            10000.0,
+            out=self.forces_to_apply[uav_physics_indices, :2],
         )
-        
-        # Force and torque
-        bodies_forces = np.zeros((self.amount_uavs, 5, 3))
-        bodies_forces[uav_physics_indices, 0] = fd[uav_physics_indices]
-        bodies_forces[uav_physics_indices, 1:, 2] = thrust_z[uav_physics_indices]
-        
-        self.forces_to_apply[uav_physics_indices] = np.sum(
-            bodies_forces[uav_physics_indices], 
-            axis=1
+        np.clip(
+            self.forces_to_apply[uav_physics_indices, 2],
+            -5000.0,
+            45000.0,
+            out=self.forces_to_apply[uav_physics_indices, 2],
         )
-        
-        torques = np.sum(
-            np.cross(self.bodies_positions, bodies_forces[uav_physics_indices]), axis=1
-        )
-        
-        self.torques_to_apply[uav_physics_indices] = (
-            mdr[uav_physics_indices] + md[uav_physics_indices] + torques
+        np.clip(
+            self.torques_to_apply[uav_physics_indices],
+            -5000.0,
+            5000.0,
+            out=self.torques_to_apply[uav_physics_indices],
         )
 
     def apply_dynamics(self, uav_to_update_idx):
+        """Applies computed forces and torques directly to the simulation rigid body view."""
+        if len(uav_to_update_idx) == 0:
+            return
+
         self.rigid_prim_view.apply_forces_and_torques_at_pos(
             forces=self.forces_to_apply[uav_to_update_idx],
             torques=self.torques_to_apply[uav_to_update_idx],
             is_global=False,
-            indices=self.rigid_prim_uav_indices[uav_to_update_idx]
+            indices=self.rigid_prim_uav_indices[uav_to_update_idx],
         )
-    
+
     def reset_dynamics(self, uav_to_update_idx):
+        """Zeroes forces, torques, and error integral for inactive UAVs."""
         mask = np.ones(self.amount_uavs, dtype=bool)
         mask[uav_to_update_idx] = False
 
-        self.forces_to_apply[mask] = [0,0,0]
-        self.torques_to_apply[mask] = [0,0,0]
+        self.forces_to_apply[mask] = 0.0
+        self.torques_to_apply[mask] = 0.0
+        self.E[mask, :, 0] = 0.0
 
-        self.E[mask, :, 0] = 0
-
-    def update(self, uav_physics_indices, flightplans, current_time, step_size):
+    def update(self, uav_physics_indices, flightplans, current_time: float, step_size: float):
+        """Executes full autonomous flight trajectory loop for the specified UAVs."""
         fp_times = self.adjust_2d_array_shape(flightplans[0])
         fp_positions = self.adjust_3d_array_shape(flightplans[1])
         fp_velocities = self.adjust_3d_array_shape(flightplans[2])
@@ -255,366 +423,294 @@ class UAVControl:
             fp_jerks,
             fp_snaps,
             fp_crackels,
-            fp_headings
+            fp_headings,
         )
 
-        # uav_idxs = []
-        # for operator_id, uav_id, flightplan in flightplans:
-        #     uav_idx = self.uav_ids_to_physics_buffer[operator_id][uav_id]
-        #     uav_idxs.append(uav_idx)
-
-        #     current_pos = self.positions[uav_idx]
-        #     current_world_linear_vel = self.world_linear_vels[uav_idx]
-        #     current_yaw = self.eulers[uav_idx, 2]
-        #     current_waypoint_heading = flightplan.get_running_waypoint(current_time).heading
-
-        #     cmd_world_linear_vel, cmd_yaw_rotation = flightplan.get_isaacsim_command(
-        #         current_time,
-        #         current_pos,
-        #         current_world_linear_vel,
-        #         current_yaw,
-        #         current_waypoint_heading,
-        #         2
-        #     )
-
-        #     cmd_local_linear_vel = self.global_to_local_velocity(
-        #         cmd_world_linear_vel,
-        #         self.orientations[uav_idx]
-        #     )
-
-            # if uav_id == "UAV_03":
-            #     print(f"[{uav_id}] - POS: {current_pos}")
-                # print(f"CURRENT WORLD LINEAR VEL: {current_world_linear_vel}")
-                # print(f"CURRENT YAW: {current_yaw}")
-                # print(f"CMD WORLD LINEAR VEL: {cmd_world_linear_vel}")
-                # print(f"CMD YAW ROTATION: {cmd_yaw_rotation}")
-                # print(f"CMD LOCAL LINEAR VEL: {cmd_local_linear_vel}")
-                # print()
-
-        self.servo_control(
-            uav_physics_indices, 
-            cmd_local_linear_vel, 
-            cmd_yaw_rotation, 
-            step_size
-        )
+        self.servo_control(uav_physics_indices, cmd_local_linear_vel, cmd_yaw_rotation, step_size)
         self.compute_dynamics(uav_physics_indices)
-
         self.apply_dynamics(uav_physics_indices)
         self.reset_dynamics(uav_physics_indices)
-        
-    def update_command(
-        self, 
-        uav_physics_indices, 
-        cmd_local_linear_vel, 
-        cmd_yaw_rotation, 
-        step_size
-    ):
-        self.imu()
-        
-        self.servo_control(
-            uav_physics_indices, 
-            cmd_local_linear_vel, 
-            cmd_yaw_rotation, 
-            step_size
-        )
 
-        self.compute_dynamics(uav_physics_indices)
-        self.apply_dynamics(uav_physics_indices)
-        # self.reset_dynamics(uav_physics_indices)
+    def update_command(
+        self,
+        uav_physics_indices,
+        cmd_local_linear_vel,
+        cmd_yaw_rotation,
+        step_size: float,
+    ):
+        """Executes manual teleoperation loop for active joysticks."""
+        self.imu()
+
+        if len(uav_physics_indices) > 0:
+            self.servo_control(uav_physics_indices, cmd_local_linear_vel, cmd_yaw_rotation, step_size)
+            self.compute_dynamics(uav_physics_indices)
+            self.apply_dynamics(uav_physics_indices)
+
+        self.reset_dynamics(uav_physics_indices)
 
     # -------------------------
     # -- Auxiliary Functions --
     # -------------------------
-    def rotate_vector_by_quaternion(self, vector, quaternion, conjugate):
-        # Ensure working with a 2D array
-        is_1d_array = False
+    @staticmethod
+    def _fast_cross(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+        """Fast 3D cross-product on 2D arrays avoiding np.cross overhead."""
+        return np.column_stack((
+            a[:, 1] * b[:, 2] - a[:, 2] * b[:, 1],
+            a[:, 2] * b[:, 0] - a[:, 0] * b[:, 2],
+            a[:, 0] * b[:, 1] - a[:, 1] * b[:, 0],
+        ))
 
-        if len(vector.shape) == 1:
+    def rotate_vector_by_quaternion(self, vector: np.ndarray, quaternion: np.ndarray, conjugate: bool) -> np.ndarray:
+        """Rotates 3D vector(s) using unit quaternion with Rodrigues' formulation."""
+        is_1d_array = vector.ndim == 1
+        if is_1d_array:
             vector = vector[np.newaxis, :]
-            is_1d_array = True
-
-        if len(quaternion.shape) == 1:
+        if quaternion.ndim == 1:
             quaternion = quaternion[np.newaxis, :]
 
-        # Extract scalar (w) and vector (u) parts from the quaternion [W, X, Y, Z]
         w = quaternion[:, 0:1]
-        if conjugate:
-            u = -quaternion[:, 1:4]
-        else:
-            u = quaternion[:, 1:4]
+        u = -quaternion[:, 1:4] if conjugate else quaternion[:, 1:4]
 
-        # Apply the vector rotation formula
-        t = 2.0 * np.cross(u, vector)
-        vector_rotated = vector + w * t + np.cross(u, t)
+        t = 2.0 * self._fast_cross(u, vector)
+        vector_rotated = vector + w * t + self._fast_cross(u, t)
 
-        if is_1d_array:
-            vector_rotated = vector_rotated[0]
+        return vector_rotated[0] if is_1d_array else vector_rotated
 
-        return np.round(vector_rotated, decimals=4)
-
-    def local_to_global_velocity(self, vector, quaternion):
+    def local_to_global_velocity(self, vector: np.ndarray, quaternion: np.ndarray) -> np.ndarray:
+        """Transforms body velocity vector to world frame."""
         return self.rotate_vector_by_quaternion(vector, quaternion, conjugate=False)
 
-    def global_to_local_velocity(self, vector, quaternion):
+    def global_to_local_velocity(self, vector: np.ndarray, quaternion: np.ndarray) -> np.ndarray:
+        """Transforms world velocity vector to body frame."""
         return self.rotate_vector_by_quaternion(vector, quaternion, conjugate=True)
 
-    def quaternion_to_euler(self, quaternion):
-        # Ensure it's a 2D array even if a single quaternion is passed
-        is_1d_array = False
-
-        if len(quaternion.shape) == 1:
-            quaternion = quaternion[np.newaxis, :]
-            is_1d_array = True
-
-        # Extract individual components
-        w, x, y, z = quaternion[:, 0], quaternion[:, 1], quaternion[:, 2], quaternion[:, 3]
-        
-        # 1. Roll (X-axis rotation)
-        sinr_cosp = 2.0 * (w * x + y * z)
-        cosr_cosp = 1.0 - 2.0 * (x**2 + y**2)
-        roll = np.arctan2(sinr_cosp, cosr_cosp)
-        
-        # 2. Pitch (Y-axis rotation)
-        sinp = 2.0 * (w * y - z * x)
-        # Clip to avoid NaNs caused by floating point inaccuracies (e.g., 1.00000000001)
-        sinp = np.clip(sinp, -1.0, 1.0)
-        pitch = np.arcsin(sinp)
-        
-        # 3. Yaw (Z-axis rotation)
-        siny_cosp = 2.0 * (w * z + x * y)
-        cosy_cosp = 1.0 - 2.0 * (y**2 + z**2)
-        yaw = np.arctan2(siny_cosp, cosy_cosp)
-        
-        # Combine back into a single array (N, 3)
-        euler = np.column_stack((roll, pitch, yaw))
-
+    def quaternion_to_euler(self, quaternion: np.ndarray) -> np.ndarray:
+        """Converts quaternion [w, x, y, z] to Euler angles [roll, pitch, yaw] in-place."""
+        is_1d_array = quaternion.ndim == 1
         if is_1d_array:
-            euler = euler[0]
+            quaternion = quaternion[np.newaxis, :]
 
-        return euler
+        w = quaternion[:, 0]
+        x = quaternion[:, 1]
+        y = quaternion[:, 2]
+        z = quaternion[:, 3]
 
-    def adjust_2d_array_shape(self, array: list[list[float]]):
-        """
-        Converts a list of varying-length lists into a 2D NumPy array 
-        padded with np.inf.
-        
-        This method uses memory pre-allocation for maximum performance.
-        
-        Args:
-            jagged_list: A list containing lists of numbers.
-            
-        Returns:
-            A 2D numpy array of shape (num_rows, max_length) filled with np.inf 
-            in the empty spots.
-        """
-        # 1. Find the dimensions needed for the final matrix
+        euler = np.empty((quaternion.shape[0], 3), dtype=quaternion.dtype)
+
+        # Roll (X-axis)
+        sinr_cosp = 2.0 * (w * x + y * z)
+        cosr_cosp = 1.0 - 2.0 * (x * x + y * y)
+        euler[:, 0] = np.arctan2(sinr_cosp, cosr_cosp)
+
+        # Pitch (Y-axis) with in-place clipping against numerical precision overflow
+        sinp = 2.0 * (w * y - z * x)
+        np.clip(sinp, -1.0, 1.0, out=sinp)
+        euler[:, 1] = np.arcsin(sinp)
+
+        # Yaw (Z-axis)
+        siny_cosp = 2.0 * (w * z + x * y)
+        cosy_cosp = 1.0 - 2.0 * (y * y + z * z)
+        euler[:, 2] = np.arctan2(siny_cosp, cosy_cosp)
+
+        return euler[0] if is_1d_array else euler
+
+    def adjust_2d_array_shape(self, array: list[list[float]]) -> np.ndarray:
+        """Pre-allocates and converts jagged 2D lists into a contiguous NumPy array padded with np.inf."""
         num_rows = len(array)
         max_length = max(len(row) for row in array)
-        
-        # 2. Pre-allocate the entire matrix filled with infinity
-        # np.full is faster than creating an array of zeros and replacing them
-        matrix = np.full((num_rows, max_length), np.inf)
-        
-        # 3. Overwrite the infinities with the actual data using slicing
-        # This loop is in Python, but the row assignment is executed in C by NumPy
+        matrix = np.full((num_rows, max_length), np.inf, dtype=np.float32)
+
         for i, row in enumerate(array):
-            matrix[i, :len(row)] = row
-            
+            matrix[i, : len(row)] = row
+
         return matrix
 
-    def adjust_3d_array_shape(self, array: list[list[np.ndarray]]):
-        """
-        Converts a jagged list of NumPy arrays (e.g., 3D coordinates) 
-        into a uniform 3D NumPy array padded with np.inf.
-        
-        Args:
-            jagged_list: A list containing lists of 1D NumPy arrays.
-            
-        Returns:
-            A 3D numpy array of shape (num_paths, max_waypoints, num_dimensions).
-        """
+    def adjust_3d_array_shape(self, array: list[list[np.ndarray]]) -> np.ndarray:
+        """Pre-allocates and converts jagged lists of coordinate vectors into a 3D NumPy array padded with np.inf."""
         num_rows = len(array)
         max_length = max(len(path) for path in array)
-        
-        # Dynamically find the number of dimensions (e.g., 3 for [x, y, z])
-        # Assumes the first path has at least one waypoint
         num_dimensions = len(array[0][0])
-        
-        # Pre-allocate a 3D block of memory filled with infinity
-        matrix = np.full((num_rows, max_length, num_dimensions), np.inf)
-        
-        # Inject the actual coordinates using hardware-level slicing
+
+        matrix = np.full((num_rows, max_length, num_dimensions), np.inf, dtype=np.float32)
+
         for i, path in enumerate(array):
-            # NumPy automatically converts the list of 1D arrays into a 2D block
-            # and slots it perfectly into the 3D tensor
-            matrix[i, :len(path), :] = path
-            
+            matrix[i, : len(path), :] = path
+
         return matrix
 
-    def get_running_idx(self, array, value):
-        """
-        Finds the left-side index for a given value across multiple arrays simultaneously.
-        Uses pure boolean vectorization, avoiding Python loops entirely.
-        
-        Args:
-            padded_matrix: A 2D numpy array where shorter sub-arrays are padded with np.inf.
-            value: The float value to search for.
-            
-        Returns:
-            A 1D numpy array with the corresponding indices for each row.
-        """
-        # 1. matrix <= value: Creates a boolean matrix (True where elements are <= value)
-        # 2. np.sum(..., axis=1): Counts the True values per row. 
-        # 3. Subtract 1: Converts the count to a 0-based index.
+    def get_running_idx(self, array: np.ndarray, value: float) -> np.ndarray:
+        """Vectorized lookup of active waypoint index across all flight paths."""
         indices = np.sum(array <= value, axis=1) - 1
-        
-        # 4. np.clip: Forces any -1 (when value is smaller than the first element) to become 0.
         return np.clip(indices, 0, None)
 
     def extract_running_data(
-        self, 
-        times, 
-        positions, 
-        velocities, 
-        accelerations, 
-        jerks, 
-        snaps, 
-        crackels, 
-        headings,
-        target_indices
-    ):
-        """
-        Extracts a specific 3D coordinate from each path in a 3D tensor 
-        using advanced integer indexing. Extremely fast, zero loops.
-        
-        Args:
-            tensor_3d: A 3D NumPy array of shape (num_paths, max_waypoints, 3).
-            target_indices: A list or 1D array of indices to extract for each path.
-            
-        Returns:
-            A 2D NumPy array of shape (num_paths, 3) with the extracted coordinates.
-        """
-        # 1. Create an array representing the path indices: [0, 1, 2, ..., N]
-        # This guarantees we pick one element per path (row)
+        self,
+        times: np.ndarray,
+        positions: np.ndarray,
+        velocities: np.ndarray,
+        accelerations: np.ndarray,
+        jerks: np.ndarray,
+        snaps: np.ndarray,
+        crackels: np.ndarray,
+        headings: np.ndarray,
+        target_indices: np.ndarray,
+    ) -> list[np.ndarray]:
+        """Extracts active trajectory setpoints using integer array indexing."""
         path_indices = np.arange(times.shape[0])
-        
-        # 2. Use advanced indexing to extract the elements. 
-        # NumPy will pair path_indices[0] with target_indices[0], 
-        # path_indices[1] with target_indices[1], etc.
-        running_times = times[path_indices, target_indices]
-        running_positions = positions[path_indices, target_indices]
-        running_velocities = velocities[path_indices, target_indices]
-        running_accelerations = accelerations[path_indices, target_indices]
-        running_jerks = jerks[path_indices, target_indices]
-        running_snaps = snaps[path_indices, target_indices]
-        running_crackels = crackels[path_indices, target_indices]
-        running_headings = headings[path_indices, target_indices]
-        
+
         return [
-            running_times,
-            running_positions,
-            running_velocities,
-            running_accelerations,
-            running_jerks,
-            running_snaps,
-            running_crackels,
-            running_headings,
+            times[path_indices, target_indices],
+            positions[path_indices, target_indices],
+            velocities[path_indices, target_indices],
+            accelerations[path_indices, target_indices],
+            jerks[path_indices, target_indices],
+            snaps[path_indices, target_indices],
+            crackels[path_indices, target_indices],
+            headings[path_indices, target_indices],
         ]
 
     def status_at_time(
         self,
-        current_time, 
-        running_times, 
-        running_pos, 
-        running_vel, 
-        running_accel, 
-        running_jerk, 
-        running_snap, 
-        running_crackel, 
-    ):
-        running_times_diff = current_time - running_times
-        running_times_diff = np.clip(running_times_diff, 0, None)  # Ensure non-negative
-        running_times_diff = running_times_diff[:, np.newaxis]  # Reshape for broadcasting
+        current_time: float,
+        running_times: np.ndarray,
+        running_pos: np.ndarray,
+        running_vel: np.ndarray,
+        running_accel: np.ndarray,
+        running_jerk: np.ndarray,
+        running_snap: np.ndarray,
+        running_crackel: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Computes current position and velocity along minimum-snap trajectory polynomials."""
+        dt = np.clip(current_time - running_times, 0.0, None)[:, np.newaxis]
 
-        running_times_diff_2 = running_times_diff * running_times_diff
-        running_times_diff_3 = running_times_diff_2 * running_times_diff
-        running_times_diff_4 = running_times_diff_3 * running_times_diff
-        running_times_diff_5 = running_times_diff_4 * running_times_diff
+        dt_2 = dt * dt
+        dt_3 = dt_2 * dt
+        dt_4 = dt_3 * dt
+        dt_5 = dt_4 * dt
 
-        pos =  running_pos + running_vel * running_times_diff + 0.5 * running_accel * running_times_diff_2 + (1/6) * running_jerk * running_times_diff_3 + (1/24) * running_snap * running_times_diff_4 + (1/120) * running_crackel * running_times_diff_5
-        vel =  running_vel + running_accel * running_times_diff + 0.5 * running_jerk * running_times_diff_2 + (1/6) * running_snap * running_times_diff_3 + (1/24) * running_crackel * running_times_diff_4
-        # accel = running_accel + running_jerk * current_time + 0.5 * running_snap * current_time**2 + (1/6) * running_crackel * current_time**3
-        # jerk =  running_jerk + running_snap * current_time + 0.5 * running_crackel * current_time**2
-        # snap =  running_snap + running_crackel * current_time
-        # crackel = running_crackel
+        pos = (
+            running_pos
+            + running_vel * dt
+            + 0.5 * running_accel * dt_2
+            + INV_FACTORIAL_3 * running_jerk * dt_3
+            + INV_FACTORIAL_4 * running_snap * dt_4
+            + INV_FACTORIAL_5 * running_crackel * dt_5
+        )
+
+        vel = (
+            running_vel
+            + running_accel * dt
+            + 0.5 * running_jerk * dt_2
+            + INV_FACTORIAL_3 * running_snap * dt_3
+            + INV_FACTORIAL_4 * running_crackel * dt_4
+        )
 
         return pos, vel
-        
-    def get_command(
-        self, 
-        expected_pos, 
-        expected_vel, 
-        current_pos, 
-        current_lin_vel, 
-        current_yaw, 
-        headings, 
-        t_to_solve
-    ):
-        correction_vel = (expected_pos - current_pos) / t_to_solve
 
+    def get_command(
+        self,
+        expected_pos: np.ndarray,
+        expected_vel: np.ndarray,
+        current_pos: np.ndarray,
+        current_lin_vel: np.ndarray,
+        current_yaw: np.ndarray,
+        headings: np.ndarray,
+        t_to_solve: float,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Calculates guidance linear velocity and yaw rotation command."""
+        correction_vel = (expected_pos - current_pos) / t_to_solve
         command_linear_vel = expected_vel + correction_vel
 
-        variation_vel = command_linear_vel - current_lin_vel
-        command_linear_vel = current_lin_vel + variation_vel
+        # Work on a copy of headings to avoid mutating input trajectory array
+        headings_copy = np.copy(headings)
+        zero_mask = (headings_copy[:, 0] == 0.0) & (headings_copy[:, 1] == 0.0)
+        headings_copy[zero_mask] = expected_vel[zero_mask, :2]
 
-        # Replace any [0,0] heading with the expected velocity direction
-        mask = (headings[:, 0] == 0) & (headings[:, 1] == 0)
-        headings[mask] = expected_vel[mask, :2]
-        mask = (headings[:, 0] == 0) & (headings[:, 1] == 0)
-
-        target_yaw = np.arctan2(headings[:, 1], headings[:, 0])
-        
-        # If the target_yaw is 0, replace it with the current_yaw to avoid a calculation error
-        target_yaw[mask] = current_yaw[mask]
+        target_yaw = np.arctan2(headings_copy[:, 1], headings_copy[:, 0])
+        target_yaw[zero_mask] = current_yaw[zero_mask]
 
         yaw_error = target_yaw - current_yaw
-
-        yaw_error = (yaw_error + np.pi) % (2 * np.pi) - np.pi
-
+        yaw_error = (yaw_error + np.pi) % (2.0 * np.pi) - np.pi
         command_yaw_rotation = yaw_error / t_to_solve
 
         return command_linear_vel, command_yaw_rotation
 
-    def reset_pose(self, uav_indices: list[int]):
+    def reset_pose(self, uav_indices: list[int] | None = None):
+        """
+        Resets pose, velocity, dynamic states, and forces for the requested UAVs back to
+        the position and heading they had before physics destabilized / diverged.
+        """
+        if uav_indices is None:
+            uav_indices = self.rigid_prim_uav_indices.tolist()
+
         uav_amount = len(uav_indices)
+        if uav_amount == 0:
+            return
 
-        self.r[uav_indices, :, :]  = 0
-        self.x[uav_indices, :, :]  = 0
-        self.y[uav_indices, :, :]  = 0
-        self.e[uav_indices, :, :]  = 0
-        self.E[uav_indices, :, :]  = 0
-        self.u[uav_indices, :, :]  = 0
+        # Reset controller internal states
+        self.r[uav_indices] = 0.0
+        self.x[uav_indices] = 0.0
+        self.y[uav_indices] = 0.0
+        self.e[uav_indices] = 0.0
+        self.E[uav_indices] = 0.0
+        self.u[uav_indices] = 0.0
+        self.rotors_vel[uav_indices] = self.w_hov
+        self.forces_to_apply[uav_indices] = 0.0
+        self.torques_to_apply[uav_indices] = 0.0
 
-        current_positions, _ = self.rigid_prim_view.get_world_poses(
-            indices=uav_indices, 
-            clone=False,
-            usd=False
+        reset_positions = np.zeros((uav_amount, 3), dtype=np.float32)
+        reset_orientations = np.zeros((uav_amount, 4), dtype=np.float32)
+
+        for out_idx, uav_idx in enumerate(uav_indices):
+            count = self.healthy_buffer_count[uav_idx]
+            if count > 0:
+                # Select a pose from ~0.5s prior to destabilization to guarantee free-air obstacle clearance
+                offset = min(self.healthy_buffer_size // 2, count - 1)
+                safe_slot = (self.healthy_buffer_idx[uav_idx] - 1 - offset) % self.healthy_buffer_size
+                target_pos = self.healthy_positions[uav_idx, safe_slot].copy()
+                target_rot = self.healthy_orientations[uav_idx, safe_slot].copy()
+            else:
+                target_pos = self.initial_positions[uav_idx].copy()
+                target_rot = self.initial_orientations[uav_idx].copy()
+
+            # Ensure minimum elevation clearance above spawn ground level
+            min_safe_z = self.initial_positions[uav_idx, 2] + 0.05
+            if target_pos[2] < min_safe_z:
+                target_pos[2] = min_safe_z
+
+            # Extract yaw while leveling roll and pitch to 0 for an upright, level hover recovery
+            target_euler = self.quaternion_to_euler(target_rot)
+            yaw = target_euler[2]
+            half_yaw = yaw * 0.5
+            level_rot = np.array([np.cos(half_yaw), 0.0, 0.0, np.sin(half_yaw)], dtype=np.float32)
+
+            reset_positions[out_idx] = target_pos
+            reset_orientations[out_idx] = level_rot
+
+            # Clear destabilization state and re-prime history with the clean recovery state
+            self.is_destabilized[uav_idx] = False
+            self.healthy_recovery_frames[uav_idx] = 0
+            self.healthy_positions[uav_idx, :] = target_pos
+            self.healthy_orientations[uav_idx, :] = level_rot
+            self.healthy_buffer_count[uav_idx] = self.healthy_buffer_size
+            self.healthy_buffer_idx[uav_idx] = 0
+            self.prev_world_linear_vels[uav_idx] = 0.0
+
+        new_velocities = np.zeros((uav_amount, 6), dtype=np.float32)
+
+        carb.log_info(
+            f"[UAVControl] Resetting UAV pose for indices {uav_indices} "
+            f"to pre-destabilization position: {reset_positions.tolist()}"
         )
-        new_orientations = np.zeros((uav_amount, 4))
-        new_orientations[:, 0] = 1
-        new_velocities = np.zeros((uav_amount, 6))
-
-        print(f"Current Pose: {current_positions}")
-        print(f"New Orientations: {new_orientations}")
 
         self.rigid_prim_view.set_world_poses(
-            positions=current_positions, 
-            orientations=new_orientations, 
+            positions=reset_positions,
+            orientations=reset_orientations,
             indices=uav_indices,
-            usd=False
+            usd=False,
         )
 
         self.rigid_prim_view.set_velocities(
             velocities=new_velocities,
-            indices=uav_indices
+            indices=uav_indices,
         )

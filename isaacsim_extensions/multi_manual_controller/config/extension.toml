@@ -1,4 +1,5 @@
 [core]
+reloadable = true
 order = 1000
 
 [package]
@@ -7,17 +8,17 @@ version = "1.0.0"
 authors = ["NavSys"]
 
 title = "multi_manual_controller"
-description="A simple python extension example to use as a starting point for your extensions."
+description = "Multi-user manual joystick teleoperation controller for simulated UAVs in Isaac Sim."
 
-readme  = "docs/README.md"
+readme = "docs/README.md"
 
 repository = ""
 
-category = "Other"
+category = "Robotics"
 
-keywords = ["kit", "example"]
+keywords = ["kit", "isaacsim", "teleoperation", "uav"]
 
-changelog="docs/CHANGELOG.md"
+changelog = "docs/CHANGELOG.md"
 
 preview_image = "data/preview.png"
 
