@@ -1,11 +1,11 @@
 {
     "schema_version": 2,
-    "commit": "a3d7b20db1e9e54776ecbdcba9ad62a529ec2463",
-    "indexed_at": "2026-10-23T08:43:13Z",
+    "commit": "ae1008bab92838803ad56a86d77eb690fd0a177b",
+    "indexed_at": "2026-10-23T11:23:52Z",
     "project": "home-usuario-Escritorio-UCLM-navsim",
     "nodes": 1851,
-    "edges": 7125,
+    "edges": 7126,
     "original_size": 8585216,
-    "compressed_size": 1504438,
+    "compressed_size": 1504394,
     "compression_level": 3
 }
