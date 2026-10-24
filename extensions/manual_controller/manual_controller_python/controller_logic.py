@@ -79,6 +79,7 @@ class ControllerLogic:
         self.latest_command_vel = np.zeros(3, dtype=np.float32)
         self.latest_command_yaw = 0.0
         self._changed_trigger = False
+        self._loop_task: Optional[asyncio.Task] = None
 
     def get_uas_id(self, uav_path: Optional[str] = None) -> str:
         """Obtiene el identificador uas_id del UAV (desde el atributo USD 'NavSim:id' o el nombre del Prim)."""
@@ -163,6 +164,12 @@ class ControllerLogic:
         # Si no existe o no se pudo alternar, lo abre
         self.open_or_update_viewport()
 
+    def start_control_loop(self) -> None:
+        """Inicia el bucle asíncrono de consignas manuales si no está ya en ejecución."""
+        self._stop = False
+        if getattr(self, "_loop_task", None) is None or self._loop_task.done():
+            self._loop_task = asyncio.ensure_future(self.control_loop())
+
     def start(self, uav_path: str, uav_idx: int) -> None:
         if not self._stop:
             self.stop()
@@ -190,9 +197,8 @@ class ControllerLogic:
 
         self.current_on = True
         self.current_mode = 1  # Iniciar en modo MANUAL
+        self.start_control_loop()
         self.logger.info(f"Control manual activado para UAV {uav_idx} ({self.uas_id}, {uav_path})")
-
-        asyncio.ensure_future(self.control_loop())
 
     def stop(self) -> None:
         self._stop = True
@@ -203,6 +209,10 @@ class ControllerLogic:
         self.joystick.stop()
         if self.use_keyboard:
             self.keyboard.stop()
+
+        if getattr(self, "_loop_task", None) is not None and not self._loop_task.done():
+            self._loop_task.cancel()
+            self._loop_task = None
 
         if self.sock is not None:
             try:
@@ -215,8 +225,8 @@ class ControllerLogic:
         self.latest_command_yaw = 0.0
         self.logger.info("Control manual: UAV desarmado (DISARM, mode=0)")
 
-    def set_uav(self, uav_path: str, uav_idx: int) -> None:
-        """Cambia el UAV objetivo y actualiza dinámicamente la cámara y el título del visor secundario."""
+    def set_uav(self, uav_path: str, uav_idx: int, mode: Optional[int] = None) -> None:
+        """Cambia el UAV objetivo y actualiza dinámicamente la cámara, el visor secundario y su modo operativo."""
         self.uav_path = uav_path
         self.uav_idx = uav_idx
         self.uas_id = self.get_uas_id(uav_path)
@@ -228,7 +238,27 @@ class ControllerLogic:
         if self.is_viewport_open():
             self.open_or_update_viewport()
 
-        self.logger.info(f"UAV objetivo cambiado a {uav_path} ({self.uas_id}, idx {uav_idx}, cam: {cam_path})")
+        if mode is not None:
+            self.current_mode = mode
+            if mode == 0:
+                self.current_on = False
+                self._stop = True
+                self.latest_command_vel[:] = 0.0
+                self.latest_command_yaw = 0.0
+                if getattr(self, "_loop_task", None) is not None and not self._loop_task.done():
+                    self._loop_task.cancel()
+                    self._loop_task = None
+            elif mode in (1, 3):
+                self.current_on = True
+                self.start_control_loop()
+            elif mode == 2:
+                self.current_on = True
+                self._stop = True
+                if getattr(self, "_loop_task", None) is not None and not self._loop_task.done():
+                    self._loop_task.cancel()
+                    self._loop_task = None
+
+        self.logger.info(f"UAV objetivo cambiado a {uav_path} ({self.uas_id}, idx {uav_idx}, cam: {cam_path}, mode: {self.current_mode})")
 
     def set_mode(self, mode: int) -> None:
         """Cambia el modo operativo del UAV: 0=DISARM, 1=MANUAL, 2=AUTO, 3=HOVER."""
@@ -236,20 +266,30 @@ class ControllerLogic:
         if mode == 0:
             self.current_on = False
             self.send_command(0.0, 0.0, 0.0, 0.0, mode=0)
+            self._stop = True
+            if getattr(self, "_loop_task", None) is not None and not self._loop_task.done():
+                self._loop_task.cancel()
+                self._loop_task = None
         elif mode == 3:
             self.current_on = True
             self.send_command(0.0, 0.0, 0.0, 0.0, mode=3)
+            self.start_control_loop()
         elif mode == 2:
             self.current_on = True
             self.send_command(0.0, 0.0, 0.0, 0.0, mode=2)
+            self._stop = True
+            if getattr(self, "_loop_task", None) is not None and not self._loop_task.done():
+                self._loop_task.cancel()
+                self._loop_task = None
         elif mode == 1:
             self.current_on = True
             self.send_command(0.0, 0.0, 0.0, 0.0, mode=1)
+            self.start_control_loop()
 
-    def send_command(
-        self, vel_x: float, vel_y: float, vel_z: float, rot_z: float, mode: int = 1
+    def send_command_to(
+        self, uav_idx: int, vel_x: float, vel_y: float, vel_z: float, rot_z: float, mode: int = 1
     ) -> None:
-        """Transmite una trama MAVLink NAVSIM_MANUAL_CONTROL al puerto RX del dron."""
+        """Transmite una trama MAVLink NAVSIM_MANUAL_CONTROL a un UAV específico."""
         if self.sock is None:
             try:
                 self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -258,13 +298,13 @@ class ControllerLogic:
 
         target_port = self.base_rx_port
         msg = MavManualControlMsg(
-            uav_id_num=self.uav_idx,
+            uav_id_num=uav_idx,
             mode=mode,
             vel_x=float(vel_x),
             vel_y=float(vel_y),
             vel_z=float(vel_z),
             rot_z=float(rot_z),
-            buttons=1 if self.current_on else 0,
+            buttons=1 if mode != 0 else 0,
         )
         packet = self.codec.pack_manual_control(msg)
         try:
@@ -272,8 +312,19 @@ class ControllerLogic:
         except OSError:
             pass
 
+    def send_command(
+        self, vel_x: float, vel_y: float, vel_z: float, rot_z: float, mode: int = 1
+    ) -> None:
+        """Transmite una trama MAVLink NAVSIM_MANUAL_CONTROL al dron actualmente seleccionado."""
+        self.send_command_to(self.uav_idx, vel_x, vel_y, vel_z, rot_z, mode=mode)
+
     async def control_loop(self) -> None:
         while not self._stop:
+            # Si el dron está desarmado o con control inactivo, esperar sin emitir consignas
+            if self.current_mode == 0 or not self.current_on:
+                await asyncio.sleep(0.1)
+                continue
+
             inputs = self.get_inputs()
 
             # Escalar por límites configurados
@@ -313,7 +364,7 @@ class ControllerLogic:
             # Si estamos en modo MANUAL y armados, enviar velocidades
             if self.current_mode == 1 and self.current_on:
                 self.send_command(vx, vy, vz, wz, mode=1)
-            elif self.current_mode == 3:  # HOVER
+            elif self.current_mode == 3 and self.current_on:  # HOVER
                 self.send_command(0.0, 0.0, 0.0, 0.0, mode=3)
 
             # Control de cámara con hat y botones de zoom

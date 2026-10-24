@@ -216,6 +216,7 @@ class ManualController(omni.ext.IExt):
 
         self.on_physics_step_sub = None
         self.on_stop_sub = None
+        self.on_play_sub = None
         self.plots_update_sub = None
         self.on_stage_event_sub = None
 
@@ -352,6 +353,9 @@ class ManualController(omni.ext.IExt):
         self.on_stop_sub = timeline_stream.create_subscription_to_pop_by_type(
             int(omni.timeline.TimelineEventType.STOP), self.on_timeline_stop
         )
+        self.on_play_sub = timeline_stream.create_subscription_to_pop_by_type(
+            int(omni.timeline.TimelineEventType.PLAY), self.on_timeline_play
+        )
 
         # Suscripción a eventos de apertura/recarga de escenario USD
         usd_context = omni.usd.get_context()
@@ -368,10 +372,24 @@ class ManualController(omni.ext.IExt):
         elif event.type == int(omni.usd.StageEventType.CLOSING):
             self.stop_control()
 
+    def on_timeline_play(self, event) -> None:
+        """Al iniciar la simulacion (Play), restablece los modos locales y sincroniza con el dron activo."""
+        self.uav_modes.clear()
+        self.is_controlling = False
+        cur_mode = self.get_uav_mode(self.selected_uav_idx)
+        self.manual_control.set_uav(self.selected_uav_path, self.selected_uav_idx, mode=cur_mode)
+        if hasattr(self, "update_state_display"):
+            self.update_state_display(cur_mode)
+
     def on_timeline_stop(self, event) -> None:
+        """Al detener la simulacion (Stop), apaga el lazo de control y resetea los estados a DISARMED."""
         if self.is_controlling:
             self.stop_control()
         self.uav_modes.clear()
+        self.is_controlling = False
+        if hasattr(self, "manual_control") and self.manual_control:
+            self.manual_control.set_mode(0)
+            self.manual_control.stop()
         if hasattr(self, "update_state_display"):
             self.update_state_display(0)
 
@@ -491,9 +509,10 @@ class ManualController(omni.ext.IExt):
                         self.uav_combo.set_mouse_pressed_fn(lambda x, y, b, m: self._poll_uav_list(force=True))
                     except Exception:
                         pass
-                    self.manual_control.set_uav(self.selected_uav_path, self.selected_uav_idx)
+                    cur_mode = self.get_uav_mode(self.selected_uav_idx)
+                    self.manual_control.set_uav(self.selected_uav_path, self.selected_uav_idx, mode=cur_mode)
                     if hasattr(self, "update_state_display"):
-                        self.update_state_display()
+                        self.update_state_display(cur_mode)
                 else:
                     self.uav_combo = ui.ComboBox(
                         0, "No se encontraron aeronaves NavSim en la escena",
@@ -758,11 +777,40 @@ class ManualController(omni.ext.IExt):
                 pass
 
         if 0 <= val < len(self.uav_paths):
+            prev_uav_idx = getattr(self, "selected_uav_idx", None)
+
+            # 1. Si estábamos controlando en MANUAL el dron previo, pasarlo inmediatamente a HOVER
+            # para estacionarlo en el aire de forma segura en lugar de dejarlo a la deriva.
+            if prev_uav_idx is not None and prev_uav_idx != val:
+                prev_mode = self.get_uav_mode(prev_uav_idx)
+                if prev_mode == 1:  # MANUAL
+                    self.manual_control.send_command_to(prev_uav_idx, 0.0, 0.0, 0.0, 0.0, mode=3)
+                    self.uav_modes[prev_uav_idx] = 3
+
+            # 2. Conmutar índices y rutas hacia el nuevo dron
             self.selected_uav_idx = val
             self.selected_uav_path = self.uav_paths[val]
-            self.manual_control.set_uav(self.selected_uav_path, self.selected_uav_idx)
+
+            # 3. Consultar y sincronizar con el modo REAL del nuevo dron
+            new_mode = self.get_uav_mode(val)
+            self.uav_modes[val] = new_mode
+
+            if new_mode == 0:  # DISARMED: no emitir consignas; el dron debe permanecer desarmado en su base
+                self.is_controlling = False
+                self.manual_control.set_uav(self.selected_uav_path, self.selected_uav_idx, mode=0)
+            elif new_mode in (1, 3):  # MANUAL o HOVER: el dron ya está activo
+                self.is_controlling = True
+                self.manual_control.set_uav(self.selected_uav_path, self.selected_uav_idx, mode=new_mode)
+            elif new_mode == 2:  # AUTO: dron ejecutando misión autónoma
+                self.is_controlling = False
+                self.manual_control.set_uav(self.selected_uav_path, self.selected_uav_idx, mode=2)
+            else:
+                self.is_controlling = False
+                self.manual_control.set_uav(self.selected_uav_path, self.selected_uav_idx, mode=0)
+
+            # 4. Actualizar marcador visual del estado
             if hasattr(self, "update_state_display"):
-                self.update_state_display()
+                self.update_state_display(new_mode)
 
     def on_lin_vel_changed(self, model) -> None:
         self.linear_vel_limit = model.get_value_as_float()
@@ -790,24 +838,39 @@ class ManualController(omni.ext.IExt):
                 self.manual_control.keyboard.stop()
 
     def _get_navsim_instance(self):
+        import sys
+        # 1. Buscar en sys.modules la instancia real activa en cualquiera de las variantes registradas
+        for mod_name, mod in list(sys.modules.items()):
+            if "navsim_python.extension" in mod_name and hasattr(mod, "_ACTIVE_NAVSIM_INSTANCE"):
+                inst = getattr(mod, "_ACTIVE_NAVSIM_INSTANCE", None)
+                if inst is not None:
+                    return inst
+            if hasattr(mod, "get_active_navsim") and callable(getattr(mod, "get_active_navsim")):
+                try:
+                    inst = mod.get_active_navsim()
+                    if inst is not None:
+                        return inst
+                except Exception:
+                    pass
+        # 2. Intento de import directo
+        try:
+            import navsim_python.extension as n_ext
+            inst = getattr(n_ext, "_ACTIVE_NAVSIM_INSTANCE", None)
+            if inst is not None:
+                return inst
+        except Exception:
+            pass
         try:
             from extensions.navsim.navsim_python import extension as n_ext
-            return getattr(n_ext, "_ACTIVE_NAVSIM_INSTANCE", None)
+            inst = getattr(n_ext, "_ACTIVE_NAVSIM_INSTANCE", None)
+            if inst is not None:
+                return inst
         except Exception:
-            try:
-                import sys
-                for mod_name, mod in sys.modules.items():
-                    if "navsim_python.extension" in mod_name and hasattr(mod, "_ACTIVE_NAVSIM_INSTANCE"):
-                        return getattr(mod, "_ACTIVE_NAVSIM_INSTANCE", None)
-            except Exception:
-                pass
+            pass
         return None
 
     def get_uav_mode(self, uav_idx: int) -> int:
-        # Modo comandado / registrado localmente en el Joystick
-        local_mode = self.uav_modes.get(uav_idx, 0)
-
-        # Consultar si NavSim reporta un evento asíncrono relevante (misión AUTO o emergencia)
+        # Consultar si NavSim reporta el modo real desde la simulación
         navsim_inst = self._get_navsim_instance()
         if navsim_inst is not None and getattr(navsim_inst, "is_simulation_running", False):
             ctrl = getattr(navsim_inst, "uav_control", None)
@@ -825,20 +888,20 @@ class ManualController(omni.ext.IExt):
                         return 2  # AUTO
 
                     # 3. Si estaba en AUTO y el plan finalizó:
+                    local_mode = self.uav_modes.get(uav_idx, 0)
                     if local_mode == 2 and not bool(ctrl.has_plan[uav_idx]):
                         self.uav_modes[uav_idx] = 0  # Auto-Disarm al posarse en vertipuerto -> DISARMED
                         return 0
 
-                    # 4. Si uav_control expone uav_modes directamente y reporta modo activo:
+                    # 4. Modo real informado por uav_control
                     if hasattr(ctrl, "uav_modes") and 0 <= uav_idx < len(ctrl.uav_modes):
                         sim_mode = int(ctrl.uav_modes[uav_idx])
-                        if sim_mode != 0:
-                            self.uav_modes[uav_idx] = sim_mode
-                            return sim_mode
+                        self.uav_modes[uav_idx] = sim_mode
+                        return sim_mode
                 except Exception:
                     pass
 
-        return local_mode
+        return self.uav_modes.get(uav_idx, 0)
 
     def update_state_display(self, force_mode: Optional[int] = None) -> None:
         if not hasattr(self, "state_label") or self.state_label is None:
@@ -848,6 +911,16 @@ class ManualController(omni.ext.IExt):
         label_text, color = STATE_INFO.get(mode, ("DISARMED", 0xFFFF8CBA))
         self.state_label.text = label_text
         self.state_label.style = {"color": color, "font_size": 13}
+
+        # Si el dron está en DISARMED (0), asegurar que no haya consignas manuales activas en segundo plano
+        if mode == 0 and self.is_controlling:
+            self.is_controlling = False
+            self.manual_control.current_mode = 0
+            self.manual_control.current_on = False
+            self.manual_control._stop = True
+            if getattr(self.manual_control, "_loop_task", None) is not None and not self.manual_control._loop_task.done():
+                self.manual_control._loop_task.cancel()
+                self.manual_control._loop_task = None
 
     def _on_app_update(self, event) -> None:
         if hasattr(self, "state_label") and self.state_label is not None:
