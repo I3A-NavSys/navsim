@@ -320,6 +320,8 @@ class ManualController(omni.ext.IExt):
         self._last_joy_btn_states = [False] * 12
         self._joy_btn1_prev = False
         self._joy_btn2_prev = False
+        self._joy_btn7_prev = False
+        self._joy_btn8_prev = False
         self.uav_modes = {}
         self.last_displayed_mode = -1
 
@@ -403,10 +405,59 @@ class ManualController(omni.ext.IExt):
     def _on_uav_frame_collapsed_changed(self, collapsed: bool) -> None:
         """Al expandir la sección UAV, refresca automáticamente la lista de aeronaves."""
         if not collapsed:
+            self._schedule_refresh_uav_list()
+
+    def _schedule_refresh_uav_list(self) -> None:
+        """Refresca la lista en el siguiente frame: reconstruir widgets dentro del propio callback
+        de colapso/expansi?n del CollapsableFrame no es fiable."""
+        async def _deferred():
+            await omni.kit.app.get_app().next_update_async()
             self.refresh_uav_list()
+
+        asyncio.ensure_future(_deferred())
+
+    def _poll_uav_list(self, force: bool = False) -> None:
+        """Vigila la escena (1 Hz) y reconstruye el desplegable solo si la lista de aeronaves cambi?."""
+        now = time.time()
+        if not force and now - getattr(self, "_last_uav_poll_time", 0.0) < 1.0:
+            return
+        self._last_uav_poll_time = now
+        collapsable = getattr(self, "_uav_collapsable", None)
+        if collapsable is None or collapsable.collapsed or getattr(self, "uav_combo_frame", None) is None:
+            return
+        try:
+            paths = self.scan_uavs()
+            items = [self.manual_control.get_uas_id(p) for p in paths]
+        except Exception:
+            return
+        if paths != self.uav_paths or items != getattr(self, "_uav_items_shown", None):
+            self.refresh_uav_list()
+
+    def on_focus_uav(self) -> None:
+        """Selecciona y enfoca el Viewport activo sobre la aeronave elegida en el desplegable."""
+        self.refresh_uav_list() if not self.selected_uav_path else None
+        prim_path = self.selected_uav_path
+        if not prim_path:
+            return
+        try:
+            omni.usd.get_context().get_selection().set_selected_prim_paths([prim_path], True)
+        except Exception as e:
+            carb.log_warn(f"[NavSim Joystick] Error seleccionando prim '{prim_path}': {e}")
+        try:
+            from omni.kit.viewport.utility import frame_viewport_prims
+            if frame_viewport_prims(prims=[prim_path]):
+                return
+        except Exception:
+            pass
+        try:
+            from omni.kit.viewport.utility import frame_viewport_selection
+            frame_viewport_selection()
+        except Exception as e:
+            carb.log_warn(f"[NavSim Joystick] Error enfocando '{prim_path}' en el Viewport: {e}")
 
     def refresh_uav_list(self) -> None:
         self.uav_paths = self.scan_uavs()
+        self._uav_items_shown = [self.manual_control.get_uas_id(p) for p in self.uav_paths]
         if not hasattr(self, "uav_combo_frame") or self.uav_combo_frame is None:
             return
 
@@ -435,6 +486,11 @@ class ManualController(omni.ext.IExt):
                         height=24,
                     )
                     self.uav_combo.model.add_item_changed_fn(self.on_uav_selected)
+                    try:
+                        # Al pulsar el desplegable se comprueba el estado real de la escena
+                        self.uav_combo.set_mouse_pressed_fn(lambda x, y, b, m: self._poll_uav_list(force=True))
+                    except Exception:
+                        pass
                     self.manual_control.set_uav(self.selected_uav_path, self.selected_uav_idx)
                     if hasattr(self, "port_label") and self.port_label:
                         self.port_label.text = str(15000 + sel_idx)
@@ -502,6 +558,12 @@ class ManualController(omni.ext.IExt):
                             with ui.HStack(height=26, spacing=6):
                                 ui.Label("Aeronave", width=80, alignment=ui.Alignment.LEFT_CENTER, style=LABEL_STYLE_GREY)
                                 self.uav_combo_frame = ui.Frame()
+                                ui.Button(
+                                    "Enfocar",
+                                    width=75,
+                                    height=24,
+                                    clicked_fn=self.on_focus_uav,
+                                )
 
                             with ui.HStack(height=24, spacing=6):
                                 ui.Label("Estado", width=80, alignment=ui.Alignment.LEFT_CENTER, style=LABEL_STYLE_GREY)
@@ -816,23 +878,43 @@ class ManualController(omni.ext.IExt):
                     self._last_joy_btn_states[idx] = state
 
 
-            # Botón 1 (Gatillo): Conmutar entre HOVER (3) y DISARM (0), actualizando el panel superior
+            # Boton 1 (Gatillo): Conmutar entre HOVER (3) y MANUAL (1)
             btn1 = states[0] if len(states) > 0 else False
             if btn1 and not getattr(self, "_joy_btn1_prev", False):
                 self._joy_btn1_prev = True
                 cur_mode = self.get_uav_mode(self.selected_uav_idx)
-                target_mode = 0 if cur_mode != 0 else 3
+                target_mode = 3 if cur_mode == 1 else 1
                 self.switch_mode(target_mode)
             elif not btn1:
                 self._joy_btn1_prev = False
 
-            # Botón 2 (Pulgar): Devolver la cámara de seguimiento a su posición inicial
+            # Boton 2 (Pulgar): Activar la opcion DISARM (0)
             btn2 = states[1] if len(states) > 1 else False
             if btn2 and not getattr(self, "_joy_btn2_prev", False):
                 self._joy_btn2_prev = True
-                self.manual_control.reset_camera()
+                self.switch_mode(0)
             elif not btn2:
                 self._joy_btn2_prev = False
+
+            # Boton 7: Resetear la camara de seguimiento (ChaseCamera)
+            btn7 = states[6] if len(states) > 6 else False
+            if btn7 and not getattr(self, "_joy_btn7_prev", False):
+                self._joy_btn7_prev = True
+                self.manual_control.reset_camera()
+            elif not btn7:
+                self._joy_btn7_prev = False
+
+            # Boton 8: Mostrar u ocultar el Viewport de la camara en pantalla
+            btn8 = states[7] if len(states) > 7 else False
+            if btn8 and not getattr(self, "_joy_btn8_prev", False):
+                self._joy_btn8_prev = True
+                if not self.selected_uav_path:
+                    self.refresh_uav_list()
+                if self.selected_uav_path:
+                    self.manual_control.set_uav(self.selected_uav_path, self.selected_uav_idx)
+                self.manual_control.toggle_viewport()
+            elif not btn8:
+                self._joy_btn8_prev = False
 
             # Si el lazo de vuelo no está corriendo, permitir navegación de cámara con el hat y botones 5/6
             if not self.is_controlling and hasattr(self, "manual_control") and self.manual_control:

@@ -145,6 +145,24 @@ class ControllerLogic:
         except Exception:
             return False
 
+    def toggle_viewport(self) -> None:
+        """Muestra u oculta (toggle) la ventana del Viewport secundario de la cámara."""
+        win = self.find_existing_viewport_window()
+        if win is not None:
+            try:
+                cur_visible = bool(getattr(win, "visible", True))
+                win.visible = not cur_visible
+                if win.visible:
+                    try:
+                        win.focus()
+                    except Exception:
+                        pass
+                return
+            except Exception:
+                pass
+        # Si no existe o no se pudo alternar, lo abre
+        self.open_or_update_viewport()
+
     def start(self, uav_path: str, uav_idx: int) -> None:
         if not self._stop:
             self.stop()
@@ -266,12 +284,12 @@ class ControllerLogic:
             if self.invert_drone_yaw:
                 wz = -wz
 
-            # Botón 0 / Gatillo / Teclado Espacio: Alternar entre HOVER (3) y DISARM (0)
+            # Teclado Espacio: Alternar entre HOVER (3) y MANUAL (1)
             if self.use_keyboard and not np.any(self.joystick.inputs[:4] != 0):
                 trigger = inputs[4]
                 if trigger == 1.0 and not self._changed_trigger:
                     self._changed_trigger = True
-                    new_mode = 0 if self.current_mode != 0 else 3
+                    new_mode = 3 if self.current_mode == 1 else 1
                     if hasattr(self, "on_mode_change_requested") and callable(self.on_mode_change_requested):
                         self.on_mode_change_requested(new_mode)
                     else:
