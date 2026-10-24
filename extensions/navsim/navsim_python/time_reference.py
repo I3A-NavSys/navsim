@@ -28,7 +28,7 @@ class NavSimTimeReference:
         self.logger = logging.getLogger("NavSimTimeReference")
         if epoch_unix is None:
             now = datetime.now()
-            self.epoch_unix: float = float(now.timestamp())
+            self.epoch_unix: float = float(now.replace(microsecond=0).timestamp())
             self.source: str = "Reloj del Sistema"
         else:
             self.epoch_unix = float(epoch_unix)
@@ -112,12 +112,16 @@ class NavSimTimeReference:
     def reset_to_system_clock(self) -> None:
         """Restablece el anclaje temporal a la fecha y hora actual del reloj del sistema."""
         now = datetime.now()
-        self.epoch_unix = float(now.timestamp())
+        self.epoch_unix = float(now.replace(microsecond=0).timestamp())  # truncado a segundos exactos
         self.end_epoch_unix = self.epoch_unix + 3600.0
         self.source = "Reloj del Sistema"
 
-    def set_end_datetime(self, date_str: str, time_str: str) -> bool:
-        """Configura el instante final programado para la simulación a partir de fecha (AAAA-MM-DD) y hora (HH:MM:SS)."""
+    def set_end_datetime(self, date_str: str, time_str: str, min_sim_time: Optional[float] = None) -> bool:
+        """Configura el instante final programado para la simulación a partir de fecha (AAAA-MM-DD) y hora (HH:MM:SS).
+
+        Si se indica `min_sim_time` (tiempo de simulación actual en segundos), el nuevo instante final
+        debe ser estrictamente posterior al instante actual (T0 + min_sim_time); en caso contrario se rechaza.
+        """
         valid_date = self.parse_date_str(date_str)
         valid_time = self.parse_time_str(time_str)
         if not valid_date or not valid_time:
@@ -125,10 +129,17 @@ class NavSimTimeReference:
         iso_str = f"{valid_date} {valid_time}"
         try:
             dt = datetime.strptime(iso_str, "%Y-%m-%d %H:%M:%S")
-            self.end_epoch_unix = float(dt.timestamp())
+            new_end = float(dt.timestamp())
+            if min_sim_time is not None and new_end <= self.epoch_unix + float(min_sim_time):
+                return False
+            self.end_epoch_unix = new_end
             return True
         except ValueError:
             return False
+
+    def get_end_time_code(self, time_codes_per_second: float) -> float:
+        """Retorna el End Time Code de la capa raíz: SEGUNDOS * Time Codes Per Second."""
+        return self.get_target_duration_seconds() * float(time_codes_per_second)
 
     def set_end_plus_hours(self, hours: float = 1.0) -> None:
         """

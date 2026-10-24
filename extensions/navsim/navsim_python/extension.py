@@ -80,6 +80,7 @@ class NavSim(omni.ext.IExt):
     base_rx_port: int = 15000
     base_tx_port: int = 16000
     telemetry_rate_hz: float = 1.0
+    time_codes_per_second: float = 25.0
     _menu_items: Optional[Any] = None
 
     def set_telemetry_rate(self, rate_hz: float) -> None:
@@ -593,6 +594,7 @@ class NavSim(omni.ext.IExt):
             if self.fleet_catalog is not None:
                 self.fleet_catalog.reload()
             self.detect_and_apply_stage_georeference()
+            self.sync_stage_timecodes()
 
             # 1. Validación exhaustiva de Flota ASTM F3411 / EUROCAE ED-282
             report = self.validate_current_fleet()
@@ -692,7 +694,7 @@ class NavSim(omni.ext.IExt):
         curr_time = self.timeline.get_current_time() if self.timeline else 0.0
         if getattr(self, "ui_builder", None) is not None:
             self.ui_builder.update_sim_time(curr_time, is_playing=False, is_paused=True)
-            self.ui_builder.update_play_pause_button(is_playing=False)
+            self.ui_builder.update_play_pause_button(is_playing=False, is_paused=True)
 
     def on_timeline_stop(self, event) -> None:
         global _ACTIVE_NAVSIM_INSTANCE
@@ -787,6 +789,34 @@ class NavSim(omni.ext.IExt):
                 ui.sync_georef_ui()
         return detected
 
+    def set_time_codes_per_second(self, tcps: float) -> None:
+        """Configura los Time Codes Per Second (calidad de simulación) y actualiza la capa raíz."""
+        self.time_codes_per_second = max(1.0, min(1000.0, float(tcps)))
+        self.sync_stage_timecodes()
+
+    def sync_stage_timecodes(self) -> None:
+        """
+        Escribe en la capa raíz del Stage:
+            Start Time Code = 0
+            Time Codes Per Second = self.time_codes_per_second
+            End Time Code = SEGUNDOS * Time Codes Per Second
+        """
+        try:
+            stage = omni.usd.get_context().get_stage()
+        except Exception:
+            stage = None
+        if stage is None or self.time_reference is None:
+            return
+        try:
+            tcps = float(self.time_codes_per_second)
+            stage.SetTimeCodesPerSecond(tcps)
+            stage.SetStartTimeCode(0.0)
+            stage.SetEndTimeCode(self.time_reference.get_end_time_code(tcps))
+            if self.timeline is not None and hasattr(self.timeline, "set_time_codes_per_second"):
+                self.timeline.set_time_codes_per_second(tcps)
+        except Exception as e:
+            carb.log_warn(f"[NavSim] No se pudieron actualizar los Time Codes de la capa raíz: {e}")
+
     def detect_and_apply_stage_time_reference(self) -> bool:
         """
         Inspecciona el Stage USD actual buscando metadatos de cronorreferenciación UTC.
@@ -796,6 +826,18 @@ class NavSim(omni.ext.IExt):
             stage = omni.usd.get_context().get_stage()
         except Exception:
             stage = None
+
+        # Leer los Time Codes Per Second configurados en la capa raíz
+        if stage is not None:
+            try:
+                stage_tcps = float(stage.GetTimeCodesPerSecond())
+                if stage_tcps > 0.0:
+                    self.time_codes_per_second = stage_tcps
+            except Exception:
+                pass
+        ui_tcps = getattr(self, "ui_builder", None)
+        if ui_tcps is not None and hasattr(ui_tcps, "sync_tcps_ui"):
+            ui_tcps.sync_tcps_ui()
 
         ref, detected = NavSimTimeReference.detect_from_stage(stage)
         if detected:

@@ -665,8 +665,8 @@ class ManualController(omni.ext.IExt):
                                 ui.Label("Habilitar teclado (WASD / Flechas)", width=220, style=LABEL_STYLE_GREY)
                                 self.keyboard_cb = ui.CheckBox(width=0)
                                 ui.Spacer()
-                                self.keyboard_cb.model.set_value(True)
-                                self.manual_control.use_keyboard = True
+                                self.keyboard_cb.model.set_value(False)
+                                self.manual_control.use_keyboard = False
                                 self.keyboard_cb.model.add_value_changed_fn(
                                     self.on_keyboard_toggle
                                 )

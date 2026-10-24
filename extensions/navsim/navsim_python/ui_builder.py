@@ -154,6 +154,8 @@ class UIBuilder:
         self._btn_play_pause = None
         self._btn_stop = None
         self._btn_plus_hour = None
+        self._start_date_field = None
+        self._start_time_field = None
 
         time_ref = getattr(self.extension, "time_reference", None)
         date0 = time_ref.get_date_str() if time_ref else "2026-10-21"
@@ -176,6 +178,8 @@ class UIBuilder:
 
         rate0 = getattr(self.extension, "telemetry_rate_hz", 1.0) if self.extension else 1.0
         self._rate_model = ui.SimpleFloatModel(float(rate0))
+        tcps0 = getattr(self.extension, "time_codes_per_second", 25.0) if self.extension else 25.0
+        self._tcps_model = ui.SimpleFloatModel(float(tcps0))
 
         self._updating_models_internally = False
         self._date_model.add_value_changed_fn(lambda m: self._on_time_field_changed())
@@ -188,6 +192,7 @@ class UIBuilder:
         self._lon_model.add_value_changed_fn(lambda m: self._on_georef_field_changed())
         self._alt_model.add_value_changed_fn(lambda m: self._on_georef_field_changed())
         self._rate_model.add_value_changed_fn(lambda m: self._on_rate_field_changed())
+        self._tcps_model.add_end_edit_fn(lambda m: self._on_tcps_field_end_edit())
 
     def build_ui(self):
         self.window = ui.Window("NavSim - Consola", width=440, height=600)
@@ -252,12 +257,12 @@ class UIBuilder:
                             with ui.HStack(height=22):
                                 ui.Label("Inicial", width=140, style=LABEL_STYLE_GREY)
                                 with ui.HStack(spacing=6):
-                                    ui.StringField(
+                                    self._start_date_field = ui.StringField(
                                         model=self._date_model,
                                         alignment=ui.Alignment.CENTER,
                                         style=STYLE_CENTERED_FIELD,
                                     )
-                                    ui.StringField(
+                                    self._start_time_field = ui.StringField(
                                         model=self._time_model,
                                         alignment=ui.Alignment.CENTER,
                                         style=STYLE_CENTERED_FIELD,
@@ -330,6 +335,12 @@ class UIBuilder:
                                     height=22,
                                     clicked_fn=self._on_plus_one_hour_clicked,
                                 )
+
+                            # 4. Fila TCPS: Time Codes Per Second de la capa raíz
+                            with ui.HStack(height=22, style={"margin_top": 2}):
+                                ui.Label("TCPS", width=140, style=LABEL_STYLE_GREY,
+                                         tooltip="Time Codes Per Second de la capa raíz (calidad de simulación)")
+                                ui.FloatField(model=self._tcps_model, format="%.0f", step=1.0)
 
                     # --- Desplegable 3: Flota ---
                     self._fleet_frame = ui.CollapsableFrame(
@@ -601,6 +612,10 @@ class UIBuilder:
                     height=24,
                 )
                 self._drone_combo.model.add_item_changed_fn(self._on_drone_combo_selected)
+                try:
+                    self._drone_combo.set_mouse_pressed_fn(self._on_drone_combo_pressed)
+                except Exception:
+                    pass
                 ui.Spacer()
 
     def _on_drone_combo_selected(self, model, item=None):
@@ -727,6 +742,35 @@ class UIBuilder:
             self._comms_rx_range_label.text = f"{base_rx} .. {base_rx + n - 1} ({n} canales RX)"
             self._comms_tx_range_label.text = f"{base_tx} .. {base_tx + n - 1} ({n} canales TX)"
 
+    def _on_drone_combo_pressed(self, x=None, y=None, button=None, modifier=None):
+        """Al pulsar sobre el desplegable de aeronaves, comprueba el estado real de la escena.
+        Solo reconstruye si hubo cambios (en ese caso hay que volver a pulsar para abrir la lista)."""
+        if button not in (None, 0):
+            return
+        self._check_fleet_changed()
+
+    def _check_fleet_changed(self):
+        if self.extension is None or self._fleet_frame is None or self._fleet_frame.collapsed:
+            return
+        if self._is_sim_active():
+            return
+        try:
+            import omni.usd
+            try:
+                from .drone_identity import find_navsim_drone_prims
+            except Exception:
+                from navsim_python.drone_identity import find_navsim_drone_prims
+            stage = omni.usd.get_context().get_stage()
+            current = sorted(str(p.GetPath()) for p in find_navsim_drone_prims(stage)) if stage else []
+        except Exception:
+            return
+        report = self._current_report
+        shown = sorted(
+            str(getattr(i, "prim_path", "")) for i in (report.identities if report else [])
+        )
+        if current != shown:
+            self._on_refresh_drones_clicked()
+
     def _on_fleet_frame_collapsed_changed(self, collapsed: bool):
         """Al expandir la sección Flota, escanea la escena USD y actualiza la lista automáticamente."""
         if not collapsed and self.extension is not None:
@@ -841,15 +885,66 @@ class UIBuilder:
         finally:
             self._updating_models_internally = False
 
+        if hasattr(self.extension, "sync_stage_timecodes"):
+            self.extension.sync_stage_timecodes()
+
         is_running = bool(getattr(self.extension, "is_simulation_running", False))
         curr_time = 0.0
         if is_running and hasattr(self.extension, "timeline") and self.extension.timeline:
             curr_time = self.extension.timeline.get_current_time()
-        self.update_sim_time(curr_time, is_playing=is_running, is_paused=False)
+        is_paused = False
+        tl = getattr(self.extension, "timeline", None)
+        if is_running and tl is not None and hasattr(tl, "is_paused"):
+            is_paused = bool(tl.is_paused())
+        self.update_sim_time(curr_time, is_playing=is_running and not is_paused, is_paused=is_paused)
+
+    def sync_tcps_ui(self):
+        """Refleja en el campo TCPS el valor actual de la extensión/capa raíz."""
+        if self._tcps_model is None or self.extension is None:
+            return
+        self._updating_models_internally = True
+        try:
+            self._tcps_model.set_value(float(getattr(self.extension, "time_codes_per_second", 25.0)))
+        finally:
+            self._updating_models_internally = False
+
+    def _is_sim_active(self) -> bool:
+        """True si la simulación ha empezado (en ejecución o en pausa)."""
+        return bool(getattr(self.extension, "is_simulation_running", False))
+
+    def _current_sim_time(self) -> float:
+        tl = getattr(self.extension, "timeline", None) if self.extension else None
+        return float(tl.get_current_time()) if tl else 0.0
+
+    def _revert_start_fields(self):
+        """Restaura los campos de fecha/hora inicial al valor de time_reference."""
+        time_ref = getattr(self.extension, "time_reference", None)
+        if time_ref is None or self._date_model is None or self._time_model is None:
+            return
+        self._updating_models_internally = True
+        try:
+            self._date_model.set_value(time_ref.get_date_str())
+            self._time_model.set_value(time_ref.get_time_str())
+        finally:
+            self._updating_models_internally = False
+
+    def _on_tcps_field_end_edit(self):
+        """Aplica los Time Codes Per Second a la capa raíz (recalcula también el End Time Code)."""
+        if self._updating_models_internally or self._tcps_model is None or self.extension is None:
+            return
+        if self._is_sim_active():
+            self.sync_tcps_ui()
+            self.update_status("[AVISO] No se puede cambiar TCPS con la simulación iniciada.")
+            return
+        self.extension.set_time_codes_per_second(self._tcps_model.get_value_as_float())
+        self.sync_tcps_ui()
 
     def _on_time_field_changed(self):
         """Callback cuando cambia el modelo de fecha/hora (ej. desde popups interactivos)."""
         if self._updating_models_internally or self._date_model is None or self._time_model is None or self.extension is None:
+            return
+        if self._is_sim_active():
+            self._revert_start_fields()
             return
         date_str = self._date_model.get_value_as_string().strip()
         time_str = self._time_model.get_value_as_string().strip()
@@ -867,6 +962,10 @@ class UIBuilder:
             return
         time_ref = getattr(self.extension, "time_reference", None)
         if time_ref is None:
+            return
+        if self._is_sim_active():
+            self._revert_start_fields()
+            self.update_status("[AVISO] El instante inicial no se puede modificar con la simulación iniciada.")
             return
 
         raw_date = self._date_model.get_value_as_string().strip()
@@ -917,6 +1016,10 @@ class UIBuilder:
             return
         time_ref = getattr(self.extension, "time_reference", None)
         if time_ref is None:
+            return
+        if self._is_sim_active():
+            self._revert_start_fields()
+            self.update_status("[AVISO] El instante inicial no se puede modificar con la simulación iniciada.")
             return
 
         raw_time = self._time_model.get_value_as_string().strip()
@@ -1038,10 +1141,15 @@ class UIBuilder:
             self._btn_system.enabled = not is_active
 
         if self._btn_plus_hour is not None:
-            self._btn_plus_hour.enabled = not is_active
+            self._btn_plus_hour.enabled = True  # Extender el final siempre está permitido
 
-    def update_play_pause_button(self, is_playing: bool):
-        """Mantiene compatibilidad delegando en update_time_buttons_state."""
+    def update_play_pause_button(self, is_playing: bool, is_paused: bool = None):
+        """Mantiene compatibilidad delegando en update_time_buttons_state.
+        Si se indica is_paused expl?citamente (evento PAUSE), no se consulta al timeline,
+        que en ese instante a?n puede informar is_paused() == False."""
+        if is_paused is not None:
+            self.update_time_buttons_state(is_running=is_playing, is_paused=bool(is_paused))
+            return
         is_paused = False
         if self.extension and hasattr(self.extension, "timeline") and self.extension.timeline:
             is_paused = bool(getattr(self.extension.timeline, "is_paused", lambda: False)())
@@ -1063,8 +1171,6 @@ class UIBuilder:
         """Suma 1 hora acumulativa al instante final y sincroniza la interfaz."""
         if self.extension is None:
             return
-        if getattr(self.extension, "is_simulation_running", False):
-            return
         time_ref = getattr(self.extension, "time_reference", None)
         if time_ref is None:
             return
@@ -1075,6 +1181,14 @@ class UIBuilder:
             f"Instante final extendido a {time_ref.get_end_date_str()} {time_ref.get_end_time_str()} (duración: {dur_h:.1f} h)."
         )
 
+    def _min_end_sim_time(self):
+        """Con la simulación iniciada, el final debe ser posterior al instante actual; si no, sin restricción."""
+        return self._current_sim_time() if self._is_sim_active() else None
+
+    def _notify_end_rejected(self):
+        if self._is_sim_active():
+            self.update_status("[AVISO] El instante final debe ser posterior al instante actual de la simulación.")
+
     def _on_end_date_field_end_edit(self):
         """Valida y aplica la fecha del instante final."""
         if self._updating_models_internally or self._end_date_model is None or self.extension is None:
@@ -1084,8 +1198,9 @@ class UIBuilder:
             return
         raw_date = self._end_date_model.get_value_as_string().strip()
         raw_time = self._end_time_model.get_value_as_string().strip() if self._end_time_model else time_ref.get_end_time_str()
-        ok = time_ref.set_end_datetime(raw_date, raw_time)
+        ok = time_ref.set_end_datetime(raw_date, raw_time, min_sim_time=self._min_end_sim_time())
         if not ok:
+            self._notify_end_rejected()
             self._updating_models_internally = True
             try:
                 self._end_date_model.set_value(time_ref.get_end_date_str())
@@ -1103,8 +1218,9 @@ class UIBuilder:
             return
         raw_date = self._end_date_model.get_value_as_string().strip() if self._end_date_model else time_ref.get_end_date_str()
         raw_time = self._end_time_model.get_value_as_string().strip()
-        ok = time_ref.set_end_datetime(raw_date, raw_time)
+        ok = time_ref.set_end_datetime(raw_date, raw_time, min_sim_time=self._min_end_sim_time())
         if not ok:
+            self._notify_end_rejected()
             self._updating_models_internally = True
             try:
                 self._end_time_model.set_value(time_ref.get_end_time_str())
@@ -1133,6 +1249,9 @@ class UIBuilder:
         self._lon_model = None
         self._alt_model = None
         self._rate_model = None
+        self._tcps_model = None
+        self._start_date_field = None
+        self._start_time_field = None
         self._date_model = None
         self._time_model = None
         self._georef_source_label = None

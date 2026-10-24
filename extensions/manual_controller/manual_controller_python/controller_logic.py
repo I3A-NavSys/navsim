@@ -632,6 +632,20 @@ class ControllerLogic:
                 ]:
                     settings.set(f"/persistent/app/viewport/{vp_id}/guide/{guide_key}", False)
                     settings.set(f"/app/viewport/{vp_id}/guide/{guide_key}", False)
+
+                # Desactivar la barra flotante de línea de tiempo (minibar) en este Viewport
+                settings.set(f"/app/viewport/{vp_id}/TimelineMinibar", False)
+                settings.set(f"/persistent/app/viewport/{vp_id}/TimelineMinibar", False)
+
+                # Desactivar el indicador de unidades del escenario [m] (MetricsAssemblerUnitsView)
+                for ma_key in [
+                    "hud/metrics/assembler/visible",
+                    "metricsAssembler/visible",
+                ]:
+                    settings.set(f"/persistent/app/viewport/{vp_id}/{ma_key}", False)
+                    settings.set(f"/app/viewport/{vp_id}/{ma_key}", False)
+                # Restablecer altura de capa CameraAxis
+                settings.set(f"/app/viewport/{vp_id}/guide/axis/size/1", 60.0)
         except Exception as e:
             self.logger.debug(f"Error configurando carb.settings de viewport: {e}")
 
@@ -659,6 +673,14 @@ class ControllerLogic:
             ("Grid", None),
             ("Origin", "guide"),
             ("Origin", None),
+            ("Timeline", None),
+            ("Timeline", "timeline"),
+            ("TimelineMinibar", None),
+            ("TimelineMinibarScene", None),
+            ("timeline_minibar_frame", None),
+            ("MetricsAssembler", "hud"),
+            ("MetricsAssembler", None),
+            ("omni.usd.metrics.assembler.ui.MetricsAssemblerUnitsView", None),
         ]
         for name, cat in layer_targets:
             try:
@@ -668,8 +690,31 @@ class ControllerLogic:
             except Exception:
                 pass
 
-        # 5. Ocultar frame del menubar si está registrado
-        for frame_name in ["menubar", "menu"]:
+        # 5. Ocultar capas de ViewportLayers inspeccionando instancias directas (incluyendo TimelineMinibarScene y MetricsAssemblerUnitsView)
+        try:
+            vp_layers_obj = getattr(win, "_ViewportWindow__viewport_layers", None)
+            if vp_layers_obj is not None:
+                layers_dict = getattr(vp_layers_obj, "_ViewportLayers__viewport_layers", {})
+                for factory, instance in layers_dict.items():
+                    inst_type = str(type(instance))
+                    fact_str = str(factory)
+                    suppress_terms = ["Timeline", "minibar", "MetricsAssembler", "metrics"]
+                    if any(term in inst_type or term in fact_str for term in suppress_terms):
+                        if hasattr(instance, "visible"):
+                            instance.visible = False
+        except Exception:
+            pass
+
+        # 6. Ocultar frames si están registrados
+        for frame_name in [
+            "menubar",
+            "menu",
+            "timeline",
+            "minibar",
+            "timeline_minibar_frame",
+            "omni.usd.metrics.assembler.ui.MetricsAssemblerUnitsView",
+            "MetricsAssembler",
+        ]:
             try:
                 f = win.get_frame(frame_name)
                 if f:
