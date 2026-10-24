@@ -1350,14 +1350,14 @@ class FlightPlan:
         # 8. Attach cursor annotations to the scatter plots for displaying waypoint information
         if mplcursors is not None:
             position_3D_plot_cursor = mplcursors.cursor(position_3D_plot_scatter, highlight=True)
-        x_pos_vs_time_plot_cursor = mplcursors.cursor(x_pos_vs_time_plot_scatter, highlight=True)
-        y_pos_vs_time_plot_cursor = mplcursors.cursor(y_pos_vs_time_plot_scatter, highlight=True)
-        z_pos_vs_time_plot_cursor = mplcursors.cursor(z_pos_vs_time_plot_scatter, highlight=True)
+            x_pos_vs_time_plot_cursor = mplcursors.cursor(x_pos_vs_time_plot_scatter, highlight=True)
+            y_pos_vs_time_plot_cursor = mplcursors.cursor(y_pos_vs_time_plot_scatter, highlight=True)
+            z_pos_vs_time_plot_cursor = mplcursors.cursor(z_pos_vs_time_plot_scatter, highlight=True)
 
-        self.attach_cursor_annotations(position_3D_plot_cursor, self.waypoints)
-        self.attach_cursor_annotations(x_pos_vs_time_plot_cursor, self.waypoints)
-        self.attach_cursor_annotations(y_pos_vs_time_plot_cursor, self.waypoints)
-        self.attach_cursor_annotations(z_pos_vs_time_plot_cursor, self.waypoints)
+            self.attach_cursor_annotations(position_3D_plot_cursor, self.waypoints)
+            self.attach_cursor_annotations(x_pos_vs_time_plot_cursor, self.waypoints)
+            self.attach_cursor_annotations(y_pos_vs_time_plot_cursor, self.waypoints)
+            self.attach_cursor_annotations(z_pos_vs_time_plot_cursor, self.waypoints)
 
         # 9. Update limits to maintain scale in all axes
         # 9.1 3D position plot limits
@@ -1488,13 +1488,14 @@ class FlightPlan:
         )
 
         # 7. Attach cursor annotations to the scatter plots for displaying waypoint information
-        x_vel_vs_time_plot_cursor = mplcursors.cursor(x_vel_vs_time_plot_scatter, highlight=True)
-        y_vel_vs_time_plot_cursor = mplcursors.cursor(y_vel_vs_time_plot_scatter, highlight=True)
-        z_vel_vs_time_plot_cursor = mplcursors.cursor(z_vel_vs_time_plot_scatter, highlight=True)
+        if mplcursors is not None:
+            x_vel_vs_time_plot_cursor = mplcursors.cursor(x_vel_vs_time_plot_scatter, highlight=True)
+            y_vel_vs_time_plot_cursor = mplcursors.cursor(y_vel_vs_time_plot_scatter, highlight=True)
+            z_vel_vs_time_plot_cursor = mplcursors.cursor(z_vel_vs_time_plot_scatter, highlight=True)
 
-        self.attach_cursor_annotations(x_vel_vs_time_plot_cursor, self.waypoints)
-        self.attach_cursor_annotations(y_vel_vs_time_plot_cursor, self.waypoints)
-        self.attach_cursor_annotations(z_vel_vs_time_plot_cursor, self.waypoints)
+            self.attach_cursor_annotations(x_vel_vs_time_plot_cursor, self.waypoints)
+            self.attach_cursor_annotations(y_vel_vs_time_plot_cursor, self.waypoints)
+            self.attach_cursor_annotations(z_vel_vs_time_plot_cursor, self.waypoints)
 
         # 8. Update limits to maintain scale in all axes
         # 8.1 3D velocity plot limits
@@ -1614,13 +1615,14 @@ class FlightPlan:
         )
 
         # 7. Attach cursor annotations to the scatter plots for displaying waypoint information
-        x_acc_vs_time_plot_cursor = mplcursors.cursor(x_acc_vs_time_plot_scatter, highlight=True)
-        y_acc_vs_time_plot_cursor = mplcursors.cursor(y_acc_vs_time_plot_scatter, highlight=True)
-        z_acc_vs_time_plot_cursor = mplcursors.cursor(z_acc_vs_time_plot_scatter, highlight=True)
+        if mplcursors is not None:
+            x_acc_vs_time_plot_cursor = mplcursors.cursor(x_acc_vs_time_plot_scatter, highlight=True)
+            y_acc_vs_time_plot_cursor = mplcursors.cursor(y_acc_vs_time_plot_scatter, highlight=True)
+            z_acc_vs_time_plot_cursor = mplcursors.cursor(z_acc_vs_time_plot_scatter, highlight=True)
 
-        self.attach_cursor_annotations(x_acc_vs_time_plot_cursor, self.waypoints)
-        self.attach_cursor_annotations(y_acc_vs_time_plot_cursor, self.waypoints)
-        self.attach_cursor_annotations(z_acc_vs_time_plot_cursor, self.waypoints)
+            self.attach_cursor_annotations(x_acc_vs_time_plot_cursor, self.waypoints)
+            self.attach_cursor_annotations(y_acc_vs_time_plot_cursor, self.waypoints)
+            self.attach_cursor_annotations(z_acc_vs_time_plot_cursor, self.waypoints)
 
         # 8. Update limits to maintain scale in all axes
         limit_3D = max(np.abs(acceleration_3D_plot.get_ylim()))
