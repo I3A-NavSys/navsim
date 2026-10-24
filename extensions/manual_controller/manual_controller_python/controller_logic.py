@@ -9,11 +9,11 @@ import numpy as np
 import omni.usd
 from pxr import Gf, UsdGeom, Usd
 
-import mavlink.dialect
-if not hasattr(mavlink.dialect, "MavManualControlMsg"):
-    importlib.reload(mavlink.dialect)
+import libs.mavlink.dialect as mavlink_dialect
+if not hasattr(mavlink_dialect, "MavManualControlMsg"):
+    importlib.reload(mavlink_dialect)
 
-from mavlink.dialect import MAVLinkV2Codec, MavManualControlMsg
+from libs.mavlink.dialect import MAVLinkV2Codec, MavManualControlMsg
 from .joystick_input import JoystickInput
 from .keyboard_input import KeyboardInput
 

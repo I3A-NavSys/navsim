@@ -95,6 +95,8 @@ class NavSim(omni.ext.IExt):
         """Garantiza la inicialización segura de componentes de la extensión."""
         # 1. Hot-reload opcional de submódulos de datos si están en sys.modules (NUNCA extension ni ui_builder)
         for mod_name in (
+            "libs.mavlink.dialect",
+            "libs.mavlink.udp_manager",
             "mavlink.dialect",
             "mavlink.udp_manager",
             "extensions.navsim.navsim_python.drone_identity",
@@ -589,7 +591,7 @@ class NavSim(omni.ext.IExt):
             # Limpiar cualquier residuo previo antes de inicializar la nueva escena
             self._teardown_simulation()
 
-            from mavlink.udp_manager import FleetMavlinkManager
+            from libs.mavlink.udp_manager import FleetMavlinkManager
 
             if self.fleet_catalog is not None:
                 self.fleet_catalog.reload()

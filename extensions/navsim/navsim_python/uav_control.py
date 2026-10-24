@@ -2,7 +2,7 @@ from typing import Dict, List, Optional
 import numpy as np
 
 from .drone_config import FleetDynamicsTensors
-from mavlink.dialect import FlightPlanData, NavSimUAVState
+from libs.mavlink.dialect import FlightPlanData, NavSimUAVState
 
 
 class UAVControl:
