@@ -77,8 +77,8 @@ class NavSim(omni.ext.IExt):
     time_reference: Optional[NavSimTimeReference] = None
     timeline: Optional[Any] = None
     logger: Optional[logging.Logger] = None
-    base_rx_port: int = 15000
-    base_tx_port: int = 16000
+    base_rx_port: int = 14550
+    base_tx_port: int = 14550
     telemetry_rate_hz: float = 1.0
     time_codes_per_second: float = 25.0
     _menu_items: Optional[Any] = None
@@ -120,9 +120,9 @@ class NavSim(omni.ext.IExt):
         if not hasattr(self, "latest_validation_report"):
             self.latest_validation_report = None
         if not hasattr(self, "base_rx_port"):
-            self.base_rx_port = 15000
+            self.base_rx_port = 14550
         if not hasattr(self, "base_tx_port"):
-            self.base_tx_port = 16000
+            self.base_tx_port = 14550
         if not hasattr(self, "telemetry_rate_hz"):
             self.telemetry_rate_hz = 1.0
         if getattr(self, "timeline", None) is None:
@@ -155,8 +155,8 @@ class NavSim(omni.ext.IExt):
         self.uav_control = None
         self.mavlink_manager = None
 
-        self.base_rx_port = 15000
-        self.base_tx_port = 16000
+        self.base_rx_port = 14550
+        self.base_tx_port = 14550
         self.telemetry_rate_hz = 1.0
 
         # Suscripciones al Timeline de Isaac Sim
@@ -591,6 +591,11 @@ class NavSim(omni.ext.IExt):
             # Limpiar cualquier residuo previo antes de inicializar la nueva escena
             self._teardown_simulation()
 
+            import importlib
+            import libs.mavlink.dialect
+            import libs.mavlink.udp_manager
+            importlib.reload(libs.mavlink.dialect)
+            importlib.reload(libs.mavlink.udp_manager)
             from libs.mavlink.udp_manager import FleetMavlinkManager
 
             if self.fleet_catalog is not None:
@@ -664,17 +669,7 @@ class NavSim(omni.ext.IExt):
             self.mavlink_manager.start()
             self.is_simulation_running = True
 
-            rx_str = (
-                f"{self.base_rx_port}"
-                if len(uav_ids) == 1
-                else f"{self.base_rx_port}..{self.base_rx_port + len(uav_ids) - 1}"
-            )
-            tx_str = (
-                f"{self.base_tx_port}"
-                if len(uav_ids) == 1
-                else f"{self.base_tx_port}..{self.base_tx_port + len(uav_ids) - 1}"
-            )
-            status_text = f"Simulación activa: {len(uav_ids)} aeronaves | RX: {rx_str} | TX Telemetría: {tx_str}"
+            status_text = f"Simulación activa: {len(uav_ids)} aeronaves | Puerto UDP NavSim: {self.base_rx_port}"
             carb.log_info(f"[NavSim] {status_text}")
             self._last_time_ui_update = 0.0
             ui = getattr(self, "ui_builder", None)

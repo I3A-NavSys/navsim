@@ -245,6 +245,7 @@ class MavFlightPlanHeaderMsg:
     max_var_ang_vel: float
     target_yaw: float  # math.nan si es None
     num_waypoints: int
+    uav_id_num: int = 0  # UAV destinatario (0..65535)
     msg_id: int = MSG_ID_FLIGHT_PLAN_HEADER
 
 
@@ -471,7 +472,7 @@ MavMessage = Union[
 # ==============================================================================
 # En MAVLink v2 los campos del payload se ordenan de mayor a menor tamaño de tipo
 # primitivo (4 bytes -> 2 bytes -> 1 byte / char[]) para evitar alineamiento roto.
-_STRUCT_HEADER = struct.Struct("<iffffH32s")                      # 54 bytes
+_STRUCT_HEADER = struct.Struct("<iffffHH32s")                     # 56 bytes
 _STRUCT_WAYPOINT = struct.Struct("<f3f3f3f3f3f3f2fHH32s16sB")     # 137 bytes
 _STRUCT_ACK = struct.Struct("<HH32sB")                            # 37 bytes
 _STRUCT_FLIGHT_PLAN_STATUS = struct.Struct("<Qffff3f3f3f3fhH32s16sB")  # 125 bytes
@@ -480,7 +481,7 @@ _STRUCT_ODID_BASIC_ID = struct.Struct("<BB20sBB20s")              # 44 bytes
 _STRUCT_ODID_LOCATION = struct.Struct("<iiffffHHhBB20s7B")        # 59 bytes
 _STRUCT_ODID_OPERATOR_ID = struct.Struct("<BB20sB20s")            # 43 bytes
 _STRUCT_ODID_SELF_ID = struct.Struct("<BB20sB23s")                # 46 bytes
-_STRUCT_MANUAL_CONTROL = struct.Struct("<ffffIBB")                # 22 bytes
+_STRUCT_MANUAL_CONTROL = struct.Struct("<ffffIHB")                # 23 bytes
 
 _CRC_EXTRA = {
     MSG_ID_FLIGHT_PLAN_HEADER: 173,
@@ -560,7 +561,8 @@ class MAVLinkV2Codec:
             float(msg.max_var_lin_vel),
             float(msg.max_var_ang_vel),
             target_yaw,
-            int(msg.num_waypoints),
+            int(msg.num_waypoints) & 0xFFFF,
+            int(msg.uav_id_num) & 0xFFFF,
             _encode_str(msg.plan_id, 32),
         )
         return self._wrap_frame(MSG_ID_FLIGHT_PLAN_HEADER, payload)
@@ -583,7 +585,7 @@ class MAVLinkV2Codec:
         )
         return self._wrap_frame(MSG_ID_FLIGHT_PLAN_WAYPOINT, payload)
 
-    def pack_flight_plan(self, fp: FlightPlanData) -> List[bytes]:
+    def pack_flight_plan(self, fp: FlightPlanData, uav_id_num: int = 0) -> List[bytes]:
         """
         Convierte un objeto FlightPlanData completo en la secuencia de paquetes
         MAVLink v2: 1 x NAVSIM_FLIGHT_PLAN_HEADER + N x NAVSIM_FLIGHT_PLAN_WAYPOINT.
@@ -599,6 +601,7 @@ class MAVLinkV2Codec:
                     max_var_ang_vel=float(fp.max_var_ang_vel),
                     target_yaw=float("nan") if fp.target_yaw is None else float(fp.target_yaw),
                     num_waypoints=num_wps,
+                    uav_id_num=int(uav_id_num),
                 )
             )
         ]
@@ -733,7 +736,7 @@ class MAVLinkV2Codec:
             float(msg.vel_z),
             float(msg.rot_z),
             int(msg.buttons) & 0xFFFFFFFF,
-            int(msg.uav_id_num) & 0xFF,
+            int(msg.uav_id_num) & 0xFFFF,
             int(msg.mode) & 0xFF,
         )
         return self._wrap_frame(MSG_ID_MANUAL_CONTROL, payload)
@@ -776,13 +779,15 @@ class MAVLinkV2Codec:
             payload = frame[MAVLINK_HEADER_LEN:-2]
             parsed = self._decode_payload(msg_id, payload)
             if parsed is not None:
+                parsed.sysid = frame[5]
+                parsed.compid = frame[6]
                 messages.append(parsed)
 
         return messages
 
     def _decode_payload(self, msg_id: int, payload: bytes) -> Optional[MavMessage]:
         if msg_id == MSG_ID_FLIGHT_PLAN_HEADER and len(payload) == _STRUCT_HEADER.size:
-            prio, rad, max_lin, max_ang, tyaw, nwps, pid = _STRUCT_HEADER.unpack(payload)
+            prio, rad, max_lin, max_ang, tyaw, nwps, uav_num, pid = _STRUCT_HEADER.unpack(payload)
             return MavFlightPlanHeaderMsg(
                 plan_id=_decode_str(pid),
                 priority=prio,
@@ -791,6 +796,7 @@ class MAVLinkV2Codec:
                 max_var_ang_vel=max_ang,
                 target_yaw=None if math.isnan(tyaw) else tyaw,
                 num_waypoints=nwps,
+                uav_id_num=uav_num,
             )
 
         if msg_id == MSG_ID_FLIGHT_PLAN_WAYPOINT and len(payload) == _STRUCT_WAYPOINT.size:

@@ -325,7 +325,7 @@ class ManualController(omni.ext.IExt):
         self.uav_modes = {}
         self.last_displayed_mode = -1
 
-        self.manual_control = ControllerLogic(base_rx_port=15000)
+        self.manual_control = ControllerLogic(base_rx_port=14550)
         self.manual_control.on_mode_change_requested = self.switch_mode
 
         # Suscripción a eventos de refresco de interfaz por frame
@@ -492,8 +492,6 @@ class ManualController(omni.ext.IExt):
                     except Exception:
                         pass
                     self.manual_control.set_uav(self.selected_uav_path, self.selected_uav_idx)
-                    if hasattr(self, "port_label") and self.port_label:
-                        self.port_label.text = str(15000 + sel_idx)
                     if hasattr(self, "update_state_display"):
                         self.update_state_display()
                 else:
@@ -503,8 +501,6 @@ class ManualController(omni.ext.IExt):
                     )
                     self.selected_uav_idx = 0
                     self.selected_uav_path = ""
-                    if hasattr(self, "port_label") and self.port_label:
-                        self.port_label.text = "-"
                     if hasattr(self, "state_label") and self.state_label:
                         self.state_label.text = "-"
                         self.state_label.style = {"color": 0xFF888888}
@@ -572,10 +568,6 @@ class ManualController(omni.ext.IExt):
                                     alignment=ui.Alignment.LEFT_CENTER,
                                     style={"color": 0xFFFF8CBA, "font_size": 13},
                                 )
-
-                            with ui.HStack(height=24, spacing=6):
-                                ui.Label("Puerto RX", width=80, alignment=ui.Alignment.LEFT_CENTER, style=LABEL_STYLE_GREY)
-                                self.port_label = ui.Label("15000", alignment=ui.Alignment.LEFT_CENTER, style={"color": 0xFF88DD88})
                                 ui.Spacer()
                                 ui.Button(
                                     "Viewport",
@@ -768,8 +760,6 @@ class ManualController(omni.ext.IExt):
         if 0 <= val < len(self.uav_paths):
             self.selected_uav_idx = val
             self.selected_uav_path = self.uav_paths[val]
-            if hasattr(self, "port_label") and self.port_label:
-                self.port_label.text = str(15000 + val)
             self.manual_control.set_uav(self.selected_uav_path, self.selected_uav_idx)
             if hasattr(self, "update_state_display"):
                 self.update_state_display()

@@ -8,6 +8,7 @@ import numpy as np
 from .dialect import (
     FlightPlanData,
     MAVLinkV2Codec,
+    MAVLINK_STX_V2,
     MavFlightPlanAckMsg,
     MavFlightPlanHeaderMsg,
     MavFlightPlanStatusMsg,
@@ -78,33 +79,26 @@ class _PendingFlightPlan:
 
 class UAVMavlinkEndpoint:
     """
-    Endpoint MAVLink v2 sobre UDP para un único dron simulado.
-    Escucha en `rx_port` (p. ej. 15000 + idx) y envía telemetría/ACKs al último
-    remitente conocido o a `(tx_host, tx_port)`.
+    Endpoint lógico MAVLink v2 para un único dron simulado.
+    Contiene la lógica de aviónica, identificación y serialización de telemetría.
+    El transporte de red es gestionado centralizadamente por FleetMavlinkManager
+    a través de un único socket UDP bidireccional.
     """
 
     def __init__(
         self,
         uav_index: int,
         uav_id: str,
-        rx_host: str = "0.0.0.0",
-        rx_port: int = 15000,
-        tx_host: str = "127.0.0.1",
-        tx_port: int = 16000,
         identity: Optional[Any] = None,
+        sim_port: int = 14550,
     ):
         self.uav_index = uav_index
         self.uav_id = uav_id
         self.identity = identity
         self.sysid = (uav_index % 254) + 1
-        self.rx_host = rx_host
-        self.rx_port = rx_port
-        self.tx_host = tx_host
-        self.tx_port = tx_port
-        # Destinos fijos de telemetría: siempre emite a (tx_host, tx_port) y a suscriptores reconocidos
-        self.telemetry_destinations: Set[Tuple[str, int]] = {(tx_host, tx_port)}
-        self.last_fp_sender_addr: Optional[Tuple[str, int]] = None
-        self.last_cmd_addr: Optional[Tuple[str, int]] = None
+        self.sim_port = sim_port
+        self.rx_port = sim_port
+        self.tx_port = sim_port
 
         self.codec = MAVLinkV2Codec(sysid=self.sysid, compid=1)
         self.sock: Optional[socket.socket] = None
@@ -112,31 +106,14 @@ class UAVMavlinkEndpoint:
         self.active_flight_plan: Optional[FlightPlanData] = None
         self.latest_completed_fp: Optional[FlightPlanData] = None
         self.latest_manual_cmd: Optional[MavManualControlMsg] = None
-
-    @property
-    def remote_addr(self) -> Tuple[str, int]:
-        return (self.tx_host, self.tx_port)
-
-    @remote_addr.setter
-    def remote_addr(self, addr: Tuple[str, int]) -> None:
-        self.last_cmd_addr = addr
+        self.last_fp_sender_addr: Optional[Tuple[str, int]] = None
+        self.last_cmd_addr: Optional[Tuple[str, int]] = None
 
     def open(self) -> None:
-        if self.sock is not None:
-            return
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind((self.rx_host, self.rx_port))
-        sock.setblocking(False)
-        self.sock = sock
+        """Compatibilidad: el socket real es administrado por FleetMavlinkManager."""
+        pass
 
     def close(self) -> None:
-        if self.sock is not None:
-            try:
-                self.sock.close()
-            except OSError:
-                pass
-            self.sock = None
         self._pending_plans.clear()
         self.latest_completed_fp = None
         self.latest_manual_cmd = None
@@ -144,104 +121,27 @@ class UAVMavlinkEndpoint:
         self.last_cmd_addr = None
 
     def drain_socket(self) -> None:
-        """Lee y desempaqueta todos los datagramas pendientes en el socket UDP."""
-        if self.sock is None:
-            return
-
-        while True:
-            try:
-                data, addr = self.sock.recvfrom(65535)
-            except (BlockingIOError, InterruptedError):
-                break
-            except ConnectionResetError:
-                # En Windows, si un sendto previo recibió ICMP Port Unreachable,
-                # el siguiente recvfrom lanza WSAECONNRESET (10054). Continuamos leyendo.
-                continue
-            except OSError:
-                break
-
-            self.last_cmd_addr = addr
-            if addr and addr[0]:
-                self.telemetry_destinations.add((addr[0], self.tx_port))
-
-            for msg in self.codec.parse_bytes(data):
-                if isinstance(msg, MavFlightPlanHeaderMsg):
-                    self.last_fp_sender_addr = addr
-                    pending = _PendingFlightPlan(msg.plan_id, msg.num_waypoints)
-                    pending.apply_header(msg)
-                    self._pending_plans[msg.plan_id] = pending
-
-                elif isinstance(msg, MavFlightPlanWaypointMsg):
-                    self.last_fp_sender_addr = addr
-                    pending = self._pending_plans.get(msg.plan_id)
-                    if pending is None:
-                        pending = _PendingFlightPlan(msg.plan_id, msg.num_waypoints)
-                        self._pending_plans[msg.plan_id] = pending
-
-                    if pending.add_waypoint(msg):
-                        completed_fp = pending.build()
-                        self.active_flight_plan = completed_fp
-                        self.latest_completed_fp = completed_fp
-                        del self._pending_plans[msg.plan_id]
-                        self._send_ack(
-                            plan_id=msg.plan_id,
-                            received=len(completed_fp.waypoints),
-                            total=completed_fp.waypoints.__len__(),
-                            result=NavSimFPAckResult.ACCEPTED,
-                        )
-
-                elif isinstance(msg, MavManualControlMsg):
-                    self.latest_manual_cmd = msg
+        """Compatibilidad: el drenaje se realiza centralizadamente en FleetMavlinkManager."""
+        pass
 
     def poll_incoming(self) -> Optional[FlightPlanData]:
-        """
-        Drena el socket UDP y devuelve un nuevo `FlightPlanData` si se ha completado uno.
-        """
-        self.drain_socket()
         fp = self.latest_completed_fp
         self.latest_completed_fp = None
         return fp
 
-    def _send_ack(self, plan_id: str, received: int, total: int, result: NavSimFPAckResult) -> None:
-        if self.sock is None:
-            return
-        frame = self.codec.pack_ack(
-            MavFlightPlanAckMsg(
-                plan_id=plan_id,
-                received_waypoints=received,
-                num_waypoints=total,
-                result=int(result),
+    def build_stop_notification(self) -> bytes:
+        """Emite notificación estándar de fin de simulación para limpiar receptores externos."""
+        id_bytes = _encode_str(self.uav_id, 20)
+        return self.codec.pack_odid_location(
+            MavOdidLocationMsg(
+                status=int(MavOdidStatus.REMOTE_ID_SYSTEM_FAILURE),
+                speed_horizontal=0,
+                speed_vertical=0,
+                id_or_mac=id_bytes,
             )
         )
-        target = self.last_fp_sender_addr or (self.tx_host, self.tx_port)
-        try:
-            self.sock.sendto(frame, target)
-        except OSError:
-            pass
 
-    def send_stop_notification(self) -> None:
-        """Emite notificación estándar de fin de simulación para limpiar receptores externos."""
-        if self.sock is None:
-            return
-        try:
-            id_bytes = _encode_str(self.uav_id, 20)
-            frame_loc = self.codec.pack_odid_location(
-                MavOdidLocationMsg(
-                    status=int(MavOdidStatus.REMOTE_ID_SYSTEM_FAILURE),
-                    speed_horizontal=0,
-                    speed_vertical=0,
-                    id_or_mac=id_bytes,
-                )
-            )
-            for dest in self.telemetry_destinations:
-                try:
-                    self.sock.sendto(frame_loc, dest)
-                except OSError:
-                    pass
-        except OSError:
-            pass
-
-    def send_telemetry(
+    def build_telemetry_frames(
         self,
         sim_time: float,
         uav_state: int,
@@ -264,13 +164,11 @@ class UAVMavlinkEndpoint:
         pos_error: Optional[np.ndarray] = None,
         vel_error: Optional[np.ndarray] = None,
         time_reference: Optional[Any] = None,
-    ) -> None:
-        if self.sock is None:
-            return
-
-        # ------------------------------------------------------------------
-        # 1. Transformación Cinemática Estándar ASTM F3411 / EUROCAE ED-282
-        # ------------------------------------------------------------------
+    ) -> bytes:
+        """
+        Construye el conjunto de tramas MAVLink v2 (ASTM F3411 OpenDroneID y NavSim Status)
+        para este UAV y devuelve el paquete binario completo listo para enviar.
+        """
         # Posición geográfica geodésica WGS-84
         if georeference is None:
             try:
@@ -303,13 +201,13 @@ class UAVMavlinkEndpoint:
         speed_v_cm = int(round(vz * 100.0))
         speed_vertical = min(6200, max(-6200, speed_v_cm))
 
-        # Dirección sobre el terreno (ASTM F3411 track angle en centígrados 0..35999 horario desde Norte)
+        # Dirección sobre el terreno (ASTM F3411 track angle en centígrados 0..35999)
         if v_h >= 0.1:
             track_rad = math.atan2(vx, vy)
             track_deg = (math.degrees(track_rad) + 360.0) % 360.0
             direction_cdeg = int(round(track_deg * 100.0)) % 36000
         else:
-            # En reposo / estacionario, usar el rumbo (heading) de la aeronave
+            # En reposo, usar el rumbo (heading)
             yaw_deg = math.degrees(float(euler[2]))
             heading_deg = (90.0 - yaw_deg) % 360.0
             direction_cdeg = int(round(heading_deg * 100.0)) % 36000
@@ -322,22 +220,17 @@ class UAVMavlinkEndpoint:
         else:
             odid_status = int(MavOdidStatus.AIRBORNE)
 
-        # Timestamp: segundos transcurridos tras la hora UTC actual (ASTM F3411)
+        # Timestamps
         if time_reference is not None:
             odid_timestamp = float(time_reference.get_odid_timestamp(sim_time))
-        else:
-            odid_timestamp = float(time.time() % 3600.0)
-        # Instante UTC absoluto en microsegundos desde 1970 (NAVSIM_FLIGHT_PLAN_STATUS.time_unix_usec)
-        if time_reference is not None:
             time_unix_usec = int(time_reference.get_unix_usec(sim_time))
         else:
+            odid_timestamp = float(time.time() % 3600.0)
             time_unix_usec = int(time.time() * 1e6)
+
         id_bytes = _encode_str(self.uav_id, 20)
 
-        # ------------------------------------------------------------------
-        # 2. Empaquetar y enviar tramas MAVLink v2
-        # ------------------------------------------------------------------
-        # Trama 1: OPEN_DRONE_ID_LOCATION (ID 12901) - Estándar ASTM F3411 / EUROCAE ED-282
+        # Trama 1: OPEN_DRONE_ID_LOCATION (ID 12901)
         frame_loc = self.codec.pack_odid_location(
             MavOdidLocationMsg(
                 latitude=lat_e7,
@@ -362,7 +255,7 @@ class UAVMavlinkEndpoint:
             )
         )
 
-        # Trama 2: OPEN_DRONE_ID_BASIC_ID (ID 12900) - Identificación oficial UAS
+        # Trama 2: OPEN_DRONE_ID_BASIC_ID (ID 12900)
         id_type = int(getattr(self.identity, "id_type", 1)) if self.identity else 1
         ua_type = int(getattr(self.identity, "ua_type", 2)) if self.identity else 2
         uas_id = str(getattr(self.identity, "uas_id", self.uav_id)) if self.identity else self.uav_id
@@ -380,7 +273,7 @@ class UAVMavlinkEndpoint:
 
         frames_to_send = bytearray(frame_loc + frame_basic)
 
-        # Trama 3: OPEN_DRONE_ID_OPERATOR_ID (ID 12905) - Registro oficial CAA de operador
+        # Trama 3: OPEN_DRONE_ID_OPERATOR_ID (ID 12905)
         op_id = getattr(self.identity, "operator_id", "") if self.identity else ""
         if op_id:
             op_type = int(getattr(self.identity, "operator_id_type", 0))
@@ -395,14 +288,13 @@ class UAVMavlinkEndpoint:
             )
             frames_to_send.extend(frame_op)
 
-        # Trama 4: OPEN_DRONE_ID_SELF_ID (ID 12903) - Descripción dinámica del propósito de vuelo / operación
-        # Se desacopla de los atributos físicos del dron: refleja la misión activa (plan_id) o el estado de vuelo
+        # Trama 4: OPEN_DRONE_ID_SELF_ID (ID 12903)
         self_desc_fallback = getattr(self.identity, "self_id_desc", "") if self.identity else ""
         if uav_state == int(NavSimUAVState.DEAD):
-            desc_type = 1  # 1 = EMERGENCY
+            desc_type = 1
             self_desc = "EMERGENCY / FAILURE"
         elif uav_state == int(NavSimUAVState.BUSY) and plan_id:
-            desc_type = 0  # 0 = TEXT
+            desc_type = 0
             clean_plan = str(plan_id).strip()
             self_desc = f"Mision: {clean_plan}" if len(clean_plan) <= 15 else clean_plan
         elif uav_state == int(NavSimUAVState.MANUAL):
@@ -410,7 +302,6 @@ class UAVMavlinkEndpoint:
             self_desc = "Control Manual"
         else:
             desc_type = 0
-            # Si no se define en USD, en reposo se emite una cadena vacía ""
             self_desc = self_desc_fallback or ""
 
         self_desc = str(self_desc)[:23]
@@ -425,7 +316,7 @@ class UAVMavlinkEndpoint:
         )
         frames_to_send.extend(frame_self)
 
-        # Trama 5: NAVSIM_FLIGHT_PLAN_STATUS (ID 12003) - Progreso y seguimiento de ruta 4D (Polinomio de Taylor)
+        # Trama 5: NAVSIM_FLIGHT_PLAN_STATUS (ID 12003)
         t_init_clean = float(fp_init_time) if math.isfinite(float(fp_init_time)) else 0.0
         t_fin_clean = float(fp_finish_time) if math.isfinite(float(fp_finish_time)) else 0.0
         t_wp_clean = float(wp_time) if math.isfinite(float(wp_time)) else 0.0
@@ -444,7 +335,7 @@ class UAVMavlinkEndpoint:
             if pos_error is not None
             else (0.0, 0.0, 0.0)
         )
-        e_vel_tuple = (
+        e_vel_error = (
             (float(vel_error[0]), float(vel_error[1]), float(vel_error[2]))
             if vel_error is not None
             else (0.0, 0.0, 0.0)
@@ -465,31 +356,32 @@ class UAVMavlinkEndpoint:
                 desired_pos=d_pos_tuple,
                 desired_vel=d_vel_tuple,
                 pos_error=e_pos_tuple,
-                vel_error=e_vel_tuple,
+                vel_error=e_vel_error,
             )
         )
         frames_to_send.extend(frame_fp_status)
+        return bytes(frames_to_send)
 
-        raw_bytes = bytes(frames_to_send)
-        for dest in self.telemetry_destinations:
-            try:
-                self.sock.sendto(raw_bytes, dest)
-            except OSError:
-                pass
+    def send_telemetry(self, *args, **kwargs) -> None:
+        """Compatibilidad con llamadas directas por endpoint."""
+        pass
 
 
 class FleetMavlinkManager:
     """
     Gestor central de comunicaciones MAVLink v2 para toda la flota en escena.
-    Abre un puerto UDP dedicado por dron (`base_rx_port + idx`) y mantiene los
-    planes de vuelo recibidos sin bloquear el bucle de física.
+    Mantiene un único socket UDP bidireccional (por defecto en el puerto 14550)
+    para recibir órdenes de joystick, planes de vuelo y solicitudes de suscripción,
+    y emitir telemetría multiplexada bajo demanda.
     """
 
     def __init__(
         self,
         uav_ids: List[str],
-        base_rx_port: int = 15000,
-        base_tx_port: int = 16000,
+        sim_port: int = 14550,
+        base_rx_port: Optional[int] = None,
+        base_tx_port: Optional[int] = None,
+        bind_host: str = "0.0.0.0",
         telemetry_rate_hz: float = 1.0,
         georeference=None,
         identities: Optional[List[Any]] = None,
@@ -498,10 +390,13 @@ class FleetMavlinkManager:
         self.logger = logging.getLogger("NavSim.MAVLink")
         self.uav_ids = list(uav_ids)
         self.identities = list(identities) if identities else []
-        self.base_rx_port = base_rx_port
-        self.base_tx_port = base_tx_port
+        self.sim_port = int(base_rx_port if base_rx_port is not None else sim_port)
+        self.bind_host = bind_host
+        self.base_rx_port = self.sim_port
+        self.base_tx_port = self.sim_port
         self.telemetry_rate_hz = max(0.1, float(telemetry_rate_hz))
         self.telemetry_period = 1.0 / self.telemetry_rate_hz
+
         if georeference is None:
             try:
                 from extensions.navsim.navsim_python.georeference import WGS84Georeference
@@ -509,6 +404,7 @@ class FleetMavlinkManager:
             except Exception:
                 georeference = None
         self.georeference = georeference
+
         if time_reference is None:
             try:
                 from extensions.navsim.navsim_python.time_reference import NavSimTimeReference
@@ -518,68 +414,314 @@ class FleetMavlinkManager:
         self.time_reference = time_reference
         self._last_telemetry_time: float = -1.0
 
+        self.sock: Optional[socket.socket] = None
+        # Suscriptores: (ip, port) -> {"targets": Optional[Set[int]], "expire_time": float}
+        # targets == None indica suscripción a ALL UAVs
+        self.subscribers: Dict[Tuple[str, int], Dict[str, Any]] = {}
+
+        # Mapeos de enrutamiento
+        self._plan_to_uav: Dict[str, int] = {}
+        self._plan_sender_addr: Dict[str, Tuple[str, int]] = {}
+
         self.endpoints: List[UAVMavlinkEndpoint] = [
             UAVMavlinkEndpoint(
                 uav_index=i,
                 uav_id=uid,
-                rx_port=base_rx_port + i,
-                tx_port=base_tx_port + i,
                 identity=self.identities[i] if i < len(self.identities) else None,
+                sim_port=self.sim_port,
             )
             for i, uid in enumerate(self.uav_ids)
         ]
+        self._generic_codec = MAVLinkV2Codec(sysid=255, compid=1)
 
     def set_telemetry_rate(self, rate_hz: float) -> None:
-        """Actualiza dinámicamente la tasa de emisión de telemetría en Hz."""
         self.telemetry_rate_hz = max(0.1, float(rate_hz))
         self.telemetry_period = 1.0 / self.telemetry_rate_hz
 
     def set_georeference(self, georeference) -> None:
-        """Actualiza la referencia geodésica WGS-84 en tiempo real."""
         self.georeference = georeference
 
     def set_time_reference(self, time_reference) -> None:
-        """Actualiza la referencia temporal UTC en tiempo real."""
         self.time_reference = time_reference
 
     def start(self) -> None:
-        endpoints = getattr(self, "endpoints", None) or []
-        for ep in endpoints:
-            ep.open()
-        if endpoints:
-            self.logger.info(
-                f"MAVLink UDP activo para {len(endpoints)} UAVs "
-                f"(puertos RX {endpoints[0].rx_port}..{endpoints[-1].rx_port})"
-            )
+        if self.sock is not None:
+            return
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind((self.bind_host, self.sim_port))
+        sock.setblocking(False)
+        self.sock = sock
+
+        for ep in self.endpoints:
+            ep.sock = sock
+
+        self.logger.info(
+            f"[NavSim] Socket UDP bidireccional activo en {self.bind_host}:{self.sim_port} "
+            f"para {len(self.endpoints)} aeronaves."
+        )
 
     def stop(self) -> None:
-        endpoints = getattr(self, "endpoints", None) or []
-        for ep in endpoints:
-            ep.send_stop_notification()
+        now = time.time()
+        active_clients = [k for k, v in self.subscribers.items() if v["expire_time"] >= now]
+        if self.sock is not None and active_clients:
+            for ep in self.endpoints:
+                stop_bytes = ep.build_stop_notification()
+                for dest in active_clients:
+                    try:
+                        self.sock.sendto(stop_bytes, dest)
+                    except OSError:
+                        pass
+
+        if self.sock is not None:
+            try:
+                self.sock.close()
+            except OSError:
+                pass
+            self.sock = None
+
+        for ep in self.endpoints:
             ep.close()
+        self.subscribers.clear()
         self._last_telemetry_time = -1.0
 
+    def drain_socket(self) -> None:
+        """Lee y despacha todos los datagramas pendientes en el socket central UDP."""
+        if self.sock is None:
+            return
+
+        now = time.time()
+        while True:
+            try:
+                data, addr = self.sock.recvfrom(65535)
+            except (BlockingIOError, InterruptedError):
+                break
+            except ConnectionResetError:
+                # Windows WSAECONNRESET tras ICMP port unreachable
+                continue
+            except OSError:
+                break
+
+            if not data or not addr:
+                continue
+
+            # 1. Comandos de infraestructura del simulador (Texto ASCII)
+            # Formatos admitidos:
+            #   SIM:SUB <client_port> [target] [ttl]
+            #   SIM:UNSUB <client_port> [target]
+            #   NAVSIM_SUB
+            if data.startswith(b"SIM:SUB"):
+                self._handle_subscription(data.decode("utf-8", errors="ignore").strip(), addr, now)
+                continue
+            elif data.startswith(b"SIM:UNSUB"):
+                self._handle_unsubscription(data.decode("utf-8", errors="ignore").strip(), addr)
+                continue
+            elif data.startswith(b"NAVSIM_SUB"):
+                # Compatibilidad con clientes simples
+                self._register_subscriber(addr[0], 16000, targets=None, ttl=3.0, now=now)
+                continue
+
+            # 2. Tramas MAVLink v2 (Inician con 0xFD)
+            if data[0] == MAVLINK_STX_V2:
+                self._handle_mavlink(data, addr)
+
+    def _handle_subscription(self, cmd_text: str, addr: Tuple[str, int], now: float) -> None:
+        parts = cmd_text.split()
+        client_port = addr[1]
+        target = "ALL"
+        ttl = 3.0
+
+        if len(parts) > 1:
+            try:
+                client_port = int(parts[1])
+            except ValueError:
+                client_port = addr[1]
+        if len(parts) > 2:
+            target = parts[2].strip()
+        if len(parts) > 3:
+            try:
+                ttl = max(0.5, float(parts[3]))
+            except ValueError:
+                ttl = 3.0
+
+        targets_set: Optional[Set[int]] = None
+        if target.upper() == "FIRST":
+            targets_set = {0} if self.endpoints else set()
+        elif target.upper() != "ALL":
+            targets_set = set()
+            for t_item in target.split(","):
+                t_item = t_item.strip()
+                if not t_item:
+                    continue
+                if t_item.upper() == "FIRST":
+                    if self.endpoints:
+                        targets_set.add(0)
+                    continue
+
+                # 1. Rango numérico simple "0-4" (solo dígitos y guion)
+                if "-" in t_item and not any(c.isalpha() for c in t_item):
+                    try:
+                        s_str, e_str = t_item.split("-", 1)
+                        for u_idx in range(int(s_str), int(e_str) + 1):
+                            if 0 <= u_idx < len(self.endpoints):
+                                targets_set.add(u_idx)
+                        continue
+                    except ValueError:
+                        pass
+
+                # 2. Número de índice directo (ej. 23)
+                try:
+                    u_idx = int(t_item)
+                    if 0 <= u_idx < len(self.endpoints):
+                        targets_set.add(u_idx)
+                        continue
+                except ValueError:
+                    pass
+
+                # 3. Identificador de aeronave (ej. ESP-ABJ-2026-23)
+                matched = False
+                for u_idx, uid in enumerate(self.uav_ids):
+                    if uid.upper() == t_item.upper():
+                        targets_set.add(u_idx)
+                        matched = True
+
+                # 4. Coincidencia parcial (ej. "2026-23")
+                if not matched:
+                    for u_idx, uid in enumerate(self.uav_ids):
+                        if t_item.upper() in uid.upper():
+                            targets_set.add(u_idx)
+
+        self._register_subscriber(addr[0], client_port, targets_set, ttl, now)
+
+    def _handle_unsubscription(self, cmd_text: str, addr: Tuple[str, int]) -> None:
+        parts = cmd_text.split()
+        client_port = addr[1]
+        if len(parts) > 1:
+            try:
+                client_port = int(parts[1])
+            except ValueError:
+                pass
+        target = parts[2].strip() if len(parts) > 2 else "ALL"
+        sub_key = (addr[0], client_port)
+
+        if target.upper() == "ALL":
+            self.subscribers.pop(sub_key, None)
+        else:
+            sub = self.subscribers.get(sub_key)
+            if sub and sub["targets"] is not None:
+                try:
+                    u_idx = int(target)
+                    sub["targets"].discard(u_idx)
+                    if not sub["targets"]:
+                        self.subscribers.pop(sub_key, None)
+                except ValueError:
+                    pass
+
+    def _register_subscriber(
+        self,
+        ip: str,
+        port: int,
+        targets: Optional[Set[int]],
+        ttl: float,
+        now: float,
+    ) -> None:
+        sub_key = (ip, port)
+        existing = self.subscribers.get(sub_key)
+        if existing is not None:
+            existing["expire_time"] = now + ttl
+            existing["targets"] = set(targets) if targets is not None else None
+        else:
+            self.subscribers[sub_key] = {
+                "targets": set(targets) if targets is not None else None,
+                "expire_time": now + ttl,
+            }
+
+    def _handle_mavlink(self, data: bytes, addr: Tuple[str, int]) -> None:
+        messages = self._generic_codec.parse_bytes(data)
+        for msg in messages:
+            if isinstance(msg, MavManualControlMsg):
+                target_idx = msg.uav_id_num
+                if 0 <= target_idx < len(self.endpoints):
+                    self.endpoints[target_idx].latest_manual_cmd = msg
+
+            elif isinstance(msg, MavFlightPlanHeaderMsg):
+                target_idx = msg.uav_id_num
+                if 0 <= target_idx < len(self.endpoints):
+                    ep = self.endpoints[target_idx]
+                    ep.last_fp_sender_addr = addr
+                    self._plan_to_uav[msg.plan_id] = target_idx
+                    self._plan_sender_addr[msg.plan_id] = addr
+                    pending = _PendingFlightPlan(msg.plan_id, msg.num_waypoints)
+                    pending.apply_header(msg)
+                    ep._pending_plans[msg.plan_id] = pending
+
+            elif isinstance(msg, MavFlightPlanWaypointMsg):
+                target_idx = self._plan_to_uav.get(msg.plan_id)
+                if target_idx is None:
+                    # Fallback al sysid de cabecera si está disponible
+                    target_idx = getattr(msg, "sysid", 1) - 1
+
+                if 0 <= target_idx < len(self.endpoints):
+                    ep = self.endpoints[target_idx]
+                    pending = ep._pending_plans.get(msg.plan_id)
+                    if pending is None:
+                        pending = _PendingFlightPlan(msg.plan_id, msg.num_waypoints)
+                        ep._pending_plans[msg.plan_id] = pending
+
+                    if pending.add_waypoint(msg):
+                        completed_fp = pending.build()
+                        ep.active_flight_plan = completed_fp
+                        ep.latest_completed_fp = completed_fp
+                        del ep._pending_plans[msg.plan_id]
+                        sender = self._plan_sender_addr.get(msg.plan_id, addr)
+                        self._send_ack(
+                            target_addr=sender,
+                            plan_id=msg.plan_id,
+                            received=len(completed_fp.waypoints),
+                            total=len(completed_fp.waypoints),
+                            result=NavSimFPAckResult.ACCEPTED,
+                            sysid=ep.sysid,
+                        )
+
+    def _send_ack(
+        self,
+        target_addr: Tuple[str, int],
+        plan_id: str,
+        received: int,
+        total: int,
+        result: NavSimFPAckResult,
+        sysid: int = 1,
+    ) -> None:
+        if self.sock is None:
+            return
+        codec = MAVLinkV2Codec(sysid=sysid, compid=1)
+        frame = codec.pack_ack(
+            MavFlightPlanAckMsg(
+                plan_id=plan_id,
+                received_waypoints=received,
+                num_waypoints=total,
+                result=int(result),
+            )
+        )
+        try:
+            self.sock.sendto(frame, target_addr)
+        except OSError:
+            pass
+
     def poll_new_flight_plans(self) -> Dict[int, FlightPlanData]:
-        """
-        Sondea todos los sockets UDP de la flota.
-        Devuelve `{uav_physics_idx: FlightPlanData}` únicamente para aquellos UAVs
-        que acaban de recibir un FlightPlan nuevo en este paso.
-        """
+        self.drain_socket()
         updated: Dict[int, FlightPlanData] = {}
         for idx, ep in enumerate(self.endpoints):
-            fp = ep.poll_incoming()
+            fp = ep.latest_completed_fp
             if fp is not None:
                 updated[idx] = fp
+                ep.latest_completed_fp = None
         return updated
 
     def poll_manual_controls(self) -> Dict[int, MavManualControlMsg]:
-        """
-        Sondea comandos de control manual pendientes recibidos en los endpoints UDP.
-        Devuelve `{uav_physics_idx: MavManualControlMsg}` para aquellos UAVs con consignas manuales.
-        """
+        self.drain_socket()
         cmds: Dict[int, MavManualControlMsg] = {}
         for idx, ep in enumerate(self.endpoints):
-            ep.drain_socket()
             if ep.latest_manual_cmd is not None:
                 cmds[idx] = ep.latest_manual_cmd
                 ep.latest_manual_cmd = None
@@ -608,15 +750,35 @@ class FleetMavlinkManager:
         vel_errors: Optional[np.ndarray] = None,
     ) -> None:
         last_time = getattr(self, "_last_telemetry_time", -1.0)
-        if (
-            last_time >= 0.0
-            and (sim_time - last_time) < self.telemetry_period
-        ):
+        if last_time >= 0.0 and (sim_time - last_time) < self.telemetry_period:
+            return
+
+        if self.sock is None:
+            return
+
+        now = time.time()
+        # 1. Purgar suscriptores expirados (TTL)
+        expired = [k for k, v in self.subscribers.items() if v["expire_time"] < now]
+        for k in expired:
+            del self.subscribers[k]
+
+        # 2. Si no hay suscriptores vivos: cero trabajo de empaquetado ni envíos
+        if not self.subscribers:
+            self._last_telemetry_time = sim_time
             return
 
         self._last_telemetry_time = sim_time
+
+        # 3. Emitir telemetría bajo demanda UAV por UAV
         for idx, ep in enumerate(self.endpoints):
-            ep.send_telemetry(
+            active_recipients = [
+                k for k, v in self.subscribers.items()
+                if v["targets"] is None or idx in v["targets"]
+            ]
+            if not active_recipients:
+                continue
+
+            raw_bytes = ep.build_telemetry_frames(
                 sim_time=sim_time,
                 uav_state=int(uav_states[idx]),
                 plan_id=plan_ids[idx],
@@ -639,3 +801,9 @@ class FleetMavlinkManager:
                 vel_error=vel_errors[idx] if vel_errors is not None else None,
                 time_reference=self.time_reference,
             )
+
+            for dest in active_recipients:
+                try:
+                    self.sock.sendto(raw_bytes, dest)
+                except OSError:
+                    pass

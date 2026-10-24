@@ -29,7 +29,7 @@ class ControllerLogic:
          dejando intacto el Viewport principal (Viewport 1) del usuario.
     """
 
-    def __init__(self, base_rx_port: int = 15000):
+    def __init__(self, base_rx_port: int = 14550):
         self.logger = logging.getLogger("ManualControllerLogic")
         self.base_rx_port = base_rx_port
         self._stop = True
@@ -256,7 +256,7 @@ class ControllerLogic:
             except OSError:
                 return
 
-        target_port = self.base_rx_port + self.uav_idx
+        target_port = self.base_rx_port
         msg = MavManualControlMsg(
             uav_id_num=self.uav_idx,
             mode=mode,

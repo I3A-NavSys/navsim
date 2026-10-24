@@ -11,6 +11,9 @@ if project_root_path not in sys.path:
 # En Isaac Sim, forzamos recarga limpia de submódulos para que cualquier cambio
 # en código se refleje inmediatamente al activar/desactivar la extensión en Kit.
 for mod_name in (
+    "libs.mavlink.dialect",
+    "libs.mavlink.udp_manager",
+    "libs.mavlink",
     "navsim_python.time_reference",
     "navsim_python.georeference",
     "navsim_python.drone_identity",

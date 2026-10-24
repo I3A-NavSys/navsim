@@ -405,12 +405,12 @@ class UIBuilder:
                                 ui.Label(" Hz", width=30, style={"color": 0xFF88DD88})
 
                             with ui.HStack(height=22):
-                                ui.Label("Rango Puertos RX", width=140, style={"color": 0xFF9E9E9E})
-                                self._comms_rx_range_label = ui.Label("15000", style={"color": 0xFF88DD88})
+                                ui.Label("Puerto UDP MAVLink", width=140, style={"color": 0xFF9E9E9E})
+                                self._comms_rx_range_label = ui.Label("14550", style={"color": 0xFF88DD88})
 
                             with ui.HStack(height=22):
-                                ui.Label("Rango Puertos TX", width=140, style={"color": 0xFF9E9E9E})
-                                self._comms_tx_range_label = ui.Label("16000", style={"color": 0xFF88DD88})
+                                ui.Label("Canal Telemetría", width=140, style={"color": 0xFF9E9E9E})
+                                self._comms_tx_range_label = ui.Label("Pub/Sub bajo demanda", style={"color": 0xFF88DD88})
 
                     # Spacer al final para absorber todo el espacio vertical sobrante de la ventana
                     ui.Spacer()
@@ -475,9 +475,6 @@ class UIBuilder:
                     ui.Label("Modelo Físico", width=140, style={"color": 0xFF9E9E9E})
                     self._detail_model_label = ui.Label("", style={"color": 0xFFDDDDDD})
 
-                with ui.HStack(height=22):
-                    ui.Label("Puertos UDP MAVLink", width=140, style={"color": 0xFF9E9E9E})
-                    self._detail_ports_label = ui.Label("", style={"color": 0xFF88DD88})
 
                 with ui.HStack(height=22):
                     ui.Label("Estado Conforme", width=140, style={"color": 0xFF9E9E9E})
@@ -653,7 +650,7 @@ class UIBuilder:
         ident = report.identities[self._selected_drone_idx]
         uav_idx = self._selected_drone_idx
 
-        base_rx = getattr(self.extension, "base_rx_port", 15000) if self.extension else 15000
+        base_rx = getattr(self.extension, "base_rx_port", 14550) if self.extension else 15000
         base_tx = getattr(self.extension, "base_tx_port", 16000) if self.extension else 16000
         rx_port = base_rx + uav_idx
         tx_port = base_tx + uav_idx
@@ -680,8 +677,6 @@ class UIBuilder:
             self._detail_desc_label.text = f"{desc_str}"
         if self._detail_model_label is not None:
             self._detail_model_label.text = f"{ident.model} (fleet/)"
-        if self._detail_ports_label is not None:
-            self._detail_ports_label.text = f"RX: {rx_port}  |  TX: {tx_port}"
         if self._detail_status_label is not None:
             if ident.is_valid:
                 self._detail_status_label.text = "Conforme a ASTM F3411"
@@ -711,12 +706,11 @@ class UIBuilder:
             self._comms_state_label.style = {"color": 0xFFAAAAAA}
 
     def _update_comms_labels(self):
-        """Calcula y actualiza dinámicamente los rangos de puertos UDP y el mapeo por UAV."""
+        """Actualiza los indicadores de comunicaciones y tasa de telemetría."""
         if self._comms_rx_range_label is None or self._comms_tx_range_label is None:
             return
 
-        base_rx = getattr(self.extension, "base_rx_port", 15000) if self.extension else 15000
-        base_tx = getattr(self.extension, "base_tx_port", 16000) if self.extension else 16000
+        sim_port = getattr(self.extension, "base_rx_port", 14550) if self.extension else 14550
         rate_hz = getattr(self.extension, "telemetry_rate_hz", 1.0) if self.extension else 1.0
 
         if self._rate_model is not None and not self._updating_models_internally:
@@ -726,21 +720,8 @@ class UIBuilder:
             finally:
                 self._updating_models_internally = False
 
-        report = self._current_report
-        identities = report.identities if (report and report.identities) else []
-        n = len(identities)
-
-        if n == 0:
-            self._comms_rx_range_label.text = f"{base_rx}"
-            self._comms_tx_range_label.text = f"{base_tx}"
-            return
-
-        if n == 1:
-            self._comms_rx_range_label.text = f"{base_rx} (1 canal RX)"
-            self._comms_tx_range_label.text = f"{base_tx} (1 canal TX)"
-        else:
-            self._comms_rx_range_label.text = f"{base_rx} .. {base_rx + n - 1} ({n} canales RX)"
-            self._comms_tx_range_label.text = f"{base_tx} .. {base_tx + n - 1} ({n} canales TX)"
+        self._comms_rx_range_label.text = f"{sim_port}"
+        self._comms_tx_range_label.text = "Pub/Sub bajo demanda"
 
     def _on_drone_combo_pressed(self, x=None, y=None, button=None, modifier=None):
         """Al pulsar sobre el desplegable de aeronaves, comprueba el estado real de la escena.
