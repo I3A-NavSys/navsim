@@ -1,2 +1,9 @@
-# Este archivo puede permanecer vacío si no necesitas inicializar nada específico.
-# Sin embargo, es importante que exista para que Python reconozca este directorio como un paquete.
+"""
+Módulo FlightPlan de NavSim.
+Estructuras cinemáticas y gestión de planes de vuelo para UAVs.
+"""
+
+from .waypoint import Waypoint
+from .flight_plan import FlightPlan
+
+__all__ = ["Waypoint", "FlightPlan"]
