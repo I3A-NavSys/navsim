@@ -1,28 +1,24 @@
 #!/usr/bin/env python3
 """
-Monitor de Telemetría MAVLink v2 ASTM F3411 / EUROCAE ED-282 + Rutas 4D Taylor para NavSim (Isaac Sim).
+Monitor de Telemetría MAVLink v2 ASTM F3411 / EUROCAE ED-282 para NavSim (Isaac Sim).
 
-Escucha dinámicamente los puertos UDP de telemetría (16000, 16001, ...) para 4 drones consecutivos
-y muestra en tiempo real su estado de navegación y Remote ID:
-  - Visualización continua de flota (4 drones por pantalla sin desbordamiento vertical).
-  - Coordenadas Geodésicas WGS-84 (Latitud, Longitud, Altitud HAE, Altura AGL).
-  - Vector Polar ASTM F3411 (Velocidad Horizontal, Velocidad Vertical, Dirección/Track).
-  - Estado Operativo ASTM F3411 (GROUND, AIRBORNE, EMERGENCY, FAILURE).
-  - Estado de Ejecución de Ruta 4D Taylor (`NAVSIM_FLIGHT_PLAN_STATUS`, ID 12003):
-    Plan ID, Waypoint actual (`seq/total` + `label`), ventana temporal y error de seguimiento 4D.
+Muestra en una tabla compacta (una fila por dron) el estado de los drones indicados y, debajo,
+el detalle completo del dron seleccionado con las flechas arriba/abajo.
 
-Uso:
-    python scripts/telemetry_monitor/telemetry_monitor.py              # Drones 0..3 (TX: 16000..16003, RX: 15000..15003)
-    python scripts/telemetry_monitor/telemetry_monitor.py 16004        # Drones 4..7 (TX: 16004..16007, RX: 15004..15007)
-    python scripts/telemetry_monitor/telemetry_monitor.py 4            # Drones 4..7 (por índice directo de UAV)
-    python scripts/telemetry_monitor/telemetry_monitor.py --stream
+Uso rápido (ver `--help` para la descripción completa):
+    python apps/telemetry_monitor/telemetry_monitor.py                         # 1 dron: 127.0.0.1:16000
+    python apps/telemetry_monitor/telemetry_monitor.py 16003                   # 1 dron: 127.0.0.1:16003
+    python apps/telemetry_monitor/telemetry_monitor.py 16000 16005             # lista de drones
+    python apps/telemetry_monitor/telemetry_monitor.py 16000-16009             # rango de puertos
+    python apps/telemetry_monitor/telemetry_monitor.py 192.168.1.20:16000-16003  # Isaac Sim en otra máquina
 """
 
 import argparse
-from datetime import datetime
+from datetime import datetime, timezone
 import math
 import os
 from pathlib import Path
+import re
 import select
 import socket
 import sys
@@ -38,31 +34,40 @@ from mavlink.dialect import (
     MAVLinkV2Codec,
     MavFlightPlanStatusMsg,
     MavOdidBasicIdMsg,
-    MavOdidHeightRef,
-    MavOdidHorAcc,
     MavOdidLocationMsg,
     MavOdidOperatorIdMsg,
     MavOdidSelfIdMsg,
-    MavOdidSpeedAcc,
     MavOdidStatus,
-    MavOdidVerAcc,
     NavSimUAVState,
 )
 
-ODID_STATUS_NAMES = {
-    int(MavOdidStatus.UNDECLARED): "UNDECLARED",
-    int(MavOdidStatus.GROUND): "GROUND (En tierra)",
-    int(MavOdidStatus.AIRBORNE): "AIRBORNE (En vuelo)",
-    int(MavOdidStatus.EMERGENCY): "EMERGENCY (Emergencia)",
-    int(MavOdidStatus.REMOTE_ID_SYSTEM_FAILURE): "FAILURE (Fallo RID)",
+DEFAULT_TX_PORT = 16000
+DEFAULT_RX_PORT = 15000
+HEARTBEAT_PERIOD_S = 1.0
+
+ODID_STATUS_SHORT = {
+    int(MavOdidStatus.UNDECLARED): "UNDECL",
+    int(MavOdidStatus.GROUND): "GROUND",
+    int(MavOdidStatus.AIRBORNE): "AIRBORNE",
+    int(MavOdidStatus.EMERGENCY): "EMERGENC",
+    int(MavOdidStatus.REMOTE_ID_SYSTEM_FAILURE): "FAILURE",
 }
 
+# Colores de primer plano (se cierran con FG_RESET para no anular la fila resaltada)
+FG_GREY = "\033[90m"
+FG_YELLOW = "\033[93m"
+FG_GREEN = "\033[92m"
+FG_RED = "\033[91m"
+FG_MAGENTA = "\033[95m"
+FG_WHITE = "\033[97m"
+FG_RESET = "\033[39m"
+
 ODID_STATUS_COLORS = {
-    int(MavOdidStatus.UNDECLARED): "\033[90m",  # Gris
-    int(MavOdidStatus.GROUND): "\033[93m",      # Amarillo
-    int(MavOdidStatus.AIRBORNE): "\033[92m",    # Verde
-    int(MavOdidStatus.EMERGENCY): "\033[91m",   # Rojo
-    int(MavOdidStatus.REMOTE_ID_SYSTEM_FAILURE): "\033[95m",  # Magenta
+    int(MavOdidStatus.UNDECLARED): FG_GREY,
+    int(MavOdidStatus.GROUND): FG_YELLOW,
+    int(MavOdidStatus.AIRBORNE): FG_GREEN,
+    int(MavOdidStatus.EMERGENCY): FG_RED,
+    int(MavOdidStatus.REMOTE_ID_SYSTEM_FAILURE): FG_MAGENTA,
 }
 
 UAV_STATE_NAMES = {
@@ -95,8 +100,11 @@ ID_TYPE_NAMES = {
 RESET_COLOR = "\033[0m"
 CYAN = "\033[96m"
 BOLD = "\033[1m"
+REVERSE = "\033[7m"
 ERA_LINE = "\033[K"
 ERA_DISPLAY = "\033[J"
+
+TABLE_WIDTH = 118
 
 
 def cardinal_direction(deg: float) -> str:
@@ -106,12 +114,99 @@ def cardinal_direction(deg: float) -> str:
     return cardinals[idx]
 
 
+def format_utc_us(time_unix_usec: int) -> str:
+    """Formatea microsegundos desde 1970 como 'AAAA-MM-DD HH:MM:SS.mmm' (UTC)."""
+    dt = datetime.fromtimestamp(time_unix_usec / 1e6, tz=timezone.utc)
+    return dt.strftime("%Y-%m-%d %H:%M:%S.") + f"{dt.microsecond // 1000:03d}"
+
+
+# ==============================================================================
+# Interpretación de la lista de drones (IP:puerto)
+# ==============================================================================
+def parse_targets(tokens: List[str], default_host: str, base_tx: int, base_rx: int) -> List[Tuple[str, int, int, int]]:
+    """
+    Convierte la lista de argumentos en tuplas (host, tx_port, rx_port, uav_idx).
+
+    Formatos admitidos por elemento:
+        16003                       puerto de telemetría en el host por defecto
+        16000-16009                 rango de puertos en el host por defecto
+        192.168.1.20                IP (o nombre) con el puerto por defecto 16000
+        192.168.1.20:16003          IP y puerto
+        192.168.1.20:16000-16009    IP y rango de puertos
+    Si la lista está vacía se monitoriza un único dron en default_host:16000.
+    """
+    if not tokens:
+        tokens = [str(DEFAULT_TX_PORT)]
+
+    result: List[Tuple[str, int, int, int]] = []
+    for token in tokens:
+        spec = token.strip()
+        host = default_host
+        port_spec = None
+
+        if ":" in spec:
+            host_part, port_spec = spec.rsplit(":", 1)
+            if host_part:
+                host = host_part
+        elif re.fullmatch(r"\d+(-\d+)?", spec):
+            port_spec = spec
+        else:
+            host = spec  # IP o nombre de máquina sin puerto
+
+        if port_spec is None:
+            ports = [DEFAULT_TX_PORT]
+        else:
+            m = re.fullmatch(r"(\d+)(?:-(\d+))?", port_spec)
+            if not m:
+                raise ValueError(f"Elemento no válido '{token}'. Usa PUERTO, PUERTO-PUERTO, IP o IP:PUERTO[-PUERTO].")
+            first = int(m.group(1))
+            last = int(m.group(2)) if m.group(2) else first
+            if last < first:
+                raise ValueError(f"Rango descendente en '{token}'.")
+            if last - first >= 1000:
+                raise ValueError(f"Rango demasiado grande en '{token}' (máximo 1000 drones).")
+            ports = list(range(first, last + 1))
+
+        for p in ports:
+            if not 1 <= p <= 65535:
+                raise ValueError(f"Puerto fuera de rango (1-65535) en '{token}'.")
+
+        try:
+            resolved_host = socket.gethostbyname(host)
+        except OSError:
+            raise ValueError(f"No se puede resolver la dirección '{host}' (elemento '{token}').")
+
+        for p in ports:
+            if p >= base_tx:
+                uav_idx = p - base_tx
+                rx_port = base_rx + uav_idx
+            else:
+                uav_idx = len(result)
+                rx_port = base_rx + uav_idx
+            result.append((resolved_host, p, rx_port, uav_idx))
+
+    # Cada dron necesita su propio puerto local de escucha
+    seen: Dict[int, str] = {}
+    for host, tx_port, _, _ in result:
+        if tx_port in seen:
+            raise ValueError(
+                f"El puerto {tx_port} aparece repetido ({seen[tx_port]} y {host}). "
+                f"El monitor escucha cada dron en su propio puerto local."
+            )
+        seen[tx_port] = host
+    return result
+
+
+# ==============================================================================
+# Seguimiento por dron
+# ==============================================================================
 class UAVTelemetryTracker:
-    def __init__(self, uav_idx: int, tx_port: int, rx_port: int):
+    def __init__(self, uav_idx: int, tx_port: int, rx_port: int, host: str = "127.0.0.1"):
         self.uav_idx = uav_idx
-        self.tx_port = tx_port  # Puerto TX de telemetría de Isaac Sim donde escucha el monitor
-        self.rx_port = rx_port  # Puerto RX de comandos de Isaac Sim (informativo)
-        self.codec = MAVLinkV2Codec(sysid=255, compid=1)
+        self.host = host  # Dirección de la máquina donde corre Isaac Sim
+        self.tx_port = tx_port  # Puerto local de escucha = puerto TX de telemetría del dron
+        self.rx_port = rx_port  # Puerto RX de comandos del dron en Isaac Sim (aquí se envía el latido)
+        self.codec = MAVLinkV2Codec(sysid=255, compid=190)
         self.sock: Optional[socket.socket] = None
 
         self.last_loc_msg: Optional[MavOdidLocationMsg] = None
@@ -126,6 +221,13 @@ class UAVTelemetryTracker:
         self._hz_timer: float = time.time()
         self._hz_counter: int = 0
         self.is_stopped: bool = False
+        self._last_heartbeat: float = 0.0
+
+    @property
+    def uas_id(self) -> str:
+        if self.last_basic_msg is not None and self.last_basic_msg.uas_id:
+            return self.last_basic_msg.uas_id
+        return f"UAV_{self.uav_idx:02d}"
 
     def is_active(self, now: float, timeout: float = 2.0) -> bool:
         """Determina si este dron está emitiendo telemetría activamente."""
@@ -146,10 +248,10 @@ class UAVTelemetryTracker:
         self.hz = 0.0
         self.is_stopped = True
 
-    def open_socket(self, host: str = "0.0.0.0") -> None:
+    def open_socket(self, bind_host: str = "0.0.0.0") -> None:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind((host, self.tx_port))
+        sock.bind((bind_host, self.tx_port))
         sock.setblocking(False)
         self.sock = sock
 
@@ -161,6 +263,22 @@ class UAVTelemetryTracker:
                 pass
             self.sock = None
 
+    def send_subscribe(self, now: float, force: bool = False) -> None:
+        """
+        Envía un datagrama UDP de suscripción al puerto RX del dron (15000+).
+        Isaac Sim registra la dirección de origen como destino de telemetría, de modo que el monitor
+        recibe datos aunque se ejecute en otra máquina.
+        """
+        if self.sock is None:
+            return
+        if not force and (now - self._last_heartbeat) < HEARTBEAT_PERIOD_S:
+            return
+        self._last_heartbeat = now
+        try:
+            self.sock.sendto(b"NAVSIM_SUB", (self.host, self.rx_port))
+        except OSError:
+            pass
+
     def process_incoming(self) -> List[Tuple[str, object]]:
         if not self.sock:
             return []
@@ -170,6 +288,9 @@ class UAVTelemetryTracker:
                 data, _ = self.sock.recvfrom(65535)
             except (BlockingIOError, InterruptedError):
                 break
+            except ConnectionResetError:
+                # Windows: ICMP "puerto inalcanzable" por un envío previo; se ignora y se sigue leyendo
+                continue
             except OSError:
                 break
 
@@ -208,263 +329,379 @@ class UAVTelemetryTracker:
         return received_events
 
 
+# ==============================================================================
+# Teclado (flechas arriba/abajo, q) multiplataforma
+# ==============================================================================
+class KeyReader:
+    """Lectura no bloqueante de teclas: devuelve 'up', 'down' o el carácter pulsado."""
+
+    def __init__(self):
+        self._old_term = None
+        self._fd = None
+
+    def __enter__(self):
+        if os.name != "nt" and sys.stdin.isatty():
+            try:
+                import termios
+                import tty
+
+                self._fd = sys.stdin.fileno()
+                self._old_term = termios.tcgetattr(self._fd)
+                tty.setcbreak(self._fd)
+            except Exception:
+                self._old_term = None
+        return self
+
+    def __exit__(self, *exc):
+        if self._old_term is not None:
+            try:
+                import termios
+
+                termios.tcsetattr(self._fd, termios.TCSADRAIN, self._old_term)
+            except Exception:
+                pass
+        return False
+
+    def read_keys(self) -> List[str]:
+        keys: List[str] = []
+        if os.name == "nt":
+            try:
+                import msvcrt
+            except ImportError:
+                return keys
+            while msvcrt.kbhit():
+                ch = msvcrt.getwch()
+                if ch in ("\x00", "\xe0"):
+                    ch2 = msvcrt.getwch()
+                    if ch2 == "H":
+                        keys.append("up")
+                    elif ch2 == "P":
+                        keys.append("down")
+                else:
+                    keys.append(ch.lower())
+            return keys
+
+        if self._old_term is None:
+            return keys
+        while select.select([sys.stdin], [], [], 0)[0]:
+            data = os.read(self._fd, 32).decode("utf-8", errors="ignore")
+            if not data:
+                break
+            i = 0
+            while i < len(data):
+                if data.startswith("\x1b[A", i):
+                    keys.append("up")
+                    i += 3
+                elif data.startswith("\x1b[B", i):
+                    keys.append("down")
+                    i += 3
+                else:
+                    keys.append(data[i].lower())
+                    i += 1
+        return keys
+
+
+# ==============================================================================
+# Representación en pantalla
+# ==============================================================================
+def tracker_state(tr: UAVTelemetryTracker, now: float, timeout: float) -> Tuple[str, str]:
+    """Retorna (texto_corto, color) del estado de un dron."""
+    if tr.last_recv_time <= 0.0 and not tr.is_stopped:
+        return "ESPERA", FG_GREY
+    if tr.is_stopped:
+        return "DETENIDO", FG_RED
+    if not tr.is_active(now, timeout):
+        return "TIMEOUT", FG_RED
+    if tr.last_loc_msg is not None:
+        st = tr.last_loc_msg.status
+        return ODID_STATUS_SHORT.get(st, f"ST({st})"), ODID_STATUS_COLORS.get(st, FG_WHITE)
+    return "ESPERA", FG_GREY
+
+
+def render_row(tr: UAVTelemetryTracker, now: float, timeout: float, selected: bool) -> str:
+    state_txt, state_col = tracker_state(tr, now, timeout)
+    loc = tr.last_loc_msg
+    fp = tr.last_fp_status_msg
+    recent = tr.is_active(now, timeout)
+
+    if loc is not None and recent:
+        lat = f"{loc.lat_deg:+10.6f}"
+        lon = f"{loc.lon_deg:+11.6f}"
+        alt = f"{loc.altitude_geodetic:7.1f}"
+        agl = f"{loc.height:5.1f}"
+        vh = f"{loc.speed_h_ms:5.1f}"
+        vv = f"{loc.speed_v_ms:+5.1f}"
+        rumbo = f"{loc.direction_deg:03.0f}° {cardinal_direction(loc.direction_deg):<3s}"
+    else:
+        lat, lon, alt, agl, vh, vv, rumbo = (
+            "--".rjust(10), "--".rjust(11), "--".rjust(7), "--".rjust(5), "--".rjust(5), "--".rjust(5), "--".ljust(7)
+        )
+
+    if fp is not None and fp.time_unix_usec and recent:
+        time_txt = format_utc_us(fp.time_unix_usec)
+    else:
+        time_txt = "--".ljust(23)
+
+    hz = f"{tr.hz:4.1f}" if recent else " 0.0"
+    marker = ">" if selected else " "
+    prefix = REVERSE if selected else ""
+    suffix = RESET_COLOR if selected else ""
+    state_cell = f"{state_col}{state_txt:<8s}{FG_RESET}"
+    return (
+        f"{prefix}{marker}{tr.uav_idx:>3d} {tr.uas_id[:16]:<16s} {state_cell} {lat} {lon} {alt} {agl} "
+        f"{vh} {vv} {rumbo:<7s} {time_txt:<23s} {hz}{suffix}"
+    )
+
+
+def render_detail(tr: UAVTelemetryTracker, now: float, timeout: float) -> List[str]:
+    lines: List[str] = []
+    lines.append(f"{BOLD}{CYAN}── Detalle UAV #{tr.uav_idx:02d} · {tr.uas_id} " + "─" * 40 + RESET_COLOR)
+
+    loc = tr.last_loc_msg
+    basic = tr.last_basic_msg
+    fp = tr.last_fp_status_msg
+    state_txt, state_col = tracker_state(tr, now, timeout)
+
+    if not tr.is_active(now, timeout) and loc is None:
+        lines.append(
+            f" Telemetría     : {FG_GREY}[Esperando datagramas de {tr.host} (puerto local {tr.tx_port}). "
+            f"Pulsa PLAY en Isaac Sim]{FG_RESET}"
+        )
+        lines.append(f" Enlace         : Isaac Sim {tr.host}  TX telemetría {tr.tx_port}  RX comandos {tr.rx_port}")
+        return lines
+
+    if basic is not None:
+        ua = UA_TYPE_NAMES.get(basic.ua_type, f"Tipo({basic.ua_type})")
+        idt = ID_TYPE_NAMES.get(basic.id_type, f"TipoID({basic.id_type})")
+        lines.append(f" Identificación : {tr.uas_id}   Tipo ID: {idt}   Aeronave: {ua}")
+
+    op_txt = tr.last_op_msg.operator_id if (tr.last_op_msg and tr.last_op_msg.operator_id) else "--"
+    mission = tr.last_self_msg.description if (tr.last_self_msg and tr.last_self_msg.description) else "--"
+    lines.append(f" Operador       : {op_txt}   Misión: {mission}")
+
+    if loc is not None:
+        href = "Suelo (AGL)" if loc.height_reference == 1 else "Despegue"
+        v_h, v_v = loc.speed_h_ms, loc.speed_v_ms
+        trend = "Ascenso" if v_v > 0.05 else ("Descenso" if v_v < -0.05 else "Nivelado")
+        lines.append(
+            f" Posición       : Lat {loc.lat_deg:+.7f}°   Lon {loc.lon_deg:+.7f}°   Alt HAE {loc.altitude_geodetic:+.2f} m"
+        )
+        lines.append(f" Alturas        : AGL {loc.height:.2f} m   Baro {loc.altitude_barometric:+.2f} m   Ref: {href}")
+        lines.append(
+            f" Velocidad      : Horiz {v_h:.2f} m/s ({v_h * 3.6:.1f} km/h)   Vert {v_v:+.2f} m/s ({trend})   "
+            f"Rumbo {loc.direction_deg:.1f}° ({cardinal_direction(loc.direction_deg)})"
+        )
+
+    if fp is not None and fp.time_unix_usec:
+        utc_txt = f"{format_utc_us(fp.time_unix_usec)} UTC"
+    else:
+        utc_txt = "-- (sin NAVSIM_FLIGHT_PLAN_STATUS)"
+    odid_txt = f"{loc.timestamp:.1f} s tras la hora en punto" if loc is not None else "--"
+    lines.append(f" Tiempo         : {utc_txt}   ODID: {odid_txt}   (precisión 0,1 s)")
+    lines.append(" Exactitud      : Horiz <1 m | Vert <1 m | Vel <0,3 m/s")
+
+    if fp is not None:
+        mode = UAV_STATE_NAMES.get(fp.uav_state, f"STATE({fp.uav_state})")
+        if fp.uav_state == int(NavSimUAVState.BUSY) and fp.plan_id:
+            wp_idx = fp.current_wp + 1 if fp.current_wp >= 0 else 0
+            lbl = f" '{fp.wp_label}'" if fp.wp_label else ""
+            dur = max(fp.fp_finish_time - fp.fp_init_time, 1e-6)
+            pct = min(100.0, max(0.0, (fp.sim_time - fp.fp_init_time) * 100.0 / dur))
+            ep = math.sqrt(sum(c * c for c in fp.pos_error))
+            ev = math.sqrt(sum(c * c for c in fp.vel_error))
+            lines.append(
+                f" Ruta 4D        : {mode}   Plan: {fp.plan_id}   WP {wp_idx}/{fp.total_wps}{lbl}   "
+                f"Progreso {pct:.1f}%"
+            )
+            lines.append(
+                f" Seguimiento 4D : Ref [{fp.desired_pos[0]:+.1f}, {fp.desired_pos[1]:+.1f}, {fp.desired_pos[2]:+.1f}] m   "
+                f"|e_pos|={ep:.3f} m   |e_vel|={ev:.3f} m/s"
+            )
+        else:
+            lines.append(f" Ruta 4D        : {mode}   Plan activo: Ninguno")
+
+    lines.append(
+        f" Enlace         : Isaac Sim {tr.host}  TX telemetría {tr.tx_port}  RX comandos {tr.rx_port}  "
+        f"Tasa {tr.hz:.1f} Hz"
+    )
+    return lines
+
+
 def render_dashboard(
     trackers: List[UAVTelemetryTracker],
     now: float,
     timeout: float = 2.0,
+    selected: int = 0,
 ) -> str:
-    lines = []
-    lines.append(
-        f"{BOLD}{CYAN}=== MONITOR DE TELEMETRÍA MAVLink v2 (ASTM F3411 + RUTAS 4D TAYLOR) ==={RESET_COLOR}"
-    )
-
-    display_trackers = trackers
+    lines: List[str] = []
     active_count = len([t for t in trackers if t.is_active(now, timeout=timeout)])
-    sub_title = (
-        f"Fecha/Hora: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | "
-        f"Drones activos: {active_count}/{len(trackers)}"
-    )
+    pc_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    lines.append(f"{BOLD}{CYAN}NavSim Telemetry Monitor — MAVLink v2 · ASTM F3411 / ED-282{RESET_COLOR}")
+    sub = f"Hora del PC (UTC): {pc_utc}   Drones activos: {active_count}/{len(trackers)}"
     if active_count == 0:
-        sub_title += " (En espera de telemetría - Pulsa PLAY en Isaac Sim)"
-    lines.append(sub_title)
-    lines.append("-" * 96)
+        sub += "   (En espera de telemetría: pulsa PLAY en Isaac Sim)"
+    lines.append(sub)
 
-    col_w = 26
+    # Alerta de identificadores duplicados (ASTM F3411 prohíbe IDs duplicados en el aire)
+    ids: Dict[str, List[int]] = {}
+    for tr in trackers:
+        if tr.is_active(now, timeout):
+            ids.setdefault(tr.uas_id.strip().upper(), []).append(tr.uav_idx)
+    for uid, lst in ids.items():
+        if len(lst) > 1:
+            lines.append(f"{FG_RED}{BOLD}!! CONFLICTO: identificador '{uid}' duplicado en UAVs {lst}{RESET_COLOR}")
 
-    # Detectar duplicidad de identificadores en el aire (Conflicto ASTM F3411)
-    active_ids: Dict[str, List[int]] = {}
-    for tr in display_trackers:
-        uid = (
-            tr.last_basic_msg.uas_id
-            if (tr.last_basic_msg and tr.last_basic_msg.uas_id)
-            else f"UAV_{tr.uav_idx:02d}"
-        ).strip().upper()
-        active_ids.setdefault(uid, []).append(tr.uav_idx + 1)
+    lines.append("═" * TABLE_WIDTH)
+    lines.append(
+        f"{BOLD} {'#':>3s} {'UAS ID':<16s} {'Estado':<8s} {'Lat [°]':>10s} {'Lon [°]':>11s} {'Alt HAE':>7s} "
+        f"{'AGL':>5s} {'Vh':>5s} {'Vv':>5s} {'Rumbo':<7s} {'Hora UTC (dron)':<23s} {'Hz':>4s}{RESET_COLOR}"
+    )
+    lines.append("─" * TABLE_WIDTH)
 
-    has_conflict = False
-    for uid, uav_list in active_ids.items():
-        if len(uav_list) > 1:
-            has_conflict = True
-            lines.append(
-                f"  \033[91m{BOLD}🚨 CONFLICTO CRÍTICO EN EL AIRE: Identificador '{uid}' duplicado en UAVs {uav_list}! "
-                f"(ASTM F3411 prohíbe IDs duplicados){RESET_COLOR}"
-            )
-    if has_conflict:
-        lines.append("-" * 96)
+    selected = max(0, min(selected, len(trackers) - 1))
+    for i, tr in enumerate(trackers):
+        lines.append(render_row(tr, now, timeout, selected=(i == selected)))
+    lines.append("═" * TABLE_WIDTH)
 
-    for tr in display_trackers:
-        is_recent = tr.is_active(now, timeout=timeout)
-        hz_str = f"{tr.hz:.1f} Hz" if is_recent else "0.0 Hz"
+    lines.extend(render_detail(trackers[selected], now, timeout))
+    lines.append("─" * TABLE_WIDTH)
+    lines.append(f"{FG_GREY}↑/↓ seleccionar dron · q o Ctrl+C salir · --help para ver la ayuda{FG_RESET}")
 
-        uas_id = (
-            tr.last_basic_msg.uas_id
-            if (tr.last_basic_msg and tr.last_basic_msg.uas_id)
-            else f"UAV_{tr.uav_idx:02d}"
-        )
-
-        loc = tr.last_loc_msg
-        basic = tr.last_basic_msg
-        fp_st = tr.last_fp_status_msg
-
-        if tr.is_stopped:
-            state_str = "DETENIDO / DISARMED"
-            state_col = "\033[91m"
-        elif not is_recent:
-            state_str = "TIMEOUT (>2s)" if tr.last_recv_time > 0 else "ESPERANDO CONEXIÓN"
-            state_col = "\033[91m" if tr.last_recv_time > 0 else "\033[90m"
-        elif loc is not None:
-            st = loc.status
-            state_str = ODID_STATUS_NAMES.get(st, f"STATUS({st})")
-            state_col = ODID_STATUS_COLORS.get(st, "\033[97m")
-        else:
-            state_str = "ESPERANDO"
-            state_col = "\033[90m"
-
-        state_tag = f"[{state_str}]"
-        time_str = f"{fp_st.sim_time:.2f} s sim" if fp_st else (f"{loc.timestamp:.1f} s UTC" if loc else "--")
-
-        header = (
-            f"{BOLD}UAV #{tr.uav_idx:02d} ({uas_id} | TX:{tr.tx_port} RX:{tr.rx_port}){RESET_COLOR} -> "
-            f"{state_col}{BOLD}{state_tag:<22s}{RESET_COLOR}  "
-            f"(Tiempo: {time_str:>10s} | Tasa: {hz_str:>7s})"
-        )
-        lines.append(header)
-
-        # Si aún no se ha recibido telemetría de este dron, mostrar aviso de espera limpio
-        if not is_recent and loc is None:
-            lines.append(
-                f"  • Telemetría:        \033[90m[Esperando datagramas UDP en puerto TX:{tr.tx_port} (Pulsa PLAY en Isaac Sim)]\033[0m"
-            )
-            lines.append("-" * 96)
-            continue
-
-        # Identificación UAS según estándar ASTM F3411 OPEN_DRONE_ID_BASIC_ID
-        if basic is not None:
-            ua_type_str = UA_TYPE_NAMES.get(basic.ua_type, f"Tipo({basic.ua_type})")
-            id_type_str = ID_TYPE_NAMES.get(basic.id_type, f"TipoID({basic.id_type})")
-            c_id = f"ID: {uas_id}".ljust(col_w)
-            c_typ = f"Tipo: {ua_type_str}".ljust(col_w + 5)
-            c_idt = f"Tipo ID: {id_type_str}"
-            lines.append(f"  • Identificación UAS: {c_id}  {c_typ}  {c_idt}")
-
-        # Registro oficial de operador CAA y Self ID (OPEN_DRONE_ID_OPERATOR_ID / SELF_ID)
-        if tr.last_op_msg is not None or tr.last_self_msg is not None:
-            op_text = (
-                f"Operador: {tr.last_op_msg.operator_id}"
-                if (tr.last_op_msg and tr.last_op_msg.operator_id)
-                else "Operador: --"
-            )
-            desc_text = (
-                f"Misión: {tr.last_self_msg.description}"
-                if (tr.last_self_msg and tr.last_self_msg.description)
-                else ""
-            )
-            c_op = op_text.ljust(col_w + 5)
-            lines.append(f"  • Registro Operador: {c_op}  {desc_text}")
-
-        if loc is not None:
-            # 1. Posición WGS-84 (Latitud, Longitud, Altitud HAE recibidas)
-            c_lat = f"Lat: {loc.lat_deg:+11.7f}°".ljust(col_w)
-            c_lon = f"Lon: {loc.lon_deg:+11.7f}°".ljust(col_w)
-            c_alt = f"Alt HAE: {loc.altitude_geodetic:+7.2f} m"
-            lines.append(f"  • Posición WGS-84:   {c_lat}  {c_lon}  {c_alt}")
-
-            # 2. Alturas ASTM F3411
-            c_h = f"Altura (AGL): {loc.height:6.2f} m".ljust(col_w)
-            c_baro = f"Alt Baro: {loc.altitude_barometric:+7.2f} m".ljust(col_w)
-            href_name = "Suelo (AGL)" if loc.height_reference == 1 else "Despegue"
-            c_href = f"Ref: {href_name}"
-            lines.append(f"  • Alturas ASTM:      {c_h}  {c_baro}  {c_href}")
-
-            # 3. Vector Polar de Velocidad ASTM F3411
-            v_h = loc.speed_h_ms
-            v_v = loc.speed_v_ms
-            c_vh = f"V. Horiz: {v_h:5.2f} m/s ({v_h * 3.6:5.1f} km/h)".ljust(col_w + 5)
-            vert_trend = "Ascenso" if v_v > 0.05 else ("Descenso" if v_v < -0.05 else "Nivelado")
-            c_vv = f"V. Vert: {v_v:+5.2f} m/s ({vert_trend})"
-            lines.append(f"  • Velocidad ASTM:    {c_vh}  {c_vv}")
-
-            # 4. Rumbo / Track sobre el terreno
-            dir_deg = loc.direction_deg
-            card_dir = cardinal_direction(dir_deg)
-            c_dir = f"Rumbo/Track: {dir_deg:5.1f}° ({card_dir:<3s})".ljust(col_w)
-            c_acc = f"Exactitud: Horiz <1m | Vert <1m | ODID t: {loc.timestamp:6.1f}s"
-            lines.append(f"  • Rumbo / Track:     {c_dir}  {c_acc}")
-        else:
-            lines.append(
-                "  • Posición WGS-84:   \033[91m[NO TRANSMITIDA - Falta trama ASTM F3411 OPEN_DRONE_ID_LOCATION]\033[0m"
-            )
-
-        # 5. Estado de Ejecución de Ruta 4D (Polinomio de Taylor - NAVSIM_FLIGHT_PLAN_STATUS ID 12003)
-        if fp_st is not None:
-            uav_mode_str = UAV_STATE_NAMES.get(fp_st.uav_state, f"STATE({fp_st.uav_state})")
-            if fp_st.uav_state == int(NavSimUAVState.BUSY) and fp_st.plan_id:
-                wp_idx_disp = fp_st.current_wp + 1 if fp_st.current_wp >= 0 else 0
-                lbl_str = f" '{fp_st.wp_label}'" if fp_st.wp_label else ""
-                wp_str = f"WP: {wp_idx_disp}/{fp_st.total_wps}{lbl_str} (t_k={fp_st.wp_time:.1f}s)"
-                dur = max(fp_st.fp_finish_time - fp_st.fp_init_time, 1e-6)
-                pct = min(100.0, max(0.0, (fp_st.sim_time - fp_st.fp_init_time) * 100.0 / dur))
-                prog_str = f"Ventana: [{fp_st.fp_init_time:.1f}..{fp_st.fp_finish_time:.1f}s] ({pct:5.1f}%)"
-                ep_norm = math.sqrt(sum(c * c for c in fp_st.pos_error))
-                ev_norm = math.sqrt(sum(c * c for c in fp_st.vel_error))
-                c_plan = f"Plan: {fp_st.plan_id} ({uav_mode_str})".ljust(col_w + 5)
-                c_wp = wp_str.ljust(col_w + 5)
-                lines.append(f"  • Ruta 4D (Taylor):  {c_plan}  {c_wp}  {prog_str}")
-                c_des = (
-                    f"Ref Taylor: [{fp_st.desired_pos[0]:+.1f}, {fp_st.desired_pos[1]:+.1f}, {fp_st.desired_pos[2]:+.1f}] m"
-                ).ljust(col_w + 12)
-                c_err = f"Error 4D: |e_pos|={ep_norm:.3f} m | |e_vel|={ev_norm:.3f} m/s"
-                lines.append(f"  • Seguimiento 4D:    {c_des}  {c_err}")
-            else:
-                c_mode = f"Modo: {uav_mode_str}".ljust(col_w + 5)
-                lines.append(f"  • Ruta 4D (Taylor):  {c_mode}  Plan activo: Ninguno")
-
-        lines.append("-" * 96)
-
-    lines.append("Presiona Ctrl+C para salir.")
-    cleared_lines = [f"{line}{ERA_LINE}" for line in lines]
-    return "\n".join(cleared_lines) + ERA_DISPLAY
+    return "\n".join(f"{line}{ERA_LINE}" for line in lines) + ERA_DISPLAY
 
 
+# ==============================================================================
+# Bucle principal
+# ==============================================================================
 def run_monitor(
     trackers: List[UAVTelemetryTracker],
     stream_mode: bool,
     timeout: float = 2.0,
-) -> None:
-    for tr in trackers:
-        tr.open_socket()
+    bind_host: str = "0.0.0.0",
+    subscribe: bool = True,
+) -> int:
+    try:
+        for tr in trackers:
+            tr.open_socket(bind_host)
+    except OSError as e:
+        print(f"Error: no se pudo abrir el puerto local de escucha ({e}). ¿Hay otro monitor ejecutándose?")
+        for tr in trackers:
+            tr.close()
+        return 1
 
-    uav_range_str = f"#{trackers[0].uav_idx:02d}..#{trackers[-1].uav_idx:02d}"
-    tx_range_str = f"{trackers[0].tx_port}..{trackers[-1].tx_port}"
-    rx_range_str = f"{trackers[0].rx_port}..{trackers[-1].rx_port}"
-    print(f"Monitor escuchando {len(trackers)} UAVs ({uav_range_str}) | TX:{tx_range_str} | RX:{rx_range_str}...")
     if not stream_mode:
         os.system("cls" if os.name == "nt" else "clear")
+    else:
+        targets = ", ".join(f"{t.host}:{t.tx_port}" for t in trackers)
+        print(f"Monitor escuchando {len(trackers)} UAV(s): {targets}")
 
+    selected = 0
     last_render_time = 0.0
     try:
-        while True:
-            socks = [t.sock for t in trackers if t.sock is not None]
-            readable, _, _ = select.select(socks, [], [], 0.05)
+        with KeyReader() as keys:
+            while True:
+                socks = [t.sock for t in trackers if t.sock is not None]
+                readable, _, _ = select.select(socks, [], [], 0.05)
 
-            new_msgs = False
-            for tr in trackers:
-                if tr.sock in readable:
-                    events = tr.process_incoming()
-                    if events:
-                        new_msgs = True
-                        if stream_mode:
-                            for ev_type, m in events:
-                                if ev_type == "loc" and isinstance(m, MavOdidLocationMsg):
-                                    if m.status != int(MavOdidStatus.REMOTE_ID_SYSTEM_FAILURE):
-                                        st_name = ODID_STATUS_NAMES.get(m.status, str(m.status))
-                                        card = cardinal_direction(m.direction_deg)
-                                        fp_info = ""
-                                        if tr.last_fp_status_msg is not None:
+                now = time.time()
+                if subscribe:
+                    for tr in trackers:
+                        tr.send_subscribe(now)
+
+                new_msgs = False
+                for tr in trackers:
+                    if tr.sock in readable:
+                        events = tr.process_incoming()
+                        if events:
+                            new_msgs = True
+                            if stream_mode:
+                                for ev_type, m in events:
+                                    if ev_type == "loc" and isinstance(m, MavOdidLocationMsg):
+                                        if m.status != int(MavOdidStatus.REMOTE_ID_SYSTEM_FAILURE):
                                             fp = tr.last_fp_status_msg
-                                            if fp.uav_state == int(NavSimUAVState.BUSY) and fp.plan_id:
-                                                ep = math.sqrt(sum(c * c for c in fp.pos_error))
-                                                fp_info = (
-                                                    f" | 4D Plan={fp.plan_id} "
-                                                    f"WP={fp.current_wp + 1}/{fp.total_wps}({fp.wp_label}) "
-                                                    f"|e_pos|={ep:.2f}m"
-                                                )
-                                            else:
-                                                fp_info = f" | Mode={UAV_STATE_NAMES.get(fp.uav_state, str(fp.uav_state))}"
-                                        uas_id = (
-                                            tr.last_basic_msg.uas_id
-                                            if (tr.last_basic_msg and tr.last_basic_msg.uas_id)
-                                            else f"UAV_{tr.uav_idx:02d}"
-                                        )
-                                        print(
-                                            f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] "
-                                            f"UAV #{tr.uav_idx:02d} ({uas_id} | TX:{tr.tx_port} RX:{tr.rx_port}) [ASTM F3411] "
-                                            f"Lat={m.lat_deg:+.7f}° Lon={m.lon_deg:+.7f}° "
-                                            f"Alt={m.altitude_geodetic:.1f}m AGL={m.height:.1f}m "
-                                            f"Vh={m.speed_h_ms:.1f}m/s Vz={m.speed_v_ms:+.1f}m/s "
-                                            f"Dir={m.direction_deg:.1f}°({card}) Status={st_name}{fp_info}"
-                                        )
+                                            t_txt = (
+                                                format_utc_us(fp.time_unix_usec) + "Z"
+                                                if (fp and fp.time_unix_usec)
+                                                else datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3] + "Z(PC)"
+                                            )
+                                            st_name = ODID_STATUS_SHORT.get(m.status, str(m.status))
+                                            print(
+                                                f"[{t_txt}] UAV #{tr.uav_idx:02d} ({tr.uas_id} | {tr.host}:{tr.tx_port}) "
+                                                f"Lat={m.lat_deg:+.7f}° Lon={m.lon_deg:+.7f}° "
+                                                f"Alt={m.altitude_geodetic:.1f}m AGL={m.height:.1f}m "
+                                                f"Vh={m.speed_h_ms:.1f}m/s Vz={m.speed_v_ms:+.1f}m/s "
+                                                f"Dir={m.direction_deg:.1f}°({cardinal_direction(m.direction_deg)}) "
+                                                f"Status={st_name}"
+                                            )
 
-            now = time.time()
-            # Limpiar estado de trackers que hayan superado el timeout de inactividad
-            for tr in trackers:
-                if tr.last_recv_time > 0 and (now - tr.last_recv_time) >= timeout and not tr.is_stopped:
-                    tr.reset_state()
+                # Limpiar estado de trackers que hayan superado el timeout de inactividad
+                for tr in trackers:
+                    if tr.last_recv_time > 0 and (now - tr.last_recv_time) >= timeout and not tr.is_stopped:
+                        tr.reset_state()
 
-            if not stream_mode and (new_msgs or (now - last_render_time) >= 0.1):
-                output = render_dashboard(trackers, now, timeout=timeout)
-                sys.stdout.write("\033[H" + output)
-                sys.stdout.flush()
-                last_render_time = now
+                quit_requested = False
+                dirty = False
+                if not stream_mode:
+                    for key in keys.read_keys():
+                        if key == "up":
+                            selected = (selected - 1) % len(trackers)
+                            dirty = True
+                        elif key == "down":
+                            selected = (selected + 1) % len(trackers)
+                            dirty = True
+                        elif key == "q":
+                            quit_requested = True
+                if quit_requested:
+                    break
 
+                if not stream_mode and (new_msgs or dirty or (now - last_render_time) >= 0.1):
+                    output = render_dashboard(trackers, now, timeout=timeout, selected=selected)
+                    sys.stdout.write("\033[H" + output)
+                    sys.stdout.flush()
+                    last_render_time = now
     except KeyboardInterrupt:
-        print("\nCerrando monitor de telemetría...")
+        pass
     finally:
         for tr in trackers:
             tr.close()
+        print("\nCerrando monitor de telemetría...")
+    return 0
 
 
-def main():
+HELP_EPILOG = """\
+CÓMO FUNCIONA
+  El monitor escucha la telemetría MAVLink v2 que emite NavSim (Isaac Sim) por UDP y muestra una
+  tabla con una fila por dron (estado, posición WGS-84, alturas, velocidades, rumbo y hora UTC).
+  Debajo aparece el detalle completo del dron seleccionado con las flechas ↑/↓. Salir: q o Ctrl+C.
+
+LISTA DE DRONES (IP:puerto)
+  Cada dron emite su telemetría por un puerto propio: 16000 + índice (el RX de comandos es 15000 + índice).
+  Indica los drones a monitorizar como argumentos, separados por espacios:
+
+    16003                         un dron, en la IP por defecto (--host, 127.0.0.1)
+    16000-16009                   rango de puertos
+    192.168.1.20                  IP de otra máquina con Isaac Sim, puerto 16000
+    192.168.1.20:16002            IP y puerto
+    192.168.1.20:16000-16003      IP y rango de puertos
+
+  Sin argumentos se monitoriza un único dron en 127.0.0.1:16000.
+
+EJECUCIÓN EN OTRA MÁQUINA
+  El monitor envía periódicamente un datagrama de presencia/suscripción al puerto RX del dron
+  (IP:15000+índice). Isaac Sim registra su dirección y le devuelve la telemetría; basta con
+  indicar la IP de la máquina de Isaac Sim. Hay que permitir UDP en el cortafuegos de ambas máquinas
+  (puertos 15000+ en Isaac Sim y 16000+ en el monitor).
+
+EJEMPLOS
+  python telemetry_monitor.py
+  python telemetry_monitor.py 16000 16005 16010
+  python telemetry_monitor.py 16000-16009
+  python telemetry_monitor.py 192.168.1.20:16000-16003
+  python telemetry_monitor.py 16000 --stream > registro.log
+"""
+
+
+def main() -> int:
     # Habilitar secuencias de escape ANSI en consolas Windows (cmd.exe y PowerShell)
     if os.name == "nt":
         os.system("")
@@ -476,109 +713,77 @@ def main():
             pass
 
     parser = argparse.ArgumentParser(
-        description="Monitor UDP MAVLink v2 ASTM F3411 / EUROCAE ED-282 + Rutas 4D Taylor para NavSim (Isaac Sim)."
+        prog="telemetry_monitor.py",
+        description="Monitor de telemetría MAVLink v2 (ASTM F3411 / EUROCAE ED-282) para NavSim (Isaac Sim).",
+        epilog=HELP_EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        "port",
-        nargs="?",
-        type=int,
-        default=16000,
-        help="Puerto TX inicial de telemetría (por defecto: 16000) o índice de UAV para monitorizar 4 drones.",
+        "targets",
+        nargs="*",
+        metavar="DRON",
+        help="Drones a monitorizar: PUERTO, PUERTO-PUERTO, IP o IP:PUERTO[-PUERTO]. "
+        "Sin argumentos: un dron en 127.0.0.1:16000.",
     )
     parser.add_argument(
-        "--port",
-        "-p",
-        dest="opt_port",
-        type=int,
-        default=None,
-        help="Puerto inicial TX o índice de UAV (alternativa con flag).",
+        "--host",
+        default="127.0.0.1",
+        help="IP de Isaac Sim para los elementos que no indican IP (por defecto: 127.0.0.1).",
+    )
+    parser.add_argument(
+        "--bind",
+        default="0.0.0.0",
+        help="IP local donde enlazar la escucha UDP (por defecto: 0.0.0.0).",
     )
     parser.add_argument(
         "--base-tx-port",
         type=int,
-        default=16000,
-        help="Puerto base de telemetría transmitida por Isaac Sim (por defecto: 16000).",
+        default=DEFAULT_TX_PORT,
+        help="Puerto base de telemetría de Isaac Sim (por defecto: 16000).",
     )
     parser.add_argument(
         "--base-rx-port",
         type=int,
-        default=15000,
-        help="Puerto base de comandos en Isaac Sim (por defecto: 15000).",
-    )
-    parser.add_argument(
-        "--count",
-        "-n",
-        dest="max_uavs",
-        type=int,
-        default=4,
-        help="Número de drones consecutivos a monitorizar (por defecto: 4).",
-    )
-    parser.add_argument(
-        "--ports",
-        nargs="+",
-        type=int,
-        help="Lista explícita de puertos de telemetría a escuchar (ejemplo: --ports 16000 16001).",
+        default=DEFAULT_RX_PORT,
+        help="Puerto base de comandos de Isaac Sim (por defecto: 15000).",
     )
     parser.add_argument(
         "--timeout",
         type=float,
         default=2.0,
-        help="Tiempo en segundos sin datos para considerar un dron inactivo (por defecto: 2.0 s).",
+        help="Segundos sin datos para considerar un dron inactivo (por defecto: 2.0).",
     )
     parser.add_argument(
         "--stream",
         action="store_true",
-        help="Modo línea a línea continuo (stream) en lugar de tabla interactiva.",
+        help="Salida línea a línea (log continuo) en lugar de la tabla interactiva.",
     )
     parser.add_argument(
-        "--host",
-        default="0.0.0.0",
-        help="IP local donde enlazar la escucha UDP (por defecto: 0.0.0.0).",
+        "--no-subscribe",
+        action="store_true",
+        help="No enviar datagrama de presencia/suscripción (solo escucha pasiva; válido en la misma máquina).",
     )
 
     args = parser.parse_args()
 
-    trackers: List[UAVTelemetryTracker] = []
+    try:
+        targets = parse_targets(args.targets, args.host, args.base_tx_port, args.base_rx_port)
+    except ValueError as e:
+        parser.error(str(e))
 
-    if args.ports:
-        for idx, tx_port in enumerate(args.ports):
-            u_idx = tx_port - args.base_tx_port if tx_port >= args.base_tx_port else idx
-            tr = UAVTelemetryTracker(
-                uav_idx=u_idx,
-                tx_port=tx_port,
-                rx_port=args.base_rx_port + u_idx,
-            )
-            trackers.append(tr)
-    else:
-        # Resolver puerto inicial o índice base (por defecto: 16000)
-        raw_val = args.opt_port if args.opt_port is not None else args.port
-        if raw_val is None:
-            raw_val = 16000
+    trackers = [
+        UAVTelemetryTracker(uav_idx=uav_idx, tx_port=tx_port, rx_port=rx_port, host=host)
+        for host, tx_port, rx_port, uav_idx in targets
+    ]
 
-        if raw_val >= args.base_tx_port:
-            base_uav_idx = raw_val - args.base_tx_port
-        elif raw_val >= args.base_rx_port:
-            base_uav_idx = raw_val - args.base_rx_port
-        else:
-            base_uav_idx = max(0, raw_val)
-
-        for i in range(args.max_uavs):
-            u_idx = base_uav_idx + i
-            rx_drone_p = args.base_rx_port + u_idx
-            tx_drone_p = args.base_tx_port + u_idx
-            tr = UAVTelemetryTracker(
-                uav_idx=u_idx,
-                tx_port=tx_drone_p, # El monitor escucha telemetría en el puerto TX del dron (16000+)
-                rx_port=rx_drone_p, # Puerto RX del dron (15000+) para información en pantalla
-            )
-            trackers.append(tr)
-
-    run_monitor(
+    return run_monitor(
         trackers=trackers,
         stream_mode=args.stream,
         timeout=args.timeout,
+        bind_host=args.bind,
+        subscribe=not args.no_subscribe,
     )
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -161,6 +161,8 @@ class UAVMavlinkEndpoint:
                 break
 
             self.last_cmd_addr = addr
+            if addr and addr[0]:
+                self.telemetry_destinations.add((addr[0], self.tx_port))
 
             for msg in self.codec.parse_bytes(data):
                 if isinstance(msg, MavFlightPlanHeaderMsg):
@@ -325,6 +327,11 @@ class UAVMavlinkEndpoint:
             odid_timestamp = float(time_reference.get_odid_timestamp(sim_time))
         else:
             odid_timestamp = float(time.time() % 3600.0)
+        # Instante UTC absoluto en microsegundos desde 1970 (NAVSIM_FLIGHT_PLAN_STATUS.time_unix_usec)
+        if time_reference is not None:
+            time_unix_usec = int(time_reference.get_unix_usec(sim_time))
+        else:
+            time_unix_usec = int(time.time() * 1e6)
         id_bytes = _encode_str(self.uav_id, 20)
 
         # ------------------------------------------------------------------
@@ -445,6 +452,7 @@ class UAVMavlinkEndpoint:
 
         frame_fp_status = self.codec.pack_flight_plan_status(
             MavFlightPlanStatusMsg(
+                time_unix_usec=time_unix_usec,
                 sim_time=float(sim_time),
                 uav_state=int(uav_state),
                 plan_id=str(plan_id),

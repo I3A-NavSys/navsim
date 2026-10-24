@@ -295,6 +295,7 @@ class MavFlightPlanStatusMsg:
     Mensaje NAVSIM_FLIGHT_PLAN_STATUS (ID: 12003).
     Telemetría de retorno del UAV indicando el estado de ejecución de su ruta 4D
     (polinomio de Taylor de orden 5):
+      - time_unix_usec: instante UTC actual de simulación [µs desde 1970-01-01 00:00:00 UTC]
       - sim_time: tiempo actual de simulación [s]
       - uav_state: estado operativo (IDLE=0, BUSY=1, DEAD=2, MANUAL=3)
       - plan_id: identificador del FlightPlan activo (vacío si no hay plan)
@@ -309,6 +310,7 @@ class MavFlightPlanStatusMsg:
       - pos_error: error instantáneo 3D de seguimiento de posición [m]
       - vel_error: error instantáneo 3D de seguimiento de velocidad [m/s]
     """
+    time_unix_usec: int = 0
     sim_time: float = 0.0
     uav_state: int = int(NavSimUAVState.IDLE)
     plan_id: str = ""
@@ -472,7 +474,7 @@ MavMessage = Union[
 _STRUCT_HEADER = struct.Struct("<iffffH32s")                      # 54 bytes
 _STRUCT_WAYPOINT = struct.Struct("<f3f3f3f3f3f3f2fHH32s16sB")     # 137 bytes
 _STRUCT_ACK = struct.Struct("<HH32sB")                            # 37 bytes
-_STRUCT_FLIGHT_PLAN_STATUS = struct.Struct("<ffff3f3f3f3fhH32s16sB")  # 117 bytes
+_STRUCT_FLIGHT_PLAN_STATUS = struct.Struct("<Qffff3f3f3f3fhH32s16sB")  # 125 bytes
 _STRUCT_TELEMETRY = _STRUCT_FLIGHT_PLAN_STATUS
 _STRUCT_ODID_BASIC_ID = struct.Struct("<BB20sBB20s")              # 44 bytes
 _STRUCT_ODID_LOCATION = struct.Struct("<iiffffHHhBB20s7B")        # 59 bytes
@@ -484,7 +486,7 @@ _CRC_EXTRA = {
     MSG_ID_FLIGHT_PLAN_HEADER: 173,
     MSG_ID_FLIGHT_PLAN_WAYPOINT: 89,
     MSG_ID_FLIGHT_PLAN_ACK: 214,
-    MSG_ID_FLIGHT_PLAN_STATUS: 113,
+    MSG_ID_FLIGHT_PLAN_STATUS: 221,
     MSG_ID_OPEN_DRONE_ID_BASIC_ID: 114,
     MSG_ID_OPEN_DRONE_ID_LOCATION: 16,
     MSG_ID_OPEN_DRONE_ID_SELF_ID: 249,
@@ -634,6 +636,7 @@ class MAVLinkV2Codec:
     def pack_flight_plan_status(self, msg: MavFlightPlanStatusMsg) -> bytes:
         """Empaqueta trama MAVLink v2 NAVSIM_FLIGHT_PLAN_STATUS (ID 12003)."""
         payload = _STRUCT_FLIGHT_PLAN_STATUS.pack(
+            int(msg.time_unix_usec) & 0xFFFFFFFFFFFFFFFF,
             float(msg.sim_time),
             float(msg.fp_init_time),
             float(msg.fp_finish_time),
@@ -833,19 +836,20 @@ class MAVLinkV2Codec:
         if msg_id == MSG_ID_FLIGHT_PLAN_STATUS and len(payload) == _STRUCT_FLIGHT_PLAN_STATUS.size:
             u = _STRUCT_FLIGHT_PLAN_STATUS.unpack(payload)
             return MavFlightPlanStatusMsg(
-                sim_time=u[0],
-                fp_init_time=u[1],
-                fp_finish_time=u[2],
-                wp_time=u[3],
-                desired_pos=u[4:7],
-                desired_vel=u[7:10],
-                pos_error=u[10:13],
-                vel_error=u[13:16],
-                current_wp=u[16],
-                total_wps=u[17],
-                plan_id=_decode_str(u[18]),
-                wp_label=_decode_str(u[19]),
-                uav_state=u[20],
+                time_unix_usec=u[0],
+                sim_time=u[1],
+                fp_init_time=u[2],
+                fp_finish_time=u[3],
+                wp_time=u[4],
+                desired_pos=u[5:8],
+                desired_vel=u[8:11],
+                pos_error=u[11:14],
+                vel_error=u[14:17],
+                current_wp=u[17],
+                total_wps=u[18],
+                plan_id=_decode_str(u[19]),
+                wp_label=_decode_str(u[20]),
+                uav_state=u[21],
             )
 
         if msg_id == MSG_ID_OPEN_DRONE_ID_BASIC_ID and len(payload) == _STRUCT_ODID_BASIC_ID.size:

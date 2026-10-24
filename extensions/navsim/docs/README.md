@@ -271,7 +271,7 @@ En cada ciclo de emisión, el datagrama emitido por cada aeronave contiene **5 t
 | [2] OPEN_DRONE_ID_BASIC_ID    (ID 12900, 44B) -> Identificación oficial UAS (UAS ID)              |
 | [3] OPEN_DRONE_ID_OPERATOR_ID (ID 12905, 43B) -> Registro CAA de operador civil                  |
 | [4] OPEN_DRONE_ID_SELF_ID     (ID 12903, 46B) -> Descripción del propósito de vuelo / operación   |
-| [5] NAVSIM_FLIGHT_PLAN_STATUS (ID 12003, 117B)-> Estado de ruta 4D y seguimiento del polinomio   |
+| [5] NAVSIM_FLIGHT_PLAN_STATUS (ID 12003, 125B)-> Estado de ruta 4D y seguimiento del polinomio   |
 +---------------------------------------------------------------------------------------------------+
 ```
 
@@ -293,8 +293,9 @@ En cada ciclo de emisión, el datagrama emitido por cada aeronave contiene **5 t
   - En reposo (`IDLE`): emite `NavSim:self_id_desc` si fue configurado en el Prim, o una cadena vacía `""` en caso contrario.
 
 #### 2. Telemetría de Ruta 4D y Polinomio de Taylor:
-- **`NAVSIM_FLIGHT_PLAN_STATUS` (ID 12003, `CRC_EXTRA = 113`, 117 bytes)**:
+- **`NAVSIM_FLIGHT_PLAN_STATUS` (ID 12003, `CRC_EXTRA = 221`, 125 bytes)**:
   Proporciona información en tiempo real sobre el seguimiento de la trayectoria 4D planificada:
+  - `time_unix_usec` (`uint64`, µs): Instante UTC actual de simulación, en microsegundos desde 1970-01-01 00:00:00 UTC.
   - `sim_time` (`float`, s): Tiempo actual de simulación.
   - `uav_state` (`uint8`): Estado operativo (`0=IDLE`, `1=BUSY`, `2=DEAD`, `3=MANUAL`).
   - `plan_id` (`char[32]`): Identificador de la ruta 4D activa.
@@ -317,7 +318,7 @@ En cada ciclo de emisión, el datagrama emitido por cada aeronave contiene **5 t
 | **`12000`** | `NAVSIM_FLIGHT_PLAN_HEADER` | RX (Entrante) | 54 bytes | Cabecera y metadatos de ruta 4D polinómica. |
 | **`12001`** | `NAVSIM_FLIGHT_PLAN_WAYPOINT`| RX (Entrante) | 137 bytes | Coeficientes del polinomio de Taylor de grado 5 (hasta la 5ª derivada `crackle`). |
 | **`12002`** | `NAVSIM_FLIGHT_PLAN_ACK` | TX (Saliente) | 37 bytes | Acuse de recibo y validación de carga del plan de vuelo. |
-| **`12003`** | `NAVSIM_FLIGHT_PLAN_STATUS` | TX (Saliente) | 117 bytes | Progreso de ruta 4D y error de seguimiento respecto al polinomio de Taylor. |
+| **`12003`** | `NAVSIM_FLIGHT_PLAN_STATUS` | TX (Saliente) | 125 bytes | Progreso de ruta 4D y error de seguimiento respecto al polinomio de Taylor. |
 | **`12004`** | `NAVSIM_MANUAL_CONTROL` | RX (Entrante) | 22 bytes | Consignas cinemáticas directas ($v_x, v_y, v_z, \dot{\psi}$) y modo. |
 | **`12900`** | `OPEN_DRONE_ID_BASIC_ID` | TX (Saliente) | 44 bytes | Estándar ASTM F3411: Identificación oficial UAS. |
 | **`12901`** | `OPEN_DRONE_ID_LOCATION` | TX (Saliente) | 59 bytes | Estándar ASTM F3411: Posición WGS-84, alturas y velocidades polares. |

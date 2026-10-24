@@ -9,7 +9,7 @@ Soporta autodescubrimiento desde metadatos USD, sincronización con el reloj del
 o configuración manual por parte del operador.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 from typing import Optional, Tuple
 
@@ -27,7 +27,7 @@ class NavSimTimeReference:
     ):
         self.logger = logging.getLogger("NavSimTimeReference")
         if epoch_unix is None:
-            now = datetime.now()
+            now = datetime.now(timezone.utc)
             self.epoch_unix: float = float(now.replace(microsecond=0).timestamp())
             self.source: str = "Reloj del Sistema"
         else:
@@ -94,7 +94,7 @@ class NavSimTimeReference:
 
         iso_str = f"{valid_date} {valid_time}"
         try:
-            dt = datetime.strptime(iso_str, "%Y-%m-%d %H:%M:%S")
+            dt = datetime.strptime(iso_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
             old_duration = max(3600.0, getattr(self, "end_epoch_unix", 0.0) - getattr(self, "epoch_unix", 0.0))
             self.epoch_unix = float(dt.timestamp())
             self.end_epoch_unix = self.epoch_unix + old_duration
@@ -105,13 +105,15 @@ class NavSimTimeReference:
             return False
 
     def set_from_datetime(self, dt: datetime, source: str = "Manual (Interfaz)") -> None:
-        """Configura el anclaje temporal a partir de un objeto datetime."""
+        """Configura el anclaje temporal a partir de un objeto datetime (naive = UTC)."""
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
         self.epoch_unix = float(dt.timestamp())
         self.source = source
 
     def reset_to_system_clock(self) -> None:
         """Restablece el anclaje temporal a la fecha y hora actual del reloj del sistema."""
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         self.epoch_unix = float(now.replace(microsecond=0).timestamp())  # truncado a segundos exactos
         self.end_epoch_unix = self.epoch_unix + 3600.0
         self.source = "Reloj del Sistema"
@@ -128,7 +130,7 @@ class NavSimTimeReference:
             return False
         iso_str = f"{valid_date} {valid_time}"
         try:
-            dt = datetime.strptime(iso_str, "%Y-%m-%d %H:%M:%S")
+            dt = datetime.strptime(iso_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
             new_end = float(dt.timestamp())
             if min_sim_time is not None and new_end <= self.epoch_unix + float(min_sim_time):
                 return False
@@ -155,7 +157,7 @@ class NavSimTimeReference:
 
     def get_end_datetime(self) -> datetime:
         """Retorna el objeto datetime para el instante final programado."""
-        return datetime.fromtimestamp(self.end_epoch_unix)
+        return datetime.fromtimestamp(self.end_epoch_unix, tz=timezone.utc)
 
     def get_end_date_str(self) -> str:
         """Retorna la fecha en formato 'AAAA-MM-DD' para el instante final programado."""
@@ -178,7 +180,7 @@ class NavSimTimeReference:
     def get_datetime(self, sim_time: float = 0.0) -> datetime:
         """Retorna el objeto datetime para el instante actual de simulación (T0 + sim_time)."""
         current_ts = self.epoch_unix + float(sim_time)
-        return datetime.fromtimestamp(current_ts)
+        return datetime.fromtimestamp(current_ts, tz=timezone.utc)
 
     def get_date_str(self, sim_time: float = 0.0) -> str:
         """Retorna la fecha en formato 'AAAA-MM-DD' para el instante actual de simulación."""
@@ -193,6 +195,10 @@ class NavSimTimeReference:
     def get_unix_timestamp(self, sim_time: float = 0.0) -> float:
         """Retorna el timestamp Unix en segundos con coma flotante (T0 + sim_time)."""
         return self.epoch_unix + float(sim_time)
+
+    def get_unix_usec(self, sim_time: float = 0.0) -> int:
+        """Retorna el instante UTC actual de simulaci?n en microsegundos desde 1970-01-01 (uint64)."""
+        return int(round((self.epoch_unix + float(sim_time)) * 1e6))
 
     def get_odid_timestamp(self, sim_time: float = 0.0) -> float:
         """

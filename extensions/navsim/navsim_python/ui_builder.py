@@ -272,7 +272,7 @@ class UIBuilder:
                             with ui.HStack(height=22, style={"margin_top": 3, "margin_bottom": 4}):
                                 ui.Spacer(width=140)
                                 self._btn_system = ui.Button(
-                                    "Sistema",
+                                    "Sistema (UTC)",
                                     height=22,
                                     clicked_fn=self._on_reset_system_time_clicked,
                                 )

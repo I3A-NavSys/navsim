@@ -76,7 +76,8 @@
 
     <!-- Telemetría de progreso y seguimiento de ruta 4D (Polinomio de Taylor de orden 5) -->
     <message id="12003" name="NAVSIM_FLIGHT_PLAN_STATUS">
-      <description>Telemetría de estado de ejecución del FlightPlan 4D, waypoint activo, ventana temporal y error de seguimiento respecto al polinomio de Taylor (117 bytes).</description>
+      <description>Telemetría de estado de ejecución del FlightPlan 4D, waypoint activo, ventana temporal y error de seguimiento respecto al polinomio de Taylor (125 bytes).</description>
+      <field type="uint64_t" name="time_unix_usec" units="us">Instante UTC actual de simulación en microsegundos desde 1970-01-01 00:00:00 UTC.</field>
       <field type="float" name="sim_time" units="s">Tiempo actual de simulación en segundos.</field>
       <field type="float" name="fp_init_time" units="s">Instante de inicio del FlightPlan activo (0.0 si no hay plan).</field>
       <field type="float" name="fp_finish_time" units="s">Instante de finalización del FlightPlan activo (0.0 si no hay plan).</field>
