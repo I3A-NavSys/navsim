@@ -92,11 +92,18 @@ $$T_{\text{real}}(t) = T_0 + t_{\text{sim}}$$
 - **Transmisión en Remote ID (ASTM F3411)**: El campo de timestamp de las tramas de identificación a distancia `OPEN_DRONE_ID_LOCATION` codifica con exactitud los segundos transcurridos dentro de la hora UTC actual:
   $$\text{timestamp}_{\text{ODID}} = (T_0 + t_{\text{sim}}) \pmod{3600.0}$$
 
-### Fuentes de Tiempo y Métodos de Ajuste
-El panel **Tiempo** en la consola de NavSim (`Window > NavSim > Consola`) proporciona métodos directos de ajuste:
+### Fuentes de Tiempo, Ajuste y Sincronización USD
+El panel **Tiempo** en la consola de NavSim (`Window > NavSim > Consola`) proporciona control integral de la ventana temporal y sincronización con el motor USD:
 1. **Detectar desde USD (`USD`)**: Lee atributos `NavSim:time:datetime` o `NavSim:time:epoch` en el prim `/World` o en `customLayerData` del root layer USD.
-2. **Restablecer al reloj del sistema (`Sistema`)**: Sincroniza $T_0$ con el reloj de la máquina anfitriona en tiempo real UTC.
-3. **Edición Manual**: Campos de texto editables para `Fecha` (`AAAA-MM-DD`) y `Hora` (`HH:MM:SS`), dotados de validación automática que restaura el valor previo en caso de formato erróneo.
+2. **Restablecer al reloj del sistema (`Sistema (UTC)`)**: Sincroniza $T_0$ con el reloj de la máquina anfitriona en tiempo real UTC, truncando a segundos enteros para evitar desfases fraccionarios.
+3. **Edición Manual Inicial y Final**: Campos de texto editables para `Fecha` (`AAAA-MM-DD`) y `Hora` (`HH:MM:SS`), dotados de validación automática que restaura el valor previo en caso de formato erróneo. El botón **`+1 hora`** incrementa acumulativamente la hora final de simulación.
+4. **Calidad de Simulación (`TCPS`) y Capa Raíz USD**: El campo numérico editable `TCPS` (*Time Codes Per Second*) sincroniza directamente las propiedades temporales de la capa raíz del Stage USD:
+   - `Start Time Code = 0.0`
+   - `Time Codes Per Second = TCPS`
+   - `End Time Code = Duración [s] * TCPS`
+5. **Detención Automática y Protección de Estado**:
+   - Al alcanzar el instante final programado, la simulación se pausa de forma limpia (`timeline.pause()`), permitiendo inspeccionar la posición final de las aeronaves en el escenario.
+   - Mientras la simulación está en ejecución o pausada, el instante inicial queda bloqueado para evitar discontinuidades; por el contrario, el instante final puede extenderse en cualquier momento (mediante `+1 hora` o indicando una fecha/hora futura), permitiendo reanudar la marcha con el botón `Play`.
 
 ---
 
@@ -125,7 +132,9 @@ El modelo físico de vuelo y sus coeficientes de dinámica (`fleet/*/dynamics.ya
 Al pulsar **PLAY** en Isaac Sim (o mediante el botón *Refrescar* en la interfaz gráfica), la extensión ejecuta una comprobación integral de la flota:
 1. **Atributos incompletos**: Si alguna aeronave carece de los atributos obligatorios, se muestra una notificación de advertencia en la consola y la interfaz visualiza el listado de campos faltantes.
 2. **Conflicto de identificadores duplicados**: Si dos o más aeronaves comparten el mismo `NavSim:id`, la simulación se detiene de inmediato (`timeline.stop()`) para garantizar la seguridad operacional y evitar colisiones de telemetría.
-3. **Inspector en vivo**: El desplegable permite examinar individualmente cada aeronave, mostrando su prim USD, número de serie, modelo físico y puertos RX/TX asignados.
+3. **Inspector en vivo y Selección Dinámica**: El desplegable permite examinar individualmente cada aeronave, mostrando su prim USD, número de serie, modelo físico y puertos RX/TX asignados. Cuenta con:
+   - **Botón `Enfocar`**: Selecciona y centra automáticamente la cámara del Viewport activo de Isaac Sim sobre el prim del UAV seleccionado.
+   - **Refresco bajo demanda**: Al hacer clic sobre el desplegable, se comprueba en tiempo real el Stage USD y se actualiza la lista solo si hubo altas, bajas o renombrados de drones en la escena, preservando la selección actual siempre que sea posible.
 
 ---
 
@@ -308,6 +317,9 @@ En cada ciclo de emisión, el datagrama emitido por cada aeronave contiene **5 t
   - `desired_vel` (`float[3]`, m/s): Velocidad 3D teórica calculada por el polinomio en ese instante.
   - `pos_error` (`float[3]`, m): Error instantáneo de posición $\mathbf{p}(t) - \mathbf{p}_{\text{Taylor}}(t)$.
   - `vel_error` (`float[3]`, m/s): Error instantáneo de velocidad $\mathbf{v}(t) - \mathbf{v}_{\text{Taylor}}(t)$.
+
+#### 3. Soporte para Estaciones y Monitores Remotos:
+NavSim registra dinámicamente las direcciones IP de origen de cualquier datagrama recibido en los puertos de comandos RX (`15000 + ID`), incorporándolas a los destinos de emisión continua de telemetría TX (`16000 + ID`). Esto permite desplegar aplicaciones de monitorización externa (como `telemetry_monitor.py` o GCS) en otras máquinas de la red sin necesidad de reconfigurar puertos fijos en el simulador.
 
 ---
 

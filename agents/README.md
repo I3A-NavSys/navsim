@@ -91,7 +91,7 @@ Cada UAV descubierto en la escena USD (ordenado alfabéticamente por su ruta Pri
    - `NAVSIM_FLIGHT_PLAN_HEADER` (**ID 12000**): Metadatos de ruta (`plan_id`, `priority`, `radius`, `max_var_lin_vel`, `max_var_ang_vel`, `target_yaw`, `num_waypoints`).
    - `NAVSIM_FLIGHT_PLAN_WAYPOINT` (**ID 12001**): Tramo polinómico de Taylor de orden 5 con tiempo `t` y vectores 3D de posición, velocidad, aceleración, *jerk*, *snap*, *crackle* y *heading*.
    - `NAVSIM_FLIGHT_PLAN_ACK` (**ID 12002**): Confirmación de recepción y ensamblado completo de un plan de vuelo.
-   - `NAVSIM_FLIGHT_PLAN_STATUS` (**ID 12003**): Telemetría de retorno de ejecución del FlightPlan 4D (`sim_time`, `uav_state`, `plan_id`, `current_wp`, `total_wps`, `wp_label`, ventana temporal `[fp_init_time, fp_finish_time]`, instante del tramo `wp_time`, referencia polinómica evaluada `desired_pos`/`desired_vel` y errores instantáneos `pos_error`/`vel_error`).
+   - `NAVSIM_FLIGHT_PLAN_STATUS` (**ID 12003**): Telemetría de retorno de ejecución del FlightPlan 4D y cronorreferenciación (`time_unix_usec` en µs UTC, `sim_time`, `uav_state`, `plan_id`, `current_wp`, `total_wps`, `wp_label`, ventana temporal `[fp_init_time, fp_finish_time]`, instante del tramo `wp_time`, referencia polinómica evaluada `desired_pos`/`desired_vel` y errores instantáneos `pos_error`/`vel_error`).
    - `NAVSIM_MANUAL_CONTROL` (**ID 12004**): Consigna cinemática directa en el marco local del dron (`vel_x`, `vel_y`, `vel_z` en $\text{m/s}$, `rot_z` en $\text{rad/s}$) y modo (`0=DISARM/IDLE`, `1=MANUAL`, `2=AUTO`, `3=HOVER`).
 
 ---
@@ -174,21 +174,23 @@ Consta de 4 módulos en `extensions/manual_controller/manual_controller_python/`
 
 ---
 
-## 5. Scripts y Herramientas Externas (`scripts/`)
+## 5. Aplicaciones y Herramientas Externas (`apps/`)
 
-### 5.1. Monitor de Telemetría ASTM F3411 (`scripts/telemetry_monitor/`)
-- **Archivo principal**: [`scripts/telemetry_monitor/telemetry_monitor.py`](file:///c:/Users/rafae/code/navsim/scripts/telemetry_monitor/telemetry_monitor.py) (lanzable también con `run_telemetry_monitor.bat`).
+### 5.1. Monitor de Telemetría ASTM F3411 (`apps/telemetry_monitor/`)
+- **Archivo principal**: [`apps/telemetry_monitor/telemetry_monitor.py`](file:///c:/Users/rafae/code/navsim/apps/telemetry_monitor/telemetry_monitor.py) (lanzable también con `run_telemetry_monitor.bat`).
 - **Funcionamiento**:
-  - Es una herramienta de consola independiente (ejecutable fuera de Isaac Sim con cualquier intérprete de Python 3 estándar) que abre sockets UDP no bloqueantes en el rango de puertos de telemetría `16000 .. 16000 + max_uavs` (por defecto 4 drones consecutivos).
-  - Decodifica las tramas MAVLink v2 `OPEN_DRONE_ID_*` recibidas de cada dron.
-  - **Filtrado dinámico de flota activa**: Solo muestra en pantalla los drones que están transmitiendo activamente. Si un dron deja de emitir (timeout de `2.5 s`) o si el simulador envía la trama de parada (`REMOTE_ID_SYSTEM_FAILURE`) al pulsar STOP en Isaac Sim, el monitor limpia la tabla automáticamente.
+  - Es una herramienta de consola interactiva independiente (ejecutable en la misma máquina o en máquinas remotas) que escucha sockets UDP no bloqueantes para los drones indicados (por defecto UAV #0 en `127.0.0.1:16000`).
+  - Admite argumentos flexibles: puertos individuales (`16004`), listas (`16000 16005`), rangos (`16000-16009`) o destinos remotos (`192.168.1.50:16000-16003`).
+  - Envía datagramas de presencia/suscripción periódica para auto-registrarse en Isaac Sim, permitiendo telemetría remota transparente.
+  - Decodifica tramas MAVLink v2 `OPEN_DRONE_ID_*` y `NAVSIM_FLIGHT_PLAN_STATUS`.
   - **Modos de visualización**:
-    - **Modo Dashboard (por defecto)**: Tabla en vivo auto-refrescada a 5 Hz con código de colores ANSI mostrando por cada dron: `UAS ID`, Puerto, Estado ASTM (`GROUND`, `AIRBORNE`, etc.), Frecuencia en Hz, Tipo de UA, Registro de Operador, Propósito del vuelo (`Self-ID`), Coordenadas WGS-84 (`Lat`, `Lon`, `Alt HAE`, `Altura AGL`) y Vector Polar (`Velocidad Horizontal`, `Velocidad Vertical`, `Track Angle` en grados y punto cardinal).
-    - **Modo Stream (`--stream`)**: Imprime línea por línea cada paquete decodificado con marca de tiempo para depuración o registro en fichero.
+    - **Modo Tabla Interactiva (por defecto)**: Tabla compacta (una fila por aeronave) con posición geodésica WGS-84, alturas AGL/HAE, velocidades polares, rumbo, tasa en Hz y hora UTC exacta (con resolución de milisegundos), acompañada de un panel de detalle inferior para la aeronave seleccionada mediante las teclas `↑`/`↓`.
+    - **Modo Stream (`--stream`)**: Emisión continua línea por línea para registro o redirección a ficheros.
+    - **Ayuda integrada (`--help` / `-h`)**: Muestra guía completa de uso, formatos y ejemplos.
 
 ```powershell
 # Ejecución estándar del monitor en una terminal externa:
-python scripts/telemetry_monitor/telemetry_monitor.py
+python apps/telemetry_monitor/telemetry_monitor.py
 ```
 
 ---

@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.1.0] - 2026-10-24
+
+### Added
+- Absolute UTC timestamp `time_unix_usec` (uint64, microsecond precision since 1970-01-01) in MAVLink message `NAVSIM_FLIGHT_PLAN_STATUS` (ID 12003, 125 bytes, `CRC_EXTRA = 221`).
+- Dynamic telemetry subscription: NavSim now auto-registers the source IP of any incoming UDP datagram on the command RX ports (`15000 + ID`), automatically streaming telemetry to remote monitors and GCS instances across the network.
+- Simulation quality setting `TCPS` (*Time Codes Per Second*) in the NavSim Console UI, automatically synchronizing root layer Stage timecodes (`Start Time Code = 0.0`, `Time Codes Per Second = TCPS`, `End Time Code = Duration [s] * TCPS`).
+- Automatic simulation pause (`timeline.pause()`) upon reaching the scheduled end time, allowing inspection of final fleet positioning.
+- State protection for time parameters: initial time is locked during simulation execution or pause; scheduled end time can be extended in real-time (`+1 hora` button or manual future edit) to resume playback.
+- On-demand fleet and UAV dropdown refresh triggered by mouse click, refreshing only when prim additions, deletions or renames are detected in the USD Stage.
+- `Enfocar` button next to the aircraft dropdown in NavSim - Consola and NavSim - Joystick to frame the active viewport camera on the selected UAV.
+- Complete redesign of `telemetry_monitor.py` into a compact single-line-per-drone table, with interactive detail view (navigable with `↑`/`↓`), support for custom IP:port targets and integrated `--help` documentation.
+
+### Changed
+- Time reference engine standardized to strict UTC (`timezone.utc`), with system clock resets truncating microseconds to exact integer seconds.
+- NavSim Console "Sistema" button relabeled to "Sistema (UTC)" for clarity.
+
 ## [2.0.0] - 2026-10-21
 
 ### Added
