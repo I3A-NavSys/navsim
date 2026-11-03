@@ -20,6 +20,7 @@ from isaaclab.app import AppLauncher
 
 # local imports
 import cli_args  # isort: skip
+import json
 
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Train an RL agent with RSL-RL.")
@@ -209,6 +210,11 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # dump the configuration into log-directory
     dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
     dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)
+
+    overrides = {k: v for k, v in os.environ.items() if k.startswith("AEROTAXI_") or k == "HORIZON_MODE"}
+    with open(os.path.join(log_dir, "params", "overrides.json"), "w") as f:
+        json.dump({"seed": agent_cfg.seed, "num_envs": env_cfg.scene.num_envs,
+                   "max_iterations": agent_cfg.max_iterations, "overrides": overrides}, f, indent=1)
 
     # run training
     runner.learn(num_learning_iterations=agent_cfg.max_iterations, init_at_random_ep_len=True)

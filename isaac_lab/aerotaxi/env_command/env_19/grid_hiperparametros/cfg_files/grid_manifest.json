@@ -1,0 +1,877 @@
+{
+ "1": {
+  "hp": {
+   "init_noise_std": 0.1,
+   "actor_hidden_dims": [
+    64,
+    64
+   ],
+   "critic_hidden_dims": [
+    256,
+    256
+   ],
+   "activation": "tanh",
+   "value_loss_coef": 1.0,
+   "clip_param": 0.2,
+   "entropy_coef": 0.01,
+   "num_learning_epochs": 12,
+   "num_mini_batches": 2,
+   "learning_rate": 0.003,
+   "gamma": 0.98,
+   "lam": 0.9,
+   "max_grad_norm": 1.0,
+   "desired_kl": 0.02
+  },
+  "seed": 42
+ },
+ "2": {
+  "hp": {
+   "init_noise_std": 0.5,
+   "actor_hidden_dims": [
+    256,
+    256
+   ],
+   "critic_hidden_dims": [
+    64,
+    64
+   ],
+   "activation": "elu",
+   "value_loss_coef": 1.0,
+   "clip_param": 0.1,
+   "entropy_coef": 0.001,
+   "num_learning_epochs": 4,
+   "num_mini_batches": 2,
+   "learning_rate": 5e-05,
+   "gamma": 0.99,
+   "lam": 0.95,
+   "max_grad_norm": 1.0,
+   "desired_kl": 0.005
+  },
+  "seed": 42
+ },
+ "3": {
+  "hp": {
+   "init_noise_std": 0.1,
+   "actor_hidden_dims": [
+    128,
+    64
+   ],
+   "critic_hidden_dims": [
+    64,
+    64
+   ],
+   "activation": "relu",
+   "value_loss_coef": 2.0,
+   "clip_param": 0.3,
+   "entropy_coef": 0.05,
+   "num_learning_epochs": 8,
+   "num_mini_batches": 4,
+   "learning_rate": 0.0003,
+   "gamma": 0.99,
+   "lam": 0.97,
+   "max_grad_norm": 0.5,
+   "desired_kl": 0.02
+  },
+  "seed": 42
+ },
+ "4": {
+  "hp": {
+   "init_noise_std": 0.2,
+   "actor_hidden_dims": [
+    64,
+    64
+   ],
+   "critic_hidden_dims": [
+    64,
+    64
+   ],
+   "activation": "gelu",
+   "value_loss_coef": 0.5,
+   "clip_param": 0.1,
+   "entropy_coef": 0.001,
+   "num_learning_epochs": 12,
+   "num_mini_batches": 4,
+   "learning_rate": 5e-05,
+   "gamma": 0.99,
+   "lam": 0.97,
+   "max_grad_norm": 1.0,
+   "desired_kl": 0.005
+  },
+  "seed": 42
+ },
+ "5": {
+  "hp": {
+   "init_noise_std": 0.8,
+   "actor_hidden_dims": [
+    128,
+    64
+   ],
+   "critic_hidden_dims": [
+    256,
+    256
+   ],
+   "activation": "relu",
+   "value_loss_coef": 2.0,
+   "clip_param": 0.2,
+   "entropy_coef": 0.05,
+   "num_learning_epochs": 8,
+   "num_mini_batches": 4,
+   "learning_rate": 0.003,
+   "gamma": 0.95,
+   "lam": 0.9,
+   "max_grad_norm": 0.5,
+   "desired_kl": 0.005
+  },
+  "seed": 42
+ },
+ "6": {
+  "hp": {
+   "init_noise_std": 0.1,
+   "actor_hidden_dims": [
+    128,
+    64
+   ],
+   "critic_hidden_dims": [
+    128,
+    128
+   ],
+   "activation": "gelu",
+   "value_loss_coef": 0.5,
+   "clip_param": 0.3,
+   "entropy_coef": 0.01,
+   "num_learning_epochs": 4,
+   "num_mini_batches": 4,
+   "learning_rate": 0.0003,
+   "gamma": 0.98,
+   "lam": 0.95,
+   "max_grad_norm": 1.0,
+   "desired_kl": 0.008
+  },
+  "seed": 42
+ },
+ "7": {
+  "hp": {
+   "init_noise_std": 0.8,
+   "actor_hidden_dims": [
+    128,
+    64
+   ],
+   "critic_hidden_dims": [
+    128,
+    128
+   ],
+   "activation": "elu",
+   "value_loss_coef": 2.0,
+   "clip_param": 0.1,
+   "entropy_coef": 0.0,
+   "num_learning_epochs": 4,
+   "num_mini_batches": 4,
+   "learning_rate": 0.001,
+   "gamma": 0.95,
+   "lam": 0.95,
+   "max_grad_norm": 0.5,
+   "desired_kl": 0.02
+  },
+  "seed": 42
+ },
+ "8": {
+  "hp": {
+   "init_noise_std": 1.0,
+   "actor_hidden_dims": [
+    128,
+    64
+   ],
+   "critic_hidden_dims": [
+    256,
+    256
+   ],
+   "activation": "relu",
+   "value_loss_coef": 0.5,
+   "clip_param": 0.2,
+   "entropy_coef": 0.01,
+   "num_learning_epochs": 4,
+   "num_mini_batches": 2,
+   "learning_rate": 0.0001,
+   "gamma": 0.95,
+   "lam": 0.95,
+   "max_grad_norm": 1.0,
+   "desired_kl": 0.02
+  },
+  "seed": 42
+ },
+ "9": {
+  "hp": {
+   "init_noise_std": 0.1,
+   "actor_hidden_dims": [
+    128,
+    128
+   ],
+   "critic_hidden_dims": [
+    256,
+    256
+   ],
+   "activation": "gelu",
+   "value_loss_coef": 2.0,
+   "clip_param": 0.1,
+   "entropy_coef": 0.05,
+   "num_learning_epochs": 12,
+   "num_mini_batches": 8,
+   "learning_rate": 0.0001,
+   "gamma": 0.95,
+   "lam": 0.95,
+   "max_grad_norm": 2.0,
+   "desired_kl": 0.01
+  },
+  "seed": 42
+ },
+ "10": {
+  "hp": {
+   "init_noise_std": 0.1,
+   "actor_hidden_dims": [
+    256,
+    256
+   ],
+   "critic_hidden_dims": [
+    128,
+    128
+   ],
+   "activation": "tanh",
+   "value_loss_coef": 1.0,
+   "clip_param": 0.3,
+   "entropy_coef": 0.01,
+   "num_learning_epochs": 4,
+   "num_mini_batches": 2,
+   "learning_rate": 0.0003,
+   "gamma": 0.99,
+   "lam": 0.9,
+   "max_grad_norm": 0.5,
+   "desired_kl": 0.008
+  },
+  "seed": 42
+ },
+ "11": {
+  "hp": {
+   "init_noise_std": 0.5,
+   "actor_hidden_dims": [
+    128,
+    64
+   ],
+   "critic_hidden_dims": [
+    256,
+    256
+   ],
+   "activation": "tanh",
+   "value_loss_coef": 1.0,
+   "clip_param": 0.3,
+   "entropy_coef": 0.01,
+   "num_learning_epochs": 12,
+   "num_mini_batches": 8,
+   "learning_rate": 0.0003,
+   "gamma": 0.99,
+   "lam": 0.97,
+   "max_grad_norm": 2.0,
+   "desired_kl": 0.01
+  },
+  "seed": 42
+ },
+ "12": {
+  "hp": {
+   "init_noise_std": 1.0,
+   "actor_hidden_dims": [
+    128,
+    64
+   ],
+   "critic_hidden_dims": [
+    128,
+    128
+   ],
+   "activation": "relu",
+   "value_loss_coef": 0.5,
+   "clip_param": 0.1,
+   "entropy_coef": 0.0,
+   "num_learning_epochs": 8,
+   "num_mini_batches": 2,
+   "learning_rate": 0.003,
+   "gamma": 0.99,
+   "lam": 0.9,
+   "max_grad_norm": 1.0,
+   "desired_kl": 0.02
+  },
+  "seed": 42
+ },
+ "13": {
+  "hp": {
+   "init_noise_std": 0.8,
+   "actor_hidden_dims": [
+    256,
+    256
+   ],
+   "critic_hidden_dims": [
+    128,
+    128
+   ],
+   "activation": "elu",
+   "value_loss_coef": 0.5,
+   "clip_param": 0.2,
+   "entropy_coef": 0.01,
+   "num_learning_epochs": 12,
+   "num_mini_batches": 2,
+   "learning_rate": 0.003,
+   "gamma": 0.98,
+   "lam": 0.95,
+   "max_grad_norm": 2.0,
+   "desired_kl": 0.005
+  },
+  "seed": 42
+ },
+ "14": {
+  "hp": {
+   "init_noise_std": 0.5,
+   "actor_hidden_dims": [
+    64,
+    64
+   ],
+   "critic_hidden_dims": [
+    128,
+    128
+   ],
+   "activation": "gelu",
+   "value_loss_coef": 1.0,
+   "clip_param": 0.2,
+   "entropy_coef": 0.01,
+   "num_learning_epochs": 4,
+   "num_mini_batches": 4,
+   "learning_rate": 0.0003,
+   "gamma": 0.98,
+   "lam": 0.9,
+   "max_grad_norm": 0.5,
+   "desired_kl": 0.02
+  },
+  "seed": 42
+ },
+ "15": {
+  "hp": {
+   "init_noise_std": 0.1,
+   "actor_hidden_dims": [
+    128,
+    128
+   ],
+   "critic_hidden_dims": [
+    64,
+    64
+   ],
+   "activation": "gelu",
+   "value_loss_coef": 2.0,
+   "clip_param": 0.3,
+   "entropy_coef": 0.0,
+   "num_learning_epochs": 12,
+   "num_mini_batches": 8,
+   "learning_rate": 0.003,
+   "gamma": 0.95,
+   "lam": 0.9,
+   "max_grad_norm": 2.0,
+   "desired_kl": 0.02
+  },
+  "seed": 42
+ },
+ "16": {
+  "hp": {
+   "init_noise_std": 0.1,
+   "actor_hidden_dims": [
+    128,
+    128
+   ],
+   "critic_hidden_dims": [
+    256,
+    256
+   ],
+   "activation": "elu",
+   "value_loss_coef": 0.5,
+   "clip_param": 0.3,
+   "entropy_coef": 0.0,
+   "num_learning_epochs": 8,
+   "num_mini_batches": 2,
+   "learning_rate": 0.0001,
+   "gamma": 0.95,
+   "lam": 0.95,
+   "max_grad_norm": 0.5,
+   "desired_kl": 0.02
+  },
+  "seed": 42
+ },
+ "17": {
+  "hp": {
+   "init_noise_std": 0.2,
+   "actor_hidden_dims": [
+    64,
+    64
+   ],
+   "critic_hidden_dims": [
+    256,
+    256
+   ],
+   "activation": "gelu",
+   "value_loss_coef": 1.0,
+   "clip_param": 0.3,
+   "entropy_coef": 0.05,
+   "num_learning_epochs": 12,
+   "num_mini_batches": 2,
+   "learning_rate": 0.0003,
+   "gamma": 0.99,
+   "lam": 0.9,
+   "max_grad_norm": 2.0,
+   "desired_kl": 0.008
+  },
+  "seed": 42
+ },
+ "18": {
+  "hp": {
+   "init_noise_std": 0.5,
+   "actor_hidden_dims": [
+    128,
+    128
+   ],
+   "critic_hidden_dims": [
+    128,
+    128
+   ],
+   "activation": "gelu",
+   "value_loss_coef": 2.0,
+   "clip_param": 0.1,
+   "entropy_coef": 0.05,
+   "num_learning_epochs": 8,
+   "num_mini_batches": 2,
+   "learning_rate": 0.003,
+   "gamma": 0.98,
+   "lam": 0.9,
+   "max_grad_norm": 0.5,
+   "desired_kl": 0.005
+  },
+  "seed": 42
+ },
+ "19": {
+  "hp": {
+   "init_noise_std": 0.8,
+   "actor_hidden_dims": [
+    128,
+    128
+   ],
+   "critic_hidden_dims": [
+    128,
+    128
+   ],
+   "activation": "elu",
+   "value_loss_coef": 1.0,
+   "clip_param": 0.2,
+   "entropy_coef": 0.05,
+   "num_learning_epochs": 4,
+   "num_mini_batches": 8,
+   "learning_rate": 0.001,
+   "gamma": 0.95,
+   "lam": 0.97,
+   "max_grad_norm": 0.5,
+   "desired_kl": 0.01
+  },
+  "seed": 42
+ },
+ "20": {
+  "hp": {
+   "init_noise_std": 1.0,
+   "actor_hidden_dims": [
+    128,
+    128
+   ],
+   "critic_hidden_dims": [
+    64,
+    64
+   ],
+   "activation": "gelu",
+   "value_loss_coef": 1.0,
+   "clip_param": 0.3,
+   "entropy_coef": 0.001,
+   "num_learning_epochs": 12,
+   "num_mini_batches": 8,
+   "learning_rate": 0.0001,
+   "gamma": 0.95,
+   "lam": 0.95,
+   "max_grad_norm": 0.5,
+   "desired_kl": 0.02
+  },
+  "seed": 42
+ },
+ "21": {
+  "hp": {
+   "init_noise_std": 0.1,
+   "actor_hidden_dims": [
+    256,
+    256
+   ],
+   "critic_hidden_dims": [
+    128,
+    128
+   ],
+   "activation": "gelu",
+   "value_loss_coef": 2.0,
+   "clip_param": 0.1,
+   "entropy_coef": 0.0,
+   "num_learning_epochs": 12,
+   "num_mini_batches": 2,
+   "learning_rate": 5e-05,
+   "gamma": 0.98,
+   "lam": 0.9,
+   "max_grad_norm": 1.0,
+   "desired_kl": 0.008
+  },
+  "seed": 42
+ },
+ "22": {
+  "hp": {
+   "init_noise_std": 1.0,
+   "actor_hidden_dims": [
+    128,
+    64
+   ],
+   "critic_hidden_dims": [
+    128,
+    128
+   ],
+   "activation": "gelu",
+   "value_loss_coef": 1.0,
+   "clip_param": 0.1,
+   "entropy_coef": 0.001,
+   "num_learning_epochs": 4,
+   "num_mini_batches": 2,
+   "learning_rate": 0.001,
+   "gamma": 0.95,
+   "lam": 0.95,
+   "max_grad_norm": 2.0,
+   "desired_kl": 0.02
+  },
+  "seed": 42
+ },
+ "23": {
+  "hp": {
+   "init_noise_std": 1.0,
+   "actor_hidden_dims": [
+    256,
+    256
+   ],
+   "critic_hidden_dims": [
+    64,
+    64
+   ],
+   "activation": "elu",
+   "value_loss_coef": 0.5,
+   "clip_param": 0.1,
+   "entropy_coef": 0.01,
+   "num_learning_epochs": 4,
+   "num_mini_batches": 2,
+   "learning_rate": 5e-05,
+   "gamma": 0.95,
+   "lam": 0.97,
+   "max_grad_norm": 0.5,
+   "desired_kl": 0.02
+  },
+  "seed": 42
+ },
+ "24": {
+  "hp": {
+   "init_noise_std": 0.1,
+   "actor_hidden_dims": [
+    64,
+    64
+   ],
+   "critic_hidden_dims": [
+    64,
+    64
+   ],
+   "activation": "gelu",
+   "value_loss_coef": 2.0,
+   "clip_param": 0.2,
+   "entropy_coef": 0.01,
+   "num_learning_epochs": 8,
+   "num_mini_batches": 4,
+   "learning_rate": 0.0003,
+   "gamma": 0.95,
+   "lam": 0.9,
+   "max_grad_norm": 2.0,
+   "desired_kl": 0.005
+  },
+  "seed": 42
+ },
+ "25": {
+  "hp": {
+   "init_noise_std": 0.1,
+   "actor_hidden_dims": [
+    256,
+    256
+   ],
+   "critic_hidden_dims": [
+    64,
+    64
+   ],
+   "activation": "relu",
+   "value_loss_coef": 2.0,
+   "clip_param": 0.2,
+   "entropy_coef": 0.05,
+   "num_learning_epochs": 8,
+   "num_mini_batches": 4,
+   "learning_rate": 0.001,
+   "gamma": 0.95,
+   "lam": 0.97,
+   "max_grad_norm": 2.0,
+   "desired_kl": 0.008
+  },
+  "seed": 42
+ },
+ "26": {
+  "hp": {
+   "init_noise_std": 0.1,
+   "actor_hidden_dims": [
+    128,
+    128
+   ],
+   "critic_hidden_dims": [
+    128,
+    128
+   ],
+   "activation": "gelu",
+   "value_loss_coef": 1.0,
+   "clip_param": 0.1,
+   "entropy_coef": 0.001,
+   "num_learning_epochs": 12,
+   "num_mini_batches": 4,
+   "learning_rate": 5e-05,
+   "gamma": 0.95,
+   "lam": 0.97,
+   "max_grad_norm": 1.0,
+   "desired_kl": 0.008
+  },
+  "seed": 42
+ },
+ "27": {
+  "hp": {
+   "init_noise_std": 1.0,
+   "actor_hidden_dims": [
+    128,
+    128
+   ],
+   "critic_hidden_dims": [
+    64,
+    64
+   ],
+   "activation": "tanh",
+   "value_loss_coef": 2.0,
+   "clip_param": 0.2,
+   "entropy_coef": 0.001,
+   "num_learning_epochs": 12,
+   "num_mini_batches": 8,
+   "learning_rate": 5e-05,
+   "gamma": 0.95,
+   "lam": 0.95,
+   "max_grad_norm": 0.5,
+   "desired_kl": 0.008
+  },
+  "seed": 42
+ },
+ "28": {
+  "hp": {
+   "init_noise_std": 0.8,
+   "actor_hidden_dims": [
+    128,
+    64
+   ],
+   "critic_hidden_dims": [
+    64,
+    64
+   ],
+   "activation": "relu",
+   "value_loss_coef": 2.0,
+   "clip_param": 0.3,
+   "entropy_coef": 0.05,
+   "num_learning_epochs": 8,
+   "num_mini_batches": 8,
+   "learning_rate": 0.0001,
+   "gamma": 0.98,
+   "lam": 0.97,
+   "max_grad_norm": 0.5,
+   "desired_kl": 0.008
+  },
+  "seed": 42
+ },
+ "29": {
+  "hp": {
+   "init_noise_std": 0.1,
+   "actor_hidden_dims": [
+    64,
+    64
+   ],
+   "critic_hidden_dims": [
+    256,
+    256
+   ],
+   "activation": "elu",
+   "value_loss_coef": 1.0,
+   "clip_param": 0.3,
+   "entropy_coef": 0.05,
+   "num_learning_epochs": 8,
+   "num_mini_batches": 2,
+   "learning_rate": 0.003,
+   "gamma": 0.95,
+   "lam": 0.97,
+   "max_grad_norm": 2.0,
+   "desired_kl": 0.02
+  },
+  "seed": 42
+ },
+ "30": {
+  "hp": {
+   "init_noise_std": 1.0,
+   "actor_hidden_dims": [
+    64,
+    64
+   ],
+   "critic_hidden_dims": [
+    256,
+    256
+   ],
+   "activation": "gelu",
+   "value_loss_coef": 2.0,
+   "clip_param": 0.2,
+   "entropy_coef": 0.01,
+   "num_learning_epochs": 8,
+   "num_mini_batches": 4,
+   "learning_rate": 0.003,
+   "gamma": 0.98,
+   "lam": 0.9,
+   "max_grad_norm": 1.0,
+   "desired_kl": 0.008
+  },
+  "seed": 42
+ },
+ "31": {
+  "hp": {
+   "init_noise_std": 1.0,
+   "actor_hidden_dims": [
+    128,
+    64
+   ],
+   "critic_hidden_dims": [
+    64,
+    64
+   ],
+   "activation": "relu",
+   "value_loss_coef": 2.0,
+   "clip_param": 0.2,
+   "entropy_coef": 0.001,
+   "num_learning_epochs": 4,
+   "num_mini_batches": 2,
+   "learning_rate": 5e-05,
+   "gamma": 0.98,
+   "lam": 0.97,
+   "max_grad_norm": 0.5,
+   "desired_kl": 0.02
+  },
+  "seed": 42
+ },
+ "32": {
+  "hp": {
+   "init_noise_std": 0.8,
+   "actor_hidden_dims": [
+    256,
+    256
+   ],
+   "critic_hidden_dims": [
+    256,
+    256
+   ],
+   "activation": "relu",
+   "value_loss_coef": 2.0,
+   "clip_param": 0.3,
+   "entropy_coef": 0.05,
+   "num_learning_epochs": 4,
+   "num_mini_batches": 2,
+   "learning_rate": 0.003,
+   "gamma": 0.95,
+   "lam": 0.97,
+   "max_grad_norm": 1.0,
+   "desired_kl": 0.008
+  },
+  "seed": 42
+ },
+ "33": {
+  "hp": {
+   "init_noise_std": 0.5,
+   "actor_hidden_dims": [
+    128,
+    64
+   ],
+   "critic_hidden_dims": [
+    128,
+    128
+   ],
+   "activation": "tanh",
+   "value_loss_coef": 1.0,
+   "clip_param": 0.1,
+   "entropy_coef": 0.01,
+   "num_learning_epochs": 8,
+   "num_mini_batches": 4,
+   "learning_rate": 0.003,
+   "gamma": 0.98,
+   "lam": 0.95,
+   "max_grad_norm": 1.0,
+   "desired_kl": 0.02
+  },
+  "seed": 42
+ },
+ "34": {
+  "hp": {
+   "init_noise_std": 0.8,
+   "actor_hidden_dims": [
+    64,
+    64
+   ],
+   "critic_hidden_dims": [
+    64,
+    64
+   ],
+   "activation": "tanh",
+   "value_loss_coef": 1.0,
+   "clip_param": 0.1,
+   "entropy_coef": 0.001,
+   "num_learning_epochs": 4,
+   "num_mini_batches": 2,
+   "learning_rate": 0.003,
+   "gamma": 0.95,
+   "lam": 0.97,
+   "max_grad_norm": 1.0,
+   "desired_kl": 0.005
+  },
+  "seed": 42
+ },
+ "35": {
+  "hp": {
+   "init_noise_std": 0.5,
+   "actor_hidden_dims": [
+    256,
+    256
+   ],
+   "critic_hidden_dims": [
+    128,
+    128
+   ],
+   "activation": "elu",
+   "value_loss_coef": 2.0,
+   "clip_param": 0.2,
+   "entropy_coef": 0.05,
+   "num_learning_epochs": 8,
+   "num_mini_batches": 4,
+   "learning_rate": 5e-05,
+   "gamma": 0.95,
+   "lam": 0.97,
+   "max_grad_norm": 1.0,
+   "desired_kl": 0.01
+  },
+  "seed": 42
+ }
+}

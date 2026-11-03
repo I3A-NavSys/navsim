@@ -16,6 +16,7 @@ sys.path.insert(0, str(isaaclab_path))
 
 from isaaclab.app import AppLauncher
 from MyOnPolicyRunner import MyOnPolicyRunner
+from eval_utils import evaluate_first_episode, append_play_row, save_trajectories
 
 # local imports
 import cli_args  # isort: skip
@@ -44,6 +45,7 @@ parser.add_argument("--real-time", action="store_true", default=False, help="Run
 parser.add_argument("--see", action="store_true", default=False, help="Disable the option of stopping at the first episodes of evaluation")
 parser.add_argument("--record_states", action="store_true", default=False, help="Activa el registro de posiciones y velocidades del dron y el objetivo.")
 parser.add_argument("--states_csv_dir", type=str, default=None, help="Ruta de la carpeta donde exportar el CSV de trayectorias (por defecto, usa csv_path_metrics).")
+parser.add_argument("--tag", type=str, default="", help="Nombre que tendrá la evaluación.")
 # -----------------
 
 
@@ -202,7 +204,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     episode_steps = []  # Guardará el número de pasos por episodio
 
     # Define el número máximo de pasos por episodio
-    max_episode_steps = 1000  # o cualquier número de pasos que consideres adecuado
+    max_episode_steps = int(env.unwrapped.max_episode_length)   
     cur_episode_length = np.zeros(env.num_envs)
     recorded_states = [] # NUEVO: Lista para acumular los estados 3D paso a paso
     # -------------------------
@@ -258,171 +260,18 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
             if args_cli.real_time and sleep_time > 0:
                 time.sleep(sleep_time)
     else:
-        ep_infos = []
-        for step in range(max_episode_steps):
-            start_time = time.time()
-            # run everything in inference mode
-            with torch.inference_mode():
-                # agent stepping
-                actions = policy(obs)
-                # env stepping
-
-                # ------- Teresa ---------
-                # obs, _, _, _ = env.step(actions) # original
-                obs, rew, done, info = env.step(actions)
-
-                # ------- REGISTRO DE TRAYECTORIAS (Teresa) ---------
-                if args_cli.record_states:
-                    try:
-                        # 1. Posición del DRON (Convertida de Mundial a Local)
-                        drone_pos_w = env.unwrapped.scene["aerotaxi"].data.root_pos_w
-                        env_origins = env.unwrapped.scene.env_origins
-                        drone_pos_local = (drone_pos_w - env_origins).cpu().numpy()
-                        
-                        drone_vel = env.unwrapped.scene["aerotaxi"].data.root_lin_vel_w.cpu().numpy()
-                        
-                        # 2. Posición del OBJETIVO (Ya está en Local en tu código)
-                        if hasattr(env.unwrapped, "command_manager"):
-                            # Accedemos directamente a la variable target_pos de tu clase UAVcommandTerm
-                            command_term = env.unwrapped.command_manager.get_term("vel_command")
-                            target_pos_local = command_term.target_pos.cpu().numpy()
-                        else:
-                            target_pos_local = np.zeros_like(drone_pos_local)
-
-                        # Guardamos el estado de CADA entorno en este step
-                        for env_idx in range(env.num_envs):
-                            if cur_episode_length[env_idx] < max_episode_steps and done[env_idx] == 0:
-                                recorded_states.append({
-                                    "step": int(cur_episode_length[env_idx]),
-                                    "env_id": env_idx,
-                                    "drone_x": drone_pos_local[env_idx, 0],
-                                    "drone_y": drone_pos_local[env_idx, 1],
-                                    "drone_z": drone_pos_local[env_idx, 2],
-                                    "drone_vel_x": drone_vel[env_idx, 0],
-                                    "drone_vel_y": drone_vel[env_idx, 1],
-                                    "drone_vel_z": drone_vel[env_idx, 2],
-                                    "target_x": target_pos_local[env_idx, 0],
-                                    "target_y": target_pos_local[env_idx, 1],
-                                    "target_z": target_pos_local[env_idx, 2]
-                                })
-                    except Exception as e:
-                        print(f"[WARNING] Error capturando estados 3D: {e}")
-                        args_cli.record_states = False  # Apagamos para no saturar la terminal con errores
-
-
-                rew = rew.cpu().numpy().squeeze()
-                done = done.cpu().numpy().squeeze()
-                rewbuffer += rew
-                cur_episode_length += 1
-            
-                # Termina los episodios cuando 'done' es 1 o se alcanza el máximo de pasos
-                finished_ids = np.where((done > 0) | (cur_episode_length >= max_episode_steps))[0]
-                
-                # Por cada episodio que termine
-                for idx in finished_ids:
-                    # Guardar la recompensa acumulada del episodio
-                    episode_rewards.append(rewbuffer[idx])
-                    episode_steps.append(cur_episode_length[idx])
-
-                    if "log" in info:
-                        individual_rewards = {}
-                        for key, value in info["log"].items():
-                            if torch.is_tensor(value):
-                                # Si el tensor tiene dimensiones (es un vector), indexamos por idx
-                                if value.dim() > 0:
-                                    val = value[idx].item()
-                                # Si es un escalar (0-dim), tomamos el valor directamente
-                                else:
-                                    val = value.item()
-                            else:
-                                # Si es una lista o array de numpy con dimensiones
-                                try:
-                                    val = value[idx]
-                                except (IndexError, TypeError):
-                                    val = value
-                            
-                            individual_rewards[key] = val
-                        ep_infos.append(individual_rewards)
-                        
-                # Promedio de recompensa
-                if len(episode_rewards) > 0:
-                    average_reward = np.mean(episode_rewards)
-                    max_reward = np.max(episode_rewards)
-                    std = np.std(episode_rewards)
-                else:
-                    average_reward = 0
-                    max_reward = 0
-                    std = 0
-                # -------------------------
-            if args_cli.video:
-                timestep += 1
-                # Exit the play loop after recording one video
-                if timestep == args_cli.video_length:
-                    break
-
-            # time delay for real-time evaluation
-            sleep_time = dt - (time.time() - start_time)
-            if args_cli.real_time and sleep_time > 0:
-                time.sleep(sleep_time)
-
-
-        # --------- Teresa ----------------
-        if runner.csv_path_metrics != None:
-            import pandas as pd
-            reward_terms_dict = {}
-            if 'ep_infos' in locals() and len(ep_infos) > 0:
-                keys = ep_infos[0].keys()
-                for key in keys:
-                    # Procesamos cada término asegurando que pase a CPU
-                    reward_values = [
-                        info[key].cpu().item() if torch.is_tensor(info[key]) else info[key] 
-                        for info in ep_infos if key in info
-                    ]
-                    if reward_values:
-                        reward_terms_dict[f"mean_{key}"] = [np.mean(reward_values)]
-
-            # 3. Preparar el DataFrame con toda la información
-            base_data = {
-                'id_run_name': [runner.cfg['run_name']],
-                'reward': [average_reward],
-                'max_reward': [max_reward],
-                'std': [std],
-                'num_envs_test': [runner.env.num_envs],
-                'checkpoint': [args_cli.checkpoint]
-            }
-            
-            # Combinamos con los términos individuales (alive, pos_diff, etc.)
-            base_data.update(reward_terms_dict)
-            statistics_it = pd.DataFrame(base_data)
-
-            # 4. Guardado en CSV
-            csv_path = os.path.join(runner.csv_path_metrics, f"rewards_play_{type(runner.alg).__name__}.csv")
-            
-            if not os.path.exists(csv_path):
-                statistics_it.to_csv(csv_path, mode='w', header=True, index=False)
-            else:
-                # Si el archivo existe, lo leemos para asegurar que las columnas coincidan 
-                # (por si un modelo tiene más términos que otro)
-                existing_df = pd.read_csv(csv_path)
-                combined_df = pd.concat([existing_df, statistics_it], ignore_index=True)
-                combined_df.to_csv(csv_path, index=False)
-            # ---------------------------------
-
-            # --------- EXPORTAR TRAYECTORIAS (Teresa) ----------------
-        if args_cli.record_states and len(recorded_states) > 0:
-            df_states = pd.DataFrame(recorded_states)
-            
-            # Determinamos dónde guardarlo
-            save_dir = args_cli.states_csv_dir if args_cli.states_csv_dir else runner.csv_path_metrics
-            if save_dir is None:
-                save_dir = log_dir
-                
-            os.makedirs(save_dir, exist_ok=True)
-            states_csv_path = os.path.join(save_dir, f"tracking_3D_{runner.cfg['run_name']}.csv")
-            
-            df_states.to_csv(states_csv_path, index=False)
-            print(f"[INFO] Trayectorias 3D exportadas con éxito a: {states_csv_path}")
-        # ---------------------------------------------------------
+        res = evaluate_first_episode(env, policy, obs, max_steps=int(env.unwrapped.max_episode_length) + 5,
+                                     record_states=args_cli.record_states)
+        s = res["summary"]
+        print(f"[EVAL] n={len(s)} success={(~s.failed).mean():.3f} return={s['return'].mean():.2f} "
+              f"causes={s.cause.value_counts().to_dict()}")
+        if runner.csv_path_metrics is not None:
+            append_play_row(res, runner.cfg["run_name"], runner.env.num_envs, args_cli.checkpoint,
+                            os.path.join(runner.csv_path_metrics, f"rewards_play_{type(runner.alg).__name__}.csv"),
+                            tag=args_cli.tag, seed_eval=agent_cfg.seed)
+        if args_cli.record_states:
+            save_trajectories(res, args_cli.states_csv_dir or runner.csv_path_metrics or log_dir,
+                              f"tracking_3D_{runner.cfg['run_name']}.csv")
 
     # close the simulator
     env.close()

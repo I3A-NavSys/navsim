@@ -96,8 +96,8 @@ class MyOnPolicyRunner:
 
         # Book keeping
         ep_infos = []
-        rewbuffer = deque(maxlen=100)
-        lenbuffer = deque(maxlen=100)
+        rewbuffer = deque(maxlen=1000)
+        lenbuffer = deque(maxlen=1000)
         cur_reward_sum = torch.zeros(self.env.num_envs, dtype=torch.float, device=self.device)
         cur_episode_length = torch.zeros(self.env.num_envs, dtype=torch.float, device=self.device)
 
@@ -124,9 +124,10 @@ class MyOnPolicyRunner:
         csv_path_C = f"{self.csv_path_metrics}/reward_best_models.csv"
 
         # variables para el early stopping
-        patience = 500         # Número de iteraciones a esperar sin mejora
+        patience = int(self.cfg.get("early_stopping_patience", 500))         # Número de iteraciones a esperar sin mejora
         patience_counter = 0   # Contador de iteraciones malas
         early_stopping = False
+        ema_reward = None
         mejora_minima = 0.0 # pasamos cualquier mejora
         # ----------------------
         for it in range(start_iter, tot_iter):
@@ -194,6 +195,7 @@ class MyOnPolicyRunner:
                     mean_reward = np.mean(rewbuffer) if len(rewbuffer) > 0 else 0
                     maxi_reward = np.max(rewbuffer) if len(rewbuffer) > 0 else 0
                     std = np.std(rewbuffer) if len(rewbuffer) > 0 else 0
+                    ema_reward = mean_reward if ema_reward is None else 0.9 * ema_reward + 0.1 * mean_reward
 
                     # Extraemos el resto de recompensas medias
                     reward_terms_dict = {}
@@ -201,7 +203,7 @@ class MyOnPolicyRunner:
                     # Descomentar para almacenar todas las rewards:
                     # ---------------------------------------------
                     if len(ep_infos) > 0:
-                        keys = ep_infos[0].keys()
+                        keys = sorted(set().union(*[info.keys() for info in ep_infos]))
                         for key in keys:
                             reward_values = [info[key].cpu().item() if torch.is_tensor(info[key]) else info[key] 
                                             for info in ep_infos if key in info]
@@ -221,42 +223,37 @@ class MyOnPolicyRunner:
 
 
 
-                        # CASO A: Primer registro O Primer registro tras el reset de la it 1500
                         if (max_reward == None):
                             patience_counter = 0
-                            max_reward = mean_reward
-                            # Guardamos con un nombre que indique si es del curriculum o el final
+                            max_reward = ema_reward
                             self.save(os.path.join(self.csv_path_metrics, f"best_model_{self.cfg['run_name']}_{self.env.num_envs}.pt"))
-
                             if os.path.exists(csv_path_C):
-                                statistics_it_C.to_csv(csv_path_C, mode='a', header=False, index=False)
+                                old = pd.read_csv(csv_path_C)
+                                old = old[old["id_run_name"] != self.cfg["run_name"]]
+                                pd.concat([old, statistics_it_C], ignore_index=True).to_csv(csv_path_C, index=False)
                             else:
                                 statistics_it_C.to_csv(csv_path_C, mode='w', header=True, index=False)
-                                                
-                        # CASO B: Mejora el récord (ya sea en fase fácil o en fase difícil)
-                        elif (mean_reward > max_reward + mejora_minima):
+                        elif (ema_reward > max_reward + mejora_minima):
                             patience_counter = 0
-                            max_reward = mean_reward
+                            max_reward = ema_reward
                             self.save(os.path.join(self.csv_path_metrics, f"best_model_{self.cfg['run_name']}_{self.env.num_envs}.pt"))
-                            
-                            df_rewards = pd.read_csv(csv_path_C)
-                            if self.cfg['run_name'] in df_rewards['id_run_name'].values:
-                                idx = df_rewards.index[df_rewards['id_run_name'] == self.cfg['run_name']][0]
-                                df_rewards.loc[idx] = statistics_it_C.iloc[0]
-                            df_rewards.to_csv(csv_path_C, mode='w', header=True, index=False)
-                            
-                        # CASO C: No hay mejora
+                            df_rewards = pd.read_csv(csv_path_C).reindex(columns=statistics_it_C.columns)
+                            idx = df_rewards.index[df_rewards['id_run_name'] == self.cfg['run_name']][0]
+                            df_rewards.loc[idx] = statistics_it_C.iloc[0]
+                            df_rewards.to_csv(csv_path_C, index=False)
                         else:
-                            # Solo empezamos a contar la paciencia para el Early Stopping
-                            # una vez que el entorno ya no cambia (it >= 1500)
                             patience_counter += 1
-                            if (patience_counter >= patience): 
+                            if patience > 0 and patience_counter >= patience:
                                 early_stopping = True
-                                # pass
                 # ---------------------
-
+                if self.csv_path_metrics != None and self.activate_callbacks and it % 10 == 0:
+                    curve = os.path.join(self.csv_path_metrics, "curves", f"{self.cfg['run_name']}.csv")
+                    os.makedirs(os.path.dirname(curve), exist_ok=True)
+                    statistics_it_C.to_csv(curve, mode="w" if it == start_iter else "a",
+                                           header=(it == start_iter), index=False)
 
                 if self.log_dir is not None and not self.disable_logs:
+                    self.save(os.path.join(self.csv_path_metrics, f"final_model_{self.cfg['run_name']}_{self.env.num_envs}.pt"))
                     # Log information
                     self.log(locals())
                     # Save model
