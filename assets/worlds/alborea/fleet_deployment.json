@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0.0",
+  "municipality": "02005 Alborea",
+  "description": "Despliegue inicial de flota sobre STANDs y TLOFs publicados en el CISP (máx. 1 dron por elemento).",
+  "deployments": [
+    {
+      "prim_name": "UAV_01_Minidrone",
+      "uas_id": "ESP-UAV-ALB-01",
+      "model_name": "UAM_minidrone",
+      "vertiport_id": "ES-VPT-ALB-01",
+      "pad_id": "TLOF-01",
+      "heading_deg": 0.0,
+      "id_type": 2,
+      "ua_type": 2,
+      "operator_id": "ESP-OP-UCLM-NAVSIM",
+      "operator_id_type": 0,
+      "self_id_desc": "Reparto Farmacia ALB"
+    },
+    {
+      "prim_name": "UAV_02_Aerotaxi",
+      "uas_id": "ESP-AERO-ALB-02",
+      "model_name": "UAM_aerotaxi",
+      "vertiport_id": "ES-VPT-ALB-02",
+      "pad_id": "TLOF-01",
+      "heading_deg": 0.0,
+      "id_type": 2,
+      "ua_type": 4,
+      "operator_id": "ESP-OP-UCLM-NAVSIM",
+      "operator_id_type": 0,
+      "self_id_desc": "Aerotaxi Rural ALB"
+    }
+  ]
+}

@@ -1,0 +1,222 @@
+{
+  "schema_version": "1.0.0",
+  "standard": "EUROCAE ED-318 / ASTM F3623 / EASA PTS-VPT-DSN",
+  "cisp_provider": "FLIGHTweaver U-Space CISP",
+  "municipality": "02005 Alborea",
+  "geodetic_origin": {
+    "latitude_deg": 39.27855,
+    "longitude_deg": -1.395781,
+    "elevation_amsl_m": 699.0,
+    "elevation_hae_m": 749.65
+  },
+  "vertiports": [
+    {
+      "vertiport_id": "ES-VPT-ALB-01",
+      "prim_name": "Vertipuerto_01",
+      "name": "Alborea - Hub Logístico Urbano (01)",
+      "operator_id": "ESP-VPT-UCLM-ALB",
+      "operational_status": "ACTIVE",
+      "model_name": "VPT_Hub_Delivery_D2",
+      "location": {
+        "latitude_deg": 39.27855,
+        "longitude_deg": -1.395781,
+        "elevation_amsl_m": 699.0,
+        "elevation_hae_m": 749.65,
+        "orientation_deg": 0.0,
+        "local_enu_xyz": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "physical_characteristics": {
+        "d_value_meters": 2.0,
+        "max_takeoff_weight_kg": 50.0,
+        "tlof_ids": [
+          "TLOF-01"
+        ],
+        "stand_ids": [
+          "STAND-01",
+          "STAND-02",
+          "STAND-03",
+          "STAND-04"
+        ]
+      }
+    },
+    {
+      "vertiport_id": "ES-VPT-ALB-02",
+      "prim_name": "Vertipuerto_02",
+      "name": "Alborea - Terminal Comarcal eVTOL (02)",
+      "operator_id": "ESP-VPT-UCLM-ALB",
+      "operational_status": "ACTIVE",
+      "model_name": "VPT_Terminal_Aerotaxi_D8",
+      "location": {
+        "latitude_deg": 39.2782798,
+        "longitude_deg": -1.3966501,
+        "elevation_amsl_m": 702.0,
+        "elevation_hae_m": 752.65,
+        "orientation_deg": 0.0,
+        "local_enu_xyz": [
+          -75.0,
+          -30.0,
+          3.0
+        ]
+      },
+      "physical_characteristics": {
+        "d_value_meters": 8.0,
+        "max_takeoff_weight_kg": 2500.0,
+        "tlof_ids": [
+          "TLOF-01"
+        ],
+        "stand_ids": [
+          "STAND-EAST-01",
+          "STAND-WEST-02"
+        ]
+      }
+    },
+    {
+      "vertiport_id": "ES-VPT-ALB-03",
+      "prim_name": "Vertipuerto_03",
+      "name": "Alborea - Hub Intermodal Sanitario/Carga (03)",
+      "operator_id": "ESP-VPT-UCLM-ALB",
+      "operational_status": "ACTIVE",
+      "model_name": "VPT_Dual_Intermodal_D8",
+      "location": {
+        "latitude_deg": 39.2769288,
+        "longitude_deg": -1.3982144,
+        "elevation_amsl_m": 696.01,
+        "elevation_hae_m": 746.66,
+        "orientation_deg": 0.0,
+        "local_enu_xyz": [
+          -210.0,
+          -180.0,
+          -3.0
+        ]
+      },
+      "physical_characteristics": {
+        "d_value_meters": 8.0,
+        "max_takeoff_weight_kg": 2500.0,
+        "tlof_ids": [
+          "TLOF-01"
+        ],
+        "stand_ids": [
+          "STAND-AERO-01",
+          "STAND-DELIV-01",
+          "STAND-DELIV-02"
+        ]
+      }
+    },
+    {
+      "vertiport_id": "ES-VPT-ALB-04",
+      "prim_name": "Vertipuerto_04",
+      "name": "Alborea - Vertipuerto Periférico Norte (04)",
+      "operator_id": "ESP-VPT-UCLM-ALB",
+      "operational_status": "ACTIVE",
+      "model_name": "VPT_Pad_Aerotaxi_D8",
+      "location": {
+        "latitude_deg": 39.2765686,
+        "longitude_deg": -1.3998367,
+        "elevation_amsl_m": 695.01,
+        "elevation_hae_m": 745.66,
+        "orientation_deg": 0.0,
+        "local_enu_xyz": [
+          -350.0,
+          -220.0,
+          -4.0
+        ]
+      },
+      "physical_characteristics": {
+        "d_value_meters": 8.0,
+        "max_takeoff_weight_kg": 2500.0,
+        "tlof_ids": [
+          "TLOF-01"
+        ],
+        "stand_ids": []
+      }
+    },
+    {
+      "vertiport_id": "ES-VPT-ALB-05",
+      "prim_name": "Vertipuerto_05",
+      "name": "Alborea - Punto de Entrega Logístico Sur (05)",
+      "operator_id": "ESP-VPT-UCLM-ALB",
+      "operational_status": "ACTIVE",
+      "model_name": "VPT_Pad_Delivery_D2",
+      "location": {
+        "latitude_deg": 39.2817922,
+        "longitude_deg": -1.3953175,
+        "elevation_amsl_m": 714.01,
+        "elevation_hae_m": 764.66,
+        "orientation_deg": 0.0,
+        "local_enu_xyz": [
+          40.0,
+          360.0,
+          15.0
+        ]
+      },
+      "physical_characteristics": {
+        "d_value_meters": 2.0,
+        "max_takeoff_weight_kg": 50.0,
+        "tlof_ids": [
+          "TLOF-01"
+        ],
+        "stand_ids": []
+      }
+    },
+    {
+      "vertiport_id": "ES-VPT-ALB-06",
+      "prim_name": "Vertipuerto_06",
+      "name": "Alborea - Vertipuerto Enlace Polígono (06)",
+      "operator_id": "ESP-VPT-UCLM-ALB",
+      "operational_status": "ACTIVE",
+      "model_name": "VPT_Pad_Aerotaxi_D8",
+      "location": {
+        "latitude_deg": 39.2747674,
+        "longitude_deg": -1.3962445,
+        "elevation_amsl_m": 711.01,
+        "elevation_hae_m": 761.66,
+        "orientation_deg": 0.0,
+        "local_enu_xyz": [
+          -40.0,
+          -420.0,
+          12.0
+        ]
+      },
+      "physical_characteristics": {
+        "d_value_meters": 8.0,
+        "max_takeoff_weight_kg": 2500.0,
+        "tlof_ids": [
+          "TLOF-01"
+        ],
+        "stand_ids": []
+      }
+    },
+    {
+      "vertiport_id": "ES-VPT-ALB-07",
+      "prim_name": "Vertipuerto_07",
+      "name": "Alborea - Punto de Entrega Rural (07)",
+      "operator_id": "ESP-VPT-UCLM-ALB",
+      "operational_status": "ACTIVE",
+      "model_name": "VPT_Pad_Delivery_D2",
+      "location": {
+        "latitude_deg": 39.2792704,
+        "longitude_deg": -1.3913775,
+        "elevation_amsl_m": 713.01,
+        "elevation_hae_m": 763.66,
+        "orientation_deg": 0.0,
+        "local_enu_xyz": [
+          380.0,
+          80.0,
+          14.0
+        ]
+      },
+      "physical_characteristics": {
+        "d_value_meters": 2.0,
+        "max_takeoff_weight_kg": 50.0,
+        "tlof_ids": [
+          "TLOF-01"
+        ],
+        "stand_ids": []
+      }
+    }
+  ]
+}
