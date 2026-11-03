@@ -1,0 +1,12 @@
+\begin{table}
+\caption{Quantitative Tracking Performance and Actuator Latency Robustness ($N=256$ Parallel Envs).}
+\label{tab:latency_results}
+\begin{tabular}{llllllll}
+\toprule
+Controller & Actuator Delay & Position RMSE (m) & Velocity Score & Attitude Stability & Bad Attitude (%) & Min Altitude (%) & Survival Rate (%) \\
+\midrule
+Proposed PPO & 0 ms (Ideal) & 4.25 ± 2.00 & 5.01 & 1.28 & 6.8% & 3.3% & 89.9% \\
+Proposed PPO & 50 ms (Delayed) & 4.12 ± 2.02 & 4.60 & 1.12 & 17.9% & 7.7% & 74.4% \\
+\bottomrule
+\end{tabular}
+\end{table}

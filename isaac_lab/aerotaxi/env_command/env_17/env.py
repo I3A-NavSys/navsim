@@ -139,6 +139,14 @@ class UAVactionTerm(ActionTerm):
         thrust_scale = 0.5
         self._raw_actions = self.omega_hover * (1.0 + thrust_scale * actions)
         self._raw_actions = torch.clamp(self._raw_actions, min=0.0)
+        # --- LATENCIA CONDICIONAL (Solo actúa si se define explícitamente en la celda) ---
+        if "AEROTAXI_ACTUATOR_ALPHA" in os.environ:
+            alpha = float(os.environ["AEROTAXI_ACTUATOR_ALPHA"])
+            if alpha < 1.0:
+                if not hasattr(self, "_delayed_actions"):
+                    self._delayed_actions = self._raw_actions.clone()
+                self._raw_actions = alpha * self._delayed_actions + (1.0 - alpha) * self._raw_actions
+                self._delayed_actions = self._raw_actions.clone()
         # # ------------------------------------------------------
 
         kFT_N = torch.tensor(4.6544, device=self.device)
@@ -560,7 +568,15 @@ class UAVcommandTerm(CommandTerm):
         max_yaw_rate_change = 0.25
         self.target_yaw[env_ids] = (torch.rand(len(env_ids), device=self.device) - 0.5) * 2.0 * max_yaw_rate_change
         self.target_yaw_prev[env_ids] = self.target_yaw[env_ids].clone()
-        self.lookahead_time[env_ids] = torch.rand(len(env_ids), device=self.device) * 0.5 + 0.4
+        # self.lookahead_time[env_ids] = torch.rand(len(env_ids), device=self.device) * 0.5 + 0.4
+        h_mode = os.environ.get("HORIZON_MODE", "stochastic")
+        if h_mode == "fixed":
+            self.lookahead_time[env_ids] = 0.65
+        elif h_mode == "none":
+            self.lookahead_time[env_ids] = 0.0
+        else:
+            # Comportamiento normal (experimentos 1 al 35 y multi-semilla)
+            self.lookahead_time[env_ids] = torch.rand(len(env_ids), device=self.device) * 0.5 + 0.4
         # posiciones futuras
         # pos = self.target_pos[env_ids].clone()
         # vel = self.target_vel[env_ids].clone()
