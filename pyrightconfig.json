@@ -1,0 +1,5 @@
+{
+  "typeCheckingMode": "off",
+//   "include": ["src"],
+//   "exclude": ["tests", "docs"]
+}   
