@@ -32,7 +32,7 @@ class UAVControl:
         
         # Load policy for IA control
         # self.policy_path = f"{project_root_path}/fleet/airtaxi/ia_control_policy.pt"
-        self.policy_path = "/home/usuario/Escritorio/UCLM/navsim/isaacsim_extensions/uav_control_bridge/uav_control_bridge_python/policy.pt"
+        self.policy_path = "/home/ertete/Escritorio/UCLM/TRABAJO/navsim/isaacsim_extensions/uav_control_bridge/uav_control_bridge_python/policy.pt"
         self.policy_actions_scale = 1
 
         with open(self.policy_path, 'rb') as f:
