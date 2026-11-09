@@ -32,4 +32,4 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # PYTHON_BIN="$(which python)"
 
 # ptyxis --new-window -- bash -c "echo '=== Validator Script ==='; echo ''; /bin/python3.14 ${SCRIPT_DIR}/validation/validation_dtb.py; exec bash"
-# ptyxis --new-window -- bash -c "echo '=== Validator Script ==='; echo ''; ${SCRIPT_DIR}/../../../.venv/bin/python ${SCRIPT_DIR}/validation/validation_dtb.py; exec bash"
+ptyxis --new-window -- bash -c "echo '=== Validator Script ==='; echo ''; ${SCRIPT_DIR}/../../.venv/bin/python ${SCRIPT_DIR}/validation/validation_dtb.py; exec bash"

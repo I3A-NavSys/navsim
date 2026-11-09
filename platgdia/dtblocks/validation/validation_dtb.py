@@ -7,7 +7,7 @@ from os import path
 
 
 current_file_path = path.dirname(__file__)
-project_root_path = path.abspath(path.join(current_file_path, "../../../.."))
+project_root_path = path.abspath(path.join(current_file_path, "../../.."))
 if project_root_path not in sys.path:
     sys.path.append(project_root_path)
 
@@ -80,7 +80,8 @@ env_path = f"{project_root_path}/uspace/platgdia/dtblocks/.env"
 load_dotenv(env_path)
 
 # Get Configuration Variables
-MQTT_HOST_ADDRESS = os.getenv("MQTT_HOST_ADDRESS")
+# MQTT_HOST_ADDRESS = os.getenv("MQTT_HOST_ADDRESS")
+MQTT_HOST_ADDRESS = "localhost"
 MQTT_HOST_PORT = int(os.getenv("MQTT_HOST_PORT", "1883"))
 
 MAX_MISSION_MNG = int(os.getenv("MAX_MISSION_MNG", 1))
@@ -107,7 +108,7 @@ LOCATION = parse_str_list(os.getenv("LOCATION", '[[100, 500], [-600, -200]]'))
 missions = {}
 # {grid: list[tuple(int, int, str, int)], flightplans: list[dict[str, Any]]}
 airspace = {"grid": [], "flightplans": []}
-results_file_path = f"{project_root_path}/uspace/platgdia/dtblocks/validation"
+results_file_path = f"{project_root_path}/platgdia/dtblocks/validation"
 
 # Build MQTT Client
 mqtt_client = MQTTService.build_client("VALIDATOR")
