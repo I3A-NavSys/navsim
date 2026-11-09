@@ -1,3 +1,14 @@
+"""Evaluación de políticas: UN episodio completo por entorno, vectorizada.
+
+Sustituye a la rama `else:` de play.py (bucle de 1000 pasos con contador propio).
+
+Garantías
+---------
+* Cada entorno aporta exactamente un episodio: o termina por fallo (se anota la causa) o llega a time-out (1250 pasos).
+* Nunca se registran estados posteriores al reset (en la versión anterior el mismo env_id mezclaba episodios).
+* Posición del dron = centro de masas (root_com_pos_w), la misma magnitud que usan reward y target.
+* success = time-out sin terminación por fallo. Todas las tasas son por episodio, no snapshots de `info["log"]`.
+"""
 from __future__ import annotations
 
 import os
@@ -27,9 +38,21 @@ def evaluate_first_episode(env, policy, obs, *, max_steps: int, record_states: b
     ret = torch.zeros(n, device=dev)
     term_sum = torch.zeros(n, len(rterms), device=dev)
     frames, masks = [], []
+    prev_a = None
+    ar_sum = torch.zeros(n, device=dev)       # suma de ||a_t - a_{t-1}|| mientras el episodio vive
+    ar_cnt = torch.zeros(n, device=dev)
+    sat_sum = torch.zeros(n, device=dev)      # pasos con algún rotor saturado (|a| >= 0.99)
 
     for t in range(max_steps):
         actions = policy(obs)
+        w = alive.float()                                  # entornos vivos ANTES de este paso
+        if actions is not None:
+            a = actions.clamp(-1.0, 1.0)                   # lo que realmente aplica el entorno
+            if prev_a is not None:
+                ar_sum += (a - prev_a).norm(dim=1) * w
+                ar_cnt += w
+            sat_sum += (a.abs() >= 0.99).any(dim=1).float() * w
+            prev_a = a
         obs, rew, done, info = env.step(actions)
         done = done.bool()
         # --- estado POST-step: válido solo para entornos vivos que NO han terminado en este paso ---
@@ -39,7 +62,6 @@ def evaluate_first_episode(env, policy, obs, *, max_steps: int, record_states: b
             frames.append(torch.cat([pos, cmd.target_pos, asset.data.root_com_lin_vel_w, cmd.target_vel], dim=1).float().cpu())
             masks.append(valid.cpu())
         # --- recompensas (el paso terminal SÍ cuenta: se calcula antes del reset) ---
-        w = alive.float()
         ret += rew.reshape(-1) * w
         step_r = getattr(uenv.reward_manager, "_step_reward", None)       # (n, n_terms), ponderada, en unidades/seg
         if step_r is not None:
@@ -69,6 +91,8 @@ def evaluate_first_episode(env, policy, obs, *, max_steps: int, record_states: b
             "cause": [TERMS[c] if c >= 0 else ("timeout" if not f else "other")
                       for c, f in zip(cause.cpu().tolist(), failed.cpu().tolist())],
             "return": ret.cpu().numpy(),
+            "action_rate": (ar_sum / ar_cnt.clamp(min=1.0)).cpu().numpy(),          # media de ||Δa|| por paso (suavidad)
+            "sat_frac": (sat_sum / steps.clamp(min=1).float()).cpu().numpy(),        # fracción de pasos con saturación
             **{f"ret_{name}": (term_sum[:, i] / uenv.max_episode_length_s).cpu().numpy() for i, name in enumerate(rterms)},
         }),
         "traj": None, "dt": dt,
@@ -104,6 +128,8 @@ def append_play_row(res: dict, run_name: str, num_envs: int, checkpoint, csv_pat
            "mean_Episode_Termination/time_out": float((s.cause == "timeout").mean())}
     for name in TERMS:
         row[f"mean_Episode_Termination/{name}"] = float((s.cause == name).mean())
+    row["action_rate"] = float(s["action_rate"].mean())
+    row["sat_frac"] = float(s["sat_frac"].mean())
     for c in [c for c in s.columns if c.startswith("ret_")]:
         row[f"mean_Episode_Reward/{c[4:]}"] = float(s[c].mean())
     for k in OVERRIDE_VARS:

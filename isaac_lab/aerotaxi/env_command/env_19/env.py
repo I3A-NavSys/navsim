@@ -33,13 +33,14 @@ import isaaclab.utils.math as math_utils
 from . import rewards as my_rewards
 from . import terminations as my_terminations
 from .flight_plan import FlightPlan
-# ruido gaussiano para la regularización -- Teresa ---
+# -- Teresa ---
+# ruido gaussiano para la regularización 
 from isaaclab.utils.noise import GaussianNoiseCfg
 # para las flechas
 from isaaclab.utils.math import quat_from_matrix
 # para las dinámicas, viento y lag en actuadores
-from .dynamics_utils import ReferenceGenerator, ActuatorLag, OUWind 
 from typing import Sequence
+from .dynamics_utils import ReferenceGenerator, ActuatorLag, OUWind, rotor_wrench
 # ---------------------------------------------------
 
 # |---------------------------------------------------------|
@@ -122,6 +123,14 @@ class UAVactionTerm(ActionTerm):
         u_hover = torch.clamp(u_hover, min=0.0)
 
         self.omega_hover = torch.sqrt(u_hover)
+        try:
+            d = self._asset.data
+            print("[PHYS] body_names:", self._asset.body_names, flush=True)
+            print("[PHYS] masa por link (kg):", d.default_mass[0].tolist(), flush=True)
+            print("[PHYS] inercia de la base (Ixx..Izz):", d.default_inertia[0, 0].tolist(), flush=True)
+            print("[PHYS] pos de cada link respecto a la raíz (m):", (d.body_link_pos_w[0] - d.root_link_pos_w[0]).tolist(), flush=True)
+        except Exception as e:
+            print("[PHYS] diagnóstico no disponible:", e, flush=True)
 
         tau_ms = _env_override("AEROTAXI_TAU_MS", float, None)          # sustituye a AEROTAXI_ACTUATOR_ALPHA
         tau_rng = cfg.actuator_tau_range_s if tau_ms is None else (tau_ms * 1e-3, tau_ms * 1e-3)
@@ -208,13 +217,18 @@ class UAVactionTerm(ActionTerm):
         zero_torque = torch.zeros_like(torque)
         
         # Build processed actions tensor (vectorized)
-        self._processed_actions[:, 0] = FD  # Drag force
-        self._processed_actions[:, 1] = FT_all[:, 0]  # FT_NW
-        self._processed_actions[:, 2] = FT_all[:, 1]  # FT_NE
-        self._processed_actions[:, 3] = FT_all[:, 2]  # FT_SW
-        self._processed_actions[:, 4] = FT_all[:, 3]  # FT_SE
-        self._processed_actions[:, 5] = torque  # Combined torque
-        self._processed_actions[:, 6:] = zero_torque.unsqueeze(1).expand(-1, 4, -1)  # Zero torques
+        thrust_force, thrust_torque = rotor_wrench(thrust_z, self.positions[:, 1:5, :2])
+        self._processed_actions[:, 0] = FD + thrust_force
+        self._processed_actions[:, 1:5] = 0.0
+        self._processed_actions[:, 5] = torque + thrust_torque
+        self._processed_actions[:, 6:] = 0.0
+        # self._processed_actions[:, 0] = FD  # Drag force
+        # self._processed_actions[:, 1] = FT_all[:, 0]  # FT_NW
+        # self._processed_actions[:, 2] = FT_all[:, 1]  # FT_NE
+        # self._processed_actions[:, 3] = FT_all[:, 2]  # FT_SW
+        # self._processed_actions[:, 4] = FT_all[:, 3]  # FT_SE
+        # self._processed_actions[:, 5] = torque  # Combined torque
+        # self._processed_actions[:, 6:] = zero_torque.unsqueeze(1).expand(-1, 4, -1)  # Zero torques
 
     def apply_actions(self):
         self._asset.root_physx_view.apply_forces_and_torques_at_position(
@@ -861,4 +875,6 @@ class UAVEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.dt = 0.005  # 100 Hz para las físicas
         self.sim.render_interval = self.decimation
         self.commands.vel_command.resampling_time_range = (self.episode_length_s, self.episode_length_s)
-        
+        if os.environ.get("AEROTAXI_REWARD_VEL", "") == "speed":
+            self.rewards.rew_track_vel3.func = my_rewards.rew_track_vel_err
+            print("[REWARD-OVERRIDE] rew_track_vel3 -> rew_track_vel_err", flush=True)

@@ -3,9 +3,8 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class Command15PPORunnerCfg(RslRlOnPolicyRunnerCfg):
-    seed = 42
-    num_steps_per_env = 128
-    max_iterations = 4000
+    num_steps_per_env = 128 
+    max_iterations = 4001
     save_interval = 100
     experiment_name = "command15"
     run_name = "ppo_random_command15_33"
@@ -13,7 +12,6 @@ class Command15PPORunnerCfg(RslRlOnPolicyRunnerCfg):
     empirical_normalization = True
     csv_path_metrics = "C:/Users/Teresa/Documents/GitHub/navsim/tmp/tmpTeresa/resultados_grid_command_v19"
     callbacks = True
-    early_stopping_patience = 500      
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=0.5,
         actor_hidden_dims=[128, 64],

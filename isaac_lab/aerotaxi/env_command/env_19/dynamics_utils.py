@@ -3,6 +3,7 @@ testear en CPU (ver test_dynamics_utils.py) y citar/publicar de forma independie
 
 Contenido
 ---------
+rotor_wrench       : fuerza y momento netos de los empujes de rotor respecto al CoM (todo se aplica sobre la base).
 ReferenceGenerator : punto guia con aceleracion acotada, valla con signo correcto y familias
                      analiticas (circle / lemniscate) para evaluacion fuera de distribucion.
 ActuatorLag        : filtro de primer orden por entorno (constante de tiempo tau), con reset por episodio.
@@ -83,6 +84,29 @@ class OUWind:
             k = self.dt / self.gust_tau_s
             self.gust += -self.gust * k + self.gust_std * math.sqrt(2.0 * k) * torch.randn_like(self.gust)
         return self.mean + self.gust
+
+
+# --------------------------------------------------------------------------------------
+# Wrench de los rotores
+# --------------------------------------------------------------------------------------
+def rotor_wrench(thrust_z: torch.Tensor, rotor_xy: torch.Tensor):
+    """Fuerza y momento NETOS de los empujes de rotor respecto al CoM (origen del cuerpo).
+
+    thrust_z : (N, 4) empuje de cada rotor a lo largo de +z del cuerpo [N]
+    rotor_xy : (N, 4, 2) o (4, 2) posición (x, y) de cada rotor respecto al CoM [m]
+    Devuelve (force (N,3), torque (N,3)). Con F=(0,0,Fz):  r x F = (y*Fz, -x*Fz, 0)  (la cota z del rotor no interviene).
+
+    Se aplica TODO sobre el link base. Antes cada empuje se aplicaba al link del rotor en (x,y,z) expresado en el marco
+    LOCAL de ese link, que ya está desplazado a la posición del rotor -> el brazo de palanca podía quedar duplicado.
+    Aquí los brazos son exactamente los del modelo (los mismos que usa la matriz A del hover).
+    """
+    x, y = rotor_xy[..., 0], rotor_xy[..., 1]
+    force = torch.zeros(thrust_z.shape[0], 3, device=thrust_z.device, dtype=thrust_z.dtype)
+    torque = torch.zeros_like(force)
+    force[:, 2] = thrust_z.sum(dim=1)
+    torque[:, 0] = (y * thrust_z).sum(dim=1)
+    torque[:, 1] = -(x * thrust_z).sum(dim=1)
+    return force, torque
 
 
 # --------------------------------------------------------------------------------------

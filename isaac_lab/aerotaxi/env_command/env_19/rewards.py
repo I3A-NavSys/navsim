@@ -13,6 +13,14 @@ if TYPE_CHECKING:
 #     roll, pitch, _ = math_utils.euler_xyz_from_quat(asset.data.root_com_quat_w)
 #     angle_term = torch.exp(-3.0 * (roll**2 + pitch**2))
 #     return angle_term
+def rew_track_vel_err(env: ManagerBasedRLEnv, std: float = 1.5):
+    """ABLACIÓN del reward de velocidad: penaliza el ERROR de velocidad (módulo + dirección), no solo la dirección.
+    Mismo rango [0, 1] que rew_track_vel3: el peso (8.0) y la escala de los radares no cambian."""
+    term = env.command_manager.get_term("vel_command")
+    target_vel = term.target_vel[:, :3]
+    vel = env.scene["aerotaxi"].data.root_com_lin_vel_w[:, :3]
+    return torch.exp(-torch.sum((vel - target_vel) ** 2, dim=1) / std ** 2)
+
 def rew_attitude_stability3(env):
     asset = env.scene["aerotaxi"]
     roll, pitch, _ = math_utils.euler_xyz_from_quat(asset.data.root_com_quat_w)
