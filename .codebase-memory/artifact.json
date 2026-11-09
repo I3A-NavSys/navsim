@@ -1,11 +1,11 @@
 {
     "schema_version": 2,
-    "commit": "8e564cc336527b4a2023e29edca9a1d55d52ff50",
-    "indexed_at": "2026-11-09T07:17:34Z",
+    "commit": "b9dec8009ca25f952c7ca38f44d4801607c61ecd",
+    "indexed_at": "2026-11-09T07:58:58Z",
     "project": "home-ertete-Escritorio-UCLM-TRABAJO-navsim",
-    "nodes": 1948,
-    "edges": 7324,
+    "nodes": 1950,
+    "edges": 7343,
     "original_size": 9240576,
-    "compressed_size": 1529438,
+    "compressed_size": 1530132,
     "compression_level": 3
 }
