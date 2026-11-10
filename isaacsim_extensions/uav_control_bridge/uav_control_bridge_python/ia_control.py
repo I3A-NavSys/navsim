@@ -63,9 +63,11 @@ class UAVControl:
         self.rotors_vel = np.zeros((self.amount_uavs, 4), dtype=np.float32)
 
         # Aerodynamic parameters
+        self.thrust_scale = 0.5
         self.thrust_coeffs = np.array([4.6544, 4.6544, 0.9309, 0.9309], dtype=np.float32)
         self.drag_force_coeffs = -np.array([3.0625, 4.0000, 7.8400], dtype=np.float32)
         self.drag_moment_coeffs = np.array([5.9683, 5.9683, 1.4921, 1.4921], dtype=np.float32)
+        self.drag_moment_coeffs_u = np.array([5.9683, -5.9683, 1.4921, -1.4921], dtype=np.float32)
         self.friction_moment_coeffs = -np.array([37.4010, 25.8580, 20.2514], dtype=np.float32)
 
         # Rotor positions relative to body frame [x, y, z]
@@ -96,7 +98,8 @@ class UAVControl:
             self.policy_path = policy_path
         else:
             current_dir = os.path.dirname(os.path.abspath(__file__))
-            self.policy_path = os.path.join(current_dir, "policy.pt")
+            # self.policy_path = os.path.join(current_dir, "policy.pt")
+            self.policy_path = os.path.join(current_dir, "policy2.pt")
 
         self.policy_actions_scale = policy_actions_scale
         self.policy = None
@@ -114,6 +117,7 @@ class UAVControl:
         else:
             carb.log_warn(f"[UAVControl IA] Policy file not found at {self.policy_path}.")
 
+        self.omega_hover = self.compute_omega_hover()
     # -----------------------
     # -- Control Functions --
     # -----------------------
@@ -178,11 +182,10 @@ class UAVControl:
             running_data[6],
         )
 
-        cmd_world_linear_vel, cmd_yaw_rotation = self.get_command(
+        cmd_world_linear_vel, yaw_error = self.get_command(
             expected_pos,
             expected_vel,
             self.positions[uav_physics_indices],
-            self.world_linear_vels[uav_physics_indices],
             self.eulers[uav_physics_indices, 2],
             running_data[7],
             2.0,
@@ -193,9 +196,11 @@ class UAVControl:
             self.orientations[uav_physics_indices],
         )
 
-        return cmd_local_linear_vel, cmd_yaw_rotation
+        lookahead_pos = expected_pos + 0.65 * expected_vel
 
-    def servo_control(self, uav_physics_indices, command_linear_vel, command_angular_vel, step_size: float):
+        return cmd_local_linear_vel, yaw_error, lookahead_pos
+
+    def servo_control(self, uav_physics_indices, cmd_local_linear_vel, yaw_error, lookahead_pos):
         """
         Computes rotor angular velocities using an AI TorchScript policy model.
         Prepares a 16-element observation batch from telemetry and navigation commands.
@@ -205,44 +210,40 @@ class UAVControl:
             return
 
         if self.policy is not None:
-            # Build commands batch (num_uavs, 4): [cmd_vx, cmd_vy, cmd_vz, cmd_rot_z]
-            commands_batch = np.empty((num_uavs, 4), dtype=np.float32)
-            commands_batch[:, :3] = command_linear_vel
-            if np.ndim(command_angular_vel) == 0:
-                commands_batch[:, 3] = command_angular_vel
-            else:
-                commands_batch[:, 3] = np.asarray(command_angular_vel, dtype=np.float32).reshape(num_uavs)
-
-            local_lin_vels_active = self.local_linear_vels[uav_physics_indices]
-            local_ang_vels_active = self.local_angular_vels[uav_physics_indices]
-            eulers_active = self.eulers[uav_physics_indices]
-
             # Linear and angular velocity tracking errors
-            lin_vel_errors = local_lin_vels_active - commands_batch[:, :3]
-            ang_vel_errors = local_ang_vels_active[:, 2] - commands_batch[:, 3]
+            # lin_vel_errors = local_lin_vels_active - commands_batch[:, :3]
+            # ang_vel_errors = local_ang_vels_active[:, 2] - commands_batch[:, 3]
 
             # Construct 16-element observation batch:
-            # [0:3]   local_lin_vel (3)
-            # [3:6]   local_ang_vel (3)
-            # [6]     roll (1)
-            # [7]     pitch (1)
-            # [8:12]  commands (4)
-            # [12:15] lin_vel_error (3)
-            # [15]    ang_vel_error (1)
+            # [0:3]     local_lin_vel (3)
+            # [3:6]     local_ang_vel (3)
+            # [6:9]     projected_gravity (3)
+            # [9:12]    target_vel (3)
+            # [12:15]   target_future (3)
+            # [15]      yaw_error (1)
             observations_batch = np.empty((num_uavs, 16), dtype=np.float32)
-            observations_batch[:, 0:3] = local_lin_vels_active
-            observations_batch[:, 3:6] = local_ang_vels_active
-            observations_batch[:, 6] = eulers_active[:, 0]
-            observations_batch[:, 7] = eulers_active[:, 1]
-            observations_batch[:, 8:12] = commands_batch
-            observations_batch[:, 12:15] = lin_vel_errors
-            observations_batch[:, 15] = ang_vel_errors
+            
+            observations_batch[:, 0:3] = self.local_linear_vels[uav_physics_indices]
+            observations_batch[:, 3:6] = self.local_angular_vels[uav_physics_indices]
+            observations_batch[:, 6:9] = self.global_to_local_velocity(
+                np.array([0.0, 0.0, -1.0], dtype=np.float32),
+                self.orientations[uav_physics_indices],
+            )
+            observations_batch[:, 9:12] = cmd_local_linear_vel
+            observations_batch[:, 12:15] = self.global_to_local_velocity(
+                lookahead_pos - self.positions[uav_physics_indices],
+                self.orientations[uav_physics_indices],
+            )
+            observations_batch[:, 15] = yaw_error
 
             # Forward pass through AI policy
             obs_tensor = torch.as_tensor(observations_batch, device=self.torch_device)
             with torch.no_grad():
                 raw_actions = self.policy(obs_tensor)
-                rotors_vel_batch = np.abs(raw_actions.cpu().numpy()) * self.policy_actions_scale
+
+            # Process actions
+            actions = torch.nan_to_num(torch.clamp(raw_actions, -1.0, 1.0), nan=0.0)
+            rotors_vel_batch = torch.clamp(self.omega_hover * (1.0 + self.thrust_scale * actions), min=0.0).cpu().numpy()
 
             # Saturate commanded rotor velocities in-place [w_min, w_max]
             np.clip(
@@ -351,7 +352,7 @@ class UAVControl:
 
         self.imu()
 
-        cmd_local_linear_vel, cmd_yaw_rotation = self.navigation(
+        cmd_local_linear_vel, yaw_error, lookahead_pos = self.navigation(
             uav_physics_indices,
             current_time,
             fp_times,
@@ -364,7 +365,7 @@ class UAVControl:
             fp_headings,
         )
 
-        self.servo_control(uav_physics_indices, cmd_local_linear_vel, cmd_yaw_rotation, step_size)
+        self.servo_control(uav_physics_indices, cmd_local_linear_vel, yaw_error, lookahead_pos)
         self.compute_dynamics(uav_physics_indices)
         self.apply_dynamics(uav_physics_indices)
         self.reset_dynamics(uav_physics_indices)
@@ -389,6 +390,37 @@ class UAVControl:
     # -------------------------
     # -- Auxiliary Functions --
     # -------------------------
+    def compute_omega_hover(self):
+        mass = 2000
+        mg = mass * 9.81
+
+        # Construir matriz A para cada env
+        A = torch.zeros(self.amount_uavs, 4, 4, device=self.torch_device)
+
+        # Fuerza total
+        A[:, 0, :] = torch.as_tensor(self.thrust_coeffs, device=self.torch_device)
+
+        # Momento X (roll)
+        A[:, 1, :] = torch.as_tensor(self.rotor_ry, device=self.torch_device) * torch.as_tensor(self.thrust_coeffs, device=self.torch_device)
+
+        # Momento Y (pitch)
+        A[:, 2, :] = -torch.as_tensor(self.rotor_rx, device=self.torch_device) * torch.as_tensor(self.thrust_coeffs, device=self.torch_device)
+
+        # Momento Z (yaw)
+        A[:, 3, :] = torch.as_tensor(self.drag_moment_coeffs_u, device=self.torch_device)
+
+        # Vector objetivo
+        b = torch.zeros(self.amount_uavs, 4, device=self.torch_device)
+        b[:, 0] = mg
+
+        # Resolver sistema
+        u_hover = torch.linalg.solve(A, b)
+
+        # Asegurar positivo
+        u_hover = torch.clamp(u_hover, min=0.0)
+
+        return torch.sqrt(u_hover)
+
     @staticmethod
     def _fast_cross(a: np.ndarray, b: np.ndarray) -> np.ndarray:
         """Fast 3D cross-product on 2D arrays avoiding np.cross overhead."""
@@ -550,7 +582,6 @@ class UAVControl:
         expected_pos: np.ndarray,
         expected_vel: np.ndarray,
         current_pos: np.ndarray,
-        current_lin_vel: np.ndarray,
         current_yaw: np.ndarray,
         headings: np.ndarray,
         t_to_solve: float,
@@ -569,7 +600,7 @@ class UAVControl:
 
         yaw_error = target_yaw - current_yaw
         yaw_error = (yaw_error + np.pi) % (2.0 * np.pi) - np.pi
-        command_yaw_rotation = yaw_error / t_to_solve
+        yaw_error = yaw_error / np.pi
 
-        return command_linear_vel, command_yaw_rotation
+        return command_linear_vel, yaw_error
 

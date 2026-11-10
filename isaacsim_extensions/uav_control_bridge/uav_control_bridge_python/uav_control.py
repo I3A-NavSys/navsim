@@ -537,6 +537,7 @@ class UAVControl:
         headings_copy = np.copy(headings)
         zero_mask = (headings_copy[:, 0] == 0.0) & (headings_copy[:, 1] == 0.0)
         headings_copy[zero_mask] = expected_vel[zero_mask, :2]
+        zero_mask = (headings_copy[:, 0] == 0.0) & (headings_copy[:, 1] == 0.0)
 
         target_yaw = np.arctan2(headings_copy[:, 1], headings_copy[:, 0])
         target_yaw[zero_mask] = current_yaw[zero_mask]
