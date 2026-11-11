@@ -22,9 +22,14 @@ OVERRIDE_VARS = ("AEROTAXI_TAU_MS", "AEROTAXI_WIND_MS", "AEROTAXI_GUST_STD", "AE
 
 @torch.inference_mode()
 def evaluate_first_episode(env, policy, obs, *, max_steps: int, record_states: bool = False, asset_name: str = "aerotaxi",
-                           command_name: str = "vel_command"):
+                           command_name: str = "vel_command", sat_thresholds=(0.42, 0.42, 0.99, 0.99)):
+    """sat_thresholds: acción a partir de la cual cada rotor está en su LÍMITE FÍSICO por arriba.
+    Con el clamp de 12000 N y la masa REAL del USD (2000 kg -> hover delantero 8175 N), los rotores delanteros saturan en
+    a = 2*(sqrt(12000/8175)-1) = 0.42 (no en 1.0); los traseros (hover 1635 N, máx. 3679 N) solo en el tope de la acción.
+    Por abajo se usa a <= -0.99. (Hasta ahora el umbral era 0.31, calculado con 2200 kg por error: sobrestimaba.)"""
     uenv = env.unwrapped
     dev, n = uenv.device, uenv.num_envs
+    sat_hi = torch.tensor(sat_thresholds, device=dev)
     asset = uenv.scene[asset_name]
     cmd = uenv.command_manager.get_term(command_name)
     origins = uenv.scene.env_origins
@@ -41,7 +46,7 @@ def evaluate_first_episode(env, policy, obs, *, max_steps: int, record_states: b
     prev_a = None
     ar_sum = torch.zeros(n, device=dev)       # suma de ||a_t - a_{t-1}|| mientras el episodio vive
     ar_cnt = torch.zeros(n, device=dev)
-    sat_sum = torch.zeros(n, device=dev)      # pasos con algún rotor saturado (|a| >= 0.99)
+    sat_sum = torch.zeros(n, device=dev)      # pasos con algún rotor en su límite físico
 
     for t in range(max_steps):
         actions = policy(obs)
@@ -51,7 +56,7 @@ def evaluate_first_episode(env, policy, obs, *, max_steps: int, record_states: b
             if prev_a is not None:
                 ar_sum += (a - prev_a).norm(dim=1) * w
                 ar_cnt += w
-            sat_sum += (a.abs() >= 0.99).any(dim=1).float() * w
+            sat_sum += ((a >= sat_hi) | (a <= -0.99)).any(dim=1).float() * w
             prev_a = a
         obs, rew, done, info = env.step(actions)
         done = done.bool()
@@ -91,8 +96,9 @@ def evaluate_first_episode(env, policy, obs, *, max_steps: int, record_states: b
             "cause": [TERMS[c] if c >= 0 else ("timeout" if not f else "other")
                       for c, f in zip(cause.cpu().tolist(), failed.cpu().tolist())],
             "return": ret.cpu().numpy(),
+            "sat_thr_front": float(sat_thresholds[0]),                                # umbral usado (para distinguir evaluaciones antiguas)
             "action_rate": (ar_sum / ar_cnt.clamp(min=1.0)).cpu().numpy(),          # media de ||Δa|| por paso (suavidad)
-            "sat_frac": (sat_sum / steps.clamp(min=1).float()).cpu().numpy(),        # fracción de pasos con saturación
+            "sat_frac": (sat_sum / steps.clamp(min=1).float()).cpu().numpy(),        # fracción de pasos con algún rotor en su límite físico
             **{f"ret_{name}": (term_sum[:, i] / uenv.max_episode_length_s).cpu().numpy() for i, name in enumerate(rterms)},
         }),
         "traj": None, "dt": dt,
