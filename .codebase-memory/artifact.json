@@ -1,11 +1,11 @@
 {
     "schema_version": 2,
-    "commit": "8a2e3d11287bdd12a6d24a6003549daad1a380b4",
-    "indexed_at": "2026-11-10T13:33:08Z",
-    "project": "home-ertete-Escritorio-UCLM-TRABAJO-navsim",
-    "nodes": 3755,
-    "edges": 8144,
-    "original_size": 11141120,
-    "compressed_size": 1676916,
+    "commit": "68bce09dc21732ab2968fc8206dad6f0e2677905",
+    "indexed_at": "2026-11-12T12:50:55Z",
+    "project": "home-usuario-Escritorio-UCLM-navsim",
+    "nodes": 3406,
+    "edges": 7982,
+    "original_size": 10223616,
+    "compressed_size": 1644867,
     "compression_level": 3
 }

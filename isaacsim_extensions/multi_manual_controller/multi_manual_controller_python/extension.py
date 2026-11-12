@@ -484,7 +484,7 @@ class MultiManualController(omni.ext.IExt):
         async def create_viewports_safely():
             existing_names = [vp.name for vp in ViewportWindow.get_instances()]
 
-            for i in range(3):
+            for i in range(1):
                 viewport_name = f"Camera_{i + 1}"
                 if viewport_name in existing_names:
                     carb.log_warn(f"[MultiManualController] Viewport '{viewport_name}' already exists.")

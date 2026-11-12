@@ -8,8 +8,8 @@ import omni.physx
 from isaacsim.core.prims import RigidPrim
 from isaacsim.util.debug_draw import _debug_draw
 
-# from .uav_control import UAVControl
-from .ia_control import UAVControl
+from .uav_control import UAVControl
+# from .ia_control import UAVControl
 # from flight_plan.flight_plan_new import FlightPlan
 from flight_plan.flight_plan import FlightPlan
 
@@ -50,22 +50,22 @@ class UAVControlBridge(omni.ext.IExt):
 
         times = [0, 15, 30, 45, 60, 100, 115]
         pos = np.array([
-            [0,0,30],
+            [0,0,1.3],
             [50,0,30],
             [50,-50,30],
             [0,-75,50],
             [50,-100,30],
             [50,0,30],
-            [0,0,30],
+            [0,0,1.3],
         ])
         vel = np.array([
-            [6,0,0],
-            [6,0,0],
-            [-6,0,0],
-            [0,-3,0],
-            [6,0,0],
-            [-6,0,0],
-            [0,0,-3]
+            [0,0,2],
+            [10,0,0],
+            [-10,0,0],
+            [0,-5,0],
+            [10,0,0],
+            [-10,0,0],
+            [0,0,-1]
         ])
     
         fp = FlightPlan()
@@ -75,6 +75,9 @@ class UAVControlBridge(omni.ext.IExt):
                 pos=pos[i],
                 vel=vel[i]
             )
+
+        fp.waypoints[0].heading = np.array([1, 0])
+        
         fp.connect_waypoints()
         # fp.make_plan_feasible(is_time_key_aspect=True, reconnect_waypoints=True)
 
