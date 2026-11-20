@@ -46,10 +46,10 @@ def are_nan_or_exploded(env: ManagerBasedRLEnv) -> torch.Tensor:
     is_nan = torch.any(torch.isnan(pos_w), dim=1)
     
     # 2. Detectar explosión por posición (si sale volando a kilómetros de distancia)
-    # Si el dron supera los 200m de altura o 200m de radio, algo va mal
+    # Si el dron supera los 220m de altura o 220m de radio, algo va mal -> se aumenta de 200 a 220 porque el cubo es mayor
     pos_local = pos_w - env.scene.env_origins
-    is_too_far = torch.norm(pos_local[:, :2], dim=1) > 200.0
-    is_too_high = pos_local[:, 2] > 200.0
+    is_too_far = torch.norm(pos_local[:, :2], dim=1) > 220.0
+    is_too_high = pos_local[:, 2] > 220.0
     
     # 3. Detectar explosión por velocidad
     is_too_fast = torch.norm(lin_vel, dim=1) > 100.0

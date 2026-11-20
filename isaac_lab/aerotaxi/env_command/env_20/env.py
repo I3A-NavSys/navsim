@@ -517,7 +517,9 @@ class UAVcommandTerm(CommandTerm):
             fence_margin=cfg.fence_margin,
             z_limits=cfg.z_limits,
             vmax_xy=cfg.vmax_xy,
-            mode=mode
+            mode=mode,
+            t_ramp=cfg.t_ramp,
+            yaw_rate_max=cfg.yaw_rate_max,
         )
         self.lookahead_time = torch.zeros(self.num_envs, device=self.device)
         self._command = torch.zeros(self.num_envs, 3, device=self.device)
@@ -639,14 +641,16 @@ class UAVcommandTermCfg(CommandTermCfg):
     horizon_mode: str = "stochastic"       # "stochastic" | "fixed" | "none"
     lookahead_range_s: tuple = (0.4, 0.9)
     fixed_lookahead_s: float = 0.65
-    a_max: float = 4.0                     # antes 1.5
-    z_limits: tuple = (8.0, 60.0)         # antes (8.0, 20.0)
-    speed_range: tuple = (3.0, 19)       # rango de velocidad horizontal meta (m/s)
-    vmax_xy: float = 19                 # tope de velocidad horizontal (m/s)
+    a_max: float = 2.5                     
+    z_limits: tuple = (20.0, 65.0)       # antes (8.0, 20.0)
+    speed_range: tuple = (3.0, 20)       # rango de velocidad horizontal meta (m/s)
+    vmax_xy: float = 20                 # tope de velocidad horizontal (m/s)
     vz_init: float = 0.4                   # rango inicial de velocidad en Z [-3.0, 3.0] (m/s)
-    vz_change: float = 4.0                 # cambios aleatorios en Z [-5.0, 5.0] (m/s)
+    vz_change: float = 5.0                 # cambios aleatorios en Z [-5.0, 5.0] (m/s)
     fence_xy: float = 150.0                # semilado de la caja horizontal (m)
-    fence_margin: float = 30.0             # margen de preaviso para empezar a frenar en XY (m)
+    fence_margin: float = 45.0             # margen de preaviso para empezar a frenar en XY (m)
+    t_ramp: float = 8.0
+    yaw_rate_max: float = 0.125
 
 @configclass
 class CommandCfg:
@@ -671,15 +675,15 @@ class EventCfg:
             "pose_range": {
                 "x": (-20.0, 20.0),        # antes (-5.0, 5.0)
                 "y": (-20.0, 20.0),        # antes (-5.0, 5.0)
-                "z": (8.0, 45.0),         # antes (8.0, 12.0)
+                "z": (20.0, 50.0),         # antes (8.0, 12.0)
                 "roll": (-0.5, 0.5),
                 "pitch": (-0.5, 0.5),
                 "yaw": (-3.14, 3.14)
             },
             "velocity_range": {
-                "x": (-0.5, 0.5),       
-                "y": (-0.5, 0.5),        
-                "z": (-0.5, 0.5)          
+                "x": (-3.0, 3.0),       
+                "y": (-3.0, 3.0),        
+                "z": (-1.5, 1.5)          
             },
             "asset_cfg": SceneEntityCfg(name="aerotaxi")
         }
@@ -786,7 +790,7 @@ class MySceneCfg(InteractiveSceneCfg):
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=False,
                 rigid_body_enabled=True,
-                max_linear_velocity=20.0,
+                max_linear_velocity=35.0,
                 max_angular_velocity=572.95779578552,
                 max_depenetration_velocity=10.0,
                 enable_gyroscopic_forces=True,
