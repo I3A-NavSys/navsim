@@ -76,7 +76,7 @@ def on_mission_uav_service_response(client, userdata, msg):
 
 
 # Load environment variables
-env_path = f"{project_root_path}/uspace/platgdia/dtblocks/.env"
+env_path = f"{project_root_path}/platgdia/dtblocks/.env"
 load_dotenv(env_path)
 
 # Get Configuration Variables
