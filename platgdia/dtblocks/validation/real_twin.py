@@ -54,6 +54,14 @@ def launch_simulation_cluster():
         # Graceful shutdown handler triggered by Ctrl+C
         print("\n[!] Shutdown signal received. Terminating simulation cluster...")
         for script, process in active_processes:
+            # The validator also received Ctrl+C and is saving its results: let it finish before killing it
+            if script.endswith("validation_dtb.py"):
+                print(f"[*] Waiting for {script} to save its results...")
+                try:
+                    process.wait(timeout=30)
+                except subprocess.TimeoutExpired:
+                    print(f"[!] {script} did not finish in 30 s. Its results may be incomplete.")
+
             print(f"[-] Terminating {script}...")
             process.terminate()  # Sends SIGTERM to the process
             process.wait()       # Waits for the OS to confirm the kill
