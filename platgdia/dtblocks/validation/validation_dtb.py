@@ -138,7 +138,59 @@ finally:
     mqtt_client.loop_stop()
     mqtt_client.disconnect()
 
-    print(f"\nSaving results to JSON in {results_file_path}")
+    # Save results to CSV files (built from the missions dictionary).
+    # They are written before the JSON, which is slower, and a failure here must not prevent saving the JSON
+    import csv
+
+    print(f"\nSaving results to CSV in {results_file_path}")
+
+    try:
+        # Only requests that were satisfied (IN_PROGRESS) or rejected (CANCELLED), in request order
+        resolved_missions = [
+            (mission_id, mission) for mission_id, mission in missions.items()
+            if mission["status"] in (MissionStatus.IN_PROGRESS, MissionStatus.CANCELLED)
+        ]
+
+        # Last requested mission that was satisfied (it is in progress and has routes)
+        last_mission_id, last_mission = next(
+            (
+                (mission_id, mission) for mission_id, mission in reversed(missions.items())
+                if mission["status"] == MissionStatus.IN_PROGRESS and mission.get("flightplans")
+            ),
+            ("no_satisfied_mission", {"flightplans": []})
+        )
+
+        # CSV 1: position and time instant of each waypoint of the last satisfied mission: [x, y, z, t]
+        # The ID goes in the file name: "MSSN_MNG_1 - MISSION_1" -> waypoints_MSSN_MNG_1-MISSION_1.csv
+        last_mission_file_id = last_mission_id.replace(" - ", "-")
+        with open(f"{results_file_path}/waypoints_{last_mission_file_id}.csv", "w", newline="", encoding="utf-8") as file:
+            writer = csv.writer(file)
+            writer.writerow(["waypoint"])
+            for flightplan in last_mission["flightplans"]:
+                for waypoint in flightplan["waypoints"]:
+                    writer.writerow([json.dumps([*waypoint["pos"], waypoint["t"]])])
+
+        # CSV 2: result of each request
+        with open(f"{results_file_path}/missions_validation_request_status.csv", "w", newline="", encoding="utf-8") as file:
+            writer = csv.writer(file)
+            writer.writerow(["flight_plan_id", "status"])
+            for mission_id, mission in resolved_missions:
+                writer.writerow([mission_id, "éxito" if mission["status"] == MissionStatus.IN_PROGRESS else "cancelada"])
+
+        # CSV 3: management time of each request, in seconds (end_time - start_time)
+        time_format = "%d-%m-%Y %H:%M:%S:%f"
+        with open(f"{results_file_path}/missions_validation_management_time.csv", "w", newline="", encoding="utf-8") as file:
+            writer = csv.writer(file)
+            writer.writerow(["flight_plan_id", "management_time_s"])
+            for mission_id, mission in resolved_missions:
+                start_time = datetime.strptime(mission["start_time"], time_format)
+                end_time = datetime.strptime(mission["end_time"], time_format)
+                writer.writerow([mission_id, f"{(end_time - start_time).total_seconds():.6f}"])
+
+    except Exception as e:
+        print(f"[VALIDATOR] - Could not save the CSV files: {e}")
+
+    print(f"Saving results to JSON in {results_file_path}")
 
     # Save results to a JSON file
     with open(f"{results_file_path}/missions_validation.json", "w") as file:
