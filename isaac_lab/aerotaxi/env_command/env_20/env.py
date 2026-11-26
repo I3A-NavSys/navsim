@@ -32,7 +32,7 @@ from isaaclab.actuators import DCMotorCfg
 import isaaclab.utils.math as math_utils
 from . import rewards as my_rewards
 from . import terminations as my_terminations
-from .flight_plan import FlightPlan
+# from .flight_plan import FlightPlan
 # -- Teresa ---
 # ruido gaussiano para la regularización 
 from isaaclab.utils.noise import GaussianNoiseCfg

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import torch
 from typing import TYPE_CHECKING
-from .flight_plan import FlightPlan
+# from .flight_plan import FlightPlan
 import isaaclab.utils.math as math_utils
 
 if TYPE_CHECKING:
